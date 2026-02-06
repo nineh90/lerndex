@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 /// Repräsentiert ein Kind in der App
 /// Enthält alle wichtigen Daten: Level, XP, Sterne, Lernzeit
 class ChildModel {
@@ -12,7 +14,15 @@ class ChildModel {
   final int xp;                 // Experience Points (für Level-System)
   final int xpToNextLevel;      // XP benötigt für nächstes Level
 
-  ChildModel({
+  // NEU: Zusätzliche Tracking-Felder
+  final int? streak;            // Lern-Streak (Tage am Stück)
+  final int? totalQuizzes;      // Anzahl abgeschlossener Quizze
+  final int? perfectQuizzes;    // Anzahl perfekter Quizze (10/10)
+  final DateTime? lastLearningDate;  // Letztes Lerndatum
+  final DateTime? lastQuizDate;      // Letztes Quiz-Datum
+  final DateTime? lastXPGain;        // Letzter XP-Gewinn
+
+  const ChildModel({
     required this.id,
     required this.name,
     this.level = 1,
@@ -23,6 +33,13 @@ class ChildModel {
     this.totalLearningSeconds = 0,
     this.xp = 0,
     this.xpToNextLevel = 25,    // Standard: 25 XP für Level 2
+    // NEU: Optional parameters
+    this.streak,
+    this.totalQuizzes,
+    this.perfectQuizzes,
+    this.lastLearningDate,
+    this.lastQuizDate,
+    this.lastXPGain,
   });
 
   /// Berechnet den XP-Fortschritt als Prozentwert (0.0 - 1.0)
@@ -54,7 +71,19 @@ class ChildModel {
       totalLearningSeconds: data['totalLearningSeconds'] ?? 0,
       xp: data['xp'] ?? 0,
       xpToNextLevel: data['xpToNextLevel'] ?? 25,
+      // NEU: Lade zusätzliche Felder
+      streak: data['streak'],
+      totalQuizzes: data['totalQuizzes'],
+      perfectQuizzes: data['perfectQuizzes'],
+      lastLearningDate: (data['lastLearningDate'] as Timestamp?)?.toDate(),
+      lastQuizDate: (data['lastQuizDate'] as Timestamp?)?.toDate(),
+      lastXPGain: (data['lastXPGain'] as Timestamp?)?.toDate(),
     );
+  }
+
+  /// Alias für fromMap (für Kompatibilität mit xp_service.dart)
+  factory ChildModel.fromFirestore(Map<String, dynamic> data, String id) {
+    return ChildModel.fromMap(data, id);
   }
 
   /// Konvertiert das Modell in eine Map für Firestore
@@ -70,6 +99,13 @@ class ChildModel {
       'totalLearningSeconds': totalLearningSeconds,
       'xp': xp,
       'xpToNextLevel': xpToNextLevel,
+      // NEU: Speichere zusätzliche Felder (wenn vorhanden)
+      if (streak != null) 'streak': streak,
+      if (totalQuizzes != null) 'totalQuizzes': totalQuizzes,
+      if (perfectQuizzes != null) 'perfectQuizzes': perfectQuizzes,
+      if (lastLearningDate != null) 'lastLearningDate': Timestamp.fromDate(lastLearningDate!),
+      if (lastQuizDate != null) 'lastQuizDate': Timestamp.fromDate(lastQuizDate!),
+      if (lastXPGain != null) 'lastXPGain': Timestamp.fromDate(lastXPGain!),
     };
   }
 
@@ -86,6 +122,12 @@ class ChildModel {
     int? totalLearningSeconds,
     int? xp,
     int? xpToNextLevel,
+    int? streak,
+    int? totalQuizzes,
+    int? perfectQuizzes,
+    DateTime? lastLearningDate,
+    DateTime? lastQuizDate,
+    DateTime? lastXPGain,
   }) {
     return ChildModel(
       id: id ?? this.id,
@@ -98,6 +140,13 @@ class ChildModel {
       totalLearningSeconds: totalLearningSeconds ?? this.totalLearningSeconds,
       xp: xp ?? this.xp,
       xpToNextLevel: xpToNextLevel ?? this.xpToNextLevel,
+      // NEU: Kopiere zusätzliche Felder
+      streak: streak ?? this.streak,
+      totalQuizzes: totalQuizzes ?? this.totalQuizzes,
+      perfectQuizzes: perfectQuizzes ?? this.perfectQuizzes,
+      lastLearningDate: lastLearningDate ?? this.lastLearningDate,
+      lastQuizDate: lastQuizDate ?? this.lastQuizDate,
+      lastXPGain: lastXPGain ?? this.lastXPGain,
     );
   }
 }

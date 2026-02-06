@@ -1,211 +1,195 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'reward_enums.dart';
 
-/// Repräsentiert eine Belohnung
-class Reward {
+/// Erweitertes Belohnungs-Model mit Trigger-System
+class RewardModel {
   final String id;
-  final String childId;           // Für welches Kind
-  final String title;             // z.B. "10€ Taschengeld"
-  final String description;       // z.B. "Für fleißiges Lernen"
-  final String icon;              // Emoji oder Icon-Name
-  final String trigger;           // Was löst die Belohnung aus
-  final int triggerValue;         // Wert des Triggers (z.B. 5 für Level 5)
-  final bool isUnlocked;          // Wurde bereits verdient?
-  final bool isRedeemed;          // Wurde bereits eingelöst?
-  final DateTime? unlockedAt;     // Wann wurde sie freigeschaltet?
-  final DateTime? redeemedAt;     // Wann wurde sie eingelöst?
-  final DateTime createdAt;       // Wann wurde sie erstellt?
+  final String childId;
+  final String title;
+  final String description;
+  final RewardType type;
+  final RewardTrigger trigger;
 
-  Reward({
+  // Trigger-Bedingungen (je nach trigger nur eine gesetzt)
+  final int? requiredLevel;
+  final int? requiredXP;
+  final int? requiredStars;
+  final int? requiredStreak;
+  final int? requiredQuizCount;
+
+  final RewardStatus status;
+  final String reward;  // Was das Kind bekommt
+
+  final DateTime createdAt;
+  final DateTime? approvedAt;
+  final DateTime? claimedAt;
+  final String createdBy;  // 'system' oder userId
+
+  RewardModel({
     required this.id,
     required this.childId,
     required this.title,
     required this.description,
-    required this.icon,
+    required this.type,
     required this.trigger,
-    required this.triggerValue,
-    this.isUnlocked = false,
-    this.isRedeemed = false,
-    this.unlockedAt,
-    this.redeemedAt,
+    this.requiredLevel,
+    this.requiredXP,
+    this.requiredStars,
+    this.requiredStreak,
+    this.requiredQuizCount,
+    required this.status,
+    required this.reward,
     required this.createdAt,
+    this.approvedAt,
+    this.claimedAt,
+    required this.createdBy,
   });
 
-  /// Erstellt Reward aus Firestore-Daten
-  factory Reward.fromMap(Map<String, dynamic> data, String id) {
-    return Reward(
+  /// Aus Firestore erstellen
+  factory RewardModel.fromFirestore(Map<String, dynamic> data, String id) {
+    return RewardModel(
       id: id,
       childId: data['childId'] ?? '',
       title: data['title'] ?? '',
       description: data['description'] ?? '',
-      icon: data['icon'] ?? '🎁',
-      trigger: data['trigger'] ?? 'level',
-      triggerValue: data['triggerValue'] ?? 1,
-      isUnlocked: data['isUnlocked'] ?? false,
-      isRedeemed: data['isRedeemed'] ?? false,
-      unlockedAt: data['unlockedAt'] != null
-          ? (data['unlockedAt'] as Timestamp).toDate()
-          : null,
-      redeemedAt: data['redeemedAt'] != null
-          ? (data['redeemedAt'] as Timestamp).toDate()
-          : null,
-      createdAt: data['createdAt'] != null
-          ? (data['createdAt'] as Timestamp).toDate()
-          : DateTime.now(),
+      type: RewardTypeExtension.fromFirestore(data['type'] ?? 'parent'),
+      trigger: RewardTriggerExtension.fromFirestore(data['trigger'] ?? 'manual'),
+      requiredLevel: data['requiredLevel'],
+      requiredXP: data['requiredXP'],
+      requiredStars: data['requiredStars'],
+      requiredStreak: data['requiredStreak'],
+      requiredQuizCount: data['requiredQuizCount'],
+      status: RewardStatusExtension.fromFirestore(data['status'] ?? 'pending'),
+      reward: data['reward'] ?? '',
+      createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      approvedAt: (data['approvedAt'] as Timestamp?)?.toDate(),
+      claimedAt: (data['claimedAt'] as Timestamp?)?.toDate(),
+      createdBy: data['createdBy'] ?? 'system',
     );
   }
 
-  /// Konvertiert zu Firestore-Map
-  Map<String, dynamic> toMap() {
+  /// Zu Firestore konvertieren
+  Map<String, dynamic> toFirestore() {
     return {
       'childId': childId,
       'title': title,
       'description': description,
-      'icon': icon,
-      'trigger': trigger,
-      'triggerValue': triggerValue,
-      'isUnlocked': isUnlocked,
-      'isRedeemed': isRedeemed,
-      'unlockedAt': unlockedAt,
-      'redeemedAt': redeemedAt,
-      'createdAt': createdAt,
+      'type': type.toFirestore(),
+      'trigger': trigger.toFirestore(),
+      'requiredLevel': requiredLevel,
+      'requiredXP': requiredXP,
+      'requiredStars': requiredStars,
+      'requiredStreak': requiredStreak,
+      'requiredQuizCount': requiredQuizCount,
+      'status': status.toFirestore(),
+      'reward': reward,
+      'createdAt': Timestamp.fromDate(createdAt),
+      'approvedAt': approvedAt != null ? Timestamp.fromDate(approvedAt!) : null,
+      'claimedAt': claimedAt != null ? Timestamp.fromDate(claimedAt!) : null,
+      'createdBy': createdBy,
     };
   }
 
-  /// Erstellt eine Kopie mit geänderten Werten
-  Reward copyWith({
+  /// Copy with für Updates
+  RewardModel copyWith({
     String? id,
     String? childId,
     String? title,
     String? description,
-    String? icon,
-    String? trigger,
-    int? triggerValue,
-    bool? isUnlocked,
-    bool? isRedeemed,
-    DateTime? unlockedAt,
-    DateTime? redeemedAt,
+    RewardType? type,
+    RewardTrigger? trigger,
+    int? requiredLevel,
+    int? requiredXP,
+    int? requiredStars,
+    int? requiredStreak,
+    int? requiredQuizCount,
+    RewardStatus? status,
+    String? reward,
     DateTime? createdAt,
+    DateTime? approvedAt,
+    DateTime? claimedAt,
+    String? createdBy,
   }) {
-    return Reward(
+    return RewardModel(
       id: id ?? this.id,
       childId: childId ?? this.childId,
       title: title ?? this.title,
       description: description ?? this.description,
-      icon: icon ?? this.icon,
+      type: type ?? this.type,
       trigger: trigger ?? this.trigger,
-      triggerValue: triggerValue ?? this.triggerValue,
-      isUnlocked: isUnlocked ?? this.isUnlocked,
-      isRedeemed: isRedeemed ?? this.isRedeemed,
-      unlockedAt: unlockedAt ?? this.unlockedAt,
-      redeemedAt: redeemedAt ?? this.redeemedAt,
+      requiredLevel: requiredLevel ?? this.requiredLevel,
+      requiredXP: requiredXP ?? this.requiredXP,
+      requiredStars: requiredStars ?? this.requiredStars,
+      requiredStreak: requiredStreak ?? this.requiredStreak,
+      requiredQuizCount: requiredQuizCount ?? this.requiredQuizCount,
+      status: status ?? this.status,
+      reward: reward ?? this.reward,
       createdAt: createdAt ?? this.createdAt,
+      approvedAt: approvedAt ?? this.approvedAt,
+      claimedAt: claimedAt ?? this.claimedAt,
+      createdBy: createdBy ?? this.createdBy,
     );
   }
-}
 
-/// Trigger-Typen für Belohnungen
-class RewardTrigger {
-  static const String level = 'level';           // Bei Level X erreicht
-  static const String quizCount = 'quizCount';   // Nach X Quiz
-  static const String stars = 'stars';           // Bei X Sternen
-  static const String learningTime = 'learningTime'; // Nach X Minuten Lernzeit
-  static const String streak = 'streak';         // Nach X Tagen Streak
-
-  /// Gibt einen lesbaren Namen für den Trigger zurück
-  static String getDisplayName(String trigger) {
+  /// Prüft ob Trigger-Bedingung erfüllt ist
+  bool isTriggeredBy({
+    required int currentLevel,
+    required int currentXP,
+    required int currentStars,
+    required int currentStreak,
+    required int currentQuizCount,
+    bool isPerfectQuiz = false,
+  }) {
     switch (trigger) {
-      case level:
-        return 'Level erreicht';
-      case quizCount:
-        return 'Quiz abgeschlossen';
-      case stars:
-        return 'Sterne gesammelt';
-      case learningTime:
-        return 'Lernzeit';
-      case streak:
-        return 'Tage-Streak';
-      default:
-        return 'Unbekannt';
+      case RewardTrigger.level:
+        return requiredLevel != null && currentLevel >= requiredLevel!;
+      case RewardTrigger.xp:
+        return requiredXP != null && currentXP >= requiredXP!;
+      case RewardTrigger.stars:
+        return requiredStars != null && currentStars >= requiredStars!;
+      case RewardTrigger.streak:
+        return requiredStreak != null && currentStreak >= requiredStreak!;
+      case RewardTrigger.quizCount:
+        return requiredQuizCount != null && currentQuizCount >= requiredQuizCount!;
+      case RewardTrigger.perfectQuiz:
+        return isPerfectQuiz;
+      case RewardTrigger.manual:
+        return false;
     }
   }
 
-  /// Gibt eine Beschreibung des Triggers zurück
-  static String getDescription(String trigger, int value) {
+  /// Gibt formatierte Bedingung zurück (für UI)
+  String get conditionText {
     switch (trigger) {
-      case level:
-        return 'Bei Level $value';
-      case quizCount:
-        return 'Nach $value Quiz';
-      case stars:
-        return 'Bei $value Sternen';
-      case learningTime:
-        return 'Nach $value Minuten Lernzeit';
-      case streak:
-        return 'Nach $value Tagen in Folge';
-      default:
-        return '';
+      case RewardTrigger.level:
+        return 'Level $requiredLevel erreichen';
+      case RewardTrigger.xp:
+        return '$requiredXP XP sammeln';
+      case RewardTrigger.stars:
+        return '$requiredStars ⭐ Sterne sammeln';
+      case RewardTrigger.streak:
+        return '$requiredStreak Tage am Stück lernen';
+      case RewardTrigger.quizCount:
+        return '$requiredQuizCount Quizze abschließen';
+      case RewardTrigger.perfectQuiz:
+        return 'Perfektes Quiz (10/10)';
+      case RewardTrigger.manual:
+        return 'Von Eltern freigegeben';
     }
   }
-}
 
-/// Standard-Belohnungen (Vorschläge für Eltern)
-class DefaultRewards {
-  static List<Map<String, dynamic>> get suggestions => [
-    {
-      'title': '10€ Taschengeld',
-      'description': 'Extra Taschengeld für fleißiges Lernen',
-      'icon': '💰',
-      'trigger': RewardTrigger.level,
-      'triggerValue': 5,
-    },
-    {
-      'title': 'Kinobesuch',
-      'description': 'Ein Film deiner Wahl im Kino',
-      'icon': '🎬',
-      'trigger': RewardTrigger.quizCount,
-      'triggerValue': 20,
-    },
-    {
-      'title': 'Lieblingsessen',
-      'description': 'Du darfst das Abendessen aussuchen',
-      'icon': '🍕',
-      'trigger': RewardTrigger.stars,
-      'triggerValue': 100,
-    },
-    {
-      'title': '30 Min länger aufbleiben',
-      'description': 'An einem Tag deiner Wahl',
-      'icon': '🌙',
-      'trigger': RewardTrigger.learningTime,
-      'triggerValue': 60, // 60 Minuten
-    },
-    {
-      'title': 'Spielzeug (bis 20€)',
-      'description': 'Ein Spielzeug deiner Wahl',
-      'icon': '🎮',
-      'trigger': RewardTrigger.level,
-      'triggerValue': 10,
-    },
-    {
-      'title': 'Freund zum Übernachten einladen',
-      'description': 'Ein Freund darf übernachten',
-      'icon': '🏠',
-      'trigger': RewardTrigger.streak,
-      'triggerValue': 7,
-    },
-    {
-      'title': 'Freizeitpark-Besuch',
-      'description': 'Ein Tag im Freizeitpark',
-      'icon': '🎢',
-      'trigger': RewardTrigger.level,
-      'triggerValue': 15,
-    },
-    {
-      'title': 'Keine Hausarbeit',
-      'description': 'Einen Tag frei von Hausarbeiten',
-      'icon': '🧹',
-      'trigger': RewardTrigger.quizCount,
-      'triggerValue': 10,
-    },
-  ];
+  /// Status-Badge Farbe
+  String get statusEmoji {
+    switch (status) {
+      case RewardStatus.pending:
+        return '⏳';
+      case RewardStatus.approved:
+        return '🎁';
+      case RewardStatus.claimed:
+        return '✅';
+    }
+  }
+
+  /// Ist einlösbar?
+  bool get canClaim => status == RewardStatus.approved;
 }

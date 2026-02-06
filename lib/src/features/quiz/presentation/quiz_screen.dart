@@ -4,6 +4,11 @@ import '../domain/question_model.dart';
 import '../data/quiz_repository.dart';
 import '../../auth/presentation/active_child_provider.dart';
 import '../../auth/data/profile_repository.dart';
+import '../../rewards/data/xp_service.dart';
+import '../../rewards/data/reward_service.dart';
+import '../../rewards/presentation/reward_unlocked_dialog.dart';
+import '../../rewards/domain/reward_model.dart';
+import '../../auth/data/auth_repository.dart';
 
 class QuizScreen extends ConsumerStatefulWidget {
   final String subject;
@@ -78,9 +83,51 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
       _wasCorrect = isCorrect;
     });
 
-    if (isCorrect) _correctAnswers++;
+    if (isCorrect) {
+      _correctAnswers++;
 
-    // Feedback-Animation
+      // ============================================
+      // NEU: XP sofort speichern!
+      // ============================================
+      final xpService = ref.read(xpServiceProvider);
+      final activeChild = ref.read(activeChildProvider);
+      final user = ref.read(authStateChangesProvider).value;
+
+      if (activeChild != null && user != null) {
+        try {
+          final xpResult = await xpService.addXP(
+            userId: user.uid,
+            childId: activeChild.id,
+            xpToAdd: 5, // 5 XP pro richtiger Antwort
+          );
+
+          print('✅ XP gespeichert: +5 XP → ${xpResult.newXP} XP gesamt');
+
+          // Prüfe Level-Up
+          if (xpResult.leveledUp) {
+            print('🎉 Level-Up! Neues Level: ${xpResult.newLevel}');
+
+            // Warte bis Feedback-Animation fertig ist
+            await Future.delayed(const Duration(milliseconds: 1500));
+
+            if (mounted) {
+              await _handleLevelUp(xpResult.newLevel);
+            }
+
+            // Setze Feedback zurück für nächste Frage
+            setState(() => _showingFeedback = false);
+            return; // Früher Return, da wir schon gewartet haben
+          }
+        } catch (e) {
+          print('❌ Fehler beim Speichern von XP: $e');
+        }
+      }
+      // ============================================
+      // ENDE NEU
+      // ============================================
+    }
+
+    // Feedback-Animation (bleibt wie vorher)
     _feedbackController.forward().then((_) {
       _feedbackController.reverse();
     });
@@ -97,6 +144,38 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
       setState(() => _currentIndex++);
     } else {
       _finishQuiz();
+    }
+  }
+
+  /// Behandelt Level-Up Event
+  Future<void> _handleLevelUp(int newLevel) async {
+    final activeChild = ref.read(activeChildProvider);
+    final user = ref.read(authStateChangesProvider).value;
+    if (activeChild == null || user == null) return;
+
+    print('🎯 Erstelle Level-Up Belohnung für Level $newLevel...');
+
+    // System-Belohnung erstellen
+    final rewardService = ref.read(rewardServiceProvider);
+    final reward = await rewardService.createLevelUpReward(
+      userId: user.uid,
+      childId: activeChild.id,
+      level: newLevel,
+    );
+
+    if (reward != null && mounted) {
+      print('🎁 Zeige Level-Up Dialog...');
+
+      // Dialog anzeigen!
+      await showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => RewardUnlockedDialog(
+          rewards: [reward],
+          isLevelUp: true,
+          newLevel: newLevel,
+        ),
+      );
     }
   }
 
