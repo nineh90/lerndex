@@ -1,0 +1,75 @@
+{
+  "subject": "Sachkunde",
+  "questions": [
+    {
+      "grade": 1,
+      "question": "Welches Tier gibt uns Milch?",
+      "options": ["Hund", "Kuh", "Katze", "Pferd"],
+      "answer": "Kuh",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 1,
+      "question": "Wie viele Jahreszeiten gibt es?",
+      "options": ["2", "3", "4", "5"],
+      "answer": "4",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 2,
+      "question": "Welches Organ pumpt Blut durch den Körper?",
+      "options": ["Lunge", "Herz", "Magen", "Gehirn"],
+      "answer": "Herz",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 2,
+      "question": "Was brauchen Pflanzen zum Wachsen?",
+      "options": ["Wasser", "Licht", "Erde", "Alles davon"],
+      "answer": "Alles davon",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 3,
+      "question": "Wie viele Kontinente gibt es?",
+      "options": ["5", "6", "7", "8"],
+      "answer": "7",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 3,
+      "question": "Welcher Planet ist der Erde am nächsten?",
+      "options": ["Mars", "Venus", "Jupiter", "Saturn"],
+      "answer": "Venus",
+      "difficulty": "hard"
+    },
+    {
+      "grade": 4,
+      "question": "Was ist die Hauptstadt von Deutschland?",
+      "options": ["München", "Hamburg", "Berlin", "Köln"],
+      "answer": "Berlin",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 4,
+      "question": "Wie nennt man Tiere, die nur Pflanzen fressen?",
+      "options": ["Fleischfresser", "Pflanzenfresser", "Allesfresser", "Insektenfresser"],
+      "answer": "Pflanzenfresser",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 5,
+      "question": "Aus was besteht Wasser chemisch?",
+      "options": ["H2O", "CO2", "O2", "N2"],
+      "answer": "H2O",
+      "difficulty": "hard"
+    },
+    {
+      "grade": 5,
+      "question": "Wie lange dauert ein Jahr auf der Erde?",
+      "options": ["365 Tage", "360 Tage", "400 Tage", "300 Tage"],
+      "answer": "365 Tage",
+      "difficulty": "easy"
+    }
+  ]
+}

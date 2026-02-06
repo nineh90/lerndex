@@ -1,0 +1,89 @@
+{
+  "subject": "Mathe",
+  "questions": [
+    {
+      "grade": 1,
+      "question": "Was ist 2 + 3?",
+      "options": ["4", "5", "6", "7"],
+      "answer": "5",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 1,
+      "question": "Wie viele Äpfel sind es? 🍎🍎🍎",
+      "options": ["2", "3", "4", "5"],
+      "answer": "3",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 2,
+      "question": "Was ist 7 + 8?",
+      "options": ["14", "15", "16", "17"],
+      "answer": "15",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 2,
+      "question": "Was ist 10 - 6?",
+      "options": ["3", "4", "5", "6"],
+      "answer": "4",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 3,
+      "question": "Was ist 5 × 4?",
+      "options": ["15", "20", "25", "30"],
+      "answer": "20",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 3,
+      "question": "Was ist 18 : 3?",
+      "options": ["4", "5", "6", "7"],
+      "answer": "6",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 4,
+      "question": "Was ist 12 × 7?",
+      "options": ["72", "84", "96", "108"],
+      "answer": "84",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 4,
+      "question": "Was ist 1/2 + 1/4?",
+      "options": ["1/4", "2/4", "3/4", "4/4"],
+      "answer": "3/4",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 5,
+      "question": "Was ist 15% von 200?",
+      "options": ["20", "25", "30", "35"],
+      "answer": "30",
+      "difficulty": "hard"
+    },
+    {
+      "grade": 5,
+      "question": "Was ist die Fläche eines Rechtecks mit 5cm × 8cm?",
+      "options": ["30 cm²", "35 cm²", "40 cm²", "45 cm²"],
+      "answer": "40 cm²",
+      "difficulty": "hard"
+    },
+    {
+      "grade": 6,
+      "question": "Was ist (-3) × 4?",
+      "options": ["-12", "-7", "7", "12"],
+      "answer": "-12",
+      "difficulty": "hard"
+    },
+    {
+      "grade": 6,
+      "question": "Was ist 2³ (2 hoch 3)?",
+      "options": ["6", "8", "9", "12"],
+      "answer": "8",
+      "difficulty": "hard"
+    }
+  ]
+}

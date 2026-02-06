@@ -1,0 +1,49 @@
+name: lerndex1
+description: "Lernsoftware für Kinder"
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.10.7 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+
+  # State Management
+  flutter_riverpod: ^2.5.1
+  riverpod_annotation: ^2.3.5
+
+  # Firebase
+  firebase_core: ^3.0.0
+  firebase_auth: ^5.0.0
+  cloud_firestore: ^5.0.0
+
+  # Code-Generatoren
+  freezed_annotation: ^2.4.4
+  json_annotation: ^4.9.0
+
+  # KI-Tutor (NEU HIER!)
+  google_generative_ai: ^0.4.3        # Gemini SDK (AKTUALISIERT!)
+  flutter_dotenv: ^5.1.0               # .env Datei laden
+  flutter_markdown: ^0.6.18            # Markdown anzeigen
+  http: ^1.2.0                         # HTTP Requests
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+  # Code-Generatoren
+  build_runner: ^2.4.8
+  riverpod_generator: ^2.4.0
+  freezed: ^2.4.7
+  json_serializable: ^6.8.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - .env
+    - assets/questions/

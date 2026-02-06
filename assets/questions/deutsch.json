@@ -1,0 +1,89 @@
+{
+  "subject": "Deutsch",
+  "questions": [
+    {
+      "grade": 1,
+      "question": "Welcher Buchstabe kommt nach 'A'?",
+      "options": ["B", "C", "D", "E"],
+      "answer": "B",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 1,
+      "question": "Welches Wort reimt sich auf 'Haus'?",
+      "options": ["Baum", "Maus", "Auto", "Blume"],
+      "answer": "Maus",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 2,
+      "question": "Wie viele Silben hat das Wort 'Schokolade'?",
+      "options": ["2", "3", "4", "5"],
+      "answer": "4",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 2,
+      "question": "Welches Wort ist richtig geschrieben?",
+      "options": ["Baum", "Bauhm", "Baumm", "Baom"],
+      "answer": "Baum",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 3,
+      "question": "Was ist das Gegenteil von 'groß'?",
+      "options": ["klein", "dick", "dünn", "lang"],
+      "answer": "klein",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 3,
+      "question": "Welches Wort ist ein Nomen (Hauptwort)?",
+      "options": ["laufen", "schnell", "Hund", "schön"],
+      "answer": "Hund",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 4,
+      "question": "Was ist die 1. Person Singular von 'laufen'?",
+      "options": ["ich laufe", "du läufst", "er läuft", "wir laufen"],
+      "answer": "ich laufe",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 4,
+      "question": "Welches Satzzeichen gehört ans Ende einer Frage?",
+      "options": [".", "!", "?", ","],
+      "answer": "?",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 5,
+      "question": "Was ist ein Synonym für 'glücklich'?",
+      "options": ["traurig", "froh", "wütend", "müde"],
+      "answer": "froh",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 5,
+      "question": "Welche Zeitform ist: 'Ich bin gelaufen'?",
+      "options": ["Präsens", "Präteritum", "Perfekt", "Futur"],
+      "answer": "Perfekt",
+      "difficulty": "hard"
+    },
+    {
+      "grade": 6,
+      "question": "Was ist ein Akkusativobjekt?",
+      "options": ["Wer?", "Wem?", "Wen oder was?", "Wessen?"],
+      "answer": "Wen oder was?",
+      "difficulty": "hard"
+    },
+    {
+      "grade": 6,
+      "question": "Welches Wort ist ein Adjektiv?",
+      "options": ["Haus", "laufen", "schnell", "gestern"],
+      "answer": "schnell",
+      "difficulty": "medium"
+    }
+  ]
+}

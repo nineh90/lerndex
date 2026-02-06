@@ -1,0 +1,75 @@
+{
+  "subject": "Englisch",
+  "questions": [
+    {
+      "grade": 3,
+      "question": "Was heißt 'Hund' auf Englisch?",
+      "options": ["cat", "dog", "bird", "fish"],
+      "answer": "dog",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 3,
+      "question": "Wie sagt man 'Hallo' auf Englisch?",
+      "options": ["Goodbye", "Hello", "Thank you", "Please"],
+      "answer": "Hello",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 4,
+      "question": "What color is the sky?",
+      "options": ["red", "green", "blue", "yellow"],
+      "answer": "blue",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 4,
+      "question": "How many days are in a week?",
+      "options": ["5", "6", "7", "8"],
+      "answer": "7",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 5,
+      "question": "What is the opposite of 'hot'?",
+      "options": ["warm", "cold", "cool", "wet"],
+      "answer": "cold",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 5,
+      "question": "I ___ to school every day.",
+      "options": ["go", "goes", "going", "went"],
+      "answer": "go",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 6,
+      "question": "She ___ her homework yesterday.",
+      "options": ["do", "does", "did", "doing"],
+      "answer": "did",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 6,
+      "question": "What is the past tense of 'eat'?",
+      "options": ["eated", "ate", "eating", "eats"],
+      "answer": "ate",
+      "difficulty": "hard"
+    },
+    {
+      "grade": 7,
+      "question": "If I ___ rich, I would travel the world.",
+      "options": ["am", "was", "were", "be"],
+      "answer": "were",
+      "difficulty": "hard"
+    },
+    {
+      "grade": 7,
+      "question": "What does 'library' mean?",
+      "options": ["Bibliothek", "Schule", "Park", "Museum"],
+      "answer": "Bibliothek",
+      "difficulty": "medium"
+    }
+  ]
+}
