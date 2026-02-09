@@ -17,9 +17,19 @@ dependencies:
   riverpod_annotation: ^2.3.5
 
   # Firebase
-  firebase_core: ^3.0.0
+  firebase_core: ^3.15.2
   firebase_auth: ^5.0.0
   cloud_firestore: ^5.0.0
+
+  # Firebase Vertex AI (ersetzt google_generative_ai)
+  firebase_vertexai: 1.8.3
+
+  # Für Foto-Upload
+  image_picker: 1.0.7
+  firebase_storage: ^12.0.0
+
+  # Konfetti-Effekt
+  confetti: ^0.7.0
 
   # Code-Generatoren
   freezed_annotation: ^2.4.4
@@ -30,6 +40,7 @@ dependencies:
   flutter_dotenv: ^5.1.0               # .env Datei laden
   flutter_markdown: ^0.6.18            # Markdown anzeigen
   http: ^1.2.0                         # HTTP Requests
+  firebase_ai: ^2.3.0
 
 dev_dependencies:
   flutter_test:
@@ -45,5 +56,4 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   assets:
-    - .env
     - assets/questions/

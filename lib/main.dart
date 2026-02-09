@@ -2,6 +2,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_ai/firebase_ai.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'firebase_options.dart';
 
 // Imports für Auth-System
@@ -22,7 +24,6 @@ import 'src/features/parent_dashboard/data/pin_repository.dart';
 
 // Imports für Belohnungssystem
 import 'src/features/rewards/presentation/rewards_screen.dart';
-import 'src/features/rewards/presentation/manage_rewards_screen.dart';
 
 // Import KI-Tutor
 import 'src/features/tutor/presentation/tutor_screen.dart';
@@ -78,7 +79,6 @@ class ParentAdminDashboard extends ConsumerWidget {
         backgroundColor: Colors.deepPurple,
         foregroundColor: Colors.white,
         actions: [
-          // NEU: Eltern-Dashboard Icon
           IconButton(
             onPressed: () async => await _openParentDashboard(context, ref),
             icon: const Icon(Icons.admin_panel_settings),
@@ -100,9 +100,15 @@ class ParentAdminDashboard extends ConsumerWidget {
                 children: [
                   Icon(Icons.child_care, size: 100, color: Colors.grey[400]),
                   const SizedBox(height: 20),
-                  Text('Noch keine Kinder angelegt', style: TextStyle(fontSize: 18, color: Colors.grey[600])),
+                  Text(
+                    'Noch keine Kinder angelegt',
+                    style: TextStyle(fontSize: 18, color: Colors.grey[600]),
+                  ),
                   const SizedBox(height: 10),
-                  const Text('Füge dein erstes Kind hinzu!', style: TextStyle(color: Colors.grey)),
+                  const Text(
+                    'Füge dein erstes Kind hinzu!',
+                    style: TextStyle(color: Colors.grey),
+                  ),
                 ],
               ),
             );
@@ -116,7 +122,9 @@ class ParentAdminDashboard extends ConsumerWidget {
               return Card(
                 elevation: 2,
                 margin: const EdgeInsets.only(bottom: 16),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(15),
+                ),
                 child: ListTile(
                   contentPadding: const EdgeInsets.all(16),
                   leading: CircleAvatar(
@@ -124,10 +132,20 @@ class ParentAdminDashboard extends ConsumerWidget {
                     backgroundColor: Colors.deepPurple.shade100,
                     child: Text(
                       child.name[0].toUpperCase(),
-                      style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.deepPurple),
+                      style: const TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.deepPurple,
+                      ),
                     ),
                   ),
-                  title: Text(child.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                  title: Text(
+                    child.name,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                    ),
+                  ),
                   subtitle: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -154,7 +172,10 @@ class ParentAdminDashboard extends ConsumerWidget {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.green,
                         foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 4,
+                        ),
                         minimumSize: const Size(0, 32),
                       ),
                       child: const Row(
@@ -185,42 +206,35 @@ class ParentAdminDashboard extends ConsumerWidget {
     );
   }
 
-  /// Öffnet das Eltern-Dashboard (mit PIN-Schutz)
   Future<void> _openParentDashboard(BuildContext context, WidgetRef ref) async {
     final user = ref.read(authStateChangesProvider).value;
     if (user == null) return;
 
-    // Prüfe ob PIN existiert
     final hasPin = await ref.read(pinRepositoryProvider).hasPinSet(user.uid);
 
     if (!hasPin) {
-      // Kein PIN gesetzt → PIN erstellen
       final created = await showDialog<bool>(
         context: context,
         barrierDismissible: false,
         builder: (context) => const PinSetupDialog(),
       );
 
-      if (created != true) return; // Abgebrochen
+      if (created != true) return;
     }
 
-    // PIN abfragen
     final verified = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
       builder: (context) => const PinInputDialog(),
     );
 
-    if (verified == true) {
-      // PIN korrekt → Dashboard öffnen
-      if (context.mounted) {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => const ParentDashboardScreen(),
-          ),
-        );
-      }
+    if (verified == true && context.mounted) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => const ParentDashboardScreen(),
+        ),
+      );
     }
   }
 
@@ -255,7 +269,10 @@ class ParentAdminDashboard extends ConsumerWidget {
                   value: selectedGrade,
                   decoration: const InputDecoration(labelText: 'Klasse'),
                   items: List.generate(13, (i) => i + 1)
-                      .map((g) => DropdownMenuItem(value: g, child: Text('Klasse $g')))
+                      .map((g) => DropdownMenuItem(
+                    value: g,
+                    child: Text('Klasse $g'),
+                  ))
                       .toList(),
                   onChanged: (val) => setState(() => selectedGrade = val!),
                 ),
@@ -263,8 +280,17 @@ class ParentAdminDashboard extends ConsumerWidget {
                 DropdownButtonFormField<String>(
                   value: selectedSchoolType,
                   decoration: const InputDecoration(labelText: 'Schulform'),
-                  items: ['Grundschule', 'Gymnasium', 'Realschule', 'Hauptschule', 'Gesamtschule']
-                      .map((s) => DropdownMenuItem(value: s, child: Text(s)))
+                  items: [
+                    'Grundschule',
+                    'Gymnasium',
+                    'Realschule',
+                    'Hauptschule',
+                    'Gesamtschule'
+                  ]
+                      .map((s) => DropdownMenuItem(
+                    value: s,
+                    child: Text(s),
+                  ))
                       .toList(),
                   onChanged: (val) => setState(() => selectedSchoolType = val!),
                 ),
@@ -272,17 +298,52 @@ class ParentAdminDashboard extends ConsumerWidget {
             ),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Abbrechen')),
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Abbrechen'),
+            ),
             ElevatedButton(
-              onPressed: () {
+              onPressed: () async {
                 if (nameController.text.isNotEmpty) {
-                  ref.read(profileRepositoryProvider).addChild(
-                    name: nameController.text,
-                    age: int.tryParse(ageController.text) ?? 6,
-                    grade: selectedGrade,
-                    schoolType: selectedSchoolType,
+                  showDialog(
+                    context: context,
+                    barrierDismissible: false,
+                    builder: (context) => const Center(
+                      child: CircularProgressIndicator(),
+                    ),
                   );
-                  Navigator.pop(context);
+
+                  try {
+                    await ref.read(profileRepositoryProvider).createChild(
+                      name: nameController.text,
+                      age: int.tryParse(ageController.text) ?? 6,
+                      grade: selectedGrade,
+                      schoolType: selectedSchoolType,
+                    );
+
+                    if (context.mounted) {
+                      Navigator.pop(context);
+                      Navigator.pop(context);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('✅ Kind erfolgreich angelegt!'),
+                          backgroundColor: Colors.green,
+                          duration: Duration(seconds: 3),
+                        ),
+                      );
+                    }
+                  } catch (e) {
+                    if (context.mounted) {
+                      Navigator.pop(context);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('❌ Fehler: $e'),
+                          backgroundColor: Colors.red,
+                          duration: const Duration(seconds: 5),
+                        ),
+                      );
+                    }
+                  }
                 }
               },
               child: const Text('Speichern'),
@@ -295,46 +356,14 @@ class ParentAdminDashboard extends ConsumerWidget {
 }
 
 // ============================================================================
-// KIND-DASHBOARD (VERBESSERT)
+// KIND-DASHBOARD - MIT LIVE-UPDATE LERNZEIT
 // ============================================================================
 
-class ChildDashboard extends ConsumerStatefulWidget {
+class ChildDashboard extends ConsumerWidget {
   const ChildDashboard({super.key});
 
   @override
-  ConsumerState<ChildDashboard> createState() => _ChildDashboardState();
-}
-
-class _ChildDashboardState extends ConsumerState<ChildDashboard> {
-  int _sessionSeconds = 0;
-  Timer? _timer;
-
-  @override
-  void initState() {
-    super.initState();
-    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (mounted) setState(() => _sessionSeconds++);
-    });
-  }
-
-  @override
-  void dispose() {
-    final activeChild = ref.read(activeChildProvider);
-    if (activeChild != null && _sessionSeconds > 0) {
-      ref.read(profileRepositoryProvider).addLearningTime(activeChild.id, _sessionSeconds);
-    }
-    _timer?.cancel();
-    super.dispose();
-  }
-
-  String _formatTime(int seconds) {
-    final mins = seconds ~/ 60;
-    final secs = seconds % 60;
-    return '${mins.toString().padLeft(2, '0')}:${secs.toString().padLeft(2, '0')}';
-  }
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final activeChild = ref.watch(activeChildProvider)!;
 
     return Scaffold(
@@ -347,28 +376,6 @@ class _ChildDashboardState extends ConsumerState<ChildDashboard> {
           onPressed: () => ref.read(activeChildProvider.notifier).deselect(),
           tooltip: 'Zurück',
         ),
-        actions: [
-          Center(
-            child: Padding(
-              padding: const EdgeInsets.only(right: 16),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: Colors.white24,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.timer, size: 18),
-                    const SizedBox(width: 6),
-                    Text(_formatTime(_sessionSeconds), style: const TextStyle(fontWeight: FontWeight.bold)),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
@@ -376,7 +383,12 @@ class _ChildDashboardState extends ConsumerState<ChildDashboard> {
           children: [
             _buildStatusHeader(activeChild),
             const SizedBox(height: 30),
-            const Text('Wähle ein Fach zum Lernen:', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            _LiveLearningTimeCard(childId: activeChild.id), // 🔥 LIVE UPDATE!
+            const SizedBox(height: 30),
+            const Text(
+              'Wähle ein Fach zum Lernen:',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 20),
             GridView.count(
               shrinkWrap: true,
@@ -385,14 +397,34 @@ class _ChildDashboardState extends ConsumerState<ChildDashboard> {
               mainAxisSpacing: 15,
               crossAxisSpacing: 15,
               children: [
-                _SubjectTile(title: 'Mathe', icon: Icons.calculate, color: Colors.orange, onTap: () => _startQuiz(context, 'Mathe')),
-                _SubjectTile(title: 'Deutsch', icon: Icons.menu_book, color: Colors.redAccent, onTap: () => _startQuiz(context, 'Deutsch')),
-                _SubjectTile(title: 'Englisch', icon: Icons.language, color: Colors.blue, onTap: () => _startQuiz(context, 'Englisch')),
-                _SubjectTile(title: 'Sachkunde', icon: Icons.wb_sunny, color: Colors.green, onTap: () => _startQuiz(context, 'Sachkunde')),
+                _SubjectTile(
+                  title: 'Mathe',
+                  icon: Icons.calculate,
+                  color: Colors.orange,
+                  onTap: () => _startQuiz(context, 'Mathe'),
+                ),
+                _SubjectTile(
+                  title: 'Deutsch',
+                  icon: Icons.menu_book,
+                  color: Colors.redAccent,
+                  onTap: () => _startQuiz(context, 'Deutsch'),
+                ),
+                _SubjectTile(
+                  title: 'Englisch',
+                  icon: Icons.language,
+                  color: Colors.blue,
+                  onTap: () => _startQuiz(context, 'Englisch'),
+                ),
+                _SubjectTile(
+                  title: 'Sachkunde',
+                  icon: Icons.wb_sunny,
+                  color: Colors.green,
+                  onTap: () => _startQuiz(context, 'Sachkunde'),
+                ),
               ],
             ),
             const SizedBox(height: 30),
-            _buildRewardsSection(activeChild),
+            _buildRewardsSection(context),
           ],
         ),
       ),
@@ -415,9 +447,17 @@ class _ChildDashboardState extends ConsumerState<ChildDashboard> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: LinearGradient(colors: [Colors.deepPurple, Colors.purple.shade700]),
+        gradient: LinearGradient(
+          colors: [Colors.deepPurple, Colors.purple.shade700],
+        ),
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 10, offset: const Offset(0, 5))],
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.2),
+            blurRadius: 10,
+            offset: const Offset(0, 5),
+          ),
+        ],
       ),
       child: Column(
         children: [
@@ -427,9 +467,19 @@ class _ChildDashboardState extends ConsumerState<ChildDashboard> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Level ${child.level}', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white)),
+                  Text(
+                    'Level ${child.level}',
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
                   const SizedBox(height: 4),
-                  Text('${child.stars} ⭐ Sterne', style: const TextStyle(color: Colors.white70)),
+                  Text(
+                    '${child.stars} ⭐ Sterne',
+                    style: const TextStyle(color: Colors.white70),
+                  ),
                 ],
               ),
               const Icon(Icons.emoji_events, color: Colors.amber, size: 50),
@@ -439,7 +489,10 @@ class _ChildDashboardState extends ConsumerState<ChildDashboard> {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('XP: ${child.xp} / ${child.xpToNextLevel}', style: const TextStyle(color: Colors.white70, fontSize: 12)),
+              Text(
+                'XP: ${child.xp} / ${child.xpToNextLevel}',
+                style: const TextStyle(color: Colors.white70, fontSize: 12),
+              ),
               const SizedBox(height: 8),
               ClipRRect(
                 borderRadius: BorderRadius.circular(10),
@@ -457,7 +510,7 @@ class _ChildDashboardState extends ConsumerState<ChildDashboard> {
     );
   }
 
-  Widget _buildRewardsSection(ChildModel child) {
+  Widget _buildRewardsSection(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -532,12 +585,115 @@ class _ChildDashboardState extends ConsumerState<ChildDashboard> {
   }
 
   void _startQuiz(BuildContext context, String subject) {
-    Navigator.push(context, MaterialPageRoute(builder: (context) => QuizScreen(subject: subject)));
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => QuizScreen(subject: subject)),
+    );
   }
 }
 
 // ============================================================================
-// HILFSWIDGE
+// 🔥 LIVE UPDATING LERNZEIT CARD
+// ============================================================================
+
+class _LiveLearningTimeCard extends ConsumerWidget {
+  final String childId;
+
+  const _LiveLearningTimeCard({required this.childId});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final user = ref.watch(authStateChangesProvider).value;
+    if (user == null) return const SizedBox.shrink();
+
+    return StreamBuilder<DocumentSnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('children')
+          .doc(childId)
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        final data = snapshot.data!.data() as Map<String, dynamic>?;
+        final totalSeconds = data?['totalLearningSeconds'] ?? 0;
+        final hours = totalSeconds ~/ 3600;
+        final minutes = (totalSeconds % 3600) ~/ 60;
+
+        return Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Colors.blue.shade100, Colors.blue.shade200],
+            ),
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 10,
+                offset: const Offset(0, 3),
+              ),
+            ],
+          ),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.access_time, color: Colors.blue, size: 32),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Gesamte Lernzeit',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black87,
+                          ),
+                        ),
+                        SizedBox(height: 4),
+                        Text(
+                          'Zeit beim Quiz & Tutor',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Colors.black54,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _TimeUnit(
+                    value: hours,
+                    label: hours == 1 ? 'Stunde' : 'Stunden',
+                  ),
+                  const SizedBox(width: 24),
+                  _TimeUnit(
+                    value: minutes,
+                    label: minutes == 1 ? 'Minute' : 'Minuten',
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+// ============================================================================
+// HILFSWIDGETS
 // ============================================================================
 
 class _SubjectTile extends StatelessWidget {
@@ -546,7 +702,12 @@ class _SubjectTile extends StatelessWidget {
   final Color color;
   final VoidCallback onTap;
 
-  const _SubjectTile({required this.title, required this.icon, required this.color, required this.onTap});
+  const _SubjectTile({
+    required this.title,
+    required this.icon,
+    required this.color,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -562,14 +723,72 @@ class _SubjectTile extends StatelessWidget {
           children: [
             Container(
               padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(color: color.withOpacity(0.2), shape: BoxShape.circle),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.2),
+                shape: BoxShape.circle,
+              ),
               child: Icon(icon, size: 40, color: color),
             ),
             const SizedBox(height: 12),
-            Text(title, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: color)),
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
+            ),
           ],
         ),
       ),
+    );
+  }
+}
+
+class _TimeUnit extends StatelessWidget {
+  final int value;
+  final String label;
+
+  const _TimeUnit({
+    required this.value,
+    required this.label,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 4,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Text(
+            value.toString().padLeft(2, '0'),
+            style: const TextStyle(
+              fontSize: 32,
+              fontWeight: FontWeight.bold,
+              color: Colors.blue,
+            ),
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 12,
+            color: Colors.black87,
+          ),
+        ),
+      ],
     );
   }
 }

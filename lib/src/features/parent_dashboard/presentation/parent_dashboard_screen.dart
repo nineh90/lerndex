@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../auth/data/profile_repository.dart';
 import '../../auth/domain/child_model.dart';
 import '../../rewards/presentation/manage_rewards_screen.dart';
+import 'live_child_stat_card.dart';
+import 'ai_task_generator_screen.dart';
 
 /// Haupt-Dashboard für Eltern mit Statistiken & Verwaltung
 class ParentDashboardScreen extends ConsumerWidget {
@@ -47,7 +49,7 @@ class ParentDashboardScreen extends ConsumerWidget {
                 const SizedBox(height: 24),
 
                 // Kinder-Liste mit Statistiken
-                ...children.map((child) => _ChildStatCard(child: child)),
+                ...children.map((child) => LiveChildStatCard(childId: child.id)),
               ],
             ),
           );
@@ -190,11 +192,10 @@ class _ChildStatCard extends StatelessWidget {
                 Expanded(
                   child: OutlinedButton.icon(
                     onPressed: () {
-                      // TODO: KI-Aufgaben generieren
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('KI-Aufgaben Erstellung für ${child.name} bald verfügbar...'),
-                          backgroundColor: Colors.deepPurple,
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => AITaskGeneratorScreen(child: child),
                         ),
                       );
                     },

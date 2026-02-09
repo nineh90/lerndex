@@ -4,6 +4,9 @@ import 'package:flutter_markdown/flutter_markdown.dart';
 import '../domain/chat_message.dart';
 import 'tutor_provider.dart';
 import '../../auth/presentation/active_child_provider.dart';
+import '../../auth/data/auth_repository.dart';
+import '../../learning_time/learning_time_tracker.dart';
+import '../../rewards/data/xp_service.dart';
 
 /// Chat-Screen mit dem KI-Tutor
 class TutorScreen extends ConsumerStatefulWidget {
@@ -16,20 +19,54 @@ class TutorScreen extends ConsumerStatefulWidget {
 class _TutorScreenState extends ConsumerState<TutorScreen> {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-  bool _isInitialized = false;
+  LearningTimeTracker? _timeTracker;
 
   @override
   void initState() {
     super.initState();
-    // Initialisiere Tutor beim ersten Laden
-    Future.microtask(() {
-      ref.read(tutorProvider.notifier).initialize();
-      _isInitialized = true;
-    });
+
+    // ⏱️ ZEIT-TRACKER INITIALISIEREN
+    final child = ref.read(activeChildProvider);
+    final user = ref.read(authStateChangesProvider).value;
+
+    if (child != null && user != null) {
+      _timeTracker = LearningTimeTracker(
+        userId: user.uid,
+        childId: child.id,
+      );
+      _timeTracker!.startTracking();
+      print('⏱️ Tutor: Zeit-Tracking gestartet');
+    }
   }
 
   @override
-  void dispose() {
+  void dispose() async {
+    // ⏱️ ZEIT STOPPEN & SPEICHERN
+    if (_timeTracker != null) {
+      _timeTracker!.stopTracking();
+      print('⏹️ Tutor: Stoppe Zeit-Tracking bei ${_timeTracker!.trackedSeconds} Sekunden');
+
+      try {
+        await _timeTracker!.saveTime();
+        print('✅ Tutor: Lernzeit gespeichert');
+
+        // Optional: Streak aktualisieren
+        final child = ref.read(activeChildProvider);
+        final user = ref.read(authStateChangesProvider).value;
+        if (child != null && user != null) {
+          final xpService = ref.read(xpServiceProvider);
+          await xpService.updateStreak(
+            userId: user.uid,
+            childId: child.id,
+          );
+          print('✅ Tutor: Streak aktualisiert');
+        }
+      } catch (e) {
+        print('❌ Fehler beim Speichern der Tutor-Lernzeit: $e');
+      }
+      _timeTracker!.dispose();
+    }
+
     _messageController.dispose();
     _scrollController.dispose();
     super.dispose();
@@ -39,7 +76,10 @@ class _TutorScreenState extends ConsumerState<TutorScreen> {
     final text = _messageController.text.trim();
     if (text.isEmpty) return;
 
-    ref.read(tutorProvider.notifier).sendMessage(text);
+    final providerInstance = ref.read(tutorProvider);
+    if (providerInstance != null) {
+      ref.read(providerInstance.notifier).sendMessage(text);
+    }
     _messageController.clear();
 
     // Scrolle nach unten
@@ -56,7 +96,10 @@ class _TutorScreenState extends ConsumerState<TutorScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final messages = ref.watch(tutorProvider);
+    final providerInstance = ref.watch(tutorProvider);
+    final messages = providerInstance != null
+        ? ref.watch(providerInstance)
+        : <ChatMessage>[];
     final child = ref.watch(activeChildProvider);
 
     if (child == null) {
@@ -87,7 +130,10 @@ class _TutorScreenState extends ConsumerState<TutorScreen> {
                     ),
                     ElevatedButton(
                       onPressed: () {
-                        ref.read(tutorProvider.notifier).clearChat();
+                        final providerInstance = ref.read(tutorProvider);
+                        if (providerInstance != null) {
+                          ref.read(providerInstance.notifier).clearChat();
+                        }
                         Navigator.pop(context);
                       },
                       child: const Text('Löschen'),
@@ -102,7 +148,7 @@ class _TutorScreenState extends ConsumerState<TutorScreen> {
       ),
       body: Column(
         children: [
-          // Info-Banner
+          // Info-Banner mit Zeit-Anzeige
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(12),
@@ -117,6 +163,34 @@ class _TutorScreenState extends ConsumerState<TutorScreen> {
                     style: TextStyle(color: Colors.blue.shade900, fontSize: 13),
                   ),
                 ),
+                if (_timeTracker != null)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.green.shade100,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.access_time, size: 14, color: Colors.green),
+                        const SizedBox(width: 4),
+                        StreamBuilder(
+                          stream: Stream.periodic(const Duration(seconds: 1)),
+                          builder: (context, snapshot) {
+                            return Text(
+                              _timeTracker!.formattedTime,
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.green.shade800,
+                              ),
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
               ],
             ),
           ),
@@ -210,7 +284,7 @@ class _MessageBubble extends StatelessWidget {
             color: Colors.grey.shade200,
             borderRadius: BorderRadius.circular(20),
           ),
-          child: Row(
+          child: const Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               SizedBox(
@@ -221,8 +295,8 @@ class _MessageBubble extends StatelessWidget {
                   valueColor: AlwaysStoppedAnimation<Color>(Colors.deepPurple),
                 ),
               ),
-              const SizedBox(width: 12),
-              const Text('Tutor denkt nach...', style: TextStyle(fontStyle: FontStyle.italic)),
+              SizedBox(width: 12),
+              Text('Tutor denkt nach...', style: TextStyle(fontStyle: FontStyle.italic)),
             ],
           ),
         ),

@@ -9,6 +9,7 @@ import '../../rewards/data/reward_service.dart';
 import '../../rewards/presentation/reward_unlocked_dialog.dart';
 import '../../rewards/domain/reward_model.dart';
 import '../../auth/data/auth_repository.dart';
+import '../../learning_time/learning_time_tracker.dart';
 
 class QuizScreen extends ConsumerStatefulWidget {
   final String subject;
@@ -21,6 +22,7 @@ class QuizScreen extends ConsumerStatefulWidget {
 
 class _QuizScreenState extends ConsumerState<QuizScreen>
     with SingleTickerProviderStateMixin {
+  // Variablen
   List<Question> _questions = [];
   int _currentIndex = 0;
   int _correctAnswers = 0;
@@ -33,9 +35,24 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
   late Animation<double> _scaleAnimation;
   late Animation<double> _fadeAnimation;
 
+  LearningTimeTracker? _timeTracker;
+
   @override
   void initState() {
     super.initState();
+
+    // ⏱️ ZEIT-TRACKER INITIALISIEREN
+    final child = ref.read(activeChildProvider);
+    final user = ref.read(authStateChangesProvider).value;
+
+    if (child != null && user != null) {
+      _timeTracker = LearningTimeTracker(
+        userId: user.uid,
+        childId: child.id,
+      );
+      _timeTracker!.startTracking();
+    }
+
     _setupAnimations();
     _loadQuestions();
   }
@@ -74,7 +91,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
   }
 
   void _checkAnswer(String selected) async {
-    if (_showingFeedback) return; // Verhindere Doppel-Klicks
+    if (_showingFeedback) return;
 
     final isCorrect = _questions[_currentIndex].isCorrect(selected);
 
@@ -86,60 +103,80 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
     if (isCorrect) {
       _correctAnswers++;
 
-      // ============================================
-      // NEU: XP sofort speichern!
-      // ============================================
       final xpService = ref.read(xpServiceProvider);
       final activeChild = ref.read(activeChildProvider);
       final user = ref.read(authStateChangesProvider).value;
 
       if (activeChild != null && user != null) {
         try {
+          print('🔄 Speichere XP für Kind: ${activeChild.name}...');
+
           final xpResult = await xpService.addXP(
             userId: user.uid,
             childId: activeChild.id,
-            xpToAdd: 5, // 5 XP pro richtiger Antwort
+            xpToAdd: 5,
           );
 
-          print('✅ XP gespeichert: +5 XP → ${xpResult.newXP} XP gesamt');
+          print('✅ XP gespeichert: ${xpResult.newXP} XP, Level: ${xpResult.newLevel}');
 
-          // Prüfe Level-Up
-          if (xpResult.leveledUp) {
-            print('🎉 Level-Up! Neues Level: ${xpResult.newLevel}');
+          if (xpResult.leveledUp && mounted) {
+            print('🎉 LEVEL UP zu Level ${xpResult.newLevel}');
 
-            // Warte bis Feedback-Animation fertig ist
-            await Future.delayed(const Duration(milliseconds: 1500));
+            _feedbackController.forward().then((_) {
+              _feedbackController.reverse();
+            });
 
-            if (mounted) {
-              await _handleLevelUp(xpResult.newLevel);
+            await Future.delayed(const Duration(milliseconds: 500));
+
+            if (!mounted) return;
+
+            setState(() => _showingFeedback = false);
+
+            await _showLevelUpDialogImmediate(
+              newLevel: xpResult.newLevel,
+              childName: activeChild.name,
+              userId: user.uid,
+              childId: activeChild.id,
+            );
+
+            if (!mounted) return;
+
+            if (_currentIndex < _questions.length - 1) {
+              setState(() => _currentIndex++);
+            } else {
+              _finishQuiz();
             }
 
-            // Setze Feedback zurück für nächste Frage
-            setState(() => _showingFeedback = false);
-            return; // Früher Return, da wir schon gewartet haben
+            return;
           }
-        } catch (e) {
+
+        } catch (e, stackTrace) {
           print('❌ Fehler beim Speichern von XP: $e');
+          print('Stack: $stackTrace');
+
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('XP konnten nicht gespeichert werden'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
         }
       }
-      // ============================================
-      // ENDE NEU
-      // ============================================
     }
 
-    // Feedback-Animation (bleibt wie vorher)
+    // Normaler Feedback-Flow
     _feedbackController.forward().then((_) {
       _feedbackController.reverse();
     });
 
-    // 1.5 Sekunden Feedback anzeigen
     await Future.delayed(const Duration(milliseconds: 1500));
 
     if (!mounted) return;
 
     setState(() => _showingFeedback = false);
 
-    // Nächste Frage oder Erfolgsscreen
     if (_currentIndex < _questions.length - 1) {
       setState(() => _currentIndex++);
     } else {
@@ -147,65 +184,147 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
     }
   }
 
-  /// Behandelt Level-Up Event
-  Future<void> _handleLevelUp(int newLevel) async {
-    final activeChild = ref.read(activeChildProvider);
-    final user = ref.read(authStateChangesProvider).value;
-    if (activeChild == null || user == null) return;
+  Future<void> _showLevelUpDialogImmediate({
+    required int newLevel,
+    required String childName,
+    required String userId,
+    required String childId,
+  }) async {
+    print('🎯 _showLevelUpDialogImmediate aufgerufen');
 
-    print('🎯 Erstelle Level-Up Belohnung für Level $newLevel...');
+    if (!mounted) return;
 
-    // System-Belohnung erstellen
-    final rewardService = ref.read(rewardServiceProvider);
-    final reward = await rewardService.createLevelUpReward(
-      userId: user.uid,
-      childId: activeChild.id,
-      level: newLevel,
-    );
+    try {
+      final rewardService = ref.read(rewardServiceProvider);
 
-    if (reward != null && mounted) {
-      print('🎁 Zeige Level-Up Dialog...');
+      final reward = await rewardService.createLevelUpReward(
+        userId: userId,
+        childId: childId,
+        level: newLevel,
+      );
 
-      // Dialog anzeigen!
+      print('✅ Belohnung erstellt: ${reward?.title ?? "null"}');
+
+      if (!mounted) return;
+
       await showDialog(
         context: context,
         barrierDismissible: false,
         builder: (_) => RewardUnlockedDialog(
-          rewards: [reward],
+          rewards: reward != null ? [reward] : [],
           isLevelUp: true,
           newLevel: newLevel,
         ),
       );
-    }
-  }
 
-  void _finishQuiz() async {
-    setState(() => _isFinished = true);
+      print('✅ Dialog geschlossen');
 
-    // Belohnungen vergeben
-    final child = ref.read(activeChildProvider);
-    if (child != null) {
-      final leveledUp = await ref.read(profileRepositoryProvider).awardMissionReward(
-        child.id,
-        correctAnswers: _correctAnswers,
-        totalQuestions: _questions.length,
-      );
+    } catch (e, stackTrace) {
+      print('❌ Fehler in _showLevelUpDialogImmediate: $e');
+      print('Stack: $stackTrace');
 
-      // Level-Up-Snackbar anzeigen
-      if (leveledUp && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('🎉 LEVEL UP! Du bist aufgestiegen!'),
-            backgroundColor: Colors.amber,
-            duration: Duration(seconds: 3),
+      if (mounted) {
+        await showDialog(
+          context: context,
+          builder: (_) => AlertDialog(
+            title: const Text('🎉 Level Up!'),
+            content: Text('Du hast Level $newLevel erreicht!\n\n($e)'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Super!'),
+              ),
+            ],
           ),
         );
       }
     }
   }
 
+  void _finishQuiz() async {
+    setState(() => _isFinished = true);
+
+    final child = ref.read(activeChildProvider);
+    final user = ref.read(authStateChangesProvider).value;
+
+    if (child != null && user != null) {
+      try {
+        print('📊 Quiz beendet - speichere Daten...');
+
+        // 1️⃣ Zeit speichern
+        if (_timeTracker != null) {
+          _timeTracker!.stopTracking();
+          await _timeTracker!.saveTime();
+          print('✅ Lernzeit gespeichert: ${_timeTracker!.formattedTime}');
+        }
+
+        // 2️⃣ Quiz-Stats aktualisieren
+        final xpService = ref.read(xpServiceProvider);
+        final isPerfect = _correctAnswers == _questions.length;
+
+        await xpService.updateQuizStats(
+          userId: user.uid,
+          childId: child.id,
+          isPerfect: isPerfect,
+        );
+        print('✅ Quiz-Statistiken aktualisiert (Perfect: $isPerfect)');
+
+        // 3️⃣ Streak aktualisieren
+        await xpService.updateStreak(
+          userId: user.uid,
+          childId: child.id,
+        );
+        print('✅ Streak aktualisiert');
+
+        // 4️⃣ Sterne vergeben
+        await ref.read(profileRepositoryProvider).updateStars(
+          child.id,
+          _correctAnswers * 2,
+        );
+        print('✅ Sterne vergeben: ${_correctAnswers * 2}');
+
+        // 5️⃣ Prüfe auf neue Belohnungen
+        final rewardService = ref.read(rewardServiceProvider);
+        final updatedChild = await xpService.getChild(
+          userId: user.uid,
+          childId: child.id,
+        );
+
+        if (updatedChild != null) {
+          final unlockedRewards = await rewardService.checkAndApproveRewards(
+            userId: user.uid,
+            child: updatedChild,
+            isPerfectQuiz: isPerfect,
+          );
+
+          if (unlockedRewards.isNotEmpty && mounted) {
+            print('🎁 ${unlockedRewards.length} Belohnungen freigeschaltet!');
+            Future.delayed(const Duration(milliseconds: 500), () {
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('🎁 ${unlockedRewards.length} neue Belohnung(en) freigeschaltet!'),
+                    backgroundColor: Colors.amber,
+                    duration: const Duration(seconds: 3),
+                  ),
+                );
+              }
+            });
+          }
+        }
+
+      } catch (e, stackTrace) {
+        print('❌ Fehler beim Speichern der Quiz-Daten: $e');
+        print('Stack: $stackTrace');
+      }
+    }
+  }
+
   @override
-  void dispose() {
+  void dispose() async {
+    // ⏱️ Zeit wurde bereits in _finishQuiz gespeichert
+    // Hier nur cleanup
+    _timeTracker?.dispose();
     _feedbackController.dispose();
     super.dispose();
   }
@@ -229,13 +348,9 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
       ),
       body: Stack(
         children: [
-          // Haupt-Content
           Column(
             children: [
-              // Fortschrittsbalken
               _buildProgressHeader(),
-
-              // Frage
               Expanded(
                 child: SingleChildScrollView(
                   padding: const EdgeInsets.all(24),
@@ -251,8 +366,6 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
               ),
             ],
           ),
-
-          // Feedback-Overlay
           if (_showingFeedback) _buildFeedbackOverlay(),
         ],
       ),
@@ -434,7 +547,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
 
   Widget _buildSuccessScreen() {
     final percentage = (_correctAnswers / _questions.length * 100).round();
-    final earnedXP = _correctAnswers;
+    final earnedXP = _correctAnswers * 5;
     final earnedStars = _correctAnswers * 2;
 
     return Scaffold(
@@ -538,7 +651,6 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
   }
 }
 
-// Hilfswidge: Antwort-Button
 class _AnswerButton extends StatelessWidget {
   final String text;
   final VoidCallback? onPressed;
@@ -578,7 +690,6 @@ class _AnswerButton extends StatelessWidget {
   }
 }
 
-// Hilfswidge: Belohnungs-Zeile
 class _RewardRow extends StatelessWidget {
   final IconData icon;
   final String text;

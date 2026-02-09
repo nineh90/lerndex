@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../domain/child_model.dart';
+import '../../rewards/data/system_rewards_initializer.dart';
 import 'auth_repository.dart';
 
 part 'profile_repository.g.dart';
@@ -29,28 +30,107 @@ class ProfileRepository {
         .toList());
   }
 
-  /// Fügt ein neues Kind hinzu
-  Future<void> addChild({
+  /// Erstellt ein neues Kind mit System-Belohnungen
+  Future<String> createChild({
     required String name,
-    required int grade,
-    required String schoolType,
     required int age,
+    required String schoolType,
+    required int grade,
   }) async {
-    await _firestore
-        .collection('users')
-        .doc(_uid)
-        .collection('children')
-        .add({
+    final user = _auth.currentUser;
+    if (user == null) throw Exception('Not authenticated');
+
+    // Child erstellen
+    final childData = {
       'name': name,
-      'level': 1,
-      'grade': grade,
-      'schoolType': schoolType,
       'age': age,
-      'stars': 0,
-      'totalLearningSeconds': 0,
+      'schoolType': schoolType,
+      'grade': grade,
       'xp': 0,
+      'level': 1,
+      'stars': 0,
+      'streak': 0,
+      'totalLearningSeconds': 0,
       'xpToNextLevel': 25,
-    });
+      'createdAt': FieldValue.serverTimestamp(),
+    };
+
+    final docRef = await _firestore
+        .collection('users')
+        .doc(user.uid)
+        .collection('children')
+        .add(childData);
+
+    // ⭐ System-Belohnungen initialisieren
+    try {
+      final rewardsInitializer = SystemRewardsInitializer();
+      await rewardsInitializer.initializeSystemRewards(
+        userId: user.uid,
+        childId: docRef.id,
+      );
+
+      final count = await rewardsInitializer.countSystemRewards(
+        userId: user.uid,
+        childId: docRef.id,
+      );
+
+      print('✅ Kind erstellt mit $count System-Belohnungen');
+    } catch (e) {
+      print('⚠️ Fehler beim Erstellen der System-Belohnungen: $e');
+      // Kind wurde erstellt, aber Belohnungen fehlgeschlagen
+      // Das ist nicht kritisch - kann nachträglich gemacht werden
+    }
+
+    return docRef.id;
+  }
+
+  /// Migriert existierende Kinder (fügt System-Belohnungen hinzu)
+  /// Kann einmalig von Eltern über einen Button aufgerufen werden
+  Future<void> migrateExistingChildren() async {
+    final user = _auth.currentUser;
+    if (user == null) return;
+
+    final rewardsInitializer = SystemRewardsInitializer();
+
+    // Hole alle Kinder
+    final children = await _firestore
+        .collection('users')
+        .doc(user.uid)
+        .collection('children')
+        .get();
+
+    for (final doc in children.docs) {
+      final childId = doc.id;
+      final childName = doc.data()['name'] ?? 'Unknown';
+
+      print('🔧 Migriere Kind: $childName ($childId)');
+
+      try {
+        // Prüfe ob Belohnungen existieren
+        final hasRewards = await rewardsInitializer.hasSystemRewards(
+          userId: user.uid,
+          childId: childId,
+        );
+
+        if (!hasRewards) {
+          print('  → Erstelle alle System-Belohnungen');
+          await rewardsInitializer.initializeSystemRewards(
+            userId: user.uid,
+            childId: childId,
+          );
+        } else {
+          print('  → Füge fehlende Belohnungen hinzu');
+          await rewardsInitializer.addMissingSystemRewards(
+            userId: user.uid,
+            childId: childId,
+          );
+        }
+      } catch (e) {
+        print('  ❌ Fehler bei Migration für $childName: $e');
+      }
+    }
+
+    print('✅ Migration abgeschlossen');
   }
 
   /// Aktualisiert die Sterne eines Kindes
