@@ -36,7 +36,7 @@ class FirebaseAIService {
         model: 'gemini-2.5-flash',
         generationConfig: GenerationConfig(
           temperature: 0.7,
-          maxOutputTokens: 500,
+          maxOutputTokens: 2048,
           topP: 0.9,
           topK: 40,
         ),
