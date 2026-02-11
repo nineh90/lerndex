@@ -10,6 +10,7 @@ import '../../rewards/presentation/reward_unlocked_dialog.dart';
 import '../../rewards/domain/reward_model.dart';
 import '../../auth/data/auth_repository.dart';
 import '../../learning_time/learning_time_tracker.dart';
+import '../data/extended_quiz_repository.dart';
 
 class QuizScreen extends ConsumerStatefulWidget {
   final String subject;
@@ -76,10 +77,18 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
     final child = ref.read(activeChildProvider);
     if (child == null) return;
 
-    final questions = await ref.read(quizRepositoryProvider).loadQuizForChild(
+    // ⭐ NEU: User-ID holen für generierte Aufgaben
+    final user = ref.read(authStateChangesProvider).value;
+    final userId = user?.uid ?? '';
+
+    // ⭐ NEU: Verwende erweiterten Repository
+    final questions = await ref.read(extendedQuizRepositoryProvider).loadQuizForChild(
+      userId: userId,
+      childId: child.id,
       subject: widget.subject,
       grade: child.grade,
       questionCount: 5,
+      includeGenerated: true, // Generierte Aufgaben einschließen
     );
 
     if (mounted) {
@@ -89,7 +98,6 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
       });
     }
   }
-
   void _checkAnswer(String selected) async {
     if (_showingFeedback) return;
 

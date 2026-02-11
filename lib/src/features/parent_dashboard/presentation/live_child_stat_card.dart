@@ -5,7 +5,9 @@ import '../../auth/domain/child_model.dart';
 import '../../auth/data/auth_repository.dart';
 import '../../rewards/presentation/manage_rewards_screen.dart';
 import '../../rewards/data/xp_service.dart';
-import 'ai_task_generator_screen.dart';
+import '../../generated_tasks/presentation/improved_ai_task_generator_screen.dart';
+import '../../generated_tasks/presentation/task_approval_screen.dart';
+import '../../generated_tasks/data/generated_task_repository.dart';
 
 /// Provider für Live-Child-Daten (Stream für Echtzeit-Updates)
 final liveChildProvider = StreamProvider.family<ChildModel?, String>((ref, childId) {
@@ -236,11 +238,11 @@ class LiveChildStatCard extends ConsumerWidget {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (_) => AITaskGeneratorScreen(child: child),
+                              builder: (_) => ImprovedAITaskGeneratorScreen(child: child),
                             ),
                           );
                         },
-                        icon: const Icon(Icons.psychology, size: 18),
+                        icon: const Icon(Icons.auto_awesome, size: 18),
                         label: const Text('KI-Aufgaben'),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: Colors.deepPurple,
@@ -251,6 +253,55 @@ class LiveChildStatCard extends ConsumerWidget {
                   ],
                 ),
                 const SizedBox(height: 8),
+
+                // Aufgaben freigeben Button
+                Consumer(
+                  builder: (context, ref, _) {
+                    final authRepo = ref.watch(authRepositoryProvider);
+                    final userId = authRepo.currentUser?.uid ?? '';
+                    final pendingCountAsync = ref.watch(pendingTaskCountProvider(userId));
+
+                    return pendingCountAsync.when(
+                      data: (pendingCount) {
+                        return SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton.icon(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const TaskApprovalScreen(),
+                                ),
+                              );
+                            },
+                            icon: pendingCount > 0
+                                ? Badge(
+                              label: Text('$pendingCount'),
+                              child: const Icon(Icons.check_circle, size: 18),
+                            )
+                                : const Icon(Icons.check_circle, size: 18),
+                            label: Text(
+                              pendingCount > 0
+                                  ? 'Aufgaben freigeben ($pendingCount)'
+                                  : 'Aufgaben freigeben',
+                            ),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: pendingCount > 0 ? Colors.orange : Colors.green,
+                              side: BorderSide(
+                                color: pendingCount > 0 ? Colors.orange : Colors.green,
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                      loading: () => const SizedBox.shrink(),
+                      error: (_, __) => const SizedBox.shrink(),
+                    );
+                  },
+                ),
+                const SizedBox(height: 8),
+
+                // Statistiken Button
                 Row(
                   children: [
                     Expanded(
@@ -275,10 +326,10 @@ class LiveChildStatCard extends ConsumerWidget {
           ),
         );
       },
-      loading: () => Card(
-        margin: const EdgeInsets.only(bottom: 16),
+      loading: () => const Card(
+        margin: EdgeInsets.only(bottom: 16),
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.all(16),
           child: Center(
             child: CircularProgressIndicator(),
           ),

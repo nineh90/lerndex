@@ -82,6 +82,11 @@ class FirebaseAIService {
         return _getInappropriateQuestionMessage();
       }
 
+      // ✅ NEUER CHECK: Nicht-Schul-Themen erkennen und SOFORT ablehnen
+      if (_isNonSchoolQuestion(userMessage)) {
+        return _getNonSchoolQuestionMessage(child.name);
+      }
+
       // Längencheck
       if (userMessage.length > 500) {
         return 'Deine Frage ist etwas zu lang. Kannst du sie kürzer formulieren? 😊';
@@ -93,10 +98,8 @@ class FirebaseAIService {
       // Chat-History aufbauen
       final history = <Content>[];
 
-      // System-Prompt als erste Nachricht
-      if (conversationHistory.isEmpty) {
-        history.add(Content.text(systemPrompt));
-      }
+      // ✅ KRITISCH: System-Prompt IMMER als erste Nachricht
+      history.add(Content.text(systemPrompt));
 
       // Letzte 10 Nachrichten für Kontext
       final recentMessages = conversationHistory.length > 10
@@ -130,50 +133,67 @@ class FirebaseAIService {
     }
   }
 
-  /// System-Prompt für KI-Tutor (kindgerecht)
+  /// System-Prompt für KI-Tutor (kindgerecht) - VERSTÄRKT
   String _getTutorSystemPrompt(ChildModel child) {
     return '''
-Du bist ein freundlicher, geduldiger Lern-Tutor für ${child.name}.
+Du bist Lerndex, der persönliche Lernbegleiter für ${child.name}.
 
-WICHTIGE INFORMATIONEN ÜBER DEN SCHÜLER:
+🎯 DEINE IDENTITÄT:
+- Name: Lerndex
+- Rolle: Geduldiger, freundlicher KI-Lernbegleiter
+- Ziel: ${child.name} beim Lernen unterstützen und motivieren
+
+📚 SCHÜLER-INFORMATIONEN:
 - Name: ${child.name}
 - Alter: ${child.age} Jahre
 - Schulform: ${child.schoolType}
 - Klassenstufe: ${child.grade}
 - Aktuelles Level: ${child.level}
 
-DEINE AUFGABE:
-1. Beantworte Fragen altersgerecht und verständlich
-2. Erkläre Konzepte Schritt für Schritt
+✅ DEINE HAUPTAUFGABEN:
+1. Beantworte NUR Fragen zu Schulfächern (Mathe, Deutsch, Englisch, Sachkunde, Naturwissenschaften, etc.)
+2. Erkläre Konzepte Schritt für Schritt und altersgerecht
 3. Verwende Beispiele, die für Klasse ${child.grade} passen
-4. Sei motivierend und ermutigend
-5. Bleibe beim Thema Lernen und Schule
+4. Sei motivierend, ermutigend und geduldig
+5. Leite ${child.name} sanft zurück zum Lernen bei Nicht-Schul-Themen
 
-WICHTIGE REGELN:
-- Beantworte NUR Fragen zu Schulfächern (Mathe, Deutsch, Englisch, Sachkunde, etc.)
-- Bei Fragen zu anderen Themen: Leite freundlich zurück zum Lernen
-- Verwende einfache, kindgerechte Sprache
-- Keine langen Textwände - kurze, klare Antworten (max. 3-4 Sätze)
-- Ermutige ${child.name}, selbst nachzudenken, bevor du die Lösung verrätst
-- Bei Hausaufgaben: Hilf beim Verstehen, aber gib nicht die komplette Lösung
+🚫 ABSOLUTE GRENZEN (WICHTIG - STRIKT EINHALTEN!):
+- Beantworte KEINE Fragen zu: Kochen, Rezepten, Videospielen, Filmen, Serien, Hobbys, Freizeit
+- Beantworte KEINE "Wie mache ich..."-Fragen zu Alltagsthemen (z.B. "Wie mache ich Nudeln?")
+- Bei JEDER Nicht-Schul-Frage: Lehne HÖFLICH ab und leite zurück zu Schulfächern
+- Keine Gewalt, unangemessene Inhalte oder gefährliche Themen
+- Bei Hausaufgaben: Hilf beim Verstehen, aber gib nicht die komplette Lösung vor
 
-STIL:
-- Freundlich und motivierend
-- Nutze gelegentlich Emojis (nicht übertreiben!)
-- Lobe Fortschritte
-- Sei geduldig bei Wiederholungen
+📖 BEISPIELE FÜR NICHT-SCHUL-FRAGEN (IMMER ABLEHNEN!):
+❌ "Wie koche ich Nudelsalat?" → "Das ist keine Schulfrage. Frag mich lieber zu Mathe, Deutsch oder Englisch!"
+❌ "Wie spiele ich Minecraft?" → "Das gehört nicht zum Lernen. Hast du eine Frage zu einem Schulfach?"
+❌ "Wie baue ich ein Baumhaus?" → "Das ist eine Freizeitfrage. Ich helfe dir bei Schulfächern!"
 
-BEISPIEL GUTE ANTWORT:
-"Super Frage, ${child.name}! 🌟 Lass uns das zusammen anschauen..."
+✅ BEISPIELE FÜR SCHUL-FRAGEN (BEANTWORTEN!):
+✅ "Wie rechne ich 15 + 27?" → Ausführlich erklären!
+✅ "Was ist ein Adjektiv?" → Altersgerecht erklären!
+✅ "Wie schreibe ich eine Bildergeschichte?" → Schritte zeigen!
 
-BEISPIEL BEI NICHT-SCHUL-THEMA:
-"Das ist eine interessante Frage, aber ich bin hier, um dir beim Lernen zu helfen! 📚 Hast du vielleicht eine Frage zu Mathe, Deutsch oder einem anderen Schulfach?"
+💬 KOMMUNIKATIONSSTIL:
+- Verwende einfache, kindgerechte Sprache (passend für ${child.age} Jahre)
+- Kurze, klare Antworten (max. 3-4 Sätze pro Erklärung)
+- Nutze gelegentlich passende Emojis (nicht übertreiben!)
+- Lobe Fortschritte und ermutige zum Weiterlernen
+- Stelle Rückfragen, um ${child.name} zum Nachdenken anzuregen
+
+🎓 LERNPHILOSOPHIE:
+- Verstehen ist wichtiger als auswendig lernen
+- Fehler sind Lernchancen
+- Jede SCHUL-Frage ist eine gute Frage
+- Selbstständiges Denken fördern
+
+WICHTIG: Deine EINZIGE Aufgabe ist es, bei SCHULFÄCHERN zu helfen. Alle anderen Themen lehnst du freundlich ab!
 ''';
   }
 
   /// Begrüßungsnachricht für KI-Tutor
   String getTutorWelcomeMessage(ChildModel child) {
-    return 'Hallo ${child.name}! 👋 Ich bin dein persönlicher Lern-Tutor. Ich helfe dir gerne bei allen Fragen zu Mathe, Deutsch, Englisch und anderen Schulfächern. Was möchtest du heute lernen? 📚';
+    return 'Hallo ${child.name}! 👋 Ich bin **Lerndex**, dein persönlicher Lernbegleiter! 🎓 Ich helfe dir bei allen Fragen zu Mathe, Deutsch, Englisch und anderen Schulfächern. Was möchtest du heute lernen? 📚✨';
   }
 
   // ========================================================================
@@ -242,7 +262,6 @@ WICHTIG: Antworte NUR mit dem JSON-Array, ohne Markdown-Formatierung oder Text d
       final response = await _taskGeneratorModel!.generateContent([
         Content.multi([
           TextPart(prompt),
-          // InlineDataPart ist die korrekte API für Bilder in firebase_vertexai v1.8+
           InlineDataPart('image/jpeg', imageBytes),
         ])
       ]);
@@ -303,27 +322,16 @@ SCHÜLER-INFORMATIONEN:
 
 DEINE AUFGABE:
 1. Analysiere das Foto der Original-Schulaufgabe
-2. Erkenne das Thema, Fach und Schwierigkeitsniveau
-3. Erstelle ähnliche Übungsaufgaben auf gleichem Niveau
-4. Gib vollständige Musterlösungen an
+2. Erkenne Thema, Fach und Schwierigkeitsniveau
+3. Erstelle NEUE, ähnliche Übungsaufgaben (keine Kopie!)
+4. Passe Schwierigkeit an Klasse ${child.grade} an
+5. Gib bei jeder Aufgabe die vollständige Musterlösung an
 
-WICHTIGE PRINZIPIEN:
-- Aufgaben müssen für Klasse ${child.grade} geeignet sein
-- Ähnlicher Stil und Schwierigkeit wie Original
-- Klare, verständliche Formulierungen
-- Vollständige, nachvollziehbare Lösungen
-- Variation in den Aufgaben (nicht nur Zahlen ändern)
-
-FÄCHER-SPEZIFISCH:
-MATHE: Ähnliche Rechenoperationen, ähnliche Zahlenbereiche
-DEUTSCH: Ähnliche Grammatik/Rechtschreibung, ähnlicher Wortschatz
-ENGLISCH: Ähnliche Grammatikstrukturen, ähnliches Vokabular
-SACHKUNDE: Ähnliche Themen und Fragetypen
-
-QUALITÄT:
-- Jede Aufgabe muss eigenständig lösbar sein
-- Musterlösungen müssen korrekt und vollständig sein
-- Schwierigkeit muss konstant bleiben
+WICHTIG:
+- Die Aufgaben sollen ähnlich, aber NICHT identisch zur Vorlage sein
+- Variiere Zahlen, Wörter oder Kontext
+- Achte auf altersgerechte Formulierung
+- Stelle sicher, dass Aufgaben lösbar und sinnvoll sind
 ''';
   }
 
@@ -413,25 +421,86 @@ QUALITÄT:
   // ========================================================================
 
   /// Sicherheitsfilter für Kinderfragen
-  bool _isAppropriateQuestion(String question) {
-    final lowercaseQ = question.toLowerCase();
+  bool _isAppropriateQuestion(String userMessage) {
+    final lower = userMessage.toLowerCase();
 
-    final blockedTopics = [
-      'gewalt', 'waffe', 'drogen', 'sex', 'töten',
-      'selbstmord', 'terror', 'nazi', 'extremismus',
+    // Gefährliche/unangemessene Inhalte
+    final inappropriate = [
+      'gewalt', 'waffe', 'sex', 'drogen',
+      'schlagen', 'töten', 'selbstmord', 'blut',
     ];
 
-    for (var topic in blockedTopics) {
-      if (lowercaseQ.contains(topic)) {
-        return false;
-      }
+    // Prüfe auf unangemessene Inhalte
+    if (inappropriate.any((word) => lower.contains(word))) {
+      return false;
     }
 
     return true;
   }
 
+  /// ✅ NEU: Erkennt Nicht-Schul-Themen (Alltagsfragen)
+  bool _isNonSchoolQuestion(String userMessage) {
+    final lower = userMessage.toLowerCase();
+
+    // Typische Nicht-Schul-Themen Keywords
+    final nonSchoolKeywords = [
+      // Kochen & Essen
+      'rezept', 'kochen', 'backen', 'nudeln', 'pizza', 'kuchen',
+      'zubereiten', 'essen machen', 'gericht', 'nudelsalat',
+
+      // Unterhaltung & Medien
+      'videospiel', 'spiel spielen', 'gaming', 'zocken',
+      'film', 'serie', 'netflix', 'youtube', 'tiktok', 'instagram',
+      'fernsehen', 'streaming',
+
+      // Technologie (Alltag)
+      'handy kaufen', 'smartphone', 'computer kaufen', 'laptop',
+      'spiel herunterladen', 'app installieren',
+
+      // Hobby & Freizeit
+      'fußball spielen', 'freunde treffen', 'party',
+      'urlaub', 'reise', 'ausflug',
+
+      // Alltägliche "Wie-geht"-Fragen
+      'wie mache ich', 'wie koche', 'wie spiele',
+      'wie baue ich', 'wie bastle',
+    ];
+
+    // Prüfe Keywords
+    for (var keyword in nonSchoolKeywords) {
+      if (lower.contains(keyword)) {
+        return true;
+      }
+    }
+
+    // Zusätzliche Heuristik: Fragen nach praktischen Tätigkeiten
+    if (lower.contains('wie') &&
+        (lower.contains('mache') || lower.contains('koche') ||
+            lower.contains('baue') || lower.contains('bastle'))) {
+      // Aber: Schulbezogene "Wie mache ich"-Fragen erlauben
+      final schoolRelated = [
+        'hausaufgabe', 'aufgabe', 'rechnen', 'lösen',
+        'berechnen', 'schreiben', 'lernen', 'verstehen',
+        'erklären', 'mathe', 'deutsch', 'englisch',
+      ];
+
+      bool isSchoolRelated = schoolRelated.any((word) => lower.contains(word));
+
+      if (!isSchoolRelated) {
+        return true; // Nicht-Schul-Thema
+      }
+    }
+
+    return false;
+  }
+
   String _getInappropriateQuestionMessage() {
-    return 'Diese Frage kann ich leider nicht beantworten. Ich bin hier, um dir beim Lernen zu helfen! 📚 Hast du eine Frage zu Mathe, Deutsch oder einem anderen Schulfach?';
+    return 'Diese Frage kann ich leider nicht beantworten. Ich bin Lerndex und helfe dir nur beim Lernen! 📚 Hast du eine Frage zu Mathe, Deutsch, Englisch oder anderen Schulfächern? 🎓';
+  }
+
+  /// Nachricht bei Nicht-Schul-Frage
+  String _getNonSchoolQuestionMessage(String childName) {
+    return 'Das ist eine interessante Frage, $childName! Aber ich bin Lerndex, dein Lernbegleiter, und helfe dir nur bei Schulfächern. 📚 Hast du vielleicht eine Frage zu Mathe, Deutsch, Englisch oder einem anderen Schulfach? 🎓';
   }
 }
 

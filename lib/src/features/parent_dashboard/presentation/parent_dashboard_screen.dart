@@ -4,12 +4,15 @@ import '../../auth/data/profile_repository.dart';
 import '../../auth/domain/child_model.dart';
 import '../../rewards/presentation/manage_rewards_screen.dart';
 import 'live_child_stat_card.dart';
-import 'ai_task_generator_screen.dart';
+import '../../generated_tasks/presentation/improved_ai_task_generator_screen.dart';
+import '../../generated_tasks/presentation/task_approval_screen.dart';
+import '../../generated_tasks/data/generated_task_repository.dart';
+import '../../auth/data/auth_repository.dart';
 
 /// Haupt-Dashboard für Eltern mit Statistiken & Verwaltung
 class ParentDashboardScreen extends ConsumerWidget {
-  const ParentDashboardScreen({super.key});
 
+  const ParentDashboardScreen({super.key});
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final childrenAsync = ref.watch(childrenListProvider);
@@ -62,13 +65,13 @@ class ParentDashboardScreen extends ConsumerWidget {
 }
 
 /// Statistik-Karte für ein Kind
-class _ChildStatCard extends StatelessWidget {
+class _ChildStatCard extends ConsumerWidget {
   final ChildModel child;
 
   const _ChildStatCard({required this.child});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
       elevation: 3,
@@ -168,6 +171,7 @@ class _ChildStatCard extends StatelessWidget {
             const SizedBox(height: 16),
 
             // Aktionen
+            // Aktionen
             Row(
               children: [
                 Expanded(
@@ -195,11 +199,11 @@ class _ChildStatCard extends StatelessWidget {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (_) => AITaskGeneratorScreen(child: child),
+                          builder: (_) => ImprovedAITaskGeneratorScreen(child: child),
                         ),
                       );
                     },
-                    icon: const Icon(Icons.psychology, size: 18),
+                    icon: const Icon(Icons.auto_awesome, size: 18),
                     label: const Text('KI-Aufgaben'),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: Colors.deepPurple,
@@ -210,6 +214,50 @@ class _ChildStatCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 8),
+            Consumer(
+              builder: (context, ref, _) {
+                final authRepo = ref.watch(authRepositoryProvider);
+                final userId = authRepo.currentUser?.uid ?? '';
+                final pendingCountAsync = ref.watch(pendingTaskCountProvider(userId));
+
+                return pendingCountAsync.when(
+                  data: (pendingCount) {
+                    return SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const TaskApprovalScreen(),
+                            ),
+                          );
+                        },
+                        icon: pendingCount > 0
+                            ? Badge(
+                          label: Text('$pendingCount'),
+                          child: const Icon(Icons.check_circle, size: 18),
+                        )
+                            : const Icon(Icons.check_circle, size: 18),
+                        label: Text(
+                          pendingCount > 0
+                              ? 'Aufgaben freigeben ($pendingCount)'
+                              : 'Aufgaben freigeben',
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: pendingCount > 0 ? Colors.orange : Colors.green,
+                          side: BorderSide(
+                            color: pendingCount > 0 ? Colors.orange : Colors.green,
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                  loading: () => const SizedBox.shrink(),
+                  error: (_, __) => const SizedBox.shrink(),
+                );
+              },
+            ),
             Row(
               children: [
                 Expanded(

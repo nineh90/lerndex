@@ -15,6 +15,7 @@ import 'src/features/auth/domain/child_model.dart';
 
 // Import für Quiz-System
 import 'src/features/quiz/presentation/quiz_screen.dart';
+import 'src/features/quiz/data/extended_quiz_repository.dart'; // ⭐ NEU
 
 // Imports für Eltern-Dashboard
 import 'src/features/parent_dashboard/presentation/parent_dashboard_screen.dart';
@@ -27,6 +28,13 @@ import 'src/features/rewards/presentation/rewards_screen.dart';
 
 // Import KI-Tutor
 import 'src/features/tutor/presentation/tutor_screen.dart';
+
+
+import 'src/features/generated_tasks/data/generated_task_models.dart';
+import 'src/features/generated_tasks/data/generated_task_repository.dart';
+import 'src/features/generated_tasks/data/firebase_ai_service_improved.dart';
+import 'src/features/generated_tasks/presentation/improved_ai_task_generator_screen.dart';
+import 'src/features/generated_tasks/presentation/task_approval_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

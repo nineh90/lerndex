@@ -110,7 +110,7 @@ class _TutorScreenState extends ConsumerState<TutorScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('🤖 Dein Lern-Tutor'),
+        title: const Text('🎓 Lerndex'),
         backgroundColor: Colors.deepPurple,
         foregroundColor: Colors.white,
         actions: [
@@ -159,7 +159,7 @@ class _TutorScreenState extends ConsumerState<TutorScreen> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'Frag mich alles über Mathe, Deutsch, Englisch und mehr! 📚',
+                    'Ich bin Lerndex! Frag mich alles über Mathe, Deutsch, Englisch und mehr! 📚✨',
                     style: TextStyle(color: Colors.blue.shade900, fontSize: 13),
                   ),
                 ),

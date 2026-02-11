@@ -31,6 +31,8 @@ dependencies:
   # Konfetti-Effekt
   confetti: ^0.7.0
 
+  fl_chart: ^0.69.0
+
   # Code-Generatoren
   freezed_annotation: ^2.4.4
   json_annotation: ^4.9.0

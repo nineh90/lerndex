@@ -36,7 +36,7 @@ class TutorNotifier extends StateNotifier<List<ChatMessage>> {
 
     // ✅ SOFORT Begrüßung anzeigen (ohne Wartezeit!)
     final welcomeMessage = ChatMessage.tutor(
-      'Hallo ${child.name}! 👋 Ich bin dein persönlicher Lern-Tutor. Ich helfe dir gerne bei allen Fragen zu Mathe, Deutsch, Englisch und anderen Schulfächern. Was möchtest du heute lernen? 📚',
+      'Hallo ${child.name}! 👋 Ich bin **Lerndex**, dein persönlicher Lernbegleiter! 🎓 Ich helfe dir bei allen Fragen zu Mathe, Deutsch, Englisch und anderen Schulfächern. Was möchtest du heute lernen? 📚✨',
     );
 
     state = [welcomeMessage];
@@ -231,7 +231,7 @@ class TutorNotifier extends StateNotifier<List<ChatMessage>> {
 
       // Neue Begrüßung
       final welcomeMessage = ChatMessage.tutor(
-        'Hallo ${child.name}! 👋 Ich bin dein persönlicher Lern-Tutor. Ich helfe dir gerne bei allen Fragen zu Mathe, Deutsch, Englisch und anderen Schulfächern. Was möchtest du heute lernen? 📚',
+        'Hallo ${child.name}! 👋 Ich bin **Lerndex**, dein persönlicher Lernbegleiter! 🎓 Ich helfe dir bei allen Fragen zu Mathe, Deutsch, Englisch und anderen Schulfächern. Was möchtest du heute lernen? 📚✨',
       );
 
       state = [welcomeMessage];
