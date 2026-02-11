@@ -8,6 +8,8 @@ import '../../rewards/data/xp_service.dart';
 import '../../generated_tasks/presentation/improved_ai_task_generator_screen.dart';
 import '../../generated_tasks/presentation/task_approval_screen.dart';
 import '../../generated_tasks/data/generated_task_repository.dart';
+import 'child_statistics_screen.dart';
+import 'tutor_history_screen.dart';
 
 /// Provider für Live-Child-Daten (Stream für Echtzeit-Updates)
 final liveChildProvider = StreamProvider.family<ChildModel?, String>((ref, childId) {
@@ -301,14 +303,39 @@ class LiveChildStatCard extends ConsumerWidget {
                 ),
                 const SizedBox(height: 8),
 
+                // Tutor-Gespräche Button
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => TutorHistoryScreen(child: child),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.chat, size: 18),
+                    label: const Text('Tutor-Gespräche'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.deepPurple,
+                      side: const BorderSide(color: Colors.deepPurple),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+
                 // Statistiken Button
                 Row(
                   children: [
                     Expanded(
                       child: OutlinedButton.icon(
                         onPressed: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Kommt bald: Detaillierte Statistiken')),
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => ChildStatisticsScreen(child: child),
+                            ),
                           );
                         },
                         icon: const Icon(Icons.bar_chart, size: 18),
