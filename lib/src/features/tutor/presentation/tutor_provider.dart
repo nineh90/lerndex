@@ -9,6 +9,7 @@ import '../../../ai/firebase_ai_service.dart';
 /// - Sofortige Begrüßung (kein Loading!)
 /// - Chat-Historie wird im Hintergrund geladen
 /// - Jedes Kind hat eigenen Chat
+/// - NEU: Speichert auch in tutor_sessions für Eltern
 
 class TutorNotifier extends StateNotifier<List<ChatMessage>> {
   TutorNotifier(
@@ -26,6 +27,7 @@ class TutorNotifier extends StateNotifier<List<ChatMessage>> {
   final String _userId;
   bool _isAIInitialized = false;
   bool _isLoadingHistory = false;
+  String? _currentSessionId; // NEU: Für Session-Tracking
 
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
@@ -113,6 +115,52 @@ class TutorNotifier extends StateNotifier<List<ChatMessage>> {
     }
   }
 
+  /// NEU: Erstellt oder holt aktive Session
+  Future<String> _getOrCreateSession() async {
+    if (_currentSessionId != null) {
+      return _currentSessionId!;
+    }
+
+    try {
+      // Prüfe ob aktive Session existiert
+      final sessionSnapshot = await _firestore
+          .collection('users')
+          .doc(_userId)
+          .collection('children')
+          .doc(_childId)
+          .collection('tutor_sessions')
+          .where('status', isEqualTo: 'active')
+          .limit(1)
+          .get();
+
+      if (sessionSnapshot.docs.isNotEmpty) {
+        _currentSessionId = sessionSnapshot.docs.first.id;
+        print('✅ Aktive Session gefunden: $_currentSessionId');
+      } else {
+        // Neue Session erstellen
+        final sessionDoc = await _firestore
+            .collection('users')
+            .doc(_userId)
+            .collection('children')
+            .doc(_childId)
+            .collection('tutor_sessions')
+            .add({
+          'childId': _childId,
+          'startedAt': FieldValue.serverTimestamp(),
+          'status': 'active',
+          'messageCount': 0,
+        });
+        _currentSessionId = sessionDoc.id;
+        print('✅ Neue Session erstellt: $_currentSessionId');
+      }
+
+      return _currentSessionId!;
+    } catch (e) {
+      print('❌ Fehler bei Session-Erstellung: $e');
+      rethrow;
+    }
+  }
+
   /// Sendet eine Nachricht an den Tutor
   Future<void> sendMessage(String text) async {
     if (text.trim().isEmpty) return;
@@ -183,21 +231,51 @@ class TutorNotifier extends StateNotifier<List<ChatMessage>> {
   }
 
   /// Speichert eine Nachricht in Firestore (fire-and-forget)
+  /// NEU: Speichert sowohl in tutor_chat ALS AUCH in tutor_sessions
   Future<void> _saveChatMessage(ChatMessage message) async {
     if (message.isLoading) return;
 
     try {
+      final messageData = {
+        'text': message.text,
+        'isUser': message.isUser,
+        'timestamp': FieldValue.serverTimestamp(),
+      };
+
+      // 1. In tutor_chat speichern (für Schüler)
       await _firestore
           .collection('users')
           .doc(_userId)
           .collection('children')
           .doc(_childId)
           .collection('tutor_chat')
-          .add({
-        'text': message.text,
-        'isUser': message.isUser,
-        'timestamp': FieldValue.serverTimestamp(),
+          .add(messageData);
+
+      // 2. NEU: Auch in Session speichern (für Eltern)
+      final sessionId = await _getOrCreateSession();
+
+      await _firestore
+          .collection('users')
+          .doc(_userId)
+          .collection('children')
+          .doc(_childId)
+          .collection('tutor_sessions')
+          .doc(sessionId)
+          .collection('messages')
+          .add(messageData);
+
+      // Session-Counter erhöhen
+      await _firestore
+          .collection('users')
+          .doc(_userId)
+          .collection('children')
+          .doc(_childId)
+          .collection('tutor_sessions')
+          .doc(sessionId)
+          .update({
+        'messageCount': FieldValue.increment(1),
       });
+
     } catch (e) {
       print('⚠️ Fehler beim Speichern: $e');
       // Nicht kritisch
@@ -212,7 +290,23 @@ class TutorNotifier extends StateNotifier<List<ChatMessage>> {
     print('🗑️ Lösche Chat für ${child.name}...');
 
     try {
-      // Lösche alle Nachrichten aus Firestore
+      // Session abschließen falls vorhanden
+      if (_currentSessionId != null) {
+        await _firestore
+            .collection('users')
+            .doc(_userId)
+            .collection('children')
+            .doc(_childId)
+            .collection('tutor_sessions')
+            .doc(_currentSessionId)
+            .update({
+          'status': 'completed',
+          'endedAt': FieldValue.serverTimestamp(),
+        });
+        _currentSessionId = null;
+      }
+
+      // Lösche alle Nachrichten aus tutor_chat (NUR Schüler-Ansicht!)
       final snapshot = await _firestore
           .collection('users')
           .doc(_userId)
@@ -227,7 +321,7 @@ class TutorNotifier extends StateNotifier<List<ChatMessage>> {
       }
       await batch.commit();
 
-      print('✅ Firestore Chat gelöscht');
+      print('✅ Schüler-Chat gelöscht (Sessions bleiben für Eltern)');
 
       // Neue Begrüßung
       final welcomeMessage = ChatMessage.tutor(
