@@ -9,6 +9,7 @@ import '../../generated_tasks/presentation/task_approval_screen.dart';
 import '../../generated_tasks/data/generated_task_repository.dart';
 import '../../auth/data/auth_repository.dart';
 import 'settings_screen.dart';
+import '../../auth/presentation/login_screen.dart';
 
 /// Haupt-Dashboard für Eltern mit Statistiken & Verwaltung
 class ParentDashboardScreen extends ConsumerStatefulWidget {
@@ -303,9 +304,15 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
             child: const Text('Abbrechen'),
           ),
           ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              ref.read(authRepositoryProvider).signOut();
+            onPressed: () async {
+              Navigator.pop(context); // Dialog schließen
+              await ref.read(authRepositoryProvider).signOut();
+              if (context.mounted) {
+                Navigator.of(context).pushAndRemoveUntil(
+                  MaterialPageRoute(builder: (_) => const LoginScreen()),
+                      (route) => false,
+                );
+              }
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.red,

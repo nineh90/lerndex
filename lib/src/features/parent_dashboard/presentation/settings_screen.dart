@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../auth/data/auth_repository.dart';
 import '../../auth/data/profile_repository.dart';
+import '../../auth/presentation/login_screen.dart';
 
 /// Einstellungsbereich im Elterndashboard
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -42,8 +44,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               'Löscht dein Konto und alle Daten dauerhaft',
               style: TextStyle(fontSize: 12),
             ),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: _isDeletingAccount ? null : () => _confirmDeleteAccount(context),
+            trailing: _isDeletingAccount
+                ? const SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+                : const Icon(Icons.chevron_right),
+            onTap: _isDeletingAccount
+                ? null
+                : () => _confirmDeleteAccount(context),
           ),
 
           const Divider(),
@@ -52,7 +62,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
-  /// Zeigt Bestätigungs-Dialog vor dem Löschen
+  /// Schritt 1: Bestätigungs-Dialog zeigen
   Future<void> _confirmDeleteAccount(BuildContext context) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -61,34 +71,134 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
 
     if (confirmed == true && mounted) {
-      await _deleteAccount();
+      // Schritt 2: Passwort zur Re-Authentifizierung abfragen
+      await _askPasswordAndDelete(context);
     }
   }
 
-  /// Führt das Löschen durch
-  Future<void> _deleteAccount() async {
+  /// Schritt 2: Passwort abfragen und Re-Auth + Löschen durchführen
+  Future<void> _askPasswordAndDelete(BuildContext context) async {
+    final passwordController = TextEditingController();
+    bool obscure = true;
+
+    final password = await showDialog<String>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          shape:
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Text('Passwort bestätigen'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Bitte gib dein Passwort ein, um das Konto endgültig zu löschen.',
+                style: TextStyle(fontSize: 14),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: passwordController,
+                obscureText: obscure,
+                autofocus: true,
+                decoration: InputDecoration(
+                  labelText: 'Passwort',
+                  border: const OutlineInputBorder(),
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                        obscure ? Icons.visibility : Icons.visibility_off),
+                    onPressed: () =>
+                        setDialogState(() => obscure = !obscure),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, null),
+              child: const Text('Abbrechen'),
+            ),
+            ElevatedButton(
+              onPressed: () =>
+                  Navigator.pop(context, passwordController.text),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Konto löschen'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    passwordController.dispose();
+
+    if (password == null || password.isEmpty) return;
+    if (!mounted) return;
+
+    await _deleteAccount(password);
+  }
+
+  /// Schritt 3: Re-Authentifizierung + Daten löschen + Auth-Account löschen
+  Future<void> _deleteAccount(String password) async {
     setState(() => _isDeletingAccount = true);
 
     try {
-      // 1. Alle Firestore-Daten löschen
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null || user.email == null) {
+        throw Exception('Kein Benutzer angemeldet.');
+      }
+
+      // Re-Authentifizierung – Firebase verlangt das vor user.delete()
+      final credential = EmailAuthProvider.credential(
+        email: user.email!,
+        password: password,
+      );
+      await user.reauthenticateWithCredential(credential);
+
+      // Alle Firestore-Daten löschen
       await ref.read(profileRepositoryProvider).deleteAllUserData();
 
-      // 2. Firebase Auth Account löschen
+      // Firebase Auth Account löschen
       await ref.read(authRepositoryProvider).deleteAccount();
 
-      // Firebase Auth-State-Change navigiert automatisch zur Login-Seite
-      // (authStateChanges Stream emittiert null → App-Root zeigt LoginScreen)
-
-    } catch (e) {
+      // Stack komplett leeren und zum Login navigieren
       if (mounted) {
-        setState(() => _isDeletingAccount = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Fehler beim Löschen: $e'),
-            backgroundColor: Colors.red,
-          ),
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const LoginScreen()),
+              (route) => false,
         );
       }
+
+      // authStateChanges emittiert null → App navigiert automatisch zum Login
+
+    } on FirebaseAuthException catch (e) {
+      if (!mounted) return;
+      setState(() => _isDeletingAccount = false);
+
+      String message;
+      if (e.code == 'wrong-password' || e.code == 'invalid-credential') {
+        message = 'Falsches Passwort. Bitte versuche es erneut.';
+      } else if (e.code == 'too-many-requests') {
+        message = 'Zu viele Versuche. Bitte warte kurz und versuche es erneut.';
+      } else {
+        message = 'Fehler: ${e.message}';
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message), backgroundColor: Colors.red),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isDeletingAccount = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Fehler beim Löschen: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 }
@@ -160,7 +270,8 @@ class _DeleteAccountDialogState extends State<_DeleteAccountDialog> {
               Checkbox(
                 value: _understood,
                 activeColor: Colors.red,
-                onChanged: (val) => setState(() => _understood = val ?? false),
+                onChanged: (val) =>
+                    setState(() => _understood = val ?? false),
               ),
               const Expanded(
                 child: Text(
@@ -178,15 +289,13 @@ class _DeleteAccountDialogState extends State<_DeleteAccountDialog> {
           child: const Text('Abbrechen'),
         ),
         ElevatedButton(
-          onPressed: _understood
-              ? () => Navigator.pop(context, true)
-              : null,
+          onPressed: _understood ? () => Navigator.pop(context, true) : null,
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.red,
             foregroundColor: Colors.white,
             disabledBackgroundColor: Colors.red.withOpacity(0.3),
           ),
-          child: const Text('Konto löschen'),
+          child: const Text('Weiter'),
         ),
       ],
     );
