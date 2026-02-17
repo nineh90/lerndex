@@ -13,6 +13,10 @@ import 'tutor_history_screen.dart';
 import '../../auth/data/profile_repository.dart';
 import 'edit_child_screen.dart';
 
+// =============================================================================
+// PROVIDER
+// =============================================================================
+
 /// Provider für Live-Child-Daten (Stream für Echtzeit-Updates)
 final liveChildProvider = StreamProvider.family<ChildModel?, String>((ref, childId) {
   final user = ref.watch(authStateChangesProvider).value;
@@ -30,7 +34,41 @@ final liveChildProvider = StreamProvider.family<ChildModel?, String>((ref, child
   });
 });
 
-/// VERBESSERTE Statistik-Karte mit LIVE-Updates
+/// Provider der prüft ob ein Kind gerade aktiv lernt.
+///
+/// "Live" = das Feld `lastActiveAt` in Firestore liegt weniger als 5 Minuten
+/// zurück. Der [LearningTimeTracker] schreibt dieses Feld beim Start einer
+/// Lernsession und dann alle 30 Sekunden als Heartbeat.
+final childOnlineStatusProvider = StreamProvider.family<bool, String>((ref, childId) {
+  final user = ref.watch(authStateChangesProvider).value;
+  if (user == null) return Stream.value(false);
+
+  return FirebaseFirestore.instance
+      .collection('users')
+      .doc(user.uid)
+      .collection('children')
+      .doc(childId)
+      .snapshots()
+      .map((snapshot) {
+    if (!snapshot.exists) return false;
+
+    final data = snapshot.data();
+    if (data == null) return false;
+
+    final lastActiveAt = (data['lastActiveAt'] as Timestamp?)?.toDate();
+    if (lastActiveAt == null) return false;
+
+    // Live = letzter Heartbeat vor weniger als 5 Minuten
+    final diff = DateTime.now().difference(lastActiveAt);
+    return diff.inMinutes < 5;
+  });
+});
+
+// =============================================================================
+// WIDGET
+// =============================================================================
+
+/// Statistik-Karte mit LIVE-Updates und echtem Online-Status
 class LiveChildStatCard extends ConsumerWidget {
   final String childId;
 
@@ -40,7 +78,7 @@ class LiveChildStatCard extends ConsumerWidget {
   });
 
   // =========================================================================
-  // DELETE DIALOG – korrekt in LiveChildStatCard
+  // DELETE DIALOG
   // =========================================================================
 
   void _confirmDelete(BuildContext context, WidgetRef ref, ChildModel child) {
@@ -68,28 +106,7 @@ class LiveChildStatCard extends ConsumerWidget {
                     text: child.name,
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
-                  const TextSpan(text: ' wirklich löschen?'),
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: Colors.red.shade50,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.red.shade200),
-              ),
-              child: const Row(
-                children: [
-                  Icon(Icons.info_outline, color: Colors.red, size: 16),
-                  SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'Alle Fortschritte, XP, Sterne und Tutor-Gespräche werden unwiderruflich gelöscht.',
-                      style: TextStyle(fontSize: 12, color: Colors.red),
-                    ),
-                  ),
+                  const TextSpan(text: ' wirklich löschen? Alle Daten werden dauerhaft entfernt.'),
                 ],
               ),
             ),
@@ -104,11 +121,14 @@ class LiveChildStatCard extends ConsumerWidget {
             onPressed: () async {
               Navigator.pop(context);
               try {
-                await ref.read(profileRepositoryProvider).deleteChild(child.id);
+                await ref
+                    .read(profileRepositoryProvider)
+                    .deleteChild(child.id);
+
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text('${child.name} wurde gelöscht.'),
+                      content: Text('${child.name} wurde gelöscht'),
                       backgroundColor: Colors.orange,
                     ),
                   );
@@ -142,6 +162,7 @@ class LiveChildStatCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final childAsync = ref.watch(liveChildProvider(childId));
+    final isOnline = ref.watch(childOnlineStatusProvider(childId)).value ?? false;
 
     return childAsync.when(
       data: (child) {
@@ -174,7 +195,7 @@ class LiveChildStatCard extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
 
-                // ── Header: Avatar + Name + LIVE-Badge + Menü ──────────────
+                // ── Header: Avatar + Name + LIVE-Badge (nur wenn aktiv) + Menü ──
                 Row(
                   children: [
                     CircleAvatar(
@@ -208,44 +229,42 @@ class LiveChildStatCard extends ConsumerWidget {
                         ],
                       ),
                     ),
-                    // LIVE-Badge
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.green.shade100,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            width: 6,
-                            height: 6,
-                            decoration: const BoxDecoration(
-                              color: Colors.green,
-                              shape: BoxShape.circle,
+
+                    // LIVE-Badge – NUR anzeigen wenn Kind wirklich aktiv ist
+                    if (isOnline) ...[
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.green.shade100,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const _PulsingDot(),
+                            const SizedBox(width: 4),
+                            Text(
+                              'LIVE',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.green.shade700,
+                              ),
                             ),
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            'LIVE',
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.green.shade700,
-                            ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 4),
-                    // Bearbeiten / Löschen Menü
+                      const SizedBox(width: 4),
+                    ],
+
+                    // Menü
                     PopupMenuButton<String>(
-                      icon: const Icon(Icons.more_vert, color: Colors.grey),
-                      tooltip: 'Optionen',
-                      onSelected: (value) async {
+                      onSelected: (value) {
                         if (value == 'edit') {
-                          await Navigator.push(
+                          Navigator.push(
                             context,
                             MaterialPageRoute(
                               builder: (_) => EditChildScreen(child: child),
@@ -256,24 +275,23 @@ class LiveChildStatCard extends ConsumerWidget {
                         }
                       },
                       itemBuilder: (context) => [
-                        const PopupMenuItem<String>(
+                        const PopupMenuItem(
                           value: 'edit',
                           child: Row(
                             children: [
-                              Icon(Icons.edit, color: Colors.deepPurple, size: 20),
-                              SizedBox(width: 10),
+                              Icon(Icons.edit, size: 18),
+                              SizedBox(width: 8),
                               Text('Bearbeiten'),
                             ],
                           ),
                         ),
-                        const PopupMenuItem<String>(
+                        const PopupMenuItem(
                           value: 'delete',
                           child: Row(
                             children: [
-                              Icon(Icons.delete, color: Colors.red, size: 20),
-                              SizedBox(width: 10),
-                              Text('Löschen',
-                                  style: TextStyle(color: Colors.red)),
+                              Icon(Icons.delete, size: 18, color: Colors.red),
+                              SizedBox(width: 8),
+                              Text('Löschen', style: TextStyle(color: Colors.red)),
                             ],
                           ),
                         ),
@@ -281,224 +299,256 @@ class LiveChildStatCard extends ConsumerWidget {
                     ),
                   ],
                 ),
+
                 const SizedBox(height: 16),
 
-                // ── Statistiken ────────────────────────────────────────────
+                // ── Level + XP-Balken ──────────────────────────────────────
                 Row(
                   children: [
-                    _StatBox(
-                      icon: Icons.emoji_events,
-                      label: 'Level',
-                      value: '${child.level}',
-                      color: Colors.orange,
-                    ),
-                    const SizedBox(width: 12),
-                    _StatBox(
-                      icon: Icons.stars,
-                      label: 'Sterne',
-                      value: '${child.stars}',
-                      color: Colors.amber,
-                    ),
-                    const SizedBox(width: 12),
-                    _StatBox(
-                      icon: Icons.auto_graph,
-                      label: 'XP',
-                      value: '${child.xp}',
-                      color: Colors.blue,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-
-                // ── XP-Fortschritt ─────────────────────────────────────────
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Fortschritt zum nächsten Level',
-                          style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                        ),
-                        Text(
-                          '${(progress * 100).toInt()}%',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.deepPurple,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    TweenAnimationBuilder<double>(
-                      duration: const Duration(milliseconds: 800),
-                      curve: Curves.easeInOut,
-                      tween: Tween<double>(
-                          begin: 0, end: progress.clamp(0.0, 1.0)),
-                      builder: (context, value, child) {
-                        return LinearProgressIndicator(
-                          value: value,
-                          minHeight: 8,
-                          backgroundColor: Colors.grey[200],
-                          valueColor: const AlwaysStoppedAnimation<Color>(
-                              Colors.deepPurple),
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '$currentLevelXP / $xpForNextLevel XP',
-                      style: TextStyle(fontSize: 11, color: Colors.grey[600]),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-
-                // ── Aktionen: Belohnungen + KI-Aufgaben ───────────────────
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => ManageRewardsScreen(child: child),
-                            ),
-                          );
-                        },
-                        icon: const Icon(Icons.card_giftcard, size: 18),
-                        label: const Text('Belohnungen'),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.amber,
-                          side: const BorderSide(color: Colors.amber),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.deepPurple,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        'Level ${child.level}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
                         ),
                       ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(4),
+                            child: LinearProgressIndicator(
+                              value: progress.clamp(0.0, 1.0),
+                              backgroundColor: Colors.grey.shade200,
+                              color: Colors.deepPurple,
+                              minHeight: 8,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '${child.xp} / $xpForNextLevel XP',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 16),
+
+                // ── Statistik-Grid ─────────────────────────────────────────
+                Row(
+                  children: [
+                    _StatChip(
+                      icon: Icons.star,
+                      color: Colors.amber,
+                      label: '${child.stars} Sterne',
                     ),
                     const SizedBox(width: 8),
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) =>
-                                  ImprovedAITaskGeneratorScreen(child: child),
-                            ),
-                          );
-                        },
-                        icon: const Icon(Icons.auto_awesome, size: 18),
-                        label: const Text('KI-Aufgaben'),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.deepPurple,
-                          side: const BorderSide(color: Colors.deepPurple),
-                        ),
-                      ),
+                    _StatChip(
+                      icon: Icons.local_fire_department,
+                      color: Colors.orange,
+                      label: '${child.streak ?? 0} Tage',
+                    ),
+                    const SizedBox(width: 8),
+                    _StatChip(
+                      icon: Icons.timer,
+                      color: Colors.blue,
+                      label: child.formattedLearningTime,
                     ),
                   ],
                 ),
-                const SizedBox(height: 8),
 
-                // ── Aufgaben freigeben ─────────────────────────────────────
+                const SizedBox(height: 16),
+                const Divider(height: 1),
+                const SizedBox(height: 12),
+
+                // ── Aktions-Buttons ────────────────────────────────────────
                 Consumer(
                   builder: (context, ref, _) {
-                    final authRepo = ref.watch(authRepositoryProvider);
-                    final userId = authRepo.currentUser?.uid ?? '';
-                    final pendingCountAsync =
-                    ref.watch(pendingTaskCountProvider(userId));
+                    final user = ref.watch(authStateChangesProvider).value;
+                    if (user == null) return const SizedBox.shrink();
 
-                    return pendingCountAsync.when(
-                      data: (pendingCount) {
-                        return SizedBox(
+                    final pendingCountAsync = ref.watch(
+                      pendingTaskCountProvider(user.uid),
+                    );
+
+                    final pendingCount = pendingCountAsync.value ?? 0;
+
+                    return Column(
+                      children: [
+                        // ── Belohnungen verwalten ──────────────────────────
+                        SizedBox(
                           width: double.infinity,
                           child: OutlinedButton.icon(
                             onPressed: () {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (_) => const TaskApprovalScreen(),
+                                  builder: (_) =>
+                                      ManageRewardsScreen(child: child),
                                 ),
                               );
                             },
-                            icon: pendingCount > 0
-                                ? Badge(
-                              label: Text('$pendingCount'),
-                              child:
-                              const Icon(Icons.check_circle, size: 18),
-                            )
-                                : const Icon(Icons.check_circle, size: 18),
-                            label: Text(
-                              pendingCount > 0
-                                  ? 'Aufgaben freigeben ($pendingCount)'
-                                  : 'Aufgaben freigeben',
-                            ),
+                            icon: const Icon(Icons.card_giftcard, size: 18),
+                            label: const Text('Belohnungen verwalten'),
                             style: OutlinedButton.styleFrom(
-                              foregroundColor: pendingCount > 0
-                                  ? Colors.orange
-                                  : Colors.green,
-                              side: BorderSide(
-                                color: pendingCount > 0
+                              foregroundColor: Colors.amber,
+                              side: const BorderSide(color: Colors.amber),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+
+                        // ── KI-Aufgaben generieren ─────────────────────────
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton.icon(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) =>
+                                      ImprovedAITaskGeneratorScreen(child: child),
+                                ),
+                              );
+                            },
+                            icon: const Icon(Icons.auto_awesome, size: 18),
+                            label: const Text('KI-Aufgaben generieren'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.deepPurple,
+                              foregroundColor: Colors.white,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+
+                        // ── Aufgaben freigeben ─────────────────────────────
+                        pendingCountAsync.when(
+                          data: (_) => SizedBox(
+                            width: double.infinity,
+                            child: OutlinedButton.icon(
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) =>
+                                    const TaskApprovalScreen(),
+                                  ),
+                                );
+                              },
+                              icon: Stack(
+                                clipBehavior: Clip.none,
+                                children: [
+                                  const Icon(Icons.task_alt, size: 18),
+                                  if (pendingCount > 0)
+                                    Positioned(
+                                      right: -6,
+                                      top: -4,
+                                      child: Container(
+                                        padding: const EdgeInsets.all(2),
+                                        decoration: const BoxDecoration(
+                                          color: Colors.red,
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: Text(
+                                          '$pendingCount',
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 9,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                              label: Text(
+                                pendingCount > 0
+                                    ? 'Aufgaben freigeben ($pendingCount)'
+                                    : 'Aufgaben freigeben',
+                              ),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: pendingCount > 0
                                     ? Colors.orange
                                     : Colors.green,
+                                side: BorderSide(
+                                  color: pendingCount > 0
+                                      ? Colors.orange
+                                      : Colors.green,
+                                ),
                               ),
                             ),
                           ),
-                        );
-                      },
-                      loading: () => const SizedBox.shrink(),
-                      error: (_, __) => const SizedBox.shrink(),
+                          loading: () => const SizedBox.shrink(),
+                          error: (_, __) => const SizedBox.shrink(),
+                        ),
+                        const SizedBox(height: 8),
+
+                        // ── Tutor-Gespräche ────────────────────────────────
+                        SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton.icon(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) =>
+                                      TutorHistoryScreen(child: child),
+                                ),
+                              );
+                            },
+                            icon: const Icon(Icons.chat, size: 18),
+                            label: const Text('Tutor-Gespräche'),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: Colors.deepPurple,
+                              side: const BorderSide(color: Colors.deepPurple),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+
+                        // ── Statistiken ────────────────────────────────────
+                        SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton.icon(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) =>
+                                      ChildStatisticsScreen(child: child),
+                                ),
+                              );
+                            },
+                            icon: const Icon(Icons.bar_chart, size: 18),
+                            label: const Text('Statistiken'),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: Colors.indigo,
+                              side: const BorderSide(color: Colors.indigo),
+                            ),
+                          ),
+                        ),
+                      ],
                     );
                   },
-                ),
-                const SizedBox(height: 8),
-
-                // ── Tutor-Gespräche ────────────────────────────────────────
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton.icon(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => TutorHistoryScreen(child: child),
-                        ),
-                      );
-                    },
-                    icon: const Icon(Icons.chat, size: 18),
-                    label: const Text('Tutor-Gespräche'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.deepPurple,
-                      side: const BorderSide(color: Colors.deepPurple),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 8),
-
-                // ── Statistiken ────────────────────────────────────────────
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) =>
-                                  ChildStatisticsScreen(child: child),
-                            ),
-                          );
-                        },
-                        icon: const Icon(Icons.bar_chart, size: 18),
-                        label: const Text('Statistiken'),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.blue,
-                          side: const BorderSide(color: Colors.blue),
-                        ),
-                      ),
-                    ),
-                  ],
                 ),
               ],
             ),
@@ -506,17 +556,15 @@ class LiveChildStatCard extends ConsumerWidget {
         );
       },
       loading: () => const Card(
-        margin: EdgeInsets.only(bottom: 16),
         child: Padding(
-          padding: EdgeInsets.all(16),
+          padding: EdgeInsets.all(32),
           child: Center(child: CircularProgressIndicator()),
         ),
       ),
-      error: (error, stack) => Card(
-        margin: const EdgeInsets.only(bottom: 16),
+      error: (e, _) => Card(
         child: Padding(
           padding: const EdgeInsets.all(16),
-          child: Text('Fehler: $error'),
+          child: Text('Fehler: $e'),
         ),
       ),
     );
@@ -524,51 +572,99 @@ class LiveChildStatCard extends ConsumerWidget {
 }
 
 // =============================================================================
-// HILFWIDGET: Kleine Statistik-Box
+// HELPER WIDGETS
 // =============================================================================
 
-class _StatBox extends StatelessWidget {
+/// Kleines Statistik-Chip
+class _StatChip extends StatelessWidget {
   final IconData icon;
-  final String label;
-  final String value;
   final Color color;
+  final String label;
 
-  const _StatBox({
+  const _StatChip({
     required this.icon,
-    required this.label,
-    required this.value,
     required this.color,
+    required this.label,
   });
 
   @override
   Widget build(BuildContext context) {
     return Expanded(
       child: Container(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
         decoration: BoxDecoration(
           color: color.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(8),
         ),
-        child: Column(
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, color: color, size: 24),
-            const SizedBox(height: 4),
-            Text(
-              value,
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: color,
-              ),
-            ),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 11,
-                color: Colors.grey[700],
+            Icon(icon, size: 14, color: color),
+            const SizedBox(width: 4),
+            Flexible(
+              child: Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: color,
+                  fontWeight: FontWeight.w600,
+                ),
+                overflow: TextOverflow.ellipsis,
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Animierter pulsierender Punkt für den Live-Indikator.
+/// Blinkt sanft um anzuzeigen dass das Kind gerade aktiv ist.
+class _PulsingDot extends StatefulWidget {
+  const _PulsingDot();
+
+  @override
+  State<_PulsingDot> createState() => _PulsingDotState();
+}
+
+class _PulsingDotState extends State<_PulsingDot>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _animation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    )..repeat(reverse: true);
+
+    _animation = Tween<double>(begin: 0.4, end: 1.0).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _animation,
+      builder: (_, __) => Opacity(
+        opacity: _animation.value,
+        child: Container(
+          width: 6,
+          height: 6,
+          decoration: const BoxDecoration(
+            color: Colors.green,
+            shape: BoxShape.circle,
+          ),
         ),
       ),
     );

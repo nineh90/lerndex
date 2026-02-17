@@ -8,6 +8,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 /// ✅ KI-Tutor-Nutzung
 /// ❌ Dashboard-Browsing
 /// ❌ Einstellungen
+///
+/// NEU: Schreibt alle 30s einen Heartbeat → Eltern sehen LIVE-Status
 
 class LearningTimeTracker {
   final String userId;
@@ -30,9 +32,18 @@ class LearningTimeTracker {
 
     print('⏱️ Lernzeit-Tracking gestartet');
     _isTracking = true;
+
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
       _secondsTracked++;
+
+      // Heartbeat alle 30 Sekunden → Eltern-Dashboard zeigt LIVE-Status
+      if (_secondsTracked % 30 == 0) {
+        _writeHeartbeat();
+      }
     });
+
+    // Sofort beim Start einen Heartbeat schreiben
+    _writeHeartbeat();
   }
 
   /// Stoppt Zeit-Tracking
@@ -80,6 +91,31 @@ class LearningTimeTracker {
 
   void dispose() {
     stopTracking();
+  }
+
+  // =========================================================================
+  // PRIVATE HELPERS
+  // =========================================================================
+
+  /// Schreibt einen Heartbeat-Timestamp nach Firestore.
+  /// Wird beim Start und dann alle 30 Sekunden aufgerufen.
+  /// Das Elterndashboard liest diesen Wert und zeigt LIVE an,
+  /// wenn er weniger als 5 Minuten alt ist.
+  Future<void> _writeHeartbeat() async {
+    try {
+      await _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('children')
+          .doc(childId)
+          .update({
+        'lastActiveAt': FieldValue.serverTimestamp(),
+      });
+      print('💓 Heartbeat geschrieben');
+    } catch (e) {
+      // Heartbeat-Fehler sind nicht kritisch – kein rethrow
+      print('⚠️ Heartbeat-Fehler (nicht kritisch): $e');
+    }
   }
 
   Future<void> _saveDailyStats(int seconds) async {
