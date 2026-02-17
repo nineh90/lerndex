@@ -254,6 +254,53 @@ class ProfileRepository {
   }
 }
 
+/// Löscht alle Daten eines Users komplett aus Firestore
+/// Wird vor dem Löschen des Firebase Auth Accounts aufgerufen
+Future<void> deleteAllUserData() async {
+  final user = _auth.currentUser;
+  if (user == null) throw Exception('Kein Benutzer angemeldet.');
+
+  final uid = user.uid;
+
+  // Alle Kinder laden
+  final childrenSnapshot = await _firestore
+      .collection('users')
+      .doc(uid)
+      .collection('children')
+      .get();
+
+  // Für jedes Kind: Subcollections löschen
+  for (final childDoc in childrenSnapshot.docs) {
+    final childId = childDoc.id;
+
+    // Subcollections eines Kindes löschen
+    for (final subcollection in [
+      'tutor_chat',
+      'tutor_sessions',
+      'rewards',
+      'learning_stats',
+    ]) {
+      final subDocs = await _firestore
+          .collection('users')
+          .doc(uid)
+          .collection('children')
+          .doc(childId)
+          .collection(subcollection)
+          .get();
+
+      for (final doc in subDocs.docs) {
+        await doc.reference.delete();
+      }
+    }
+
+    // Kind-Dokument selbst löschen
+    await childDoc.reference.delete();
+  }
+
+  // Haupt-User-Dokument löschen (enthält PIN, etc.)
+  await _firestore.collection('users').doc(uid).delete();
+}
+
 /// Provider für ProfileRepository
 @riverpod
 ProfileRepository profileRepository(ProfileRepositoryRef ref) {

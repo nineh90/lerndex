@@ -8,6 +8,7 @@ import '../../generated_tasks/presentation/improved_ai_task_generator_screen.dar
 import '../../generated_tasks/presentation/task_approval_screen.dart';
 import '../../generated_tasks/data/generated_task_repository.dart';
 import '../../auth/data/auth_repository.dart';
+import 'settings_screen.dart';
 
 /// Haupt-Dashboard für Eltern mit Statistiken & Verwaltung
 class ParentDashboardScreen extends ConsumerStatefulWidget {
@@ -92,7 +93,12 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
               _showComingSoon(context, 'Abo');
               break;
             case 2:
-              _showComingSoon(context, 'Einstellungen');
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const SettingsScreen(),
+                ),
+              );
               break;
             case 3:
               _confirmSignOut(context);

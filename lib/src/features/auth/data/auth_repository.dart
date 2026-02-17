@@ -61,6 +61,13 @@ class AuthRepository {
     }
   }
 
+  /// Löscht den aktuellen Firebase Auth Account
+  Future<void> deleteAccount() async {
+    final user = _auth.currentUser;
+    if (user == null) throw Exception('Kein Benutzer angemeldet.');
+    await user.delete();
+  }
+
   /// Übersetzt Firebase-Fehler ins Deutsche
   String _handleAuthException(FirebaseAuthException e) {
     switch (e.code) {
@@ -85,6 +92,9 @@ class AuthRepository {
 }
 
 /// Provider für AuthRepository (Singleton)
+
+
+
 /// Kann in der ganzen App mit ref.read(authRepositoryProvider) verwendet werden
 @riverpod
 AuthRepository authRepository(AuthRepositoryRef ref) {
