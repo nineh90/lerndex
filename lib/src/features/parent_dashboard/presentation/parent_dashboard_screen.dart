@@ -10,11 +10,19 @@ import '../../generated_tasks/data/generated_task_repository.dart';
 import '../../auth/data/auth_repository.dart';
 
 /// Haupt-Dashboard für Eltern mit Statistiken & Verwaltung
-class ParentDashboardScreen extends ConsumerWidget {
-
+class ParentDashboardScreen extends ConsumerStatefulWidget {
   const ParentDashboardScreen({super.key});
+
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ParentDashboardScreen> createState() =>
+      _ParentDashboardScreenState();
+}
+
+class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
+  int _selectedIndex = 0;
+
+  @override
+  Widget build(BuildContext context) {
     final childrenAsync = ref.watch(childrenListProvider);
 
     return Scaffold(
@@ -26,8 +34,23 @@ class ParentDashboardScreen extends ConsumerWidget {
       body: childrenAsync.when(
         data: (children) {
           if (children.isEmpty) {
-            return const Center(
-              child: Text('Noch keine Kinder angelegt'),
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.child_care, size: 80, color: Colors.grey[400]),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Noch keine Kinder angelegt',
+                    style: TextStyle(fontSize: 18, color: Colors.grey[600]),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Tippe unten auf „Kind hinzufügen"',
+                    style: TextStyle(fontSize: 14, color: Colors.grey[400]),
+                  ),
+                ],
+              ),
             );
           }
 
@@ -36,7 +59,6 @@ class ParentDashboardScreen extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Überschrift
                 const Text(
                   'Fortschritte & Verwaltung',
                   style: TextStyle(
@@ -50,8 +72,6 @@ class ParentDashboardScreen extends ConsumerWidget {
                   style: TextStyle(color: Colors.grey[600]),
                 ),
                 const SizedBox(height: 24),
-
-                // Kinder-Liste mit Statistiken
                 ...children.map((child) => LiveChildStatCard(childId: child.id)),
               ],
             ),
@@ -60,275 +80,234 @@ class ParentDashboardScreen extends ConsumerWidget {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, st) => Center(child: Text('Fehler: $e')),
       ),
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _selectedIndex,
+        onTap: (index) {
+          setState(() => _selectedIndex = index);
+          switch (index) {
+            case 0:
+              _showAddChildDialog(context);
+              break;
+            case 1:
+              _showComingSoon(context, 'Abo');
+              break;
+            case 2:
+              _showComingSoon(context, 'Einstellungen');
+              break;
+            case 3:
+              _confirmSignOut(context);
+              break;
+          }
+        },
+        type: BottomNavigationBarType.fixed,
+        selectedItemColor: Colors.deepPurple,
+        unselectedItemColor: Colors.grey,
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person_add),
+            label: 'Kind hinzufügen',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.star_outline),
+            label: 'Abo',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.settings_outlined),
+            label: 'Einstellungen',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.logout),
+            label: 'Abmelden',
+          ),
+        ],
+      ),
     );
   }
-}
 
-/// Statistik-Karte für ein Kind
-class _ChildStatCard extends ConsumerWidget {
-  final ChildModel child;
+  // ── Kind hinzufügen ──────────────────────────────────────────────────────
+  void _showAddChildDialog(BuildContext context) {
+    final nameController = TextEditingController();
+    final ageController = TextEditingController();
+    int selectedGrade = 1;
+    String selectedSchoolType = 'Grundschule';
 
-  const _ChildStatCard({required this.child});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 16),
-      elevation: 3,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header mit Namen
-            Row(
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: const Text('Neues Kind registrieren'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                CircleAvatar(
-                  radius: 25,
-                  backgroundColor: Colors.deepPurple.shade100,
-                  child: Text(
-                    child.name[0].toUpperCase(),
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.deepPurple,
-                    ),
-                  ),
+                TextField(
+                  controller: nameController,
+                  decoration: const InputDecoration(labelText: 'Name'),
+                  textCapitalization: TextCapitalization.words,
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        child.name,
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      Text(
-                        '${child.schoolType} • Klasse ${child.grade}',
-                        style: TextStyle(color: Colors.grey[600]),
-                      ),
-                    ],
-                  ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: ageController,
+                  decoration: const InputDecoration(labelText: 'Alter'),
+                  keyboardType: TextInputType.number,
+                ),
+                const SizedBox(height: 16),
+                DropdownButtonFormField<int>(
+                  value: selectedGrade,
+                  decoration: const InputDecoration(labelText: 'Klasse'),
+                  items: List.generate(13, (i) => i + 1)
+                      .map((g) => DropdownMenuItem(
+                    value: g,
+                    child: Text('Klasse $g'),
+                  ))
+                      .toList(),
+                  onChanged: (val) => setState(() => selectedGrade = val!),
+                ),
+                const SizedBox(height: 16),
+                DropdownButtonFormField<String>(
+                  value: selectedSchoolType,
+                  decoration: const InputDecoration(labelText: 'Schulform'),
+                  items: [
+                    'Grundschule',
+                    'Gymnasium',
+                    'Realschule',
+                    'Hauptschule',
+                    'Gesamtschule',
+                  ]
+                      .map((s) => DropdownMenuItem(
+                    value: s,
+                    child: Text(s),
+                  ))
+                      .toList(),
+                  onChanged: (val) =>
+                      setState(() => selectedSchoolType = val!),
                 ),
               ],
             ),
-            const SizedBox(height: 16),
-
-            // Statistiken
-            Row(
-              children: [
-                _StatBox(
-                  icon: Icons.emoji_events,
-                  label: 'Level',
-                  value: '${child.level}',
-                  color: Colors.orange,
-                ),
-                const SizedBox(width: 12),
-                _StatBox(
-                  icon: Icons.stars,
-                  label: 'Sterne',
-                  value: '${child.stars}',
-                  color: Colors.amber,
-                ),
-                const SizedBox(width: 12),
-                _StatBox(
-                  icon: Icons.auto_graph,
-                  label: 'XP',
-                  value: '${child.xp}',
-                  color: Colors.blue,
-                ),
-              ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Abbrechen'),
             ),
-            const SizedBox(height: 12),
-
-            // XP-Fortschritt
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Fortschritt zum nächsten Level',
-                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                ),
-                const SizedBox(height: 4),
-                LinearProgressIndicator(
-                  value: child.xpProgress,
-                  minHeight: 8,
-                  backgroundColor: Colors.grey[200],
-                  valueColor: const AlwaysStoppedAnimation<Color>(Colors.deepPurple),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  '${child.xp} / ${child.xpToNextLevel} XP',
-                  style: TextStyle(fontSize: 11, color: Colors.grey[600]),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-
-            // Aktionen
-            // Aktionen
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => ManageRewardsScreen(child: child),
-                        ),
-                      );
-                    },
-                    icon: const Icon(Icons.card_giftcard, size: 18),
-                    label: const Text('Belohnungen'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.amber,
-                      side: const BorderSide(color: Colors.amber),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => ImprovedAITaskGeneratorScreen(child: child),
-                        ),
-                      );
-                    },
-                    icon: const Icon(Icons.auto_awesome, size: 18),
-                    label: const Text('KI-Aufgaben'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.deepPurple,
-                      side: const BorderSide(color: Colors.deepPurple),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Consumer(
-              builder: (context, ref, _) {
-                final authRepo = ref.watch(authRepositoryProvider);
-                final userId = authRepo.currentUser?.uid ?? '';
-                final pendingCountAsync = ref.watch(pendingTaskCountProvider(userId));
-
-                return pendingCountAsync.when(
-                  data: (pendingCount) {
-                    return SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton.icon(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const TaskApprovalScreen(),
-                            ),
-                          );
-                        },
-                        icon: pendingCount > 0
-                            ? Badge(
-                          label: Text('$pendingCount'),
-                          child: const Icon(Icons.check_circle, size: 18),
-                        )
-                            : const Icon(Icons.check_circle, size: 18),
-                        label: Text(
-                          pendingCount > 0
-                              ? 'Aufgaben freigeben ($pendingCount)'
-                              : 'Aufgaben freigeben',
-                        ),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: pendingCount > 0 ? Colors.orange : Colors.green,
-                          side: BorderSide(
-                            color: pendingCount > 0 ? Colors.orange : Colors.green,
-                          ),
-                        ),
-                      ),
+            ElevatedButton(
+              onPressed: () async {
+                if (nameController.text.isNotEmpty) {
+                  showDialog(
+                    context: context,
+                    barrierDismissible: false,
+                    builder: (context) =>
+                    const Center(child: CircularProgressIndicator()),
+                  );
+                  try {
+                    await ref.read(profileRepositoryProvider).createChild(
+                      name: nameController.text,
+                      age: int.tryParse(ageController.text) ?? 6,
+                      grade: selectedGrade,
+                      schoolType: selectedSchoolType,
                     );
-                  },
-                  loading: () => const SizedBox.shrink(),
-                  error: (_, __) => const SizedBox.shrink(),
-                );
-              },
-            ),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () {
-                      // TODO: Statistiken-Detail-Ansicht
+                    if (context.mounted) {
+                      Navigator.pop(context); // Loading
+                      Navigator.pop(context); // Dialog
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Kommt bald: Detaillierte Statistiken')),
+                        const SnackBar(
+                          content: Text('✅ Kind erfolgreich angelegt!'),
+                          backgroundColor: Colors.green,
+                          duration: Duration(seconds: 3),
+                        ),
                       );
-                    },
-                    icon: const Icon(Icons.bar_chart, size: 18),
-                    label: const Text('Statistiken'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.blue,
-                      side: const BorderSide(color: Colors.blue),
-                    ),
-                  ),
-                ),
-              ],
+                    }
+                  } catch (e) {
+                    if (context.mounted) {
+                      Navigator.pop(context);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('❌ Fehler: $e'),
+                          backgroundColor: Colors.red,
+                          duration: const Duration(seconds: 5),
+                        ),
+                      );
+                    }
+                  }
+                }
+              },
+              child: const Text('Speichern'),
             ),
           ],
         ),
       ),
     );
   }
-}
 
-/// Kleine Statistik-Box
-class _StatBox extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String value;
-  final Color color;
-
-  const _StatBox({
-    required this.icon,
-    required this.label,
-    required this.value,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Column(
+  // ── Platzhalter „Bald verfügbar" ─────────────────────────────────────────
+  void _showComingSoon(BuildContext context, String feature) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
           children: [
-            Icon(icon, color: color, size: 24),
-            const SizedBox(height: 4),
+            const Icon(Icons.rocket_launch, color: Colors.deepPurple),
+            const SizedBox(width: 8),
+            Text(feature),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.hourglass_top, size: 56, color: Colors.amber),
+            const SizedBox(height: 16),
             Text(
-              value,
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: color,
-              ),
+              '„$feature" ist bald verfügbar! 🚀',
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
+            const SizedBox(height: 8),
             Text(
-              label,
-              style: TextStyle(
-                fontSize: 11,
-                color: Colors.grey[700],
-              ),
+              'Dieses Feature befindet sich gerade in Entwicklung und wird in einem zukünftigen Update freigeschaltet.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.grey[600], fontSize: 14),
             ),
           ],
         ),
+        actions: [
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.deepPurple,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Verstanden'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Abmelden bestätigen ──────────────────────────────────────────────────
+  void _confirmSignOut(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Abmelden?'),
+        content: const Text('Möchtest du dich wirklich abmelden?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Abbrechen'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              ref.read(authRepositoryProvider).signOut();
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Abmelden'),
+          ),
+        ],
       ),
     );
   }

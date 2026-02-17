@@ -204,13 +204,7 @@ class ParentAdminDashboard extends ConsumerWidget {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, st) => Center(child: Text('Fehler: $e')),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showAddChildDialog(context, ref),
-        label: const Text('Kind hinzufügen'),
-        icon: const Icon(Icons.add),
-        backgroundColor: Colors.deepPurple,
-        foregroundColor: Colors.white,
-      ),
+      // ✅ FloatingActionButton entfernt – "Kind hinzufügen" ist jetzt im Eltern-Dashboard
     );
   }
 
@@ -246,121 +240,7 @@ class ParentAdminDashboard extends ConsumerWidget {
     }
   }
 
-  void _showAddChildDialog(BuildContext context, WidgetRef ref) {
-    final nameController = TextEditingController();
-    final ageController = TextEditingController();
-    int selectedGrade = 1;
-    String selectedSchoolType = 'Grundschule';
-
-    showDialog(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setState) => AlertDialog(
-          title: const Text('Neues Kind registrieren'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: nameController,
-                  decoration: const InputDecoration(labelText: 'Name'),
-                  textCapitalization: TextCapitalization.words,
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: ageController,
-                  decoration: const InputDecoration(labelText: 'Alter'),
-                  keyboardType: TextInputType.number,
-                ),
-                const SizedBox(height: 16),
-                DropdownButtonFormField<int>(
-                  value: selectedGrade,
-                  decoration: const InputDecoration(labelText: 'Klasse'),
-                  items: List.generate(13, (i) => i + 1)
-                      .map((g) => DropdownMenuItem(
-                    value: g,
-                    child: Text('Klasse $g'),
-                  ))
-                      .toList(),
-                  onChanged: (val) => setState(() => selectedGrade = val!),
-                ),
-                const SizedBox(height: 16),
-                DropdownButtonFormField<String>(
-                  value: selectedSchoolType,
-                  decoration: const InputDecoration(labelText: 'Schulform'),
-                  items: [
-                    'Grundschule',
-                    'Gymnasium',
-                    'Realschule',
-                    'Hauptschule',
-                    'Gesamtschule'
-                  ]
-                      .map((s) => DropdownMenuItem(
-                    value: s,
-                    child: Text(s),
-                  ))
-                      .toList(),
-                  onChanged: (val) => setState(() => selectedSchoolType = val!),
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Abbrechen'),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                if (nameController.text.isNotEmpty) {
-                  showDialog(
-                    context: context,
-                    barrierDismissible: false,
-                    builder: (context) => const Center(
-                      child: CircularProgressIndicator(),
-                    ),
-                  );
-
-                  try {
-                    await ref.read(profileRepositoryProvider).createChild(
-                      name: nameController.text,
-                      age: int.tryParse(ageController.text) ?? 6,
-                      grade: selectedGrade,
-                      schoolType: selectedSchoolType,
-                    );
-
-                    if (context.mounted) {
-                      Navigator.pop(context);
-                      Navigator.pop(context);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('✅ Kind erfolgreich angelegt!'),
-                          backgroundColor: Colors.green,
-                          duration: Duration(seconds: 3),
-                        ),
-                      );
-                    }
-                  } catch (e) {
-                    if (context.mounted) {
-                      Navigator.pop(context);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('❌ Fehler: $e'),
-                          backgroundColor: Colors.red,
-                          duration: const Duration(seconds: 5),
-                        ),
-                      );
-                    }
-                  }
-                }
-              },
-              child: const Text('Speichern'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+// ✅ _showAddChildDialog entfernt – Methode lebt jetzt in parent_dashboard_screen.dart
 }
 
 // ============================================================================
