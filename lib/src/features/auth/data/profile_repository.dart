@@ -40,7 +40,6 @@ class ProfileRepository {
     final user = _auth.currentUser;
     if (user == null) throw Exception('Not authenticated');
 
-    // Child erstellen
     final childData = {
       'name': name,
       'age': age,
@@ -61,7 +60,6 @@ class ProfileRepository {
         .collection('children')
         .add(childData);
 
-    // ⭐ System-Belohnungen initialisieren
     try {
       final rewardsInitializer = SystemRewardsInitializer();
       await rewardsInitializer.initializeSystemRewards(
@@ -77,8 +75,6 @@ class ProfileRepository {
       print('✅ Kind erstellt mit $count System-Belohnungen');
     } catch (e) {
       print('⚠️ Fehler beim Erstellen der System-Belohnungen: $e');
-      // Kind wurde erstellt, aber Belohnungen fehlgeschlagen
-      // Das ist nicht kritisch - kann nachträglich gemacht werden
     }
 
     return docRef.id;
@@ -92,7 +88,6 @@ class ProfileRepository {
 
     final rewardsInitializer = SystemRewardsInitializer();
 
-    // Hole alle Kinder
     final children = await _firestore
         .collection('users')
         .doc(user.uid)
@@ -106,7 +101,6 @@ class ProfileRepository {
       print('🔧 Migriere Kind: $childName ($childId)');
 
       try {
-        // Prüfe ob Belohnungen existieren
         final hasRewards = await rewardsInitializer.hasSystemRewards(
           userId: user.uid,
           childId: childId,
@@ -134,7 +128,6 @@ class ProfileRepository {
   }
 
   /// Aktualisiert die Sterne eines Kindes
-  /// increment = true: Fügt Sterne hinzu, false: Setzt auf exakten Wert
   Future<void> updateStars(String childId, int stars, {bool increment = true}) async {
     final update = increment
         ? {'stars': FieldValue.increment(stars)}
@@ -167,7 +160,6 @@ class ProfileRepository {
         .collection('children')
         .doc(childId);
 
-    // Transaction = mehrere Operationen atomar (alles oder nichts)
     return await _firestore.runTransaction<bool>((transaction) async {
       final snapshot = await transaction.get(docRef);
       if (!snapshot.exists) return false;
@@ -180,17 +172,14 @@ class ProfileRepository {
       final newXP = currentXP + xpAmount;
       bool leveledUp = false;
 
-      // Prüfe auf Level-Up
       if (newXP >= xpToNextLevel) {
-        // Level-Up! Überschüssige XP werden behalten
         transaction.update(docRef, {
           'xp': newXP - xpToNextLevel,
           'level': currentLevel + 1,
-          'xpToNextLevel': xpToNextLevel + 5, // Jedes Level wird etwas schwerer
+          'xpToNextLevel': xpToNextLevel + 5,
         });
         leveledUp = true;
       } else {
-        // Nur XP erhöhen
         transaction.update(docRef, {'xp': newXP});
       }
 
@@ -199,17 +188,11 @@ class ProfileRepository {
   }
 
   /// Vergibt Belohnungen nach einer Mission
-  /// correctAnswers = Anzahl richtiger Antworten
-  /// totalQuestions = Gesamtanzahl Fragen
-  /// Gibt true zurück bei Level-Up
   Future<bool> awardMissionReward(
       String childId, {
         required int correctAnswers,
         required int totalQuestions,
       }) async {
-    // Belohnungs-Formel:
-    // - 2 Sterne pro richtiger Antwort
-    // - 1 XP pro richtiger Antwort
     final stars = correctAnswers * 2;
     final xp = correctAnswers;
 
@@ -242,8 +225,7 @@ class ProfileRepository {
     });
   }
 
-
-  /// Löscht ein Kind (für später, wenn Eltern das wollen)
+  /// Löscht ein Kind
   Future<void> deleteChild(String childId) async {
     await _firestore
         .collection('users')
@@ -252,54 +234,54 @@ class ProfileRepository {
         .doc(childId)
         .delete();
   }
-}
 
-/// Löscht alle Daten eines Users komplett aus Firestore
-/// Wird vor dem Löschen des Firebase Auth Accounts aufgerufen
-Future<void> deleteAllUserData() async {
-  final user = _auth.currentUser;
-  if (user == null) throw Exception('Kein Benutzer angemeldet.');
+  /// Löscht alle Firestore-Daten eines Users komplett
+  /// Wird vor dem Löschen des Firebase Auth Accounts aufgerufen
+  Future<void> deleteAllUserData() async {
+    final user = _auth.currentUser;
+    if (user == null) throw Exception('Kein Benutzer angemeldet.');
 
-  final uid = user.uid;
+    final uid = user.uid;
 
-  // Alle Kinder laden
-  final childrenSnapshot = await _firestore
-      .collection('users')
-      .doc(uid)
-      .collection('children')
-      .get();
+    // Alle Kinder laden
+    final childrenSnapshot = await _firestore
+        .collection('users')
+        .doc(uid)
+        .collection('children')
+        .get();
 
-  // Für jedes Kind: Subcollections löschen
-  for (final childDoc in childrenSnapshot.docs) {
-    final childId = childDoc.id;
+    // Für jedes Kind: Subcollections löschen
+    for (final childDoc in childrenSnapshot.docs) {
+      final childId = childDoc.id;
 
-    // Subcollections eines Kindes löschen
-    for (final subcollection in [
-      'tutor_chat',
-      'tutor_sessions',
-      'rewards',
-      'learning_stats',
-    ]) {
-      final subDocs = await _firestore
-          .collection('users')
-          .doc(uid)
-          .collection('children')
-          .doc(childId)
-          .collection(subcollection)
-          .get();
+      for (final subcollection in [
+        'tutor_chat',
+        'tutor_sessions',
+        'rewards',
+        'learning_stats',
+      ]) {
+        final subDocs = await _firestore
+            .collection('users')
+            .doc(uid)
+            .collection('children')
+            .doc(childId)
+            .collection(subcollection)
+            .get();
 
-      for (final doc in subDocs.docs) {
-        await doc.reference.delete();
+        for (final doc in subDocs.docs) {
+          await doc.reference.delete();
+        }
       }
+
+      // Kind-Dokument selbst löschen
+      await childDoc.reference.delete();
     }
 
-    // Kind-Dokument selbst löschen
-    await childDoc.reference.delete();
+    // Haupt-User-Dokument löschen (enthält PIN, etc.)
+    await _firestore.collection('users').doc(uid).delete();
   }
 
-  // Haupt-User-Dokument löschen (enthält PIN, etc.)
-  await _firestore.collection('users').doc(uid).delete();
-}
+} // ← Ende ProfileRepository
 
 /// Provider für ProfileRepository
 @riverpod
