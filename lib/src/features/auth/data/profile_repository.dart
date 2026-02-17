@@ -219,6 +219,30 @@ class ProfileRepository {
     return leveledUp;
   }
 
+  /// Aktualisiert die Stammdaten eines Kindes (Name, Alter, Schulform, Klasse)
+  /// Lernfortschritte (XP, Level, Sterne) werden NICHT verändert
+  Future<void> updateChild({
+    required String childId,
+    required String name,
+    required int age,
+    required String schoolType,
+    required int grade,
+  }) async {
+    await _firestore
+        .collection('users')
+        .doc(_uid)
+        .collection('children')
+        .doc(childId)
+        .update({
+      'name': name,
+      'age': age,
+      'schoolType': schoolType,
+      'grade': grade,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+
   /// Löscht ein Kind (für später, wenn Eltern das wollen)
   Future<void> deleteChild(String childId) async {
     await _firestore

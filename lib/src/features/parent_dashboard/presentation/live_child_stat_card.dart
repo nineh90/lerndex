@@ -10,6 +10,8 @@ import '../../generated_tasks/presentation/task_approval_screen.dart';
 import '../../generated_tasks/data/generated_task_repository.dart';
 import 'child_statistics_screen.dart';
 import 'tutor_history_screen.dart';
+import '../../auth/data/profile_repository.dart';
+import 'edit_child_screen.dart';
 
 /// Provider für Live-Child-Daten (Stream für Echtzeit-Updates)
 final liveChildProvider = StreamProvider.family<ChildModel?, String>((ref, childId) {
@@ -29,7 +31,6 @@ final liveChildProvider = StreamProvider.family<ChildModel?, String>((ref, child
 });
 
 /// VERBESSERTE Statistik-Karte mit LIVE-Updates
-/// Ersetzt _ChildStatCard im parent_dashboard_screen.dart
 class LiveChildStatCard extends ConsumerWidget {
   final String childId;
 
@@ -37,6 +38,106 @@ class LiveChildStatCard extends ConsumerWidget {
     super.key,
     required this.childId,
   });
+
+  // =========================================================================
+  // DELETE DIALOG – korrekt in LiveChildStatCard
+  // =========================================================================
+
+  void _confirmDelete(BuildContext context, WidgetRef ref, ChildModel child) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: Colors.red, size: 28),
+            SizedBox(width: 8),
+            Text('Kind löschen'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            RichText(
+              text: TextSpan(
+                style: DefaultTextStyle.of(context).style,
+                children: [
+                  const TextSpan(text: 'Möchtest du '),
+                  TextSpan(
+                    text: child.name,
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const TextSpan(text: ' wirklich löschen?'),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.red.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.red.shade200),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.info_outline, color: Colors.red, size: 16),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Alle Fortschritte, XP, Sterne und Tutor-Gespräche werden unwiderruflich gelöscht.',
+                      style: TextStyle(fontSize: 12, color: Colors.red),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Abbrechen'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              try {
+                await ref.read(profileRepositoryProvider).deleteChild(child.id);
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('${child.name} wurde gelöscht.'),
+                      backgroundColor: Colors.orange,
+                    ),
+                  );
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Fehler beim Löschen: $e'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Ja, löschen'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // =========================================================================
+  // BUILD
+  // =========================================================================
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -57,7 +158,6 @@ class LiveChildStatCard extends ConsumerWidget {
         final xpForNextLevel = XPService.calculateXPForLevel(child.level);
         int currentLevelXP = child.xp;
 
-        // Subtrahiere XP aller vorherigen Levels
         for (int i = 1; i < child.level; i++) {
           currentLevelXP -= XPService.calculateXPForLevel(i);
         }
@@ -73,7 +173,8 @@ class LiveChildStatCard extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Header mit Namen
+
+                // ── Header: Avatar + Name + LIVE-Badge + Menü ──────────────
                 Row(
                   children: [
                     CircleAvatar(
@@ -107,7 +208,7 @@ class LiveChildStatCard extends ConsumerWidget {
                         ],
                       ),
                     ),
-                    // LIVE Indikator
+                    // LIVE-Badge
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
@@ -137,11 +238,52 @@ class LiveChildStatCard extends ConsumerWidget {
                         ],
                       ),
                     ),
+                    const SizedBox(width: 4),
+                    // Bearbeiten / Löschen Menü
+                    PopupMenuButton<String>(
+                      icon: const Icon(Icons.more_vert, color: Colors.grey),
+                      tooltip: 'Optionen',
+                      onSelected: (value) async {
+                        if (value == 'edit') {
+                          await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => EditChildScreen(child: child),
+                            ),
+                          );
+                        } else if (value == 'delete') {
+                          _confirmDelete(context, ref, child);
+                        }
+                      },
+                      itemBuilder: (context) => [
+                        const PopupMenuItem<String>(
+                          value: 'edit',
+                          child: Row(
+                            children: [
+                              Icon(Icons.edit, color: Colors.deepPurple, size: 20),
+                              SizedBox(width: 10),
+                              Text('Bearbeiten'),
+                            ],
+                          ),
+                        ),
+                        const PopupMenuItem<String>(
+                          value: 'delete',
+                          child: Row(
+                            children: [
+                              Icon(Icons.delete, color: Colors.red, size: 20),
+                              SizedBox(width: 10),
+                              Text('Löschen',
+                                  style: TextStyle(color: Colors.red)),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   ],
                 ),
                 const SizedBox(height: 16),
 
-                // Statistiken
+                // ── Statistiken ────────────────────────────────────────────
                 Row(
                   children: [
                     _StatBox(
@@ -168,7 +310,7 @@ class LiveChildStatCard extends ConsumerWidget {
                 ),
                 const SizedBox(height: 12),
 
-                // XP-Fortschritt mit Animation
+                // ── XP-Fortschritt ─────────────────────────────────────────
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -181,7 +323,7 @@ class LiveChildStatCard extends ConsumerWidget {
                         ),
                         Text(
                           '${(progress * 100).toInt()}%',
-                          style: TextStyle(
+                          style: const TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.bold,
                             color: Colors.deepPurple,
@@ -193,13 +335,15 @@ class LiveChildStatCard extends ConsumerWidget {
                     TweenAnimationBuilder<double>(
                       duration: const Duration(milliseconds: 800),
                       curve: Curves.easeInOut,
-                      tween: Tween<double>(begin: 0, end: progress.clamp(0.0, 1.0)),
+                      tween: Tween<double>(
+                          begin: 0, end: progress.clamp(0.0, 1.0)),
                       builder: (context, value, child) {
                         return LinearProgressIndicator(
                           value: value,
                           minHeight: 8,
                           backgroundColor: Colors.grey[200],
-                          valueColor: const AlwaysStoppedAnimation<Color>(Colors.deepPurple),
+                          valueColor: const AlwaysStoppedAnimation<Color>(
+                              Colors.deepPurple),
                         );
                       },
                     ),
@@ -212,7 +356,7 @@ class LiveChildStatCard extends ConsumerWidget {
                 ),
                 const SizedBox(height: 16),
 
-                // Aktionen
+                // ── Aktionen: Belohnungen + KI-Aufgaben ───────────────────
                 Row(
                   children: [
                     Expanded(
@@ -240,7 +384,8 @@ class LiveChildStatCard extends ConsumerWidget {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (_) => ImprovedAITaskGeneratorScreen(child: child),
+                              builder: (_) =>
+                                  ImprovedAITaskGeneratorScreen(child: child),
                             ),
                           );
                         },
@@ -256,12 +401,13 @@ class LiveChildStatCard extends ConsumerWidget {
                 ),
                 const SizedBox(height: 8),
 
-                // Aufgaben freigeben Button
+                // ── Aufgaben freigeben ─────────────────────────────────────
                 Consumer(
                   builder: (context, ref, _) {
                     final authRepo = ref.watch(authRepositoryProvider);
                     final userId = authRepo.currentUser?.uid ?? '';
-                    final pendingCountAsync = ref.watch(pendingTaskCountProvider(userId));
+                    final pendingCountAsync =
+                    ref.watch(pendingTaskCountProvider(userId));
 
                     return pendingCountAsync.when(
                       data: (pendingCount) {
@@ -279,7 +425,8 @@ class LiveChildStatCard extends ConsumerWidget {
                             icon: pendingCount > 0
                                 ? Badge(
                               label: Text('$pendingCount'),
-                              child: const Icon(Icons.check_circle, size: 18),
+                              child:
+                              const Icon(Icons.check_circle, size: 18),
                             )
                                 : const Icon(Icons.check_circle, size: 18),
                             label: Text(
@@ -288,9 +435,13 @@ class LiveChildStatCard extends ConsumerWidget {
                                   : 'Aufgaben freigeben',
                             ),
                             style: OutlinedButton.styleFrom(
-                              foregroundColor: pendingCount > 0 ? Colors.orange : Colors.green,
+                              foregroundColor: pendingCount > 0
+                                  ? Colors.orange
+                                  : Colors.green,
                               side: BorderSide(
-                                color: pendingCount > 0 ? Colors.orange : Colors.green,
+                                color: pendingCount > 0
+                                    ? Colors.orange
+                                    : Colors.green,
                               ),
                             ),
                           ),
@@ -303,7 +454,7 @@ class LiveChildStatCard extends ConsumerWidget {
                 ),
                 const SizedBox(height: 8),
 
-                // Tutor-Gespräche Button
+                // ── Tutor-Gespräche ────────────────────────────────────────
                 SizedBox(
                   width: double.infinity,
                   child: OutlinedButton.icon(
@@ -325,7 +476,7 @@ class LiveChildStatCard extends ConsumerWidget {
                 ),
                 const SizedBox(height: 8),
 
-                // Statistiken Button
+                // ── Statistiken ────────────────────────────────────────────
                 Row(
                   children: [
                     Expanded(
@@ -334,7 +485,8 @@ class LiveChildStatCard extends ConsumerWidget {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (_) => ChildStatisticsScreen(child: child),
+                              builder: (_) =>
+                                  ChildStatisticsScreen(child: child),
                             ),
                           );
                         },
@@ -357,9 +509,7 @@ class LiveChildStatCard extends ConsumerWidget {
         margin: EdgeInsets.only(bottom: 16),
         child: Padding(
           padding: EdgeInsets.all(16),
-          child: Center(
-            child: CircularProgressIndicator(),
-          ),
+          child: Center(child: CircularProgressIndicator()),
         ),
       ),
       error: (error, stack) => Card(
@@ -373,7 +523,10 @@ class LiveChildStatCard extends ConsumerWidget {
   }
 }
 
-/// Kleine Statistik-Box
+// =============================================================================
+// HILFWIDGET: Kleine Statistik-Box
+// =============================================================================
+
 class _StatBox extends StatelessWidget {
   final IconData icon;
   final String label;
