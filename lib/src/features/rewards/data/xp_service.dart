@@ -9,6 +9,10 @@ class XPService {
 
   XPService(this._firestore);
 
+  // =========================================================================
+  // LEVEL & XP BERECHNUNG
+  // =========================================================================
+
   /// Berechnet benötigte XP für ein Level
   /// Formel: 25 + (level * 25) bis Level 10, dann 250
   static int calculateXPForLevel(int level) {
@@ -38,12 +42,14 @@ class XPService {
     for (int i = 1; i < currentLevel; i++) {
       xpForCurrentLevel += calculateXPForLevel(i);
     }
-
     int xpInCurrentLevel = totalXP - xpForCurrentLevel;
     int xpNeededForNextLevel = calculateXPForLevel(currentLevel);
-
     return xpNeededForNextLevel - xpInCurrentLevel;
   }
+
+  // =========================================================================
+  // XP HINZUFÜGEN
+  // =========================================================================
 
   /// Fügt XP hinzu und gibt Ergebnis zurück
   Future<XPResult> addXP({
@@ -58,7 +64,6 @@ class XPService {
           .collection('children')
           .doc(childId);
 
-      // Transaktion für atomare Aktualisierung
       final result = await _firestore.runTransaction<XPResult>((transaction) async {
         final snapshot = await transaction.get(docRef);
 
@@ -70,16 +75,15 @@ class XPService {
         final currentXP = data['xp'] ?? 0;
         final currentLevel = data['level'] ?? 1;
 
-        // Neue XP berechnen
         final newXP = currentXP + xpToAdd;
         final newLevel = calculateLevelFromXP(newXP);
         final leveledUp = newLevel > currentLevel;
         final xpToNext = calculateXPToNextLevel(newXP, newLevel);
 
-        // Firestore aktualisieren
         transaction.update(docRef, {
           'xp': newXP,
           'level': newLevel,
+          'xpToNextLevel': xpToNext,
           'lastXPGain': FieldValue.serverTimestamp(),
         });
 
@@ -93,13 +97,16 @@ class XPService {
       });
 
       print('✅ XP hinzugefügt: +$xpToAdd XP → Gesamt: ${result.newXP} XP, Level: ${result.newLevel}');
-
       return result;
     } catch (e) {
       print('❌ Fehler beim Hinzufügen von XP: $e');
       rethrow;
     }
   }
+
+  // =========================================================================
+  // QUIZ-STATISTIKEN
+  // =========================================================================
 
   /// Aktualisiert Quiz-Statistiken
   Future<void> updateQuizStats({
@@ -120,14 +127,35 @@ class XPService {
         'lastQuizDate': FieldValue.serverTimestamp(),
       });
 
-      print('✅ Quiz-Statistiken aktualisiert');
+      print('✅ Quiz-Statistiken aktualisiert (Perfect: $isPerfect)');
     } catch (e) {
       print('❌ Fehler beim Aktualisieren der Quiz-Stats: $e');
     }
   }
 
-  /// Aktualisiert Streak (Lern-Serie)
-  Future<void> updateStreak({
+  // =========================================================================
+  // STREAK — KORRIGIERTE IMPLEMENTIERUNG
+  // =========================================================================
+
+  /// Berechnet ob zwei DateTime-Werte am selben Kalendertag liegen
+  static bool _isSameDay(DateTime a, DateTime b) {
+    return a.year == b.year && a.month == b.month && a.day == b.day;
+  }
+
+  /// Berechnet ob zwei DateTime-Werte genau einen Kalendertag auseinander liegen
+  static bool _isYesterday(DateTime earlier, DateTime later) {
+    final earlierDay = DateTime(earlier.year, earlier.month, earlier.day);
+    final laterDay = DateTime(later.year, later.month, later.day);
+    return laterDay.difference(earlierDay).inDays == 1;
+  }
+
+  /// Aktualisiert den Streak basierend auf Kalender-Tagen (nicht 24h-Blöcken).
+  ///
+  /// ✅ FIX: Nutzt midnight-basierte Differenz statt .inDays (hours/24).
+  ///    Beispiel: Lernen um 23:00, nächster Tag 00:30 → korrekt als "gestern" erkannt.
+  ///
+  /// Gibt den neuen Streak-Wert zurück.
+  Future<int> updateStreak({
     required String userId,
     required String childId,
   }) async {
@@ -141,27 +169,30 @@ class XPService {
       final snapshot = await docRef.get();
       final data = snapshot.data();
 
-      if (data == null) return;
+      if (data == null) return 0;
 
       final lastLearning = (data['lastLearningDate'] as Timestamp?)?.toDate();
-      final currentStreak = data['streak'] ?? 0;
+      final currentStreak = (data['streak'] as int?) ?? 0;
       final now = DateTime.now();
 
-      int newStreak = 1;
+      int newStreak;
 
-      if (lastLearning != null) {
-        final daysSinceLastLearning = now.difference(lastLearning).inDays;
-
-        if (daysSinceLastLearning == 0) {
-          // Heute schon gelernt → Streak bleibt
-          newStreak = currentStreak;
-        } else if (daysSinceLastLearning == 1) {
-          // Gestern gelernt → Streak erhöhen
-          newStreak = currentStreak + 1;
-        } else {
-          // Länger als 1 Tag → Streak zurücksetzen
-          newStreak = 1;
-        }
+      if (lastLearning == null) {
+        // Erstes Mal überhaupt gelernt
+        newStreak = 1;
+        print('🔥 Streak: Erster Lerntag → Streak = 1');
+      } else if (_isSameDay(lastLearning, now)) {
+        // Heute bereits gelernt → Streak bleibt unverändert
+        newStreak = currentStreak;
+        print('🔥 Streak: Heute bereits gelernt → bleibt bei $currentStreak');
+      } else if (_isYesterday(lastLearning, now)) {
+        // Gestern gelernt → Streak um 1 erhöhen
+        newStreak = currentStreak + 1;
+        print('🔥 Streak: Gestern gelernt → erhöht auf $newStreak');
+      } else {
+        // Mehr als 1 Tag Pause → Streak zurücksetzen
+        newStreak = 1;
+        print('🔥 Streak: Pause > 1 Tag → zurückgesetzt auf 1');
       }
 
       await docRef.update({
@@ -169,13 +200,19 @@ class XPService {
         'lastLearningDate': FieldValue.serverTimestamp(),
       });
 
-      print('✅ Streak aktualisiert: $newStreak Tage');
+      print('✅ Streak gespeichert: $newStreak Tage');
+      return newStreak;
     } catch (e) {
       print('❌ Fehler beim Aktualisieren des Streaks: $e');
+      return 0;
     }
   }
 
-  /// Holt aktuelle Kind-Daten
+  // =========================================================================
+  // KIND-DATEN LADEN
+  // =========================================================================
+
+  /// Holt aktuelle Kind-Daten aus Firestore
   Future<ChildModel?> getChild({
     required String userId,
     required String childId,

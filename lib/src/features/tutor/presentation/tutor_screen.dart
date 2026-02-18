@@ -5,8 +5,10 @@ import '../domain/chat_message.dart';
 import 'tutor_provider.dart';
 import '../../auth/presentation/active_child_provider.dart';
 import '../../auth/data/auth_repository.dart';
+import '../../auth/domain/child_model.dart';
 import '../../learning_time/learning_time_tracker.dart';
 import '../../rewards/data/xp_service.dart';
+import '../../rewards/data/reward_service.dart';
 
 /// Chat-Screen mit dem KI-Tutor
 class TutorScreen extends ConsumerStatefulWidget {
@@ -25,7 +27,6 @@ class _TutorScreenState extends ConsumerState<TutorScreen> {
   void initState() {
     super.initState();
 
-    // ⏱️ ZEIT-TRACKER INITIALISIEREN
     final child = ref.read(activeChildProvider);
     final user = ref.read(authStateChangesProvider).value;
 
@@ -41,7 +42,6 @@ class _TutorScreenState extends ConsumerState<TutorScreen> {
 
   @override
   void dispose() async {
-    // ⏱️ ZEIT STOPPEN & SPEICHERN
     if (_timeTracker != null) {
       _timeTracker!.stopTracking();
       print('⏹️ Tutor: Stoppe Zeit-Tracking bei ${_timeTracker!.trackedSeconds} Sekunden');
@@ -50,16 +50,36 @@ class _TutorScreenState extends ConsumerState<TutorScreen> {
         await _timeTracker!.saveTime();
         print('✅ Tutor: Lernzeit gespeichert');
 
-        // Optional: Streak aktualisieren
         final child = ref.read(activeChildProvider);
         final user = ref.read(authStateChangesProvider).value;
+
         if (child != null && user != null) {
           final xpService = ref.read(xpServiceProvider);
-          await xpService.updateStreak(
+
+          final newStreak = await xpService.updateStreak(
             userId: user.uid,
             childId: child.id,
           );
-          print('✅ Tutor: Streak aktualisiert');
+          print('✅ Tutor: Streak aktualisiert → $newStreak Tage');
+
+          final rewardService = ref.read(rewardServiceProvider);
+          ChildModel? updatedChild = await xpService.getChild(
+            userId: user.uid,
+            childId: child.id,
+          );
+
+          if (updatedChild != null) {
+            updatedChild = updatedChild.copyWith(streak: newStreak);
+
+            final unlockedRewards = await rewardService.checkAndApproveRewards(
+              userId: user.uid,
+              child: updatedChild,
+            );
+
+            if (unlockedRewards.isNotEmpty) {
+              print('🎁 Tutor: ${unlockedRewards.length} Belohnungen freigeschaltet!');
+            }
+          }
         }
       } catch (e) {
         print('❌ Fehler beim Speichern der Tutor-Lernzeit: $e');
@@ -82,7 +102,6 @@ class _TutorScreenState extends ConsumerState<TutorScreen> {
     }
     _messageController.clear();
 
-    // Scrolle nach unten
     Future.delayed(const Duration(milliseconds: 100), () {
       if (_scrollController.hasClients) {
         _scrollController.animateTo(
@@ -110,11 +129,10 @@ class _TutorScreenState extends ConsumerState<TutorScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('🎓 Lerndex'),
+        title: const Text('🎓 Lerndex Tutor'),
         backgroundColor: Colors.deepPurple,
         foregroundColor: Colors.white,
         actions: [
-          // Chat löschen
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: () {
@@ -122,7 +140,8 @@ class _TutorScreenState extends ConsumerState<TutorScreen> {
                 context: context,
                 builder: (context) => AlertDialog(
                   title: const Text('Chat löschen?'),
-                  content: const Text('Möchtest du den Chat wirklich löschen und neu starten?'),
+                  content: const Text(
+                      'Möchtest du den Chat wirklich löschen und neu starten?'),
                   actions: [
                     TextButton(
                       onPressed: () => Navigator.pop(context),
@@ -148,7 +167,7 @@ class _TutorScreenState extends ConsumerState<TutorScreen> {
       ),
       body: Column(
         children: [
-          // Info-Banner mit Zeit-Anzeige
+          // Info-Banner
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(12),
@@ -159,38 +178,13 @@ class _TutorScreenState extends ConsumerState<TutorScreen> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'Ich bin Lerndex! Frag mich alles über Mathe, Deutsch, Englisch und mehr! 📚✨',
-                    style: TextStyle(color: Colors.blue.shade900, fontSize: 13),
+                    'Frag mich alles über Mathe, Deutsch, Englisch und mehr!',
+                    style: TextStyle(
+                      color: Colors.blue.shade800,
+                      fontSize: 13,
+                    ),
                   ),
                 ),
-                if (_timeTracker != null)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.green.shade100,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.access_time, size: 14, color: Colors.green),
-                        const SizedBox(width: 4),
-                        StreamBuilder(
-                          stream: Stream.periodic(const Duration(seconds: 1)),
-                          builder: (context, snapshot) {
-                            return Text(
-                              _timeTracker!.formattedTime,
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.green.shade800,
-                              ),
-                            );
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
               ],
             ),
           ),
@@ -198,10 +192,35 @@ class _TutorScreenState extends ConsumerState<TutorScreen> {
           // Chat-Nachrichten
           Expanded(
             child: messages.isEmpty
-                ? const Center(child: CircularProgressIndicator())
+                ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.smart_toy,
+                    size: 80,
+                    color: Colors.deepPurple.shade200,
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Hallo ${child.name}! 👋',
+                    style: const TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Ich bin dein persönlicher Lernbegleiter.\nStell mir eine Frage!',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.grey),
+                  ),
+                ],
+              ),
+            )
                 : ListView.builder(
               controller: _scrollController,
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
               itemCount: messages.length,
               itemBuilder: (context, index) {
                 final message = messages[index];
@@ -210,62 +229,83 @@ class _TutorScreenState extends ConsumerState<TutorScreen> {
             ),
           ),
 
-          // Eingabe-Feld
-          _buildInputField(),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildInputField() {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 10,
-            offset: const Offset(0, -2),
-          ),
-        ],
-      ),
-      padding: const EdgeInsets.all(12),
-      child: SafeArea(
-        child: Row(
-          children: [
-            Expanded(
-              child: TextField(
-                controller: _messageController,
-                decoration: InputDecoration(
-                  hintText: 'Stell mir eine Frage...',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(25),
-                    borderSide: BorderSide.none,
+          // ── Eingabe-Leiste ──────────────────────────────────────────────
+          // FIX 1: SafeArea (nur bottom) → kein Überlappen mit Home-Indikator
+          SafeArea(
+            left: false,
+            right: false,
+            top: false,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.08),
+                    blurRadius: 8,
+                    offset: const Offset(0, -2),
                   ),
-                  filled: true,
-                  fillColor: Colors.grey.shade100,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                ),
-                maxLines: null,
-                textCapitalization: TextCapitalization.sentences,
-                onSubmitted: (_) => _sendMessage(),
+                ],
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Expanded(
+                    // FIX 2: maxLines: null + keyboardType multiline → Zeilenumbruch
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxHeight: 120),
+                      child: TextField(
+                        controller: _messageController,
+                        decoration: InputDecoration(
+                          hintText: 'Stell mir eine Frage...',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(20),
+                            borderSide: BorderSide.none,
+                          ),
+                          filled: true,
+                          fillColor: Colors.grey.shade100,
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 10,
+                          ),
+                        ),
+                        maxLines: null,
+                        minLines: 1,
+                        keyboardType: TextInputType.multiline,
+                        textInputAction: TextInputAction.newline,
+                        textCapitalization: TextCapitalization.sentences,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  // Senden-Button unten ausgerichtet bei mehrzeiligem Text
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 2),
+                    child: FloatingActionButton(
+                      onPressed: _sendMessage,
+                      backgroundColor: Colors.deepPurple,
+                      mini: true,
+                      child: const Icon(
+                        Icons.send,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(width: 8),
-            FloatingActionButton(
-              onPressed: _sendMessage,
-              mini: true,
-              backgroundColor: Colors.deepPurple,
-              child: const Icon(Icons.send, color: Colors.white, size: 20),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 }
 
-/// Widget für eine einzelne Chat-Nachricht
+// ============================================================================
+// MESSAGE BUBBLE
+// ============================================================================
+
 class _MessageBubble extends StatelessWidget {
   final ChatMessage message;
 
@@ -273,95 +313,93 @@ class _MessageBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Lade-Animation
+    // FIX 3: Lade-Zustand zeigt "Tutor denkt nach..." statt leerer Blase
     if (message.isLoading) {
       return Align(
         alignment: Alignment.centerLeft,
         child: Container(
           margin: const EdgeInsets.only(bottom: 12),
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
             color: Colors.grey.shade200,
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: const BorderRadius.only(
+              topLeft: Radius.circular(18),
+              topRight: Radius.circular(18),
+              bottomLeft: Radius.circular(4),
+              bottomRight: Radius.circular(18),
+            ),
           ),
           child: const Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               SizedBox(
-                width: 20,
-                height: 20,
+                width: 16,
+                height: 16,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation<Color>(Colors.deepPurple),
+                  valueColor:
+                  AlwaysStoppedAnimation<Color>(Colors.deepPurple),
                 ),
               ),
-              SizedBox(width: 12),
-              Text('Tutor denkt nach...', style: TextStyle(fontStyle: FontStyle.italic)),
+              SizedBox(width: 10),
+              Text(
+                'Tutor denkt nach...',
+                style: TextStyle(
+                  fontStyle: FontStyle.italic,
+                  color: Colors.black54,
+                  fontSize: 14,
+                ),
+              ),
             ],
           ),
         ),
       );
     }
 
+    final isUser = message.isUser;
+
     return Align(
-      alignment: message.isUser ? Alignment.centerRight : Alignment.centerLeft,
+      alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
         constraints: BoxConstraints(
-          maxWidth: MediaQuery.of(context).size.width * 0.75,
+          maxWidth: MediaQuery.of(context).size.width * 0.8,
         ),
-        child: Column(
-          crossAxisAlignment: message.isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: message.isUser ? Colors.deepPurple : Colors.grey.shade200,
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: message.isUser
-                  ? Text(
-                message.text,
-                style: const TextStyle(color: Colors.white, fontSize: 15),
-              )
-                  : MarkdownBody(
-                data: message.text,
-                styleSheet: MarkdownStyleSheet(
-                  p: const TextStyle(color: Colors.black87, fontSize: 15),
-                  strong: const TextStyle(fontWeight: FontWeight.bold),
-                  em: const TextStyle(fontStyle: FontStyle.italic),
-                ),
-              ),
-            ),
-            const SizedBox(height: 4),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              child: Text(
-                _formatTime(message.timestamp),
-                style: TextStyle(
-                  fontSize: 11,
-                  color: Colors.grey.shade600,
-                ),
-              ),
+        decoration: BoxDecoration(
+          color: isUser ? Colors.deepPurple : Colors.grey.shade100,
+          borderRadius: BorderRadius.only(
+            topLeft: const Radius.circular(18),
+            topRight: const Radius.circular(18),
+            bottomLeft: Radius.circular(isUser ? 18 : 4),
+            bottomRight: Radius.circular(isUser ? 4 : 18),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.08),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
             ),
           ],
         ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          child: isUser
+              ? Text(
+            message.text,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 15,
+            ),
+          )
+              : MarkdownBody(
+            data: message.text,
+            styleSheet: MarkdownStyleSheet(
+              p: const TextStyle(fontSize: 15, color: Colors.black87),
+              strong: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ),
+        ),
       ),
     );
-  }
-
-  String _formatTime(DateTime time) {
-    final now = DateTime.now();
-    final difference = now.difference(time);
-
-    if (difference.inSeconds < 60) {
-      return 'Gerade eben';
-    } else if (difference.inMinutes < 60) {
-      return 'vor ${difference.inMinutes} Min';
-    } else if (difference.inHours < 24) {
-      return 'vor ${difference.inHours} Std';
-    } else {
-      return '${time.day}.${time.month}.${time.year}';
-    }
   }
 }

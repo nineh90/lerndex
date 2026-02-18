@@ -8,6 +8,7 @@ import '../../rewards/data/xp_service.dart';
 import '../../rewards/data/reward_service.dart';
 import '../../rewards/presentation/reward_unlocked_dialog.dart';
 import '../../rewards/domain/reward_model.dart';
+import '../../auth/domain/child_model.dart';
 import '../../auth/data/auth_repository.dart';
 import '../../learning_time/learning_time_tracker.dart';
 import '../data/extended_quiz_repository.dart';
@@ -98,6 +99,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
       });
     }
   }
+
   void _checkAnswer(String selected) async {
     if (_showingFeedback) return;
 
@@ -259,6 +261,9 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
       try {
         print('📊 Quiz beendet - speichere Daten...');
 
+        final xpService = ref.read(xpServiceProvider);
+        final isPerfect = _correctAnswers == _questions.length;
+
         // 1️⃣ Zeit speichern
         if (_timeTracker != null) {
           _timeTracker!.stopTracking();
@@ -267,9 +272,6 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
         }
 
         // 2️⃣ Quiz-Stats aktualisieren
-        final xpService = ref.read(xpServiceProvider);
-        final isPerfect = _correctAnswers == _questions.length;
-
         await xpService.updateQuizStats(
           userId: user.uid,
           childId: child.id,
@@ -277,12 +279,12 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
         );
         print('✅ Quiz-Statistiken aktualisiert (Perfect: $isPerfect)');
 
-        // 3️⃣ Streak aktualisieren
-        await xpService.updateStreak(
+        // 3️⃣ Streak aktualisieren — gibt neuen Streak-Wert DIREKT zurück
+        final newStreak = await xpService.updateStreak(
           userId: user.uid,
           childId: child.id,
         );
-        print('✅ Streak aktualisiert');
+        print('✅ Streak aktualisiert: $newStreak Tage');
 
         // 4️⃣ Sterne vergeben
         await ref.read(profileRepositoryProvider).updateStars(
@@ -291,14 +293,18 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
         );
         print('✅ Sterne vergeben: ${_correctAnswers * 2}');
 
-        // 5️⃣ Prüfe auf neue Belohnungen
+        // 5️⃣ Kind-Daten laden und Streak-Wert überschreiben
         final rewardService = ref.read(rewardServiceProvider);
-        final updatedChild = await xpService.getChild(
+        ChildModel? updatedChild = await xpService.getChild(
           userId: user.uid,
           childId: child.id,
         );
 
         if (updatedChild != null) {
+          // ✅ KRITISCH: Streak-Wert aus updateStreak() nehmen, nicht aus getChild()
+          updatedChild = updatedChild.copyWith(streak: newStreak);
+
+          // 6️⃣ Belohnungs-Check mit korrektem Streak-Wert
           final unlockedRewards = await rewardService.checkAndApproveRewards(
             userId: user.uid,
             child: updatedChild,
@@ -307,11 +313,21 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
 
           if (unlockedRewards.isNotEmpty && mounted) {
             print('🎁 ${unlockedRewards.length} Belohnungen freigeschaltet!');
+
+            final streakRewards = unlockedRewards.where(
+                  (r) => r.trigger.toString().contains('streak'),
+            ).toList();
+            if (streakRewards.isNotEmpty) {
+              print('🔥 Streak-Belohnung(en): ${streakRewards.map((r) => r.title).join(', ')}');
+            }
+
             Future.delayed(const Duration(milliseconds: 500), () {
               if (mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text('🎁 ${unlockedRewards.length} neue Belohnung(en) freigeschaltet!'),
+                    content: Text(
+                      '🎁 ${unlockedRewards.length} neue Belohnung(en) freigeschaltet!',
+                    ),
                     backgroundColor: Colors.amber,
                     duration: const Duration(seconds: 3),
                   ),
@@ -319,8 +335,34 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
               }
             });
           }
-        }
 
+          // 7️⃣ Streak-Meilenstein-Feedback
+          if (mounted && _isStreakMilestone(newStreak)) {
+            Future.delayed(const Duration(milliseconds: 800), () {
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Row(
+                      children: [
+                        const Text('🔥', style: TextStyle(fontSize: 20)),
+                        const SizedBox(width: 8),
+                        Text(
+                          '$newStreak Tage Streak! Weiter so!',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
+                    backgroundColor: Colors.orange,
+                    duration: const Duration(seconds: 3),
+                  ),
+                );
+              }
+            });
+          }
+        }
       } catch (e, stackTrace) {
         print('❌ Fehler beim Speichern der Quiz-Daten: $e');
         print('Stack: $stackTrace');
@@ -328,10 +370,18 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
     }
   }
 
+  bool _isStreakMilestone(int streak) {
+    return streak == 3 ||
+        streak == 7 ||
+        streak == 14 ||
+        streak == 30 ||
+        streak == 50 ||
+        streak == 100;
+  }
+
   @override
-  void dispose() async {
-    // ⏱️ Zeit wurde bereits in _finishQuiz gespeichert
-    // Hier nur cleanup
+  void dispose() {
+    // ⏱️ Zeit wurde bereits in _finishQuiz gespeichert — nur cleanup
     _timeTracker?.dispose();
     _feedbackController.dispose();
     super.dispose();
