@@ -10,6 +10,8 @@ import '../../../ai/firebase_ai_service.dart';
 /// - Chat-Historie wird im Hintergrund geladen
 /// - Jedes Kind hat eigenen Chat
 /// - NEU: Speichert auch in tutor_sessions für Eltern
+/// - FIX: Session-basiertes Löschen (tutor_chat bleibt pro Session erhalten)
+/// - FIX: Timestamp nutzt lokale Zeit statt serverTimestamp (verhindert UTC-Bug)
 
 class TutorNotifier extends StateNotifier<List<ChatMessage>> {
   TutorNotifier(
@@ -48,6 +50,7 @@ class TutorNotifier extends StateNotifier<List<ChatMessage>> {
   }
 
   /// Lädt Chat-Historie im Hintergrund (ohne UI zu blockieren)
+  /// FIX: Lädt aus der aktiven Session statt aus tutor_chat
   Future<void> _loadChatHistoryInBackground() async {
     if (_isLoadingHistory) return;
     _isLoadingHistory = true;
@@ -55,32 +58,55 @@ class TutorNotifier extends StateNotifier<List<ChatMessage>> {
     try {
       print('📚 Lade Chat-Historie für Kind $_childId im Hintergrund...');
 
-      final snapshot = await _firestore
+      // Prüfe ob aktive Session existiert
+      final sessionSnapshot = await _firestore
           .collection('users')
           .doc(_userId)
           .collection('children')
           .doc(_childId)
-          .collection('tutor_chat')
-          .orderBy('timestamp', descending: true)
-          .limit(50)
+          .collection('tutor_sessions')
+          .where('status', isEqualTo: 'active')
+          .limit(1)
           .get();
 
-      if (snapshot.docs.isEmpty) {
-        print('   → Keine Historie gefunden, behalte Begrüßung');
-        // Begrüßung in Firestore speichern
+      if (sessionSnapshot.docs.isEmpty) {
+        print('   → Keine aktive Session, speichere Begrüßung in neuer Session');
         await _saveChatMessage(state.first);
         return;
       }
 
-      print('   → ${snapshot.docs.length} Nachrichten gefunden');
+      // Aktive Session gefunden – Nachrichten laden
+      _currentSessionId = sessionSnapshot.docs.first.id;
+      print('   → Aktive Session gefunden: $_currentSessionId');
 
-      // Konvertiere zu ChatMessage (in richtiger Reihenfolge)
-      final messages = snapshot.docs.reversed.map((doc) {
+      final messagesSnapshot = await _firestore
+          .collection('users')
+          .doc(_userId)
+          .collection('children')
+          .doc(_childId)
+          .collection('tutor_sessions')
+          .doc(_currentSessionId)
+          .collection('messages')
+          .orderBy('timestamp', descending: false)
+          .limit(50)
+          .get();
+
+      if (messagesSnapshot.docs.isEmpty) {
+        print('   → Keine Nachrichten in Session, behalte Begrüßung');
+        await _saveChatMessage(state.first);
+        return;
+      }
+
+      print('   → ${messagesSnapshot.docs.length} Nachrichten gefunden');
+
+      // Konvertiere zu ChatMessage
+      final messages = messagesSnapshot.docs.map((doc) {
         final data = doc.data();
         return ChatMessage(
-          id: doc.id,  // ✅ Verwende Firestore Document ID
+          id: doc.id,
           text: data['text'] ?? '',
           isUser: data['isUser'] ?? false,
+          // FIX: Timestamp korrekt aus Firestore lesen
           timestamp: (data['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now(),
         );
       }).toList();
@@ -138,6 +164,7 @@ class TutorNotifier extends StateNotifier<List<ChatMessage>> {
         print('✅ Aktive Session gefunden: $_currentSessionId');
       } else {
         // Neue Session erstellen
+        // FIX: Nutze lokale Zeit statt serverTimestamp (verhindert UTC-Zeitstempel-Bug)
         final sessionDoc = await _firestore
             .collection('users')
             .doc(_userId)
@@ -146,7 +173,7 @@ class TutorNotifier extends StateNotifier<List<ChatMessage>> {
             .collection('tutor_sessions')
             .add({
           'childId': _childId,
-          'startedAt': FieldValue.serverTimestamp(),
+          'startedAt': Timestamp.fromDate(DateTime.now()),
           'status': 'active',
           'messageCount': 0,
         });
@@ -231,29 +258,23 @@ class TutorNotifier extends StateNotifier<List<ChatMessage>> {
   }
 
   /// Speichert eine Nachricht in Firestore (fire-and-forget)
-  /// NEU: Speichert sowohl in tutor_chat ALS AUCH in tutor_sessions
+  /// FIX: Nutzt lokale Zeit statt serverTimestamp (verhindert UTC-Zeitstempel-Bug)
+  /// FIX: Speichert NUR noch in tutor_sessions (nicht mehr in tutor_chat)
   Future<void> _saveChatMessage(ChatMessage message) async {
     if (message.isLoading) return;
 
     try {
+      // FIX: Lokale Zeit statt FieldValue.serverTimestamp() – verhindert UTC-Bug
       final messageData = {
         'text': message.text,
         'isUser': message.isUser,
-        'timestamp': FieldValue.serverTimestamp(),
+        'timestamp': Timestamp.fromDate(DateTime.now()),
       };
 
-      // 1. In tutor_chat speichern (für Schüler)
-      await _firestore
-          .collection('users')
-          .doc(_userId)
-          .collection('children')
-          .doc(_childId)
-          .collection('tutor_chat')
-          .add(messageData);
-
-      // 2. NEU: Auch in Session speichern (für Eltern)
+      // Session holen oder erstellen
       final sessionId = await _getOrCreateSession();
 
+      // In Session speichern (permanent für Eltern)
       await _firestore
           .collection('users')
           .doc(_userId)
@@ -276,52 +297,107 @@ class TutorNotifier extends StateNotifier<List<ChatMessage>> {
         'messageCount': FieldValue.increment(1),
       });
 
+      // Wenn erste User-Nachricht: Thema + firstQuestion speichern
+      if (message.isUser) {
+        final sessionDoc = await _firestore
+            .collection('users')
+            .doc(_userId)
+            .collection('children')
+            .doc(_childId)
+            .collection('tutor_sessions')
+            .doc(sessionId)
+            .get();
+
+        final sessionData = sessionDoc.data();
+        final hasFirstQuestion = sessionData?['firstQuestion'] != null;
+
+        if (!hasFirstQuestion) {
+          final topic = _detectTopic(message.text);
+          await _firestore
+              .collection('users')
+              .doc(_userId)
+              .collection('children')
+              .doc(_childId)
+              .collection('tutor_sessions')
+              .doc(sessionId)
+              .update({
+            'firstQuestion': message.text,
+            'detectedTopic': topic,
+          });
+          print('🎯 Thema erkannt: $topic');
+        }
+      }
+
     } catch (e) {
       print('⚠️ Fehler beim Speichern: $e');
       // Nicht kritisch
     }
   }
 
-  /// Löscht den Chat (für Neustart)
-  Future<void> clearChat() async {
-    final child = _ref.read(activeChildProvider);
-    if (child == null) return;
+  /// Erkennt das Thema aus dem Text
+  String _detectTopic(String text) {
+    final q = text.toLowerCase();
+    if (q.contains('mathe') || q.contains('rechnen') || q.contains('plus') ||
+        q.contains('minus') || q.contains('mal') || q.contains('geteilt') ||
+        q.contains('bruch') || q.contains('prozent') || q.contains('zahl')) {
+      return 'Mathematik';
+    }
+    if (q.contains('deutsch') || q.contains('grammatik') ||
+        q.contains('rechtschreibung') || q.contains('wort') ||
+        q.contains('satz') || q.contains('adjektiv') || q.contains('verb')) {
+      return 'Deutsch';
+    }
+    if (q.contains('englisch') || q.contains('english') ||
+        q.contains('past') || q.contains('present') || q.contains('verb')) {
+      return 'Englisch';
+    }
+    if (q.contains('sachkunde') || q.contains('natur') ||
+        q.contains('pflanzen') || q.contains('tiere') || q.contains('wetter')) {
+      return 'Sachkunde';
+    }
+    return 'Allgemein';
+  }
 
-    print('🗑️ Lösche Chat für ${child.name}...');
+  /// Schließt die aktuelle Session ab (session-basiert)
+  /// FIX: Löscht NICHT mehr tutor_chat – Session bleibt für Eltern erhalten
+  /// Wird aufgerufen bei: Kind-Wechsel, Logout, App-Start (neue Session)
+  Future<void> completeCurrentSession() async {
+    if (_currentSessionId == null) return;
+
+    print('🏁 Schließe Session ab: $_currentSessionId');
 
     try {
-      // Session abschließen falls vorhanden
-      if (_currentSessionId != null) {
-        await _firestore
-            .collection('users')
-            .doc(_userId)
-            .collection('children')
-            .doc(_childId)
-            .collection('tutor_sessions')
-            .doc(_currentSessionId)
-            .update({
-          'status': 'completed',
-          'endedAt': FieldValue.serverTimestamp(),
-        });
-        _currentSessionId = null;
-      }
-
-      // Lösche alle Nachrichten aus tutor_chat (NUR Schüler-Ansicht!)
-      final snapshot = await _firestore
+      await _firestore
           .collection('users')
           .doc(_userId)
           .collection('children')
           .doc(_childId)
-          .collection('tutor_chat')
-          .get();
+          .collection('tutor_sessions')
+          .doc(_currentSessionId)
+          .update({
+        'status': 'completed',
+        'endedAt': Timestamp.fromDate(DateTime.now()),
+      });
 
-      final batch = _firestore.batch();
-      for (var doc in snapshot.docs) {
-        batch.delete(doc.reference);
-      }
-      await batch.commit();
+      _currentSessionId = null;
+      print('✅ Session abgeschlossen');
+    } catch (e) {
+      print('❌ Fehler beim Abschließen der Session: $e');
+    }
+  }
 
-      print('✅ Schüler-Chat gelöscht (Sessions bleiben für Eltern)');
+  /// Löscht den Chat und startet neue Session
+  /// FIX: Löscht NICHT mehr tutor_chat – nur Session wird abgeschlossen
+  /// und eine neue gestartet. Eltern-Historie bleibt vollständig erhalten.
+  Future<void> clearChat() async {
+    final child = _ref.read(activeChildProvider);
+    if (child == null) return;
+
+    print('🔄 Starte neue Chat-Session für ${child.name}...');
+
+    try {
+      // Aktuelle Session abschließen
+      await completeCurrentSession();
 
       // Neue Begrüßung
       final welcomeMessage = ChatMessage.tutor(
@@ -330,12 +406,12 @@ class TutorNotifier extends StateNotifier<List<ChatMessage>> {
 
       state = [welcomeMessage];
 
-      // Begrüßung speichern
+      // Begrüßung in neuer Session speichern (erstellt automatisch neue Session)
       await _saveChatMessage(welcomeMessage);
 
-      print('✅ Chat zurückgesetzt');
+      print('✅ Neue Session gestartet');
     } catch (e) {
-      print('❌ Fehler beim Löschen: $e');
+      print('❌ Fehler beim Session-Reset: $e');
     }
   }
 }

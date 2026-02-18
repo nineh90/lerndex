@@ -487,11 +487,16 @@ class _TutorHistoryTab extends ConsumerWidget {
 
   String _formatDate(DateTime date) {
     final now = DateTime.now();
-    final diff = now.difference(date);
-    if (diff.inDays == 0) {
+    final today = DateTime(now.year, now.month, now.day);
+    final dateDay = DateTime(date.year, date.month, date.day);
+    final diff = today.difference(dateDay).inDays;
+
+    if (diff == 0) {
       return 'Heute ${date.hour}:${date.minute.toString().padLeft(2, '0')} Uhr';
     }
-    if (diff.inDays == 1) return 'Gestern';
+    if (diff == 1) {
+      return 'Gestern ${date.hour}:${date.minute.toString().padLeft(2, '0')} Uhr';
+    }
     return '${date.day}.${date.month}.${date.year}';
   }
 }
