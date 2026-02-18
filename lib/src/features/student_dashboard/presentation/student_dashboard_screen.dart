@@ -64,7 +64,6 @@ class _StudentDashboardScreenState
         ],
       ),
       body: _buildBody(activeChild),
-      // ── FAB: Tutor — rund, passend zur CircularNotchedRectangle ──────
       floatingActionButton: FloatingActionButton(
         heroTag: 'tutor_fab',
         onPressed: () => _openTutor(context, activeChild),
@@ -75,7 +74,6 @@ class _StudentDashboardScreenState
         child: const Icon(Icons.smart_toy, color: Colors.white, size: 28),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-      // ── Bottom App Bar ────────────────────────────────────────────────
       bottomNavigationBar: BottomAppBar(
         shape: const CircularNotchedRectangle(),
         notchMargin: 8,
@@ -100,7 +98,6 @@ class _StudentDashboardScreenState
                 selected: _currentTab == 1,
                 onTap: () => setState(() => _currentTab = 1),
               ),
-              // Mitte: FAB-Platzhalter
               const SizedBox(width: 60),
               _NavItem(
                 icon: Icons.history_outlined,
@@ -153,7 +150,6 @@ class _StudentDashboardScreenState
     }
   }
 
-  // Avatar-Einstellungen Dialog
   void _showAvatarSettings(BuildContext context, ChildModel child) {
     showModalBottomSheet(
       context: context,
@@ -230,13 +226,11 @@ class _StudentDashboardScreenState
     );
   }
 
-  // Tutor öffnen und nach Schließen den Chat automatisch löschen & archivieren
   Future<void> _openTutor(BuildContext context, ChildModel child) async {
     await Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => const TutorScreen()),
     );
-    // ✅ Chat nach Schließen automatisch löschen (Session bleibt für Eltern)
     if (mounted) {
       final provider = ref.read(tutorProvider);
       if (provider != null) {
@@ -314,17 +308,13 @@ class _HomeTab extends ConsumerWidget {
         children: [
           _StatusHeader(child: child),
           const SizedBox(height: 20),
-
-          // ✅ Live Lernzeit mit Tagen/Stunden/Minuten/Sekunden
           _LiveLearningTimeCard(childId: child.id),
           const SizedBox(height: 24),
-
           const Text(
             'Wähle ein Fach zum Lernen:',
             style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 16),
-
           GridView.count(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
@@ -363,7 +353,6 @@ class _HomeTab extends ConsumerWidget {
               ),
             ],
           ),
-
           const SizedBox(height: 80),
         ],
       ),
@@ -373,6 +362,7 @@ class _HomeTab extends ConsumerWidget {
 
 // ============================================================================
 // TAB 2: TUTOR-VERLAUF (Schüler-Sicht)
+// FIX: visibleDocs filtert leere UND vom Elternteil gelöschte Sessions
 // ============================================================================
 
 class _TutorHistoryTab extends ConsumerWidget {
@@ -399,30 +389,42 @@ class _TutorHistoryTab extends ConsumerWidget {
           return const Center(child: CircularProgressIndicator());
         }
 
-        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+        // FIX: Leere Sessions (nur Begrüßung) UND gelöschte Sessions ausfiltern.
+        // status == 'deleted' wird vom TutorChatCleanupService sofort gesetzt,
+        // bevor das Dokument gelöscht wird → Schüler sieht es nie mehr.
+        final visibleDocs = (snapshot.data?.docs ?? []).where((doc) {
+          final data = doc.data() as Map<String, dynamic>;
+          final msgCount = data['messageCount'] as int? ?? 0;
+          final status = data['status'] as String? ?? '';
+          return msgCount > 1 && status != 'deleted';
+        }).toList();
+
+        if (visibleDocs.isEmpty) {
           return Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(Icons.chat_bubble_outline, size: 80, color: Colors.grey[300]),
                 const SizedBox(height: 16),
-                Text('Noch kein Verlauf',
-                    style: TextStyle(fontSize: 18, color: Colors.grey[600])),
+                Text(
+                  'Noch kein Verlauf',
+                  style: TextStyle(fontSize: 18, color: Colors.grey[600]),
+                ),
                 const SizedBox(height: 8),
-                Text('Starte ein Gespräch mit dem Tutor!',
-                    style: TextStyle(fontSize: 14, color: Colors.grey[400])),
+                Text(
+                  'Starte ein Gespräch mit dem Tutor!',
+                  style: TextStyle(fontSize: 14, color: Colors.grey[500]),
+                ),
               ],
             ),
           );
         }
 
-        final sessions = snapshot.data!.docs;
-
         return ListView.builder(
           padding: const EdgeInsets.all(16),
-          itemCount: sessions.length,
+          itemCount: visibleDocs.length,
           itemBuilder: (context, index) {
-            final session = sessions[index].data() as Map<String, dynamic>;
+            final session = visibleDocs[index].data() as Map<String, dynamic>;
             final startedAt = (session['startedAt'] as Timestamp?)?.toDate();
             final topic = session['detectedTopic'] as String? ?? 'Allgemein';
             final msgCount = session['messageCount'] as int? ?? 0;
@@ -430,25 +432,32 @@ class _TutorHistoryTab extends ConsumerWidget {
 
             return Card(
               margin: const EdgeInsets.only(bottom: 12),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14)),
               child: ListTile(
                 leading: CircleAvatar(
                   backgroundColor: Colors.deepPurple.shade100,
-                  child: const Icon(Icons.chat, color: Colors.deepPurple, size: 20),
+                  child: const Icon(Icons.chat,
+                      color: Colors.deepPurple, size: 20),
                 ),
-                title: Text(topic, style: const TextStyle(fontWeight: FontWeight.bold)),
+                title: Text(topic,
+                    style: const TextStyle(fontWeight: FontWeight.bold)),
                 subtitle: Text(
-                  startedAt != null ? _formatDate(startedAt) : 'Datum unbekannt',
+                  startedAt != null
+                      ? _formatDate(startedAt)
+                      : 'Datum unbekannt',
                   style: TextStyle(color: Colors.grey[600], fontSize: 12),
                 ),
                 trailing: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    Text('$msgCount Nachrichten', style: const TextStyle(fontSize: 11)),
+                    Text('$msgCount Nachrichten',
+                        style: const TextStyle(fontSize: 11)),
                     const SizedBox(height: 4),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 2),
                       decoration: BoxDecoration(
                         color: status == 'completed'
                             ? Colors.green.shade50
@@ -459,7 +468,9 @@ class _TutorHistoryTab extends ConsumerWidget {
                         status == 'completed' ? 'Abgeschlossen' : 'Aktiv',
                         style: TextStyle(
                           fontSize: 10,
-                          color: status == 'completed' ? Colors.green : Colors.orange,
+                          color: status == 'completed'
+                              ? Colors.green
+                              : Colors.orange,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -470,7 +481,7 @@ class _TutorHistoryTab extends ConsumerWidget {
                   context,
                   MaterialPageRoute(
                     builder: (_) => _SessionDetailScreen(
-                      sessionId: sessions[index].id,
+                      sessionId: visibleDocs[index].id,
                       userId: user.uid,
                       childId: child.id,
                       topic: topic,
@@ -500,6 +511,10 @@ class _TutorHistoryTab extends ConsumerWidget {
     return '${date.day}.${date.month}.${date.year}';
   }
 }
+
+// ============================================================================
+// SESSION DETAIL SCREEN (Schüler)
+// ============================================================================
 
 class _SessionDetailScreen extends StatelessWidget {
   final String sessionId;
@@ -538,7 +553,9 @@ class _SessionDetailScreen extends StatelessWidget {
             return const Center(child: CircularProgressIndicator());
           }
           final docs = snapshot.data?.docs ?? [];
-          if (docs.isEmpty) return const Center(child: Text('Keine Nachrichten'));
+          if (docs.isEmpty) {
+            return const Center(child: Text('Keine Nachrichten'));
+          }
 
           return ListView.builder(
             padding: const EdgeInsets.all(16),
@@ -548,10 +565,12 @@ class _SessionDetailScreen extends StatelessWidget {
               final isUser = msg['isUser'] as bool? ?? false;
               final text = msg['text'] as String? ?? '';
               return Align(
-                alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+                alignment:
+                isUser ? Alignment.centerRight : Alignment.centerLeft,
                 child: Container(
                   margin: const EdgeInsets.only(bottom: 8),
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 14, vertical: 10),
                   constraints: BoxConstraints(
                       maxWidth: MediaQuery.of(context).size.width * 0.75),
                   decoration: BoxDecoration(
@@ -576,7 +595,7 @@ class _SessionDetailScreen extends StatelessWidget {
 }
 
 // ============================================================================
-// TAB 3: STATISTIK — visuell wie Eltern-Dashboard
+// TAB 3: STATISTIK
 // ============================================================================
 
 class _StatisticsTab extends ConsumerWidget {
@@ -606,10 +625,10 @@ class _StatisticsTab extends ConsumerWidget {
         final xp = data?['xp'] as int? ?? child.xp;
         final level = data?['level'] as int? ?? child.level;
         final stars = data?['stars'] as int? ?? child.stars;
-        final successRate =
-        totalQuizzes > 0 ? ((perfectQuizzes / totalQuizzes) * 100).toInt() : 0;
+        final successRate = totalQuizzes > 0
+            ? ((perfectQuizzes / totalQuizzes) * 100).toInt()
+            : 0;
 
-        // XP im aktuellen Level berechnen
         int currentLevelXP = xp;
         for (int i = 1; i < level; i++) {
           currentLevelXP -= XPService.calculateXPForLevel(i);
@@ -625,7 +644,6 @@ class _StatisticsTab extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // ── Übersicht Kacheln ────────────────────────────────────
               const _SectionHeader(icon: Icons.dashboard, title: 'Übersicht'),
               const SizedBox(height: 12),
               Row(
@@ -678,7 +696,6 @@ class _StatisticsTab extends ConsumerWidget {
 
               const SizedBox(height: 24),
 
-              // ── Level-Fortschritt ────────────────────────────────────
               const _SectionHeader(
                   icon: Icons.trending_up, title: 'Level-Fortschritt'),
               const SizedBox(height: 12),
@@ -706,7 +723,8 @@ class _StatisticsTab extends ConsumerWidget {
                                 ),
                               ),
                               Text('bis Level ${level + 1}',
-                                  style: TextStyle(color: Colors.grey[600])),
+                                  style:
+                                  TextStyle(color: Colors.grey[600])),
                             ],
                           ),
                         ],
@@ -743,7 +761,6 @@ class _StatisticsTab extends ConsumerWidget {
 
               const SizedBox(height: 24),
 
-              // ── Lernzeit ─────────────────────────────────────────────
               const _SectionHeader(icon: Icons.schedule, title: 'Lernzeit'),
               const SizedBox(height: 12),
               Card(
@@ -795,7 +812,6 @@ class _StatisticsTab extends ConsumerWidget {
 
               const SizedBox(height: 24),
 
-              // ── Streak ──────────────────────────────────────────────
               const _SectionHeader(
                   icon: Icons.local_fire_department, title: 'Lern-Streak'),
               const SizedBox(height: 12),
@@ -809,7 +825,10 @@ class _StatisticsTab extends ConsumerWidget {
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: streak > 0
-                          ? [Colors.orange.shade400, Colors.deepOrange.shade600]
+                          ? [
+                        Colors.orange.shade400,
+                        Colors.deepOrange.shade600
+                      ]
                           : [Colors.grey.shade300, Colors.grey.shade400],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
@@ -830,13 +849,15 @@ class _StatisticsTab extends ConsumerWidget {
                         ),
                       ),
                       const Text('Tage Lern-Streak',
-                          style: TextStyle(fontSize: 16, color: Colors.white)),
+                          style:
+                          TextStyle(fontSize: 16, color: Colors.white)),
                       if (streak == 0)
                         const Padding(
                           padding: EdgeInsets.only(top: 8),
                           child: Text(
                             'Lerne heute, um deinen Streak zu starten!',
-                            style: TextStyle(fontSize: 12, color: Colors.white70),
+                            style: TextStyle(
+                                fontSize: 12, color: Colors.white70),
                             textAlign: TextAlign.center,
                           ),
                         ),
@@ -847,8 +868,8 @@ class _StatisticsTab extends ConsumerWidget {
 
               const SizedBox(height: 24),
 
-              // ── Quiz-Statistiken ────────────────────────────────────
-              const _SectionHeader(icon: Icons.quiz, title: 'Quiz-Statistiken'),
+              const _SectionHeader(
+                  icon: Icons.quiz, title: 'Quiz-Statistiken'),
               const SizedBox(height: 12),
               Card(
                 elevation: 2,
@@ -896,21 +917,23 @@ class _StatisticsTab extends ConsumerWidget {
                             value: perfectQuizzes / totalQuizzes,
                             minHeight: 10,
                             backgroundColor: Colors.grey.shade200,
-                            valueColor:
-                            const AlwaysStoppedAnimation<Color>(Colors.amber),
+                            valueColor: const AlwaysStoppedAnimation<Color>(
+                                Colors.amber),
                           ),
                         ),
                         const SizedBox(height: 8),
                         Text(
                           '$perfectQuizzes von $totalQuizzes perfekt gelöst',
-                          style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                          style:
+                          TextStyle(fontSize: 12, color: Colors.grey[600]),
                         ),
                       ] else
                         Padding(
                           padding: const EdgeInsets.only(top: 16),
                           child: Text(
                             'Mach dein erstes Quiz, um Statistiken zu sehen!',
-                            style: TextStyle(fontSize: 13, color: Colors.grey[500]),
+                            style: TextStyle(
+                                fontSize: 13, color: Colors.grey[500]),
                             textAlign: TextAlign.center,
                           ),
                         ),
@@ -921,7 +944,6 @@ class _StatisticsTab extends ConsumerWidget {
 
               const SizedBox(height: 24),
 
-              // ── Lernfortschritt Platzhalter ─────────────────────────
               const _SectionHeader(
                   icon: Icons.bar_chart, title: 'Lernfortschritt'),
               const SizedBox(height: 12),
@@ -948,7 +970,8 @@ class _StatisticsTab extends ConsumerWidget {
                       const SizedBox(height: 4),
                       Text(
                         'Detaillierte Lernkurven kommen bald',
-                        style: TextStyle(fontSize: 12, color: Colors.grey[400]),
+                        style:
+                        TextStyle(fontSize: 12, color: Colors.grey[400]),
                       ),
                     ],
                   ),
@@ -974,7 +997,7 @@ class _StatisticsTab extends ConsumerWidget {
 }
 
 // ============================================================================
-// LERNZEIT DETAIL-ANZEIGE (Tage / Stunden / Minuten / Sekunden)
+// LERNZEIT DETAIL-ANZEIGE
 // ============================================================================
 
 class _LearningTimeDisplay extends StatelessWidget {
@@ -1020,7 +1043,8 @@ class _TimeBlock extends StatelessWidget {
   final String label;
   final bool small;
 
-  const _TimeBlock({required this.value, required this.label, this.small = false});
+  const _TimeBlock(
+      {required this.value, required this.label, this.small = false});
 
   @override
   Widget build(BuildContext context) {
@@ -1052,7 +1076,8 @@ class _TimeBlock extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 4),
-        Text(label, style: TextStyle(fontSize: 10, color: Colors.grey[600])),
+        Text(label,
+            style: TextStyle(fontSize: 10, color: Colors.grey[600])),
       ],
     );
   }
@@ -1076,7 +1101,7 @@ class _TimeSep extends StatelessWidget {
 }
 
 // ============================================================================
-// LIVE LERNZEIT CARD (Home Tab) — Tage / Stunden / Minuten / Sekunden
+// LIVE LERNZEIT CARD (Home Tab)
 // ============================================================================
 
 class _LiveLearningTimeCard extends ConsumerWidget {
@@ -1129,7 +1154,8 @@ class _LiveLearningTimeCard extends ConsumerWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   if (days > 0) ...[
-                    _HomeTimeUnit(value: days, label: days == 1 ? 'Tag' : 'Tage'),
+                    _HomeTimeUnit(
+                        value: days, label: days == 1 ? 'Tag' : 'Tage'),
                     _HomeSep(),
                   ],
                   _HomeTimeUnit(value: hours, label: 'Std'),
@@ -1216,13 +1242,13 @@ class _SectionHeader extends StatelessWidget {
         Icon(icon, color: Colors.deepPurple, size: 20),
         const SizedBox(width: 8),
         Text(title,
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            style:
+            const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
       ],
     );
   }
 }
 
-/// Gradient-Kachel wie im Eltern-Dashboard
 class _GradientStatCard extends StatelessWidget {
   final IconData icon;
   final String label;
@@ -1242,7 +1268,8 @@ class _GradientStatCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      shape:
+      RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
@@ -1267,7 +1294,8 @@ class _GradientStatCard extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 4),
-            Text(label, style: TextStyle(fontSize: 12, color: Colors.grey[700])),
+            Text(label,
+                style: TextStyle(fontSize: 12, color: Colors.grey[700])),
             Text(subtitle,
                 style: TextStyle(fontSize: 10, color: Colors.grey[500])),
           ],
@@ -1277,7 +1305,6 @@ class _GradientStatCard extends StatelessWidget {
   }
 }
 
-/// Info-Kachel für Detail-Bereiche
 class _InfoTile extends StatelessWidget {
   final IconData icon;
   final String label;
@@ -1318,7 +1345,6 @@ class _InfoTile extends StatelessWidget {
   }
 }
 
-/// Level-Badge
 class _LevelBadge extends StatelessWidget {
   final int level;
 
@@ -1408,7 +1434,8 @@ class _StatusHeader extends StatelessWidget {
             children: [
               Text(
                 'XP: ${child.xp} / ${child.xpToNextLevel}',
-                style: const TextStyle(color: Colors.white70, fontSize: 12),
+                style:
+                const TextStyle(color: Colors.white70, fontSize: 12),
               ),
               const SizedBox(height: 8),
               ClipRRect(
@@ -1451,7 +1478,8 @@ class _SubjectTile extends StatelessWidget {
     return Card(
       elevation: 4,
       color: color.withOpacity(0.1),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      shape:
+      RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(20),

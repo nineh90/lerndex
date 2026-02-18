@@ -4,12 +4,13 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../auth/domain/child_model.dart';
 import '../../auth/data/auth_repository.dart';
 import '../../tutor/domain/chat_message.dart';
+import '../../../services/tutor_chat_cleanup_service.dart';
 
 /// 💬 CHAT-HISTORIE FÜR ELTERN
-/// Zeigt alle Tutor-Gespräche des Kindes chronologisch an
-/// FIX 1: Liest aus tutor_sessions statt tutor_chat
-/// FIX 2: Zeitstempel-Bug behoben (Kalender-Tag-Vergleich)
-/// FIX 3: Filter nach Thema hinzugefügt
+/// - Dynamische Topic-Filter (nur tatsächlich vorhandene Topics)
+/// - Leere Sessions ausgeblendet (messageCount <= 1)
+/// - Swipe-to-delete + Bestätigungs-Dialog
+/// - Löschen-Button im Detail-Screen
 class TutorHistoryScreen extends ConsumerStatefulWidget {
   final ChildModel child;
 
@@ -23,16 +24,8 @@ class TutorHistoryScreen extends ConsumerStatefulWidget {
 }
 
 class _TutorHistoryScreenState extends ConsumerState<TutorHistoryScreen> {
-  // FIX 3: Filter-State
   String _filterTopic = 'Alle';
-  final List<String> _topics = [
-    'Alle',
-    'Mathematik',
-    'Deutsch',
-    'Englisch',
-    'Sachkunde',
-    'Allgemein',
-  ];
+  List<String> _availableTopics = ['Alle'];
 
   @override
   Widget build(BuildContext context) {
@@ -46,31 +39,38 @@ class _TutorHistoryScreenState extends ConsumerState<TutorHistoryScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('${widget.child.name} - Tutor-Gespräche'),
+        title: Text('${widget.child.name} – Gespräche'),
         backgroundColor: Colors.deepPurple,
         foregroundColor: Colors.white,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.delete_sweep),
+            tooltip: 'Alle Gespräche löschen',
+            onPressed: () => _confirmDeleteAll(context, user.uid),
+          ),
+        ],
       ),
       body: Column(
         children: [
-          // FIX 3: Filter-Leiste
           _buildFilterBar(),
-          // Session-Liste
-          Expanded(
-            child: _buildSessionList(user.uid),
-          ),
+          Expanded(child: _buildSessionList(user.uid)),
         ],
       ),
     );
   }
 
+  // ── Filter-Leiste (dynamisch) ─────────────────────────────────────────────
+
   Widget _buildFilterBar() {
+    if (_availableTopics.length <= 1) return const SizedBox.shrink();
+
     return Container(
       height: 52,
       color: Colors.deepPurple.shade50,
       child: ListView(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        children: _topics.map((topic) {
+        children: _availableTopics.map((topic) {
           final selected = topic == _filterTopic;
           return Padding(
             padding: const EdgeInsets.only(right: 8),
@@ -90,8 +90,9 @@ class _TutorHistoryScreenState extends ConsumerState<TutorHistoryScreen> {
     );
   }
 
+  // ── Session-Liste ─────────────────────────────────────────────────────────
+
   Widget _buildSessionList(String userId) {
-    // FIX 1: Liest jetzt aus tutor_sessions statt tutor_chat
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
           .collection('users')
@@ -106,21 +107,45 @@ class _TutorHistoryScreenState extends ConsumerState<TutorHistoryScreen> {
           return const Center(child: CircularProgressIndicator());
         }
 
-        if (snapshot.hasError) {
-          return Center(child: Text('Fehler: ${snapshot.error}'));
+        // Leere Sessions ausblenden
+        final allDocs = (snapshot.data?.docs ?? []).where((doc) {
+          final data = doc.data() as Map<String, dynamic>;
+          return (data['messageCount'] as int? ?? 0) > 1;
+        }).toList();
+
+        // Dynamische Topics aus tatsächlichen Sessions
+        final topicSet = <String>{};
+        for (final doc in allDocs) {
+          final data = doc.data() as Map<String, dynamic>;
+          final raw = data['detectedTopic'] as String? ?? 'Allgemein';
+          topicSet.add(_normalizeTopic(raw));
+        }
+        final sortedTopics = [
+          'Alle',
+          ...topicSet.toList()..sort(),
+        ];
+
+        // State aktualisieren falls Topics sich geändert haben
+        if (sortedTopics.join() != _availableTopics.join()) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              setState(() {
+                _availableTopics = sortedTopics;
+                if (!sortedTopics.contains(_filterTopic)) {
+                  _filterTopic = 'Alle';
+                }
+              });
+            }
+          });
         }
 
-        final allDocs = snapshot.data?.docs ?? [];
-
-        // FIX 3: Filter anwenden
+        // Filter anwenden
         final filteredDocs = _filterTopic == 'Alle'
             ? allDocs
             : allDocs.where((doc) {
           final data = doc.data() as Map<String, dynamic>;
-          final topic = data['detectedTopic'] as String? ?? 'Allgemein';
-          // Normalisiere Mathe/Mathematik
-          final normalizedTopic = _normalizeTopic(topic);
-          return normalizedTopic == _filterTopic;
+          final raw = data['detectedTopic'] as String? ?? 'Allgemein';
+          return _normalizeTopic(raw) == _filterTopic;
         }).toList();
 
         if (filteredDocs.isEmpty) {
@@ -128,46 +153,251 @@ class _TutorHistoryScreenState extends ConsumerState<TutorHistoryScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.chat_bubble_outline, size: 80, color: Colors.grey[300]),
+                Icon(Icons.chat_bubble_outline,
+                    size: 64, color: Colors.grey[300]),
                 const SizedBox(height: 16),
                 Text(
                   _filterTopic == 'Alle'
                       ? 'Noch keine Gespräche'
-                      : 'Keine Gespräche zu "$_filterTopic"',
-                  style: TextStyle(fontSize: 18, color: Colors.grey[600]),
+                      : 'Keine Gespräche in "$_filterTopic"',
+                  style: TextStyle(fontSize: 16, color: Colors.grey[500]),
                 ),
-                const SizedBox(height: 8),
-                if (_filterTopic == 'Alle')
-                  Text(
-                    '${widget.child.name} hat noch nicht mit dem Tutor gechattet',
-                    style: TextStyle(fontSize: 14, color: Colors.grey[500]),
-                  ),
               ],
             ),
           );
         }
 
-        // Gruppiere Sessions nach Datum
-        final groupedSessions = _groupSessionsByDate(filteredDocs);
-
-        return ListView.builder(
-          padding: const EdgeInsets.all(16),
-          itemCount: groupedSessions.length,
-          itemBuilder: (context, index) {
-            final dateGroup = groupedSessions[index];
-            return _SessionDateGroup(
-              date: dateGroup['date'] as DateTime,
-              sessions: dateGroup['sessions'] as List<QueryDocumentSnapshot>,
-              child: widget.child,
-              userId: userId,
-            );
-          },
-        );
+        return _buildGroupedList(filteredDocs, userId);
       },
     );
   }
 
-  /// Normalisiert Themen-Strings (z.B. "Mathe" → "Mathematik")
+  Widget _buildGroupedList(List<QueryDocumentSnapshot> docs, String userId) {
+    final Map<String, List<QueryDocumentSnapshot>> grouped = {};
+
+    for (final doc in docs) {
+      final data = doc.data() as Map<String, dynamic>;
+      final date = (data['startedAt'] as Timestamp?)?.toDate();
+      final key = date != null ? _formatDate(date) : 'Unbekannt';
+      grouped.putIfAbsent(key, () => []).add(doc);
+    }
+
+    return ListView(
+      padding: const EdgeInsets.only(bottom: 24),
+      children: grouped.entries.map((entry) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Datums-Header
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
+              child: Row(
+                children: [
+                  Container(
+                    width: 4,
+                    height: 16,
+                    decoration: BoxDecoration(
+                      color: Colors.deepPurple,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    entry.key,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.deepPurple,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    '${entry.value.length} ${entry.value.length == 1 ? "Gespräch" : "Gespräche"}',
+                    style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                  ),
+                ],
+              ),
+            ),
+
+            // Swipeable Karten
+            ...entry.value.map((doc) {
+              final data = doc.data() as Map<String, dynamic>;
+              return _buildSwipeableCard(
+                context: context,
+                doc: doc,
+                data: data,
+                userId: userId,
+              );
+            }),
+          ],
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _buildSwipeableCard({
+    required BuildContext context,
+    required QueryDocumentSnapshot doc,
+    required Map<String, dynamic> data,
+    required String userId,
+  }) {
+    return Dismissible(
+      key: Key(doc.id),
+      direction: DismissDirection.endToStart,
+      background: Container(
+        margin: const EdgeInsets.only(bottom: 12, left: 16, right: 16),
+        decoration: BoxDecoration(
+          color: Colors.red.shade400,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.only(right: 20),
+        child: const Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.delete, color: Colors.white, size: 28),
+            SizedBox(height: 4),
+            Text('Löschen',
+                style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold)),
+          ],
+        ),
+      ),
+      confirmDismiss: (_) => _confirmDeleteSingle(context),
+      onDismissed: (_) =>
+          _deleteSession(userId: userId, sessionId: doc.id),
+      child: _SessionCard(
+        sessionId: doc.id,
+        data: data,
+        child: widget.child,
+        userId: userId,
+      ),
+    );
+  }
+
+  // ── Löschen-Dialoge ───────────────────────────────────────────────────────
+
+  Future<bool> _confirmDeleteSingle(BuildContext context) async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.delete_outline, color: Colors.red),
+            SizedBox(width: 8),
+            Text('Gespräch löschen?'),
+          ],
+        ),
+        content: const Text(
+          'Dieses Gespräch wird dauerhaft gelöscht – '
+              'sowohl im Elterndashboard als auch im Schülerdashboard.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Abbrechen'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(ctx, true),
+            child:
+            const Text('Löschen', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+    return result ?? false;
+  }
+
+  Future<void> _confirmDeleteAll(BuildContext context, String userId) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.delete_sweep, color: Colors.red),
+            SizedBox(width: 8),
+            Text('Alle Gespräche löschen?'),
+          ],
+        ),
+        content: Text(
+          'Alle Gespräche von ${widget.child.name} werden dauerhaft gelöscht. '
+              'Diese Aktion kann nicht rückgängig gemacht werden.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Abbrechen'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Alle löschen',
+                style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !context.mounted) return;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      await tutorChatCleanupService.deleteAllSessionsForChild(
+        userId: userId,
+        childId: widget.child.id,
+      );
+      if (context.mounted) Navigator.pop(context);
+    } catch (e) {
+      if (context.mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Fehler beim Löschen: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _deleteSession({
+    required String userId,
+    required String sessionId,
+  }) async {
+    try {
+      await tutorChatCleanupService.deleteSession(
+        userId: userId,
+        childId: widget.child.id,
+        sessionId: sessionId,
+      );
+    } catch (e) {
+      print('❌ Fehler beim Löschen der Session: $e');
+    }
+  }
+
+  // ── Hilfsmethoden ─────────────────────────────────────────────────────────
+
+  String _formatDate(DateTime date) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final yesterday = today.subtract(const Duration(days: 1));
+    final dateOnly = DateTime(date.year, date.month, date.day);
+
+    if (dateOnly == today) return 'Heute';
+    if (dateOnly == yesterday) return 'Gestern';
+
+    final weekday =
+    ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'][date.weekday - 1];
+    return '$weekday, ${date.day}.${date.month}.${date.year}';
+  }
+
   String _normalizeTopic(String topic) {
     switch (topic.toLowerCase()) {
       case 'mathe':
@@ -183,112 +413,6 @@ class _TutorHistoryScreenState extends ConsumerState<TutorHistoryScreen> {
       default:
         return 'Allgemein';
     }
-  }
-
-  /// Gruppiert Sessions nach Kalender-Datum
-  List<Map<String, dynamic>> _groupSessionsByDate(
-      List<QueryDocumentSnapshot> docs) {
-    final Map<String, List<QueryDocumentSnapshot>> byDate = {};
-
-    for (var doc in docs) {
-      final data = doc.data() as Map<String, dynamic>;
-      // FIX 2: Kalender-Tag-Vergleich für korrekte Datums-Gruppierung
-      final startedAt = (data['startedAt'] as Timestamp?)?.toDate();
-      if (startedAt == null) continue;
-
-      final dateKey =
-          '${startedAt.year}-${startedAt.month.toString().padLeft(2, '0')}-${startedAt.day.toString().padLeft(2, '0')}';
-      byDate[dateKey] ??= [];
-      byDate[dateKey]!.add(doc);
-    }
-
-    final sortedKeys = byDate.keys.toList()..sort((a, b) => b.compareTo(a));
-
-    return sortedKeys.map((key) {
-      final parts = key.split('-');
-      return {
-        'date': DateTime(
-            int.parse(parts[0]), int.parse(parts[1]), int.parse(parts[2])),
-        'sessions': byDate[key]!,
-      };
-    }).toList();
-  }
-}
-
-// ============================================================================
-// DATUMS-GRUPPE
-// ============================================================================
-
-class _SessionDateGroup extends StatelessWidget {
-  final DateTime date;
-  final List<QueryDocumentSnapshot> sessions;
-  final ChildModel child;
-  final String userId;
-
-  const _SessionDateGroup({
-    required this.date,
-    required this.sessions,
-    required this.child,
-    required this.userId,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Datums-Header
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          child: Row(
-            children: [
-              Icon(Icons.calendar_today, size: 16, color: Colors.grey[600]),
-              const SizedBox(width: 8),
-              Text(
-                _formatDate(date),
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.grey[800],
-                ),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                '(${sessions.length} ${sessions.length == 1 ? "Gespräch" : "Gespräche"})',
-                style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-              ),
-            ],
-          ),
-        ),
-
-        // Session-Karten
-        ...sessions.map((doc) {
-          final data = doc.data() as Map<String, dynamic>;
-          return _SessionCard(
-            sessionId: doc.id,
-            data: data,
-            child: child,
-            userId: userId,
-          );
-        }),
-
-        const SizedBox(height: 24),
-      ],
-    );
-  }
-
-  // FIX 2: Korrekte Datums-Formatierung mit Kalender-Tag-Vergleich
-  String _formatDate(DateTime date) {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final yesterday = today.subtract(const Duration(days: 1));
-    final dateOnly = DateTime(date.year, date.month, date.day);
-
-    if (dateOnly == today) return 'Heute';
-    if (dateOnly == yesterday) return 'Gestern';
-
-    final weekday = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'][date.weekday - 1];
-    return '$weekday, ${date.day}.${date.month}.${date.year}';
   }
 }
 
@@ -319,7 +443,7 @@ class _SessionCard extends StatelessWidget {
     final firstQuestion = data['firstQuestion'] as String?;
 
     return Card(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: const EdgeInsets.only(bottom: 12, left: 16, right: 16),
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: InkWell(
@@ -342,7 +466,6 @@ class _SessionCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header
               Row(
                 children: [
                   Container(
@@ -351,11 +474,8 @@ class _SessionCard extends StatelessWidget {
                       color: _topicColor(topic).withOpacity(0.1),
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: Icon(
-                      _topicIcon(topic),
-                      color: _topicColor(topic),
-                      size: 20,
-                    ),
+                    child: Icon(_topicIcon(topic),
+                        color: _topicColor(topic), size: 20),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -372,14 +492,13 @@ class _SessionCard extends StatelessWidget {
                         ),
                         if (startedAt != null)
                           Text(
-                            // FIX 2: Zeigt nur Uhrzeit (Datum kommt vom Datums-Header)
                             '${startedAt.hour.toString().padLeft(2, '0')}:${startedAt.minute.toString().padLeft(2, '0')} Uhr',
-                            style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                            style: TextStyle(
+                                fontSize: 12, color: Colors.grey[600]),
                           ),
                       ],
                     ),
                   ),
-                  // Status-Badge
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
@@ -393,7 +512,7 @@ class _SessionCard extends StatelessWidget {
                           color: status == 'completed'
                               ? Colors.green.shade50
                               : Colors.orange.shade50,
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
                           status == 'completed' ? 'Abgeschlossen' : 'Aktiv',
@@ -411,15 +530,14 @@ class _SessionCard extends StatelessWidget {
                 ],
               ),
 
-              // Erste Frage Preview
               if (firstQuestion != null && firstQuestion.isNotEmpty) ...[
-                const SizedBox(height: 12),
+                const SizedBox(height: 10),
                 Container(
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: Colors.grey[50],
+                    color: Colors.grey.shade50,
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.grey[200]!),
+                    border: Border.all(color: Colors.grey.shade200),
                   ),
                   child: Row(
                     children: [
@@ -430,8 +548,8 @@ class _SessionCard extends StatelessWidget {
                           firstQuestion,
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
-                          style:
-                          TextStyle(fontSize: 14, color: Colors.grey[800]),
+                          style: TextStyle(
+                              fontSize: 13, color: Colors.grey[800]),
                         ),
                       ),
                     ],
@@ -441,8 +559,12 @@ class _SessionCard extends StatelessWidget {
 
               const SizedBox(height: 8),
               Row(
-                mainAxisAlignment: MainAxisAlignment.end,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
+                  Text(
+                    '← Wischen zum Löschen',
+                    style: TextStyle(fontSize: 11, color: Colors.grey[400]),
+                  ),
                   Icon(Icons.chevron_right, color: Colors.grey[400]),
                 ],
               ),
@@ -534,15 +656,21 @@ class _SessionDetailScreen extends StatelessWidget {
             Text(topic),
             if (startedAt != null)
               Text(
-                // FIX 2: Korrektes Datum im Detail-Screen
                 _formatFullDate(startedAt!),
-                style:
-                const TextStyle(fontSize: 12, fontWeight: FontWeight.normal),
+                style: const TextStyle(
+                    fontSize: 12, fontWeight: FontWeight.normal),
               ),
           ],
         ),
         backgroundColor: topicColor,
         foregroundColor: Colors.white,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.delete_outline),
+            tooltip: 'Gespräch löschen',
+            onPressed: () => _deleteFromDetail(context),
+          ),
+        ],
       ),
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
@@ -591,13 +719,53 @@ class _SessionDetailScreen extends StatelessWidget {
     );
   }
 
-  // FIX 2: Vollständige Datums-Formatierung mit Kalender-Tag-Vergleich
+  Future<void> _deleteFromDetail(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.delete_outline, color: Colors.red),
+            SizedBox(width: 8),
+            Text('Gespräch löschen?'),
+          ],
+        ),
+        content: const Text(
+          'Dieses Gespräch wird dauerhaft gelöscht – '
+              'sowohl im Eltern- als auch im Schülerdashboard.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Abbrechen'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(ctx, true),
+            child:
+            const Text('Löschen', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !context.mounted) return;
+
+    await tutorChatCleanupService.deleteSession(
+      userId: userId,
+      childId: childId,
+      sessionId: sessionId,
+    );
+
+    if (context.mounted) Navigator.pop(context);
+  }
+
   String _formatFullDate(DateTime date) {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final yesterday = today.subtract(const Duration(days: 1));
     final dateOnly = DateTime(date.year, date.month, date.day);
-
     final timeStr =
         '${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')} Uhr';
 
@@ -643,69 +811,65 @@ class _MessageBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        mainAxisAlignment:
-        isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (!isUser) ...[
-            CircleAvatar(
-              radius: 16,
-              backgroundColor: Colors.deepPurple,
-              child: const Icon(Icons.school, size: 16, color: Colors.white),
-            ),
-            const SizedBox(width: 8),
-          ],
-          Flexible(
-            child: Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: isUser ? Colors.blue[100] : Colors.grey[200],
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    isUser ? childName : 'Lerndex Tutor',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.grey[700],
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(text, style: const TextStyle(fontSize: 14)),
-                  if (timestamp != null) ...[
-                    const SizedBox(height: 4),
-                    Text(
-                      // FIX 2: Nur Uhrzeit anzeigen (kein "heute X Uhr"-Bug)
-                      '${timestamp!.hour.toString().padLeft(2, '0')}:${timestamp!.minute.toString().padLeft(2, '0')}',
-                      style: TextStyle(fontSize: 10, color: Colors.grey[600]),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ),
-          if (isUser) ...[
-            const SizedBox(width: 8),
-            CircleAvatar(
-              radius: 16,
-              backgroundColor: Colors.blue,
+    return Align(
+      alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        constraints: BoxConstraints(
+          maxWidth: MediaQuery.of(context).size.width * 0.78,
+        ),
+        child: Column(
+          crossAxisAlignment:
+          isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(bottom: 4),
               child: Text(
-                childName[0].toUpperCase(),
-                style: const TextStyle(
-                  color: Colors.white,
+                isUser ? childName : '🎓 Lerndex',
+                style: TextStyle(
+                  fontSize: 11,
                   fontWeight: FontWeight.bold,
-                  fontSize: 14,
+                  color: isUser ? Colors.deepPurple : topicColor,
                 ),
               ),
             ),
+            Container(
+              decoration: BoxDecoration(
+                color:
+                isUser ? Colors.deepPurple.shade50 : Colors.white,
+                borderRadius: BorderRadius.only(
+                  topLeft: const Radius.circular(16),
+                  topRight: const Radius.circular(16),
+                  bottomLeft: Radius.circular(isUser ? 16 : 4),
+                  bottomRight: Radius.circular(isUser ? 4 : 16),
+                ),
+                border: Border.all(
+                  color: isUser
+                      ? Colors.deepPurple.shade100
+                      : Colors.grey.shade200,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              child: Text(text,
+                  style: const TextStyle(fontSize: 14, height: 1.4)),
+            ),
+            if (timestamp != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Text(
+                  '${timestamp!.hour.toString().padLeft(2, '0')}:${timestamp!.minute.toString().padLeft(2, '0')}',
+                  style: TextStyle(fontSize: 10, color: Colors.grey[500]),
+                ),
+              ),
           ],
-        ],
+        ),
       ),
     );
   }
