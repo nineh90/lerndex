@@ -13,10 +13,6 @@ import 'tutor_history_screen.dart';
 import '../../auth/data/profile_repository.dart';
 import 'edit_child_screen.dart';
 
-// =============================================================================
-// PROVIDER
-// =============================================================================
-
 /// Provider für Live-Child-Daten (Stream für Echtzeit-Updates)
 final liveChildProvider = StreamProvider.family<ChildModel?, String>((ref, childId) {
   final user = ref.watch(authStateChangesProvider).value;
@@ -106,10 +102,12 @@ class LiveChildStatCard extends ConsumerWidget {
                     text: child.name,
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
-                  const TextSpan(text: ' wirklich löschen? Alle Daten werden dauerhaft entfernt.'),
+                  const TextSpan(text: ' wirklich löschen? '),
                 ],
               ),
             ),
+            const SizedBox(height: 8),
+            const Text('Alle Daten werden dauerhaft entfernt.'),
           ],
         ),
         actions: [
@@ -184,6 +182,13 @@ class LiveChildStatCard extends ConsumerWidget {
         }
 
         final progress = currentLevelXP / xpForNextLevel;
+
+        // pendingCount für das Menü-Label
+        final user = ref.watch(authStateChangesProvider).value;
+        final pendingCountAsync = user != null
+            ? ref.watch(pendingTaskCountProvider(user.uid))
+            : null;
+        final pendingCount = pendingCountAsync?.value ?? 0;
 
         return Card(
           margin: const EdgeInsets.only(bottom: 16),
@@ -260,21 +265,65 @@ class LiveChildStatCard extends ConsumerWidget {
                       const SizedBox(width: 4),
                     ],
 
-                    // Menü
+                    // ── Drei-Punkte-Menü (inkl. aller Aktionen) ────────────
                     PopupMenuButton<String>(
                       onSelected: (value) {
-                        if (value == 'edit') {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => EditChildScreen(child: child),
-                            ),
-                          );
-                        } else if (value == 'delete') {
-                          _confirmDelete(context, ref, child);
+                        switch (value) {
+                          case 'edit':
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => EditChildScreen(child: child),
+                              ),
+                            );
+                            break;
+                          case 'delete':
+                            _confirmDelete(context, ref, child);
+                            break;
+                          case 'rewards':
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => ManageRewardsScreen(child: child),
+                              ),
+                            );
+                            break;
+                          case 'ai_tasks':
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => ImprovedAITaskGeneratorScreen(child: child),
+                              ),
+                            );
+                            break;
+                          case 'approve_tasks':
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const TaskApprovalScreen(),
+                              ),
+                            );
+                            break;
+                          case 'tutor':
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => TutorHistoryScreen(child: child),
+                              ),
+                            );
+                            break;
+                          case 'statistics':
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => ChildStatisticsScreen(child: child),
+                              ),
+                            );
+                            break;
                         }
                       },
                       itemBuilder: (context) => [
+                        // ── Bearbeiten & Löschen ──────────────────────────
                         const PopupMenuItem(
                           value: 'edit',
                           child: Row(
@@ -292,6 +341,77 @@ class LiveChildStatCard extends ConsumerWidget {
                               Icon(Icons.delete, size: 18, color: Colors.red),
                               SizedBox(width: 8),
                               Text('Löschen', style: TextStyle(color: Colors.red)),
+                            ],
+                          ),
+                        ),
+
+                        // ── Trennlinie ─────────────────────────────────────
+                        const PopupMenuDivider(),
+
+                        // ── Belohnungen verwalten ──────────────────────────
+                        const PopupMenuItem(
+                          value: 'rewards',
+                          child: Row(
+                            children: [
+                              Icon(Icons.card_giftcard, size: 18, color: Colors.amber),
+                              SizedBox(width: 8),
+                              Text('Belohnungen verwalten'),
+                            ],
+                          ),
+                        ),
+
+                        // ── KI-Aufgaben generieren ─────────────────────────
+                        const PopupMenuItem(
+                          value: 'ai_tasks',
+                          child: Row(
+                            children: [
+                              Icon(Icons.auto_awesome, size: 18, color: Colors.deepPurple),
+                              SizedBox(width: 8),
+                              Text('KI-Aufgaben generieren'),
+                            ],
+                          ),
+                        ),
+
+                        // ── Aufgaben freigeben ─────────────────────────────
+                        PopupMenuItem(
+                          value: 'approve_tasks',
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.task_alt,
+                                size: 18,
+                                color: pendingCount > 0 ? Colors.orange : Colors.green,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                pendingCount > 0
+                                    ? 'Aufgaben freigeben ($pendingCount)'
+                                    : 'Aufgaben freigeben',
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        // ── Tutor-Gespräche ────────────────────────────────
+                        const PopupMenuItem(
+                          value: 'tutor',
+                          child: Row(
+                            children: [
+                              Icon(Icons.chat, size: 18, color: Colors.deepPurple),
+                              SizedBox(width: 8),
+                              Text('Tutor-Gespräche'),
+                            ],
+                          ),
+                        ),
+
+                        // ── Statistiken ────────────────────────────────────
+                        const PopupMenuItem(
+                          value: 'statistics',
+                          child: Row(
+                            children: [
+                              Icon(Icons.bar_chart, size: 18, color: Colors.indigo),
+                              SizedBox(width: 8),
+                              Text('Statistiken'),
                             ],
                           ),
                         ),
@@ -375,181 +495,6 @@ class LiveChildStatCard extends ConsumerWidget {
                     ),
                   ],
                 ),
-
-                const SizedBox(height: 16),
-                const Divider(height: 1),
-                const SizedBox(height: 12),
-
-                // ── Aktions-Buttons ────────────────────────────────────────
-                Consumer(
-                  builder: (context, ref, _) {
-                    final user = ref.watch(authStateChangesProvider).value;
-                    if (user == null) return const SizedBox.shrink();
-
-                    final pendingCountAsync = ref.watch(
-                      pendingTaskCountProvider(user.uid),
-                    );
-
-                    final pendingCount = pendingCountAsync.value ?? 0;
-
-                    return Column(
-                      children: [
-                        // ── Belohnungen verwalten ──────────────────────────
-                        SizedBox(
-                          width: double.infinity,
-                          child: OutlinedButton.icon(
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) =>
-                                      ManageRewardsScreen(child: child),
-                                ),
-                              );
-                            },
-                            icon: const Icon(Icons.card_giftcard, size: 18),
-                            label: const Text('Belohnungen verwalten'),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: Colors.amber,
-                              side: const BorderSide(color: Colors.amber),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-
-                        // ── KI-Aufgaben generieren ─────────────────────────
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton.icon(
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) =>
-                                      ImprovedAITaskGeneratorScreen(child: child),
-                                ),
-                              );
-                            },
-                            icon: const Icon(Icons.auto_awesome, size: 18),
-                            label: const Text('KI-Aufgaben generieren'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.deepPurple,
-                              foregroundColor: Colors.white,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-
-                        // ── Aufgaben freigeben ─────────────────────────────
-                        pendingCountAsync.when(
-                          data: (_) => SizedBox(
-                            width: double.infinity,
-                            child: OutlinedButton.icon(
-                              onPressed: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) =>
-                                    const TaskApprovalScreen(),
-                                  ),
-                                );
-                              },
-                              icon: Stack(
-                                clipBehavior: Clip.none,
-                                children: [
-                                  const Icon(Icons.task_alt, size: 18),
-                                  if (pendingCount > 0)
-                                    Positioned(
-                                      right: -6,
-                                      top: -4,
-                                      child: Container(
-                                        padding: const EdgeInsets.all(2),
-                                        decoration: const BoxDecoration(
-                                          color: Colors.red,
-                                          shape: BoxShape.circle,
-                                        ),
-                                        child: Text(
-                                          '$pendingCount',
-                                          style: const TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 9,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                ],
-                              ),
-                              label: Text(
-                                pendingCount > 0
-                                    ? 'Aufgaben freigeben ($pendingCount)'
-                                    : 'Aufgaben freigeben',
-                              ),
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: pendingCount > 0
-                                    ? Colors.orange
-                                    : Colors.green,
-                                side: BorderSide(
-                                  color: pendingCount > 0
-                                      ? Colors.orange
-                                      : Colors.green,
-                                ),
-                              ),
-                            ),
-                          ),
-                          loading: () => const SizedBox.shrink(),
-                          error: (_, __) => const SizedBox.shrink(),
-                        ),
-                        const SizedBox(height: 8),
-
-                        // ── Tutor-Gespräche ────────────────────────────────
-                        SizedBox(
-                          width: double.infinity,
-                          child: OutlinedButton.icon(
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) =>
-                                      TutorHistoryScreen(child: child),
-                                ),
-                              );
-                            },
-                            icon: const Icon(Icons.chat, size: 18),
-                            label: const Text('Tutor-Gespräche'),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: Colors.deepPurple,
-                              side: const BorderSide(color: Colors.deepPurple),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-
-                        // ── Statistiken ────────────────────────────────────
-                        SizedBox(
-                          width: double.infinity,
-                          child: OutlinedButton.icon(
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) =>
-                                      ChildStatisticsScreen(child: child),
-                                ),
-                              );
-                            },
-                            icon: const Icon(Icons.bar_chart, size: 18),
-                            label: const Text('Statistiken'),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: Colors.indigo,
-                              side: const BorderSide(color: Colors.indigo),
-                            ),
-                          ),
-                        ),
-                      ],
-                    );
-                  },
-                ),
               ],
             ),
           ),
@@ -630,8 +575,8 @@ class _PulsingDot extends StatefulWidget {
 
 class _PulsingDotState extends State<_PulsingDot>
     with SingleTickerProviderStateMixin {
-  late final AnimationController _controller;
-  late final Animation<double> _animation;
+  late AnimationController _controller;
+  late Animation<double> _animation;
 
   @override
   void initState() {
@@ -640,10 +585,7 @@ class _PulsingDotState extends State<_PulsingDot>
       vsync: this,
       duration: const Duration(milliseconds: 900),
     )..repeat(reverse: true);
-
-    _animation = Tween<double>(begin: 0.4, end: 1.0).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
+    _animation = Tween<double>(begin: 0.4, end: 1.0).animate(_controller);
   }
 
   @override
@@ -654,17 +596,14 @@ class _PulsingDotState extends State<_PulsingDot>
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _animation,
-      builder: (_, __) => Opacity(
-        opacity: _animation.value,
-        child: Container(
-          width: 6,
-          height: 6,
-          decoration: const BoxDecoration(
-            color: Colors.green,
-            shape: BoxShape.circle,
-          ),
+    return FadeTransition(
+      opacity: _animation,
+      child: Container(
+        width: 8,
+        height: 8,
+        decoration: const BoxDecoration(
+          color: Colors.green,
+          shape: BoxShape.circle,
         ),
       ),
     );
