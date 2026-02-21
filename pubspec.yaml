@@ -13,6 +13,9 @@ dependencies:
   cupertino_icons: ^1.0.8
   shared_preferences: ^2.3.0
 
+  # Google Login
+  google_sign_in: ^6.2.1
+
   # State Management
   flutter_riverpod: ^2.5.1
   riverpod_annotation: ^2.3.5

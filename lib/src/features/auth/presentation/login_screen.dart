@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/auth_repository.dart';
+import 'register_screen.dart';
+import 'email_verification_screen.dart';
+import 'onboarding_screen.dart';
 
-/// Login-Screen für Eltern
-/// Ermöglicht Login und Registrierung
+/// Login-Screen für bestehende Nutzer
+/// Neue Nutzer werden zu RegisterScreen weitergeleitet
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
@@ -12,29 +15,24 @@ class LoginScreen extends ConsumerStatefulWidget {
 }
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
-  // Umschalter: true = Registrierung, false = Login
-  bool _isRegistering = false;
-
-  // Text-Controller für die Eingabefelder
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-
-  // Loading-Status während API-Calls
   bool _isLoading = false;
+  bool _isGoogleLoading = false;
+  bool _obscurePassword = true;
 
   @override
   void dispose() {
-    // Controller aufräumen (wichtig für Memory-Management!)
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
 
-  /// Führt Login oder Registrierung aus
-  Future<void> _submit() async {
-    // Validierung
-    if (_emailController.text.trim().isEmpty ||
-        _passwordController.text.trim().isEmpty) {
+  Future<void> _login() async {
+    final email = _emailController.text.trim();
+    final password = _passwordController.text.trim();
+
+    if (email.isEmpty || password.isEmpty) {
       _showError('Bitte fülle alle Felder aus.');
       return;
     }
@@ -42,20 +40,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     setState(() => _isLoading = true);
 
     try {
-      if (_isRegistering) {
-        // Registrierung
-        await ref.read(authRepositoryProvider).createUserWithEmailAndPassword(
-          _emailController.text.trim(),
-          _passwordController.text.trim(),
-        );
-      } else {
-        // Login
-        await ref.read(authRepositoryProvider).signInWithEmailAndPassword(
-          _emailController.text.trim(),
-          _passwordController.text.trim(),
-        );
-      }
-      // Erfolg! Firebase übernimmt Navigation automatisch via authStateChanges
+      await ref.read(authRepositoryProvider).signInWithEmailAndPassword(
+          email, password);
+      // Navigation via authStateChanges in main.dart
     } catch (e) {
       _showError(e.toString());
     } finally {
@@ -63,26 +50,76 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
   }
 
-  /// Zeigt Fehler-Snackbar
+  Future<void> _googleLogin() async {
+    setState(() => _isGoogleLoading = true);
+
+    try {
+      final result = await ref.read(authRepositoryProvider).signInWithGoogle();
+
+      if (!mounted) return;
+
+      // Neuer Google-User → Onboarding
+      if (result.isNewUser) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const OnboardingScreen()),
+        );
+        return;
+      }
+
+      // Bestehender User: Onboarding abgeschlossen?
+      final onboardingDone =
+      await ref.read(authRepositoryProvider).isOnboardingComplete();
+      if (!mounted) return;
+
+      if (!onboardingDone) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const OnboardingScreen()),
+        );
+      }
+      // Sonst: authStateChanges übernimmt Navigation ins Dashboard
+    } catch (e) {
+      _showError(e.toString());
+    } finally {
+      if (mounted) setState(() => _isGoogleLoading = false);
+    }
+  }
+
+  Future<void> _forgotPassword() async {
+    final email = _emailController.text.trim();
+    if (email.isEmpty) {
+      _showError('Bitte gib zuerst deine E-Mail-Adresse ein.');
+      return;
+    }
+    try {
+      await ref.read(authRepositoryProvider).sendPasswordResetEmail(email);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('✉️ Passwort-Reset-Mail wurde gesendet!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      _showError(e.toString());
+    }
+  }
+
   void _showError(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.red,
-      ),
+      SnackBar(content: Text(message), backgroundColor: Colors.red),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // Gradient-Hintergrund für schöneres Design
       body: Container(
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [Colors.deepPurple, Colors.purple.shade700],
+            colors: [Color(0xFF6B21A8), Color(0xFF7E22CE)],
           ),
         ),
         child: SafeArea(
@@ -92,15 +129,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // App-Logo/Icon
-                  const Icon(
-                    Icons.school,
-                    size: 100,
-                    color: Colors.white,
-                  ),
-                  const SizedBox(height: 20),
-
-                  // App-Name
+                  // Logo
+                  const Icon(Icons.school, size: 80, color: Colors.white),
+                  const SizedBox(height: 16),
                   const Text(
                     'Lerndex',
                     style: TextStyle(
@@ -109,104 +140,165 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       color: Colors.white,
                     ),
                   ),
-                  const SizedBox(height: 10),
-
-                  // Untertitel
-                  Text(
-                    _isRegistering ? 'Erstelle dein Eltern-Konto' : 'Willkommen zurück',
-                    style: const TextStyle(
-                      fontSize: 18,
-                      color: Colors.white70,
-                    ),
+                  const Text(
+                    'Willkommen zurück!',
+                    style: TextStyle(fontSize: 16, color: Colors.white70),
                   ),
-                  const SizedBox(height: 50),
+                  const SizedBox(height: 40),
 
                   // Login-Card
                   Card(
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                    ),
+                        borderRadius: BorderRadius.circular(20)),
                     elevation: 8,
                     child: Padding(
                       padding: const EdgeInsets.all(24),
                       child: Column(
                         children: [
-                          // E-Mail Eingabe
+                          // E-Mail
                           TextField(
                             controller: _emailController,
                             decoration: InputDecoration(
                               labelText: 'E-Mail',
-                              prefixIcon: const Icon(Icons.email),
+                              prefixIcon: const Icon(Icons.email_outlined),
                               border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
+                                  borderRadius: BorderRadius.circular(12)),
                             ),
                             keyboardType: TextInputType.emailAddress,
                             textInputAction: TextInputAction.next,
                           ),
                           const SizedBox(height: 16),
 
-                          // Passwort Eingabe
+                          // Passwort
                           TextField(
                             controller: _passwordController,
                             decoration: InputDecoration(
                               labelText: 'Passwort',
-                              prefixIcon: const Icon(Icons.lock),
+                              prefixIcon: const Icon(Icons.lock_outline),
                               border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
+                                  borderRadius: BorderRadius.circular(12)),
+                              suffixIcon: IconButton(
+                                icon: Icon(_obscurePassword
+                                    ? Icons.visibility_outlined
+                                    : Icons.visibility_off_outlined),
+                                onPressed: () => setState(
+                                        () => _obscurePassword = !_obscurePassword),
                               ),
                             ),
-                            obscureText: true,
+                            obscureText: _obscurePassword,
                             textInputAction: TextInputAction.done,
-                            onSubmitted: (_) => _submit(),
+                            onSubmitted: (_) => _login(),
                           ),
-                          const SizedBox(height: 24),
 
-                          // Login/Registrieren Button
+                          // Passwort vergessen
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: TextButton(
+                              onPressed: _forgotPassword,
+                              child: const Text('Passwort vergessen?',
+                                  style: TextStyle(color: Color(0xFF6B21A8))),
+                            ),
+                          ),
+
+                          const SizedBox(height: 8),
+
+                          // Login-Button
                           SizedBox(
                             width: double.infinity,
                             height: 50,
                             child: ElevatedButton(
-                              onPressed: _isLoading ? null : _submit,
+                              onPressed: _isLoading ? null : _login,
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.deepPurple,
+                                backgroundColor: const Color(0xFF6B21A8),
                                 shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
+                                    borderRadius: BorderRadius.circular(12)),
                               ),
                               child: _isLoading
                                   ? const SizedBox(
                                 height: 20,
                                 width: 20,
                                 child: CircularProgressIndicator(
-                                  color: Colors.white,
-                                  strokeWidth: 2,
-                                ),
+                                    color: Colors.white, strokeWidth: 2),
                               )
-                                  : Text(
-                                _isRegistering ? 'Konto erstellen' : 'Anmelden',
-                                style: const TextStyle(
-                                  fontSize: 18,
-                                  color: Colors.white,
-                                ),
-                              ),
+                                  : const Text('Anmelden',
+                                  style: TextStyle(
+                                      fontSize: 16, color: Colors.white)),
                             ),
                           ),
                           const SizedBox(height: 16),
 
-                          // Umschalter Login <-> Registrierung
-                          TextButton(
-                            onPressed: () {
-                              setState(() {
-                                _isRegistering = !_isRegistering;
-                              });
-                            },
-                            child: Text(
-                              _isRegistering
-                                  ? 'Bereits ein Konto? Hier anmelden'
-                                  : 'Noch kein Konto? Jetzt registrieren',
-                              style: const TextStyle(color: Colors.deepPurple),
+                          // Divider
+                          Row(
+                            children: [
+                              const Expanded(child: Divider()),
+                              Padding(
+                                padding:
+                                const EdgeInsets.symmetric(horizontal: 12),
+                                child: Text('oder',
+                                    style: TextStyle(
+                                        color: Colors.grey.shade500)),
+                              ),
+                              const Expanded(child: Divider()),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+
+                          // Google-Button
+                          SizedBox(
+                            width: double.infinity,
+                            height: 50,
+                            child: OutlinedButton.icon(
+                              onPressed:
+                              _isGoogleLoading ? null : _googleLogin,
+                              style: OutlinedButton.styleFrom(
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12)),
+                                side: BorderSide(
+                                    color: Colors.grey.shade300, width: 1.5),
+                              ),
+                              icon: _isGoogleLoading
+                                  ? const SizedBox(
+                                height: 18,
+                                width: 18,
+                                child: CircularProgressIndicator(
+                                    strokeWidth: 2),
+                              )
+                                  : Image.asset(
+                                'assets/images/google_logo.png',
+                                height: 22,
+                                width: 22,
+                                errorBuilder: (_, __, ___) => const Icon(
+                                    Icons.g_mobiledata,
+                                    size: 24,
+                                    color: Colors.red),
+                              ),
+                              label: const Text('Mit Google anmelden',
+                                  style: TextStyle(
+                                      fontSize: 15, color: Colors.black87)),
                             ),
+                          ),
+                          const SizedBox(height: 20),
+
+                          // Zu Registrierung wechseln
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Text('Noch kein Konto?',
+                                  style: TextStyle(color: Colors.grey)),
+                              TextButton(
+                                onPressed: () {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                        builder: (_) =>
+                                        const RegisterScreen()),
+                                  );
+                                },
+                                child: const Text('Jetzt registrieren',
+                                    style: TextStyle(
+                                        color: Color(0xFF6B21A8),
+                                        fontWeight: FontWeight.bold)),
+                              ),
+                            ],
                           ),
                         ],
                       ),
