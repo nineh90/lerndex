@@ -47,7 +47,6 @@ class TutorSessionRepository {
   }) async {
     print('🔍 Suche aktive Session für Kind: $childId');
 
-    // Prüfe ob aktive Session existiert
     final snapshot = await _firestore
         .collection('users')
         .doc(userId)
@@ -61,12 +60,8 @@ class TutorSessionRepository {
 
     if (snapshot.docs.isNotEmpty) {
       final doc = snapshot.docs.first;
-      final session = TutorSession.fromFirestore(
-        doc.data(),
-        doc.id,
-      );
+      final session = TutorSession.fromFirestore(doc.data(), doc.id);
 
-      // Prüfe ob Session zu alt ist (>30 Min Inaktivität)
       final now = DateTime.now();
       final timeSinceStart = now.difference(session.startedAt);
 
@@ -77,7 +72,6 @@ class TutorSessionRepository {
           childId: childId,
           sessionId: session.id,
         );
-        // Erstelle neue Session
         return createSession(userId: userId, childId: childId);
       }
 
@@ -85,7 +79,6 @@ class TutorSessionRepository {
       return session;
     }
 
-    // Keine aktive Session → Neue erstellen
     print('📝 Keine aktive Session, erstelle neue');
     return createSession(userId: userId, childId: childId);
   }
@@ -98,12 +91,14 @@ class TutorSessionRepository {
     int? messageCount,
     String? detectedTopic,
     String? firstQuestion,
+    String? contentFlag,
   }) async {
     final updates = <String, dynamic>{};
 
     if (messageCount != null) updates['messageCount'] = messageCount;
     if (detectedTopic != null) updates['detectedTopic'] = detectedTopic;
     if (firstQuestion != null) updates['firstQuestion'] = firstQuestion;
+    if (contentFlag != null) updates['contentFlag'] = contentFlag;
 
     if (updates.isEmpty) return;
 
@@ -127,7 +122,6 @@ class TutorSessionRepository {
 
     final now = DateTime.now();
 
-    // Hole Session-Daten
     final sessionDoc = await _firestore
         .collection('users')
         .doc(userId)
@@ -144,7 +138,6 @@ class TutorSessionRepository {
       sessionDoc.id,
     );
 
-    // Berechne Dauer
     final duration = now.difference(session.startedAt);
 
     await _firestore
@@ -214,7 +207,7 @@ class TutorSessionRepository {
       'messageCount': FieldValue.increment(1),
     });
 
-    // 4. Wenn erste User-Nachricht: Thema erkennen
+    // 4. Wenn erste User-Nachricht: Thema + Content-Flag erkennen
     if (message.isUser) {
       final sessionDoc = await _firestore
           .collection('users')
@@ -232,17 +225,25 @@ class TutorSessionRepository {
 
       if (session.firstQuestion == null) {
         final topic = TutorSession.detectTopic(message.text);
+        final contentFlag = TutorSession.detectContentFlag(message.text);
+
         await updateSession(
           userId: userId,
           childId: childId,
           sessionId: sessionId,
           firstQuestion: message.text,
           detectedTopic: topic,
+          contentFlag: contentFlag,
         );
-        print('🎯 Thema erkannt: $topic');
+
+        print('🎯 Thema erkannt: $topic${contentFlag != null ? ' | 🚩 Flag: $contentFlag' : ''}');
       }
     }
   }
+
+  // ========================================================================
+  // SCHÜLER-CHAT MANAGEMENT
+  // ========================================================================
 
   /// Löscht active_tutor_chat (Schüler-Ansicht)
   Future<void> clearActiveChatForStudent({
@@ -375,7 +376,8 @@ final tutorSessionRepositoryProvider = Provider<TutorSessionRepository>((ref) {
 });
 
 /// Provider für aktive Session eines Kindes
-final activeSessionProvider = FutureProvider.family<TutorSession?, String>((ref, childId) async {
+final activeSessionProvider =
+FutureProvider.family<TutorSession?, String>((ref, childId) async {
   final repository = ref.watch(tutorSessionRepositoryProvider);
   final authRepo = ref.watch(authRepositoryProvider);
   final userId = authRepo.currentUser?.uid;

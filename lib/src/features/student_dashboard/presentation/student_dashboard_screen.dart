@@ -12,6 +12,162 @@ import '../../tutor/presentation/tutor_provider.dart';
 import '../../rewards/data/xp_service.dart';
 
 // ============================================================================
+// DYNAMISCHE FÄCHER-KONFIGURATION
+// Basierend auf schoolType + grade des Kindes – einfach erweiterbar
+// ============================================================================
+
+class SubjectConfig {
+  final String title;
+  final String emoji;
+  final IconData icon;
+  final List<Color> gradientColors;
+  final String subject; // Übergabewert an QuizScreen
+
+  const SubjectConfig({
+    required this.title,
+    required this.emoji,
+    required this.icon,
+    required this.gradientColors,
+    required this.subject,
+  });
+}
+
+/// Gibt die passenden Fächer für ein Kind zurück
+/// Basiert auf schoolType und grade aus ChildModel
+List<SubjectConfig> getSubjectsForChild(ChildModel child) {
+  final grade = child.grade;
+  final schoolType = child.schoolType;
+
+  // ── Grundschule (Klasse 1–4) ─────────────────────────────────────────────
+  if (schoolType == 'Grundschule' || grade <= 4) {
+    return const [
+      SubjectConfig(
+        title: 'Mathe',
+        emoji: '🔢',
+        icon: Icons.calculate_rounded,
+        gradientColors: [Color(0xFFFF8C00), Color(0xFFE64A19)],
+        subject: 'Mathe',
+      ),
+      SubjectConfig(
+        title: 'Deutsch',
+        emoji: '📖',
+        icon: Icons.menu_book_rounded,
+        gradientColors: [Color(0xFFEC407A), Color(0xFF8E24AA)],
+        subject: 'Deutsch',
+      ),
+      SubjectConfig(
+        title: 'Englisch',
+        emoji: '🌍',
+        icon: Icons.language_rounded,
+        gradientColors: [Color(0xFF1E88E5), Color(0xFF039BE5)],
+        subject: 'Englisch',
+      ),
+      SubjectConfig(
+        title: 'Sachkunde',
+        emoji: '🌿',
+        icon: Icons.wb_sunny_rounded,
+        gradientColors: [Color(0xFF43A047), Color(0xFF7CB342)],
+        subject: 'Sachkunde',
+      ),
+    ];
+  }
+
+  // ── Mittelstufe (Klasse 5–10) ─────────────────────────────────────────────
+  if (grade <= 10) {
+    return const [
+      SubjectConfig(
+        title: 'Mathe',
+        emoji: '🔢',
+        icon: Icons.calculate_rounded,
+        gradientColors: [Color(0xFFFF8C00), Color(0xFFE64A19)],
+        subject: 'Mathe',
+      ),
+      SubjectConfig(
+        title: 'Deutsch',
+        emoji: '✍️',
+        icon: Icons.menu_book_rounded,
+        gradientColors: [Color(0xFFEC407A), Color(0xFF8E24AA)],
+        subject: 'Deutsch',
+      ),
+      SubjectConfig(
+        title: 'Englisch',
+        emoji: '🌍',
+        icon: Icons.language_rounded,
+        gradientColors: [Color(0xFF1E88E5), Color(0xFF039BE5)],
+        subject: 'Englisch',
+      ),
+      SubjectConfig(
+        title: 'Biologie',
+        emoji: '🧬',
+        icon: Icons.biotech_rounded,
+        gradientColors: [Color(0xFF26A69A), Color(0xFF00897B)],
+        subject: 'Biologie',
+      ),
+      SubjectConfig(
+        title: 'Physik',
+        emoji: '⚡',
+        icon: Icons.bolt_rounded,
+        gradientColors: [Color(0xFF5C6BC0), Color(0xFF512DA8)],
+        subject: 'Physik',
+      ),
+      SubjectConfig(
+        title: 'Geschichte',
+        emoji: '🏛️',
+        icon: Icons.account_balance_rounded,
+        gradientColors: [Color(0xFF8D6E63), Color(0xFF546E7A)],
+        subject: 'Geschichte',
+      ),
+    ];
+  }
+
+  // ── Oberstufe (Klasse 11–13) ──────────────────────────────────────────────
+  return const [
+    SubjectConfig(
+      title: 'Mathe',
+      emoji: '📐',
+      icon: Icons.calculate_rounded,
+      gradientColors: [Color(0xFFFF8C00), Color(0xFFE64A19)],
+      subject: 'Mathe',
+    ),
+    SubjectConfig(
+      title: 'Deutsch',
+      emoji: '✍️',
+      icon: Icons.menu_book_rounded,
+      gradientColors: [Color(0xFFEC407A), Color(0xFF8E24AA)],
+      subject: 'Deutsch',
+    ),
+    SubjectConfig(
+      title: 'Englisch',
+      emoji: '🌍',
+      icon: Icons.language_rounded,
+      gradientColors: [Color(0xFF1E88E5), Color(0xFF039BE5)],
+      subject: 'Englisch',
+    ),
+    SubjectConfig(
+      title: 'Chemie',
+      emoji: '🧪',
+      icon: Icons.science_rounded,
+      gradientColors: [Color(0xFFAB47BC), Color(0xFF7B1FA2)],
+      subject: 'Chemie',
+    ),
+    SubjectConfig(
+      title: 'Physik',
+      emoji: '⚡',
+      icon: Icons.bolt_rounded,
+      gradientColors: [Color(0xFF3949AB), Color(0xFF1A237E)],
+      subject: 'Physik',
+    ),
+    SubjectConfig(
+      title: 'Geschichte',
+      emoji: '🏛️',
+      icon: Icons.account_balance_rounded,
+      gradientColors: [Color(0xFF8D6E63), Color(0xFF546E7A)],
+      subject: 'Geschichte',
+    ),
+  ];
+}
+
+// ============================================================================
 // STUDENT DASHBOARD - MIT BOTTOM APP BAR
 // ============================================================================
 
@@ -33,10 +189,12 @@ class _StudentDashboardScreenState
     if (activeChild == null) return const SizedBox.shrink();
 
     return Scaffold(
+      backgroundColor: const Color(0xFFF5F3FF),
       appBar: AppBar(
         title: Text(_appBarTitle(activeChild.name)),
         backgroundColor: Colors.deepPurple,
         foregroundColor: Colors.white,
+        elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () => ref.read(activeChildProvider.notifier).deselect(),
@@ -64,19 +222,23 @@ class _StudentDashboardScreenState
         ],
       ),
       body: _buildBody(activeChild),
-      floatingActionButton: FloatingActionButton(
-        heroTag: 'tutor_fab',
-        onPressed: () => _openTutor(context, activeChild),
-        backgroundColor: Colors.deepPurple,
-        elevation: 4,
-        shape: const CircleBorder(),
-        tooltip: 'KI-Tutor öffnen',
-        child: const Icon(Icons.smart_toy, color: Colors.white, size: 28),
+      floatingActionButton: SizedBox(
+        width: 68,
+        height: 68,
+        child: FloatingActionButton(
+          heroTag: 'tutor_fab',
+          onPressed: () => _openTutor(context, activeChild),
+          backgroundColor: Colors.deepPurple,
+          elevation: 6,
+          shape: const CircleBorder(),
+          tooltip: 'KI-Tutor öffnen',
+          child: const Icon(Icons.smart_toy, color: Colors.white, size: 32),
+        ),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       bottomNavigationBar: BottomAppBar(
         shape: const CircularNotchedRectangle(),
-        notchMargin: 8,
+        notchMargin: 6,
         color: Colors.white,
         elevation: 8,
         child: SizedBox(
@@ -120,6 +282,21 @@ class _StudentDashboardScreenState
     );
   }
 
+  Widget _buildBody(ChildModel child) {
+    switch (_currentTab) {
+      case 0:
+        return _HomeTab(child: child);
+      case 1:
+        return const RewardsScreen();
+      case 2:
+        return _TutorHistoryTab(child: child);
+      case 3:
+        return _StatisticsTab(child: child);
+      default:
+        return _HomeTab(child: child);
+    }
+  }
+
   String _appBarTitle(String name) {
     switch (_currentTab) {
       case 0:
@@ -135,94 +312,13 @@ class _StudentDashboardScreenState
     }
   }
 
-  Widget _buildBody(ChildModel activeChild) {
-    switch (_currentTab) {
-      case 0:
-        return _HomeTab(child: activeChild);
-      case 1:
-        return const RewardsScreen();
-      case 2:
-        return _TutorHistoryTab(child: activeChild);
-      case 3:
-        return _StatisticsTab(child: activeChild);
-      default:
-        return _HomeTab(child: activeChild);
-    }
-  }
-
   void _showAvatarSettings(BuildContext context, ChildModel child) {
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      builder: (_) => Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: Colors.grey.shade300,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            const SizedBox(height: 20),
-            CircleAvatar(
-              radius: 40,
-              backgroundColor: Colors.deepPurple.shade100,
-              child: Text(
-                child.name[0].toUpperCase(),
-                style: const TextStyle(
-                  fontSize: 36,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.deepPurple,
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              child.name,
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            Text(
-              'Level ${child.level} · ${child.stars} ⭐',
-              style: TextStyle(color: Colors.grey[600]),
-            ),
-            const SizedBox(height: 24),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.deepPurple.shade50,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.deepPurple.shade100),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.brush_outlined, color: Colors.deepPurple),
-                  const SizedBox(width: 12),
-                  const Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Avatar anpassen',
-                            style: TextStyle(fontWeight: FontWeight.bold)),
-                        Text('Folgt in Kürze',
-                            style: TextStyle(fontSize: 12, color: Colors.grey)),
-                      ],
-                    ),
-                  ),
-                  Icon(Icons.lock_outline, color: Colors.grey[400], size: 18),
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-          ],
-        ),
-      ),
+      builder: (context) => _AvatarSettingsSheet(child: child),
     );
   }
 
@@ -280,7 +376,8 @@ class _NavItem extends StatelessWidget {
               style: TextStyle(
                 fontSize: 10,
                 color: selected ? Colors.deepPurple : Colors.grey,
-                fontWeight: selected ? FontWeight.bold : FontWeight.normal,
+                fontWeight:
+                selected ? FontWeight.bold : FontWeight.normal,
               ),
             ),
           ],
@@ -291,7 +388,7 @@ class _NavItem extends StatelessWidget {
 }
 
 // ============================================================================
-// TAB 0: HOME - LERNEN
+// TAB 0: HOME – NEU GESTALTET (ohne Statistiken)
 // ============================================================================
 
 class _HomeTab extends ConsumerWidget {
@@ -301,59 +398,195 @@ class _HomeTab extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final subjects = getSubjectsForChild(child);
+
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _StatusHeader(child: child),
-          const SizedBox(height: 20),
-          _LiveLearningTimeCard(childId: child.id),
-          const SizedBox(height: 24),
-          const Text(
-            'Wähle ein Fach zum Lernen:',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          // ── Hero-Header (nahtlos an AppBar) ─────────────────────────────
+          _HeroHeader(child: child),
+
+          // ── Live Lernzeit + Streak ────────────────────────────────────────
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+            child: _LiveLearningTimeCard(childId: child.id),
           ),
-          const SizedBox(height: 16),
-          GridView.count(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            crossAxisCount: 2,
-            mainAxisSpacing: 14,
-            crossAxisSpacing: 14,
-            childAspectRatio: 1.1,
+
+          // ── Fächer-Titel ─────────────────────────────────────────────────
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 24, 20, 14),
+            child: Row(
+              children: [
+                Container(
+                  width: 4,
+                  height: 22,
+                  decoration: BoxDecoration(
+                    color: Colors.deepPurple,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Text(
+                  _subjectsHeadline(child),
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF1A1A2E),
+                    letterSpacing: 0.2,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // ── Dynamisches Fächer-Grid ──────────────────────────────────────
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                mainAxisSpacing: 14,
+                crossAxisSpacing: 14,
+                childAspectRatio: 1.35,
+              ),
+              itemCount: subjects.length,
+              itemBuilder: (context, index) {
+                final s = subjects[index];
+                return _PlayfulSubjectTile(
+                  config: s,
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => QuizScreen(subject: s.subject),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+
+          const SizedBox(height: 100), // Platz für FAB + BottomBar
+        ],
+      ),
+    );
+  }
+
+  String _subjectsHeadline(ChildModel child) {
+    if (child.grade <= 4) return 'Was lernst du heute? 🎯';
+    if (child.grade <= 10) return 'Deine Fächer';
+    return 'Fächer & Themen';
+  }
+}
+
+// ============================================================================
+// HERO HEADER – nahtlos an AppBar, enthält Level/Sterne/XP
+// ============================================================================
+
+class _HeroHeader extends StatelessWidget {
+  final ChildModel child;
+
+  const _HeroHeader({required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Colors.deepPurple, Color(0xFF7B1FA2)],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+        ),
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(32),
+          bottomRight: Radius.circular(32),
+        ),
+      ),
+      padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+      child: Column(
+        children: [
+          // Level & Sterne Badges
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _SubjectTile(
-                title: 'Mathe',
-                icon: Icons.calculate,
-                color: Colors.orange,
-                onTap: () => Navigator.push(context,
-                    MaterialPageRoute(builder: (_) => QuizScreen(subject: 'Mathe'))),
+              _HeaderBadge(emoji: '🏆', label: 'Level ${child.level}'),
+              _HeaderBadge(emoji: '⭐', label: '${child.stars} Sterne'),
+            ],
+          ),
+          const SizedBox(height: 18),
+          // XP-Fortschrittsbalken
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    '${child.xp} XP',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                    ),
+                  ),
+                  Text(
+                    'Bis Level ${child.level + 1}: ${child.xpToNextLevel} XP',
+                    style: const TextStyle(
+                      color: Colors.white70,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
               ),
-              _SubjectTile(
-                title: 'Deutsch',
-                icon: Icons.menu_book,
-                color: Colors.redAccent,
-                onTap: () => Navigator.push(context,
-                    MaterialPageRoute(builder: (_) => QuizScreen(subject: 'Deutsch'))),
-              ),
-              _SubjectTile(
-                title: 'Englisch',
-                icon: Icons.language,
-                color: Colors.blue,
-                onTap: () => Navigator.push(context,
-                    MaterialPageRoute(builder: (_) => QuizScreen(subject: 'Englisch'))),
-              ),
-              _SubjectTile(
-                title: 'Sachkunde',
-                icon: Icons.wb_sunny,
-                color: Colors.green,
-                onTap: () => Navigator.push(context,
-                    MaterialPageRoute(builder: (_) => QuizScreen(subject: 'Sachkunde'))),
+              const SizedBox(height: 8),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: LinearProgressIndicator(
+                  value: child.xpProgress.clamp(0.0, 1.0),
+                  minHeight: 14,
+                  backgroundColor: Colors.white24,
+                  valueColor:
+                  const AlwaysStoppedAnimation<Color>(Colors.amber),
+                ),
               ),
             ],
           ),
-          const SizedBox(height: 80),
+        ],
+      ),
+    );
+  }
+}
+
+class _HeaderBadge extends StatelessWidget {
+  final String emoji;
+  final String label;
+
+  const _HeaderBadge({required this.emoji, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.18),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(emoji, style: const TextStyle(fontSize: 16)),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+              fontSize: 14,
+            ),
+          ),
         ],
       ),
     );
@@ -361,8 +594,372 @@ class _HomeTab extends ConsumerWidget {
 }
 
 // ============================================================================
+// SPIELERISCHE FACH-KACHEL (NEU GESTALTET)
+// ============================================================================
+
+class _PlayfulSubjectTile extends StatefulWidget {
+  final SubjectConfig config;
+  final VoidCallback onTap;
+
+  const _PlayfulSubjectTile({required this.config, required this.onTap});
+
+  @override
+  State<_PlayfulSubjectTile> createState() => _PlayfulSubjectTileState();
+}
+
+class _PlayfulSubjectTileState extends State<_PlayfulSubjectTile>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnim;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 100),
+    );
+    _scaleAnim = Tween<double>(begin: 1.0, end: 0.94).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ScaleTransition(
+      scale: _scaleAnim,
+      child: GestureDetector(
+        onTapDown: (_) => _controller.forward(),
+        onTapUp: (_) {
+          _controller.reverse();
+          widget.onTap();
+        },
+        onTapCancel: () => _controller.reverse(),
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: widget.config.gradientColors,
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(
+                color: widget.config.gradientColors.last.withOpacity(0.4),
+                blurRadius: 14,
+                offset: const Offset(0, 7),
+              ),
+            ],
+          ),
+          child: Stack(
+            children: [
+              // Dekorative Kreise im Hintergrund
+              Positioned(
+                right: -16,
+                top: -16,
+                child: Container(
+                  width: 72,
+                  height: 72,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.12),
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ),
+              Positioned(
+                left: -10,
+                bottom: -20,
+                child: Container(
+                  width: 60,
+                  height: 60,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.08),
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ),
+              // Inhalt
+              Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    // Emoji oben links
+                    Text(
+                      widget.config.emoji,
+                      style: const TextStyle(fontSize: 28),
+                    ),
+                    // Fachname + Pfeil-Button unten
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          widget.config.title,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.3,
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.all(5),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.25),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.arrow_forward_rounded,
+                            color: Colors.white,
+                            size: 14,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ============================================================================
+// LIVE LERNZEIT CARD (Home Tab) – kompaktes Layout mit Streak
+// ============================================================================
+
+class _LiveLearningTimeCard extends ConsumerWidget {
+  final String childId;
+
+  const _LiveLearningTimeCard({required this.childId});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final user = ref.watch(authStateChangesProvider).value;
+    if (user == null) return const SizedBox.shrink();
+
+    return StreamBuilder<DocumentSnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('children')
+          .doc(childId)
+          .snapshots(),
+      builder: (context, snapshot) {
+        final data = snapshot.data?.data() as Map<String, dynamic>?;
+        final totalSeconds = data?['totalLearningSeconds'] as int? ?? 0;
+
+        final hours = totalSeconds ~/ 3600;
+        final minutes = (totalSeconds % 3600) ~/ 60;
+        final secs = totalSeconds % 60;
+
+        final streak = data?['streak'] as int? ?? 0;
+        final isActive = data?['isCurrentlyLearning'] as bool? ?? false;
+
+        return Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.07),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              // Lernzeit
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.timer_outlined,
+                            size: 14, color: Colors.deepPurple.shade400),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Lernzeit gesamt',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Colors.grey[600],
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        if (isActive) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.green.shade50,
+                              borderRadius: BorderRadius.circular(8),
+                              border:
+                              Border.all(color: Colors.green.shade300),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  width: 5,
+                                  height: 5,
+                                  decoration: const BoxDecoration(
+                                    color: Colors.green,
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                                const SizedBox(width: 3),
+                                Text(
+                                  'Live',
+                                  style: TextStyle(
+                                    fontSize: 9,
+                                    color: Colors.green.shade700,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        if (hours > 0) ...[
+                          _TimeBlock(value: hours, label: 'Std'),
+                          _TimeSep(),
+                        ],
+                        _TimeBlock(value: minutes, label: 'Min'),
+                        _TimeSep(),
+                        _TimeBlock(value: secs, label: 'Sek', small: true),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+
+              // Trennlinie
+              Container(
+                width: 1,
+                height: 52,
+                color: Colors.grey.shade200,
+                margin: const EdgeInsets.symmetric(horizontal: 16),
+              ),
+
+              // Streak
+              Column(
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.local_fire_department,
+                          size: 14, color: Colors.orange),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Streak',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Colors.grey[600],
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '$streak',
+                    style: TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      color: streak > 0 ? Colors.orange : Colors.grey,
+                    ),
+                  ),
+                  Text(
+                    streak == 1 ? 'Tag' : 'Tage',
+                    style: TextStyle(fontSize: 10, color: Colors.grey[500]),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _TimeBlock extends StatelessWidget {
+  final int value;
+  final String label;
+  final bool small;
+
+  const _TimeBlock(
+      {required this.value, required this.label, this.small = false});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Container(
+          padding: EdgeInsets.symmetric(
+            horizontal: small ? 8 : 12,
+            vertical: small ? 4 : 6,
+          ),
+          decoration: BoxDecoration(
+            color: Colors.deepPurple.shade50,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Text(
+            value.toString().padLeft(2, '0'),
+            style: TextStyle(
+              fontSize: small ? 18 : 22,
+              fontWeight: FontWeight.bold,
+              color: Colors.deepPurple.shade700,
+            ),
+          ),
+        ),
+        const SizedBox(height: 3),
+        Text(label,
+            style: TextStyle(fontSize: 9, color: Colors.grey[500])),
+      ],
+    );
+  }
+}
+
+class _TimeSep extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12, left: 3, right: 3),
+      child: Text(
+        ':',
+        style: TextStyle(
+          fontSize: 18,
+          fontWeight: FontWeight.bold,
+          color: Colors.deepPurple.shade300,
+        ),
+      ),
+    );
+  }
+}
+
+// ============================================================================
 // TAB 2: TUTOR-VERLAUF (Schüler-Sicht)
-// FIX: visibleDocs filtert leere UND vom Elternteil gelöschte Sessions
+// Filtert leere Sessions (messageCount <= 1) und gelöschte (status == 'deleted')
 // ============================================================================
 
 class _TutorHistoryTab extends ConsumerWidget {
@@ -389,9 +986,7 @@ class _TutorHistoryTab extends ConsumerWidget {
           return const Center(child: CircularProgressIndicator());
         }
 
-        // FIX: Leere Sessions (nur Begrüßung) UND gelöschte Sessions ausfiltern.
-        // status == 'deleted' wird vom TutorChatCleanupService sofort gesetzt,
-        // bevor das Dokument gelöscht wird → Schüler sieht es nie mehr.
+        // Leere Sessions (nur Begrüßung) UND gelöschte Sessions ausfiltern
         final visibleDocs = (snapshot.data?.docs ?? []).where((doc) {
           final data = doc.data() as Map<String, dynamic>;
           final msgCount = data['messageCount'] as int? ?? 0;
@@ -404,7 +999,8 @@ class _TutorHistoryTab extends ConsumerWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.chat_bubble_outline, size: 80, color: Colors.grey[300]),
+                Icon(Icons.chat_bubble_outline,
+                    size: 80, color: Colors.grey[300]),
                 const SizedBox(height: 16),
                 Text(
                   'Noch kein Verlauf',
@@ -424,9 +1020,12 @@ class _TutorHistoryTab extends ConsumerWidget {
           padding: const EdgeInsets.all(16),
           itemCount: visibleDocs.length,
           itemBuilder: (context, index) {
-            final session = visibleDocs[index].data() as Map<String, dynamic>;
-            final startedAt = (session['startedAt'] as Timestamp?)?.toDate();
-            final topic = session['detectedTopic'] as String? ?? 'Allgemein';
+            final doc = visibleDocs[index];
+            final session = doc.data() as Map<String, dynamic>;
+            final startedAt =
+            (session['startedAt'] as Timestamp?)?.toDate();
+            final topic =
+                session['detectedTopic'] as String? ?? 'Allgemein';
             final msgCount = session['messageCount'] as int? ?? 0;
             final status = session['status'] as String? ?? 'active';
 
@@ -434,58 +1033,89 @@ class _TutorHistoryTab extends ConsumerWidget {
               margin: const EdgeInsets.only(bottom: 12),
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(14)),
-              child: ListTile(
-                leading: CircleAvatar(
-                  backgroundColor: Colors.deepPurple.shade100,
-                  child: const Icon(Icons.chat,
-                      color: Colors.deepPurple, size: 20),
-                ),
-                title: Text(topic,
-                    style: const TextStyle(fontWeight: FontWeight.bold)),
-                subtitle: Text(
-                  startedAt != null
-                      ? _formatDate(startedAt)
-                      : 'Datum unbekannt',
-                  style: TextStyle(color: Colors.grey[600], fontSize: 12),
-                ),
-                trailing: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text('$msgCount Nachrichten',
-                        style: const TextStyle(fontSize: 11)),
-                    const SizedBox(height: 4),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: status == 'completed'
-                            ? Colors.green.shade50
-                            : Colors.orange.shade50,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        status == 'completed' ? 'Abgeschlossen' : 'Aktiv',
-                        style: TextStyle(
-                          fontSize: 10,
-                          color: status == 'completed'
-                              ? Colors.green
-                              : Colors.orange,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+              elevation: 2,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(14),
                 onTap: () => Navigator.push(
                   context,
                   MaterialPageRoute(
                     builder: (_) => _SessionDetailScreen(
-                      sessionId: visibleDocs[index].id,
                       userId: user.uid,
                       childId: child.id,
+                      sessionId: doc.id,
                       topic: topic,
+                      startedAt: startedAt,
                     ),
+                  ),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(14),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: _topicColor(topic).withOpacity(0.12),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Icon(_topicIcon(topic),
+                            color: _topicColor(topic), size: 22),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              topic,
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.bold,
+                                color: _topicColor(topic),
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              startedAt != null
+                                  ? _formatDate(startedAt)
+                                  : 'Datum unbekannt',
+                              style: TextStyle(
+                                  fontSize: 12, color: Colors.grey[600]),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text('$msgCount Nachrichten',
+                              style: TextStyle(
+                                  fontSize: 11, color: Colors.grey[600])),
+                          const SizedBox(height: 4),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: status == 'completed'
+                                  ? Colors.green.shade50
+                                  : Colors.orange.shade50,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              status == 'completed'
+                                  ? 'Abgeschlossen'
+                                  : 'Aktiv',
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: status == 'completed'
+                                    ? Colors.green.shade700
+                                    : Colors.orange.shade700,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -499,41 +1129,91 @@ class _TutorHistoryTab extends ConsumerWidget {
   String _formatDate(DateTime date) {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    final dateDay = DateTime(date.year, date.month, date.day);
-    final diff = today.difference(dateDay).inDays;
-
-    if (diff == 0) {
-      return 'Heute ${date.hour}:${date.minute.toString().padLeft(2, '0')} Uhr';
-    }
-    if (diff == 1) {
-      return 'Gestern ${date.hour}:${date.minute.toString().padLeft(2, '0')} Uhr';
-    }
+    final yesterday = today.subtract(const Duration(days: 1));
+    final dateOnly = DateTime(date.year, date.month, date.day);
+    if (dateOnly == today) return 'Heute';
+    if (dateOnly == yesterday) return 'Gestern';
     return '${date.day}.${date.month}.${date.year}';
+  }
+
+  Color _topicColor(String topic) {
+    switch (topic) {
+      case 'Mathematik':
+      case 'Mathe':
+        return Colors.orange;
+      case 'Deutsch':
+        return Colors.red;
+      case 'Englisch':
+        return Colors.blue;
+      case 'Sachkunde':
+      case 'Biologie':
+        return Colors.green;
+      case 'Physik':
+        return Colors.indigo;
+      case 'Geschichte':
+        return Colors.brown;
+      default:
+        return Colors.deepPurple;
+    }
+  }
+
+  IconData _topicIcon(String topic) {
+    switch (topic) {
+      case 'Mathematik':
+      case 'Mathe':
+        return Icons.calculate_rounded;
+      case 'Deutsch':
+        return Icons.menu_book_rounded;
+      case 'Englisch':
+        return Icons.language_rounded;
+      case 'Sachkunde':
+      case 'Biologie':
+        return Icons.science_rounded;
+      case 'Physik':
+        return Icons.bolt_rounded;
+      case 'Geschichte':
+        return Icons.account_balance_rounded;
+      default:
+        return Icons.chat_rounded;
+    }
   }
 }
 
 // ============================================================================
-// SESSION DETAIL SCREEN (Schüler)
+// SESSION DETAIL – Nachrichtenanzeige
 // ============================================================================
 
 class _SessionDetailScreen extends StatelessWidget {
-  final String sessionId;
   final String userId;
   final String childId;
+  final String sessionId;
   final String topic;
+  final DateTime? startedAt;
 
   const _SessionDetailScreen({
-    required this.sessionId,
     required this.userId,
     required this.childId,
+    required this.sessionId,
     required this.topic,
+    this.startedAt,
   });
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(topic),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(topic),
+            if (startedAt != null)
+              Text(
+                '${startedAt!.day}.${startedAt!.month}.${startedAt!.year}',
+                style: const TextStyle(
+                    fontSize: 12, fontWeight: FontWeight.normal),
+              ),
+          ],
+        ),
         backgroundColor: Colors.deepPurple,
         foregroundColor: Colors.white,
       ),
@@ -552,6 +1232,7 @@ class _SessionDetailScreen extends StatelessWidget {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
+
           final docs = snapshot.data?.docs ?? [];
           if (docs.isEmpty) {
             return const Center(child: Text('Keine Nachrichten'));
@@ -572,9 +1253,12 @@ class _SessionDetailScreen extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(
                       horizontal: 14, vertical: 10),
                   constraints: BoxConstraints(
-                      maxWidth: MediaQuery.of(context).size.width * 0.75),
+                      maxWidth:
+                      MediaQuery.of(context).size.width * 0.75),
                   decoration: BoxDecoration(
-                    color: isUser ? Colors.deepPurple : Colors.grey.shade200,
+                    color: isUser
+                        ? Colors.deepPurple
+                        : Colors.grey.shade200,
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Text(
@@ -595,7 +1279,7 @@ class _SessionDetailScreen extends StatelessWidget {
 }
 
 // ============================================================================
-// TAB 3: STATISTIK
+// TAB 3: STATISTIK – eigene Seite, vollständig erhalten
 // ============================================================================
 
 class _StatisticsTab extends ConsumerWidget {
@@ -626,248 +1310,98 @@ class _StatisticsTab extends ConsumerWidget {
         final level = data?['level'] as int? ?? child.level;
         final stars = data?['stars'] as int? ?? child.stars;
         final successRate = totalQuizzes > 0
-            ? ((perfectQuizzes / totalQuizzes) * 100).toInt()
+            ? (perfectQuizzes / totalQuizzes * 100).round()
             : 0;
 
-        int currentLevelXP = xp;
-        for (int i = 1; i < level; i++) {
-          currentLevelXP -= XPService.calculateXPForLevel(i);
-        }
-        final xpForNextLevel = XPService.calculateXPForLevel(level);
-        final xpProgress = (currentLevelXP / xpForNextLevel).clamp(0.0, 1.0);
-        final xpPercentage = (xpProgress * 100).toInt();
-
-        final formattedTime = _formatShort(totalSeconds);
+        final hours = totalSeconds ~/ 3600;
+        final minutes = (totalSeconds % 3600) ~/ 60;
 
         return SingleChildScrollView(
           padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const _SectionHeader(icon: Icons.dashboard, title: 'Übersicht'),
+              const _SectionHeader(
+                  icon: Icons.emoji_events, title: 'Meine Erfolge'),
               const SizedBox(height: 12),
               Row(
                 children: [
                   Expanded(
-                    child: _GradientStatCard(
-                      icon: Icons.emoji_events,
-                      label: 'Level',
-                      value: '$level',
-                      subtitle: 'Erreicht',
-                      color: Colors.orange,
-                    ),
+                    child: _StatCard(
+                        icon: Icons.star,
+                        color: Colors.amber,
+                        value: '$stars',
+                        label: 'Sterne'),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: _GradientStatCard(
-                      icon: Icons.auto_graph,
-                      label: 'Gesamt XP',
-                      value: '$xp',
-                      subtitle: 'Gesammelt',
-                      color: Colors.blue,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: _GradientStatCard(
-                      icon: Icons.stars,
-                      label: 'Sterne',
-                      value: '$stars',
-                      subtitle: 'Verdient',
-                      color: Colors.amber,
-                    ),
+                    child: _StatCard(
+                        icon: Icons.emoji_events,
+                        color: Colors.deepPurple,
+                        value: 'Lvl $level',
+                        label: 'Level'),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: _GradientStatCard(
-                      icon: Icons.timer,
-                      label: 'Lernzeit',
-                      value: formattedTime,
-                      subtitle: 'Gesamt',
-                      color: Colors.green,
-                    ),
+                    child: _StatCard(
+                        icon: Icons.bolt,
+                        color: Colors.orange,
+                        value: '$xp XP',
+                        label: 'Gesamt'),
                   ),
                 ],
               ),
-
               const SizedBox(height: 24),
-
               const _SectionHeader(
-                  icon: Icons.trending_up, title: 'Level-Fortschritt'),
+                  icon: Icons.local_fire_department,
+                  title: 'Lern-Streak'),
               const SizedBox(height: 12),
-              Card(
-                elevation: 2,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16)),
-                child: Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          _LevelBadge(level: level),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              Text(
-                                '$xpPercentage%',
-                                style: const TextStyle(
-                                  fontSize: 28,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.deepPurple,
-                                ),
-                              ),
-                              Text('bis Level ${level + 1}',
-                                  style:
-                                  TextStyle(color: Colors.grey[600])),
-                            ],
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: LinearProgressIndicator(
-                          value: xpProgress,
-                          minHeight: 14,
-                          backgroundColor: Colors.grey.shade200,
-                          valueColor: const AlwaysStoppedAnimation<Color>(
-                              Colors.deepPurple),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text('Level $level',
-                              style: TextStyle(color: Colors.grey[700])),
-                          Text(
-                            '${xpForNextLevel - currentLevelXP} XP fehlen',
-                            style: const TextStyle(
-                                color: Colors.orange,
-                                fontWeight: FontWeight.bold),
-                          ),
-                        ],
-                      ),
-                    ],
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: streak > 0
+                        ? [
+                      Colors.orange.shade400,
+                      Colors.deepOrange.shade600
+                    ]
+                        : [Colors.grey.shade300, Colors.grey.shade400],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
                   ),
+                  borderRadius: BorderRadius.circular(16),
                 ),
-              ),
-
-              const SizedBox(height: 24),
-
-              const _SectionHeader(icon: Icons.schedule, title: 'Lernzeit'),
-              const SizedBox(height: 12),
-              Card(
-                elevation: 2,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16)),
-                child: Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    children: [
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 20),
-                        decoration: BoxDecoration(
-                          color: Colors.green.withOpacity(0.08),
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                              color: Colors.green.withOpacity(0.3), width: 2),
-                        ),
-                        child: _LearningTimeDisplay(totalSeconds: totalSeconds),
+                child: Column(
+                  children: [
+                    const Icon(Icons.local_fire_department,
+                        size: 48, color: Colors.white),
+                    const SizedBox(height: 8),
+                    Text(
+                      '$streak',
+                      style: const TextStyle(
+                        fontSize: 56,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
                       ),
-                      const SizedBox(height: 16),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _InfoTile(
-                              icon: Icons.local_fire_department,
-                              label: 'Streak',
-                              value: '$streak Tage 🔥',
-                              color: Colors.orange,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: _InfoTile(
-                              icon: Icons.quiz,
-                              label: 'Quizze',
-                              value: '$totalQuizzes gespielt',
-                              color: Colors.blue,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 24),
-
-              const _SectionHeader(
-                  icon: Icons.local_fire_department, title: 'Lern-Streak'),
-              const SizedBox(height: 12),
-              Card(
-                elevation: 2,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16)),
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: streak > 0
-                          ? [
-                        Colors.orange.shade400,
-                        Colors.deepOrange.shade600
-                      ]
-                          : [Colors.grey.shade300, Colors.grey.shade400],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
                     ),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Column(
-                    children: [
-                      const Icon(Icons.local_fire_department,
-                          size: 48, color: Colors.white),
-                      const SizedBox(height: 8),
-                      Text(
-                        '$streak',
-                        style: const TextStyle(
-                          fontSize: 56,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
+                    const Text('Tage Lern-Streak',
+                        style:
+                        TextStyle(fontSize: 16, color: Colors.white)),
+                    if (streak == 0)
+                      const Padding(
+                        padding: EdgeInsets.only(top: 8),
+                        child: Text(
+                          'Lerne heute, um deinen Streak zu starten!',
+                          style: TextStyle(
+                              fontSize: 12, color: Colors.white70),
+                          textAlign: TextAlign.center,
                         ),
                       ),
-                      const Text('Tage Lern-Streak',
-                          style:
-                          TextStyle(fontSize: 16, color: Colors.white)),
-                      if (streak == 0)
-                        const Padding(
-                          padding: EdgeInsets.only(top: 8),
-                          child: Text(
-                            'Lerne heute, um deinen Streak zu starten!',
-                            style: TextStyle(
-                                fontSize: 12, color: Colors.white70),
-                            textAlign: TextAlign.center,
-                          ),
-                        ),
-                    ],
-                  ),
+                  ],
                 ),
               ),
-
               const SizedBox(height: 24),
-
               const _SectionHeader(
                   icon: Icons.quiz, title: 'Quiz-Statistiken'),
               const SizedBox(height: 12),
@@ -877,357 +1411,119 @@ class _StatisticsTab extends ConsumerWidget {
                     borderRadius: BorderRadius.circular(16)),
                 child: Padding(
                   padding: const EdgeInsets.all(20),
-                  child: Column(
+                  child: Row(
                     children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _InfoTile(
-                              icon: Icons.assignment_turned_in,
-                              label: 'Absolviert',
-                              value: '$totalQuizzes',
-                              color: Colors.blue,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: _InfoTile(
-                              icon: Icons.stars,
-                              label: 'Perfekt',
-                              value: '$perfectQuizzes ✨',
-                              color: Colors.amber,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: _InfoTile(
-                              icon: Icons.percent,
-                              label: 'Erfolg',
-                              value: '$successRate%',
-                              color: Colors.green,
-                            ),
-                          ),
-                        ],
+                      Expanded(
+                        child: _InfoTile(
+                          icon: Icons.assignment_turned_in,
+                          label: 'Absolviert',
+                          value: '$totalQuizzes',
+                        ),
                       ),
-                      if (totalQuizzes > 0) ...[
-                        const SizedBox(height: 20),
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: LinearProgressIndicator(
-                            value: perfectQuizzes / totalQuizzes,
-                            minHeight: 10,
-                            backgroundColor: Colors.grey.shade200,
-                            valueColor: const AlwaysStoppedAnimation<Color>(
-                                Colors.amber),
-                          ),
+                      Expanded(
+                        child: _InfoTile(
+                          icon: Icons.workspace_premium,
+                          label: 'Perfekt',
+                          value: '$perfectQuizzes',
                         ),
-                        const SizedBox(height: 8),
-                        Text(
-                          '$perfectQuizzes von $totalQuizzes perfekt gelöst',
-                          style:
-                          TextStyle(fontSize: 12, color: Colors.grey[600]),
+                      ),
+                      Expanded(
+                        child: _InfoTile(
+                          icon: Icons.percent,
+                          label: 'Erfolgsrate',
+                          value: '$successRate%',
                         ),
-                      ] else
-                        Padding(
-                          padding: const EdgeInsets.only(top: 16),
-                          child: Text(
-                            'Mach dein erstes Quiz, um Statistiken zu sehen!',
-                            style: TextStyle(
-                                fontSize: 13, color: Colors.grey[500]),
-                            textAlign: TextAlign.center,
-                          ),
-                        ),
+                      ),
                     ],
                   ),
                 ),
               ),
-
               const SizedBox(height: 24),
-
-              const _SectionHeader(
-                  icon: Icons.bar_chart, title: 'Lernfortschritt'),
+              const _SectionHeader(icon: Icons.timer, title: 'Lernzeit'),
               const SizedBox(height: 12),
               Card(
                 elevation: 2,
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16)),
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: 32),
-                  child: Column(
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.insert_chart_outlined,
-                          size: 56, color: Colors.grey[300]),
-                      const SizedBox(height: 12),
+                      const Icon(Icons.access_time,
+                          color: Colors.deepPurple, size: 28),
+                      const SizedBox(width: 12),
                       Text(
-                        'Folgt in Kürze',
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: Colors.grey[500],
-                          fontWeight: FontWeight.w500,
+                        hours > 0
+                            ? '${hours}h ${minutes}min'
+                            : '${minutes}min',
+                        style: const TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.deepPurple,
                         ),
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(width: 8),
                       Text(
-                        'Detaillierte Lernkurven kommen bald',
-                        style:
-                        TextStyle(fontSize: 12, color: Colors.grey[400]),
+                        'Gesamte Lernzeit',
+                        style: TextStyle(
+                            fontSize: 13, color: Colors.grey[600]),
                       ),
                     ],
                   ),
                 ),
               ),
-
-              const SizedBox(height: 80),
+              const SizedBox(height: 100),
             ],
           ),
         );
       },
     );
   }
-
-  String _formatShort(int totalSeconds) {
-    final days = totalSeconds ~/ 86400;
-    final hours = (totalSeconds % 86400) ~/ 3600;
-    final minutes = (totalSeconds % 3600) ~/ 60;
-    if (days > 0) return '${days}T ${hours}h';
-    if (hours > 0) return '${hours}h ${minutes}min';
-    return '${minutes}min';
-  }
 }
 
 // ============================================================================
-// LERNZEIT DETAIL-ANZEIGE
+// STATISTIK HILFS-WIDGETS
 // ============================================================================
 
-class _LearningTimeDisplay extends StatelessWidget {
-  final int totalSeconds;
-
-  const _LearningTimeDisplay({required this.totalSeconds});
-
-  @override
-  Widget build(BuildContext context) {
-    final days = totalSeconds ~/ 86400;
-    final hours = (totalSeconds % 86400) ~/ 3600;
-    final minutes = (totalSeconds % 3600) ~/ 60;
-    final secs = totalSeconds % 60;
-
-    return Column(
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            if (days > 0) ...[
-              _TimeBlock(value: days, label: days == 1 ? 'Tag' : 'Tage'),
-              _TimeSep(),
-            ],
-            _TimeBlock(value: hours, label: 'Std'),
-            _TimeSep(),
-            _TimeBlock(value: minutes, label: 'Min'),
-            _TimeSep(),
-            _TimeBlock(value: secs, label: 'Sek', small: true),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Text(
-          'Gesamte Lernzeit',
-          style: TextStyle(fontSize: 13, color: Colors.grey[600]),
-        ),
-      ],
-    );
-  }
-}
-
-class _TimeBlock extends StatelessWidget {
-  final int value;
+class _StatCard extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+  final String value;
   final String label;
-  final bool small;
 
-  const _TimeBlock(
-      {required this.value, required this.label, this.small = false});
+  const _StatCard({
+    required this.icon,
+    required this.color,
+    required this.value,
+    required this.label,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Container(
-          padding: EdgeInsets.symmetric(
-            horizontal: small ? 10 : 14,
-            vertical: small ? 6 : 8,
-          ),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(10),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.08),
-                blurRadius: 4,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Text(
-            value.toString().padLeft(2, '0'),
-            style: TextStyle(
-              fontSize: small ? 22 : 28,
-              fontWeight: FontWeight.bold,
-              color: Colors.green.shade700,
-            ),
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(label,
-            style: TextStyle(fontSize: 10, color: Colors.grey[600])),
-      ],
-    );
-  }
-}
-
-class _TimeSep extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 14, left: 4, right: 4),
-      child: Text(
-        ':',
-        style: TextStyle(
-          fontSize: 24,
-          fontWeight: FontWeight.bold,
-          color: Colors.green.shade400,
-        ),
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, color: color, size: 24),
+          const SizedBox(height: 6),
+          Text(value,
+              style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.bold,
+                  color: color)),
+          Text(label,
+              style: TextStyle(fontSize: 11, color: Colors.grey[600])),
+        ],
       ),
     );
   }
 }
-
-// ============================================================================
-// LIVE LERNZEIT CARD (Home Tab)
-// ============================================================================
-
-class _LiveLearningTimeCard extends ConsumerWidget {
-  final String childId;
-
-  const _LiveLearningTimeCard({required this.childId});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final user = ref.watch(authStateChangesProvider).value;
-    if (user == null) return const SizedBox.shrink();
-
-    return StreamBuilder<DocumentSnapshot>(
-      stream: FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .collection('children')
-          .doc(childId)
-          .snapshots(),
-      builder: (context, snapshot) {
-        final data = snapshot.data?.data() as Map<String, dynamic>?;
-        final totalSeconds = data?['totalLearningSeconds'] as int? ?? 0;
-
-        final days = totalSeconds ~/ 86400;
-        final hours = (totalSeconds % 86400) ~/ 3600;
-        final minutes = (totalSeconds % 3600) ~/ 60;
-        final secs = totalSeconds % 60;
-
-        return Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Colors.blue.shade400, Colors.blue.shade700],
-            ),
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Column(
-            children: [
-              const Text(
-                '⏱️ Deine Lernzeit',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 14),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  if (days > 0) ...[
-                    _HomeTimeUnit(
-                        value: days, label: days == 1 ? 'Tag' : 'Tage'),
-                    _HomeSep(),
-                  ],
-                  _HomeTimeUnit(value: hours, label: 'Std'),
-                  _HomeSep(),
-                  _HomeTimeUnit(value: minutes, label: 'Min'),
-                  _HomeSep(),
-                  _HomeTimeUnit(value: secs, label: 'Sek', small: true),
-                ],
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-}
-
-class _HomeTimeUnit extends StatelessWidget {
-  final int value;
-  final String label;
-  final bool small;
-
-  const _HomeTimeUnit(
-      {required this.value, required this.label, this.small = false});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Container(
-          padding: EdgeInsets.symmetric(
-            horizontal: small ? 10 : 14,
-            vertical: small ? 6 : 8,
-          ),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Text(
-            value.toString().padLeft(2, '0'),
-            style: TextStyle(
-              fontSize: small ? 22 : 28,
-              fontWeight: FontWeight.bold,
-              color: Colors.blue.shade700,
-            ),
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(label,
-            style: const TextStyle(fontSize: 11, color: Colors.white70)),
-      ],
-    );
-  }
-}
-
-class _HomeSep extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return const Padding(
-      padding: EdgeInsets.only(bottom: 16, left: 4, right: 4),
-      child: Text(':',
-          style: TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-              color: Colors.white54)),
-    );
-  }
-}
-
-// ============================================================================
-// HILFS-WIDGETS
-// ============================================================================
 
 class _SectionHeader extends StatelessWidget {
   final IconData icon;
@@ -1241,66 +1537,15 @@ class _SectionHeader extends StatelessWidget {
       children: [
         Icon(icon, color: Colors.deepPurple, size: 20),
         const SizedBox(width: 8),
-        Text(title,
-            style:
-            const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-      ],
-    );
-  }
-}
-
-class _GradientStatCard extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String value;
-  final String subtitle;
-  final Color color;
-
-  const _GradientStatCard({
-    required this.icon,
-    required this.label,
-    required this.value,
-    required this.subtitle,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      elevation: 2,
-      shape:
-      RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [color.withOpacity(0.12), color.withOpacity(0.05)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
+        Text(
+          title,
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: Color(0xFF1A1A2E),
           ),
-          borderRadius: BorderRadius.circular(12),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(icon, color: color, size: 28),
-            const SizedBox(height: 12),
-            Text(
-              value,
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: color,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(label,
-                style: TextStyle(fontSize: 12, color: Colors.grey[700])),
-            Text(subtitle,
-                style: TextStyle(fontSize: 10, color: Colors.grey[500])),
-          ],
-        ),
-      ),
+      ],
     );
   }
 }
@@ -1309,202 +1554,105 @@ class _InfoTile extends StatelessWidget {
   final IconData icon;
   final String label;
   final String value;
-  final Color color;
 
-  const _InfoTile({
-    required this.icon,
-    required this.label,
-    required this.value,
-    required this.color,
-  });
+  const _InfoTile(
+      {required this.icon, required this.label, required this.value});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.08),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.2)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, color: color, size: 20),
-          const SizedBox(height: 6),
-          Text(
-            value,
-            style: TextStyle(
-                fontSize: 14, fontWeight: FontWeight.bold, color: color),
-          ),
-          Text(label,
-              style: TextStyle(fontSize: 11, color: Colors.grey[600])),
-        ],
-      ),
-    );
-  }
-}
-
-class _LevelBadge extends StatelessWidget {
-  final int level;
-
-  const _LevelBadge({required this.level});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Colors.deepPurple, Colors.purple],
-        ),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        children: [
-          const Icon(Icons.emoji_events, color: Colors.amber, size: 28),
-          const SizedBox(height: 4),
-          Text(
-            'Level $level',
+    return Column(
+      children: [
+        Icon(icon, color: Colors.deepPurple, size: 22),
+        const SizedBox(height: 6),
+        Text(value,
             style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-              fontSize: 18,
-            ),
-          ),
-        ],
-      ),
+                fontSize: 18, fontWeight: FontWeight.bold)),
+        Text(label,
+            style: TextStyle(fontSize: 11, color: Colors.grey[600])),
+      ],
     );
   }
 }
 
 // ============================================================================
-// STATUS HEADER
+// AVATAR SETTINGS BOTTOM SHEET – unveränderte Logik
 // ============================================================================
 
-class _StatusHeader extends StatelessWidget {
+class _AvatarSettingsSheet extends StatelessWidget {
   final ChildModel child;
 
-  const _StatusHeader({required this.child});
+  const _AvatarSettingsSheet({required this.child});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Colors.deepPurple, Colors.purple.shade700],
-        ),
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.2),
-            blurRadius: 10,
-            offset: const Offset(0, 5),
-          ),
-        ],
-      ),
+    return Padding(
+      padding: const EdgeInsets.all(24),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Level ${child.level}',
-                    style: const TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text('${child.stars} ⭐ Sterne',
-                      style: const TextStyle(color: Colors.white70)),
-                ],
-              ),
-              const Icon(Icons.emoji_events, color: Colors.amber, size: 50),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'XP: ${child.xp} / ${child.xpToNextLevel}',
-                style:
-                const TextStyle(color: Colors.white70, fontSize: 12),
-              ),
-              const SizedBox(height: 8),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(10),
-                child: LinearProgressIndicator(
-                  value: child.xpProgress,
-                  minHeight: 12,
-                  backgroundColor: Colors.white24,
-                  valueColor:
-                  const AlwaysStoppedAnimation<Color>(Colors.amber),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ============================================================================
-// SUBJECT TILE
-// ============================================================================
-
-class _SubjectTile extends StatelessWidget {
-  final String title;
-  final IconData icon;
-  final Color color;
-  final VoidCallback onTap;
-
-  const _SubjectTile({
-    required this.title,
-    required this.icon,
-    required this.color,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      elevation: 4,
-      color: color.withOpacity(0.1),
-      shape:
-      RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(20),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.2),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(icon, size: 36, color: color),
+          Container(
+            width: 40,
+            height: 4,
+            margin: const EdgeInsets.only(bottom: 20),
+            decoration: BoxDecoration(
+              color: Colors.grey[300],
+              borderRadius: BorderRadius.circular(2),
             ),
-            const SizedBox(height: 10),
-            Text(
-              title,
-              style: TextStyle(
-                fontSize: 15,
+          ),
+          CircleAvatar(
+            radius: 36,
+            backgroundColor: Colors.deepPurple.shade100,
+            child: Text(
+              child.name[0].toUpperCase(),
+              style: const TextStyle(
+                fontSize: 28,
                 fontWeight: FontWeight.bold,
-                color: color,
+                color: Colors.deepPurple,
               ),
             ),
-          ],
-        ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            child.name,
+            style: const TextStyle(
+                fontSize: 20, fontWeight: FontWeight.bold),
+          ),
+          Text(
+            'Level ${child.level} · ${child.stars} ⭐',
+            style: TextStyle(color: Colors.grey[600]),
+          ),
+          const SizedBox(height: 24),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.deepPurple.shade50,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.deepPurple.shade100),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.brush_outlined, color: Colors.deepPurple),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Avatar anpassen',
+                          style: TextStyle(fontWeight: FontWeight.bold)),
+                      Text('Folgt in Kürze',
+                          style: TextStyle(
+                              fontSize: 12, color: Colors.grey)),
+                    ],
+                  ),
+                ),
+                Icon(Icons.lock_outline,
+                    color: Colors.grey[400], size: 18),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+        ],
       ),
     );
   }

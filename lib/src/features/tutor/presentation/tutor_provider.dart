@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../domain/chat_message.dart';
+import '../data/tutor_session_model.dart'; // ✅ NEU: für TutorSession.detectContentFlag()
 import '../../auth/presentation/active_child_provider.dart';
 import '../../auth/data/auth_repository.dart';
 import '../../../ai/firebase_ai_service.dart';
@@ -266,6 +267,18 @@ class TutorNotifier extends StateNotifier<List<ChatMessage>> {
 
         if (!hasFirstQuestion) {
           final topic = detectTopic(message.text);
+          final contentFlag = TutorSession.detectContentFlag(message.text);
+
+          final updates = <String, dynamic>{
+            'firstQuestion': message.text,
+            'detectedTopic': topic,
+          };
+
+          if (contentFlag != null) {
+            updates['contentFlag'] = contentFlag;
+            print('🚩 Content-Flag erkannt: $contentFlag (aus: "${message.text}")');
+          }
+
           await _firestore
               .collection('users')
               .doc(_userId)
@@ -273,10 +286,8 @@ class TutorNotifier extends StateNotifier<List<ChatMessage>> {
               .doc(_childId)
               .collection('tutor_sessions')
               .doc(sessionId)
-              .update({
-            'firstQuestion': message.text,
-            'detectedTopic': topic,
-          });
+              .update(updates);
+
           print('🎯 Thema erkannt: $topic (aus: "${message.text}")');
         }
       }
@@ -303,7 +314,7 @@ class TutorNotifier extends StateNotifier<List<ChatMessage>> {
     if (q.contains('einmaleins') || q.contains('dreisatz') || q.contains('kopfrechnen')) return 'Mathematik';
     if (q.contains('addition') || q.contains('subtraktion') || q.contains('multiplikation') || q.contains('division')) return 'Mathematik';
     if (q.contains('wahrscheinlichkeit') || q.contains('statistik') || q.contains('diagramm') || q.contains('stochastik')) return 'Mathematik';
-    if (q.contains('funktion') && (q.contains('график') || q.contains('steigung') || q.contains('achse') || q.contains('x-wert') || q.contains('y-wert'))) return 'Mathematik';
+    if (q.contains('funktion') && (q.contains('steigung') || q.contains('achse') || q.contains('x-wert') || q.contains('y-wert'))) return 'Mathematik';
     if (q.contains('pythagoras') || q.contains('trigonometrie') || q.contains('sinus') || q.contains('kosinus') || q.contains('tangens')) return 'Mathematik';
 
     // ── PHYSIK ───────────────────────────────────────────────────────────────
@@ -442,7 +453,6 @@ class TutorNotifier extends StateNotifier<List<ChatMessage>> {
     return 'Allgemein';
   }
 
-
   Future<void> completeCurrentSession() async {
     if (_currentSessionId == null) return;
 
@@ -504,6 +514,10 @@ class TutorNotifier extends StateNotifier<List<ChatMessage>> {
     }
   }
 }
+
+// ============================================================================
+// PROVIDER
+// ============================================================================
 
 /// Provider für den Firebase AI Service (Singleton)
 final firebaseAIServiceProvider = Provider<FirebaseAIService>((ref) {

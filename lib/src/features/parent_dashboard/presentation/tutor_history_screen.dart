@@ -8,9 +8,10 @@ import '../../../services/tutor_chat_cleanup_service.dart';
 
 /// 💬 CHAT-HISTORIE FÜR ELTERN
 /// - Dynamische Topic-Filter (nur tatsächlich vorhandene Topics)
+/// - ⚠️ / 🚨 Content-Flag-Badges für auffällige Gespräche
+/// - Filterchip "⚠️ Auffällig" für schnellen Überblick
 /// - Leere Sessions ausgeblendet (messageCount <= 1)
 /// - Swipe-to-delete + Bestätigungs-Dialog
-/// - Löschen-Button im Detail-Screen
 class TutorHistoryScreen extends ConsumerStatefulWidget {
   final ChildModel child;
 
@@ -26,6 +27,9 @@ class TutorHistoryScreen extends ConsumerStatefulWidget {
 class _TutorHistoryScreenState extends ConsumerState<TutorHistoryScreen> {
   String _filterTopic = 'Alle';
   List<String> _availableTopics = ['Alle'];
+
+  // Sonderfilter: zeigt nur Sessions mit contentFlag
+  bool _showFlaggedOnly = false;
 
   @override
   Widget build(BuildContext context) {
@@ -59,36 +63,102 @@ class _TutorHistoryScreenState extends ConsumerState<TutorHistoryScreen> {
     );
   }
 
-  // ── Filter-Leiste (dynamisch) ─────────────────────────────────────────────
+  // ── Filter-Leiste ─────────────────────────────────────────────────────────
 
   Widget _buildFilterBar() {
-    if (_availableTopics.length <= 1) return const SizedBox.shrink();
+    if (_availableTopics.length <= 1 && !_hasFlaggedSessions) {
+      return const SizedBox.shrink();
+    }
 
     return Container(
-      height: 52,
       color: Colors.deepPurple.shade50,
-      child: ListView(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        children: _availableTopics.map((topic) {
-          final selected = topic == _filterTopic;
-          return Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: ChoiceChip(
-              label: Text(topic),
-              selected: selected,
-              onSelected: (_) => setState(() => _filterTopic = topic),
-              selectedColor: Colors.deepPurple,
-              labelStyle: TextStyle(
-                color: selected ? Colors.white : Colors.deepPurple,
-                fontWeight: FontWeight.w600,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Zeile 1: Fach-Filter
+          if (_availableTopics.length > 1)
+            SizedBox(
+              height: 48,
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                padding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                children: _availableTopics.map((topic) {
+                  final selected =
+                      topic == _filterTopic && !_showFlaggedOnly;
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: ChoiceChip(
+                      label: Text(topic),
+                      selected: selected,
+                      onSelected: (_) => setState(() {
+                        _filterTopic = topic;
+                        _showFlaggedOnly = false;
+                      }),
+                      selectedColor: Colors.deepPurple,
+                      labelStyle: TextStyle(
+                        color: selected ? Colors.white : Colors.deepPurple,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                      ),
+                    ),
+                  );
+                }).toList(),
               ),
             ),
-          );
-        }).toList(),
+
+          // Zeile 2: Auffällig-Filter (nur wenn es flagged Sessions gibt)
+          if (_hasFlaggedSessions)
+            Padding(
+              padding:
+              const EdgeInsets.only(left: 16, right: 16, bottom: 8, top: 2),
+              child: Row(
+                children: [
+                  // ⚠️ Chip
+                  _FlagFilterChip(
+                    label: '⚠️ Nicht-Schulthema',
+                    flagValue: 'off_topic',
+                    isSelected: _showFlaggedOnly && _filterTopic == 'off_topic',
+                    onTap: () => setState(() {
+                      if (_showFlaggedOnly && _filterTopic == 'off_topic') {
+                        _showFlaggedOnly = false;
+                        _filterTopic = 'Alle';
+                      } else {
+                        _showFlaggedOnly = true;
+                        _filterTopic = 'off_topic';
+                      }
+                    }),
+                    color: Colors.orange,
+                  ),
+                  const SizedBox(width: 8),
+                  // 🚨 Chip
+                  _FlagFilterChip(
+                    label: '🚨 Bedenklich',
+                    flagValue: 'critical',
+                    isSelected: _showFlaggedOnly && _filterTopic == 'critical',
+                    onTap: () => setState(() {
+                      if (_showFlaggedOnly && _filterTopic == 'critical') {
+                        _showFlaggedOnly = false;
+                        _filterTopic = 'Alle';
+                      } else {
+                        _showFlaggedOnly = true;
+                        _filterTopic = 'critical';
+                      }
+                    }),
+                    color: Colors.red,
+                  ),
+                ],
+              ),
+            ),
+
+          const Divider(height: 1),
+        ],
       ),
     );
   }
+
+  // Wird gesetzt sobald wir wissen, ob es flagged Sessions gibt
+  bool _hasFlaggedSessions = false;
 
   // ── Session-Liste ─────────────────────────────────────────────────────────
 
@@ -113,6 +183,17 @@ class _TutorHistoryScreenState extends ConsumerState<TutorHistoryScreen> {
           return (data['messageCount'] as int? ?? 0) > 1;
         }).toList();
 
+        // Prüfen ob es irgendwelche flagged Sessions gibt
+        final hasFlagged = allDocs.any((doc) {
+          final data = doc.data() as Map<String, dynamic>;
+          return data['contentFlag'] != null;
+        });
+        if (hasFlagged != _hasFlaggedSessions) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) setState(() => _hasFlaggedSessions = hasFlagged);
+          });
+        }
+
         // Dynamische Topics aus tatsächlichen Sessions
         final topicSet = <String>{};
         for (final doc in allDocs) {
@@ -120,18 +201,15 @@ class _TutorHistoryScreenState extends ConsumerState<TutorHistoryScreen> {
           final raw = data['detectedTopic'] as String? ?? 'Allgemein';
           topicSet.add(_normalizeTopic(raw));
         }
-        final sortedTopics = [
-          'Alle',
-          ...topicSet.toList()..sort(),
-        ];
+        final sortedTopics = ['Alle', ...topicSet.toList()..sort()];
 
-        // State aktualisieren falls Topics sich geändert haben
         if (sortedTopics.join() != _availableTopics.join()) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (mounted) {
               setState(() {
                 _availableTopics = sortedTopics;
-                if (!sortedTopics.contains(_filterTopic)) {
+                if (!sortedTopics.contains(_filterTopic) &&
+                    !_showFlaggedOnly) {
                   _filterTopic = 'Alle';
                 }
               });
@@ -140,13 +218,23 @@ class _TutorHistoryScreenState extends ConsumerState<TutorHistoryScreen> {
         }
 
         // Filter anwenden
-        final filteredDocs = _filterTopic == 'Alle'
-            ? allDocs
-            : allDocs.where((doc) {
-          final data = doc.data() as Map<String, dynamic>;
-          final raw = data['detectedTopic'] as String? ?? 'Allgemein';
-          return _normalizeTopic(raw) == _filterTopic;
-        }).toList();
+        List<QueryDocumentSnapshot> filteredDocs;
+
+        if (_showFlaggedOnly) {
+          // Flag-Filter: zeige nur Sessions mit dem gewählten contentFlag
+          filteredDocs = allDocs.where((doc) {
+            final data = doc.data() as Map<String, dynamic>;
+            return data['contentFlag'] == _filterTopic;
+          }).toList();
+        } else if (_filterTopic == 'Alle') {
+          filteredDocs = allDocs;
+        } else {
+          filteredDocs = allDocs.where((doc) {
+            final data = doc.data() as Map<String, dynamic>;
+            final raw = data['detectedTopic'] as String? ?? 'Allgemein';
+            return _normalizeTopic(raw) == _filterTopic;
+          }).toList();
+        }
 
         if (filteredDocs.isEmpty) {
           return Center(
@@ -157,7 +245,9 @@ class _TutorHistoryScreenState extends ConsumerState<TutorHistoryScreen> {
                     size: 64, color: Colors.grey[300]),
                 const SizedBox(height: 16),
                 Text(
-                  _filterTopic == 'Alle'
+                  _showFlaggedOnly
+                      ? 'Keine auffälligen Gespräche'
+                      : _filterTopic == 'Alle'
                       ? 'Noch keine Gespräche'
                       : 'Keine Gespräche in "$_filterTopic"',
                   style: TextStyle(fontSize: 16, color: Colors.grey[500]),
@@ -172,7 +262,8 @@ class _TutorHistoryScreenState extends ConsumerState<TutorHistoryScreen> {
     );
   }
 
-  Widget _buildGroupedList(List<QueryDocumentSnapshot> docs, String userId) {
+  Widget _buildGroupedList(
+      List<QueryDocumentSnapshot> docs, String userId) {
     final Map<String, List<QueryDocumentSnapshot>> grouped = {};
 
     for (final doc in docs) {
@@ -188,7 +279,6 @@ class _TutorHistoryScreenState extends ConsumerState<TutorHistoryScreen> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Datums-Header
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
               child: Row(
@@ -212,21 +302,37 @@ class _TutorHistoryScreenState extends ConsumerState<TutorHistoryScreen> {
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    '${entry.value.length} ${entry.value.length == 1 ? "Gespräch" : "Gespräche"}',
-                    style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                    '${entry.value.length} ${entry.value.length == 1 ? 'Gespräch' : 'Gespräche'}',
+                    style:
+                    TextStyle(fontSize: 12, color: Colors.grey[500]),
                   ),
                 ],
               ),
             ),
-
-            // Swipeable Karten
             ...entry.value.map((doc) {
-              final data = doc.data() as Map<String, dynamic>;
-              return _buildSwipeableCard(
-                context: context,
-                doc: doc,
-                data: data,
-                userId: userId,
+              return Dismissible(
+                key: Key(doc.id),
+                direction: DismissDirection.endToStart,
+                background: Container(
+                  margin: const EdgeInsets.only(
+                      bottom: 12, left: 16, right: 16),
+                  decoration: BoxDecoration(
+                    color: Colors.red,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  alignment: Alignment.centerRight,
+                  padding: const EdgeInsets.only(right: 20),
+                  child: const Icon(Icons.delete, color: Colors.white),
+                ),
+                confirmDismiss: (_) => _confirmDelete(context),
+                onDismissed: (_) => _deleteSession(
+                    userId: userId, sessionId: doc.id),
+                child: _SessionCard(
+                  sessionId: doc.id,
+                  data: doc.data() as Map<String, dynamic>,
+                  child: widget.child,
+                  userId: userId,
+                ),
               );
             }),
           ],
@@ -235,55 +341,14 @@ class _TutorHistoryScreenState extends ConsumerState<TutorHistoryScreen> {
     );
   }
 
-  Widget _buildSwipeableCard({
-    required BuildContext context,
-    required QueryDocumentSnapshot doc,
-    required Map<String, dynamic> data,
-    required String userId,
-  }) {
-    return Dismissible(
-      key: Key(doc.id),
-      direction: DismissDirection.endToStart,
-      background: Container(
-        margin: const EdgeInsets.only(bottom: 12, left: 16, right: 16),
-        decoration: BoxDecoration(
-          color: Colors.red.shade400,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        alignment: Alignment.centerRight,
-        padding: const EdgeInsets.only(right: 20),
-        child: const Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.delete, color: Colors.white, size: 28),
-            SizedBox(height: 4),
-            Text('Löschen',
-                style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold)),
-          ],
-        ),
-      ),
-      confirmDismiss: (_) => _confirmDeleteSingle(context),
-      onDismissed: (_) =>
-          _deleteSession(userId: userId, sessionId: doc.id),
-      child: _SessionCard(
-        sessionId: doc.id,
-        data: data,
-        child: widget.child,
-        userId: userId,
-      ),
-    );
-  }
+  // ── Dialoge ───────────────────────────────────────────────────────────────
 
-  // ── Löschen-Dialoge ───────────────────────────────────────────────────────
-
-  Future<bool> _confirmDeleteSingle(BuildContext context) async {
-    final result = await showDialog<bool>(
+  Future<bool?> _confirmDelete(BuildContext context) {
+    return showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        shape:
+        RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Row(
           children: [
             Icon(Icons.delete_outline, color: Colors.red),
@@ -293,7 +358,7 @@ class _TutorHistoryScreenState extends ConsumerState<TutorHistoryScreen> {
         ),
         content: const Text(
           'Dieses Gespräch wird dauerhaft gelöscht – '
-              'sowohl im Elterndashboard als auch im Schülerdashboard.',
+              'sowohl im Eltern- als auch im Schülerdashboard.',
         ),
         actions: [
           TextButton(
@@ -301,27 +366,28 @@ class _TutorHistoryScreenState extends ConsumerState<TutorHistoryScreen> {
             child: const Text('Abbrechen'),
           ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            style:
+            ElevatedButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () => Navigator.pop(ctx, true),
-            child:
-            const Text('Löschen', style: TextStyle(color: Colors.white)),
+            child: const Text('Löschen',
+                style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
     );
-    return result ?? false;
   }
 
   Future<void> _confirmDeleteAll(BuildContext context, String userId) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        shape:
+        RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Row(
           children: [
             Icon(Icons.delete_sweep, color: Colors.red),
             SizedBox(width: 8),
-            Text('Alle Gespräche löschen?'),
+            Text('Alle löschen?'),
           ],
         ),
         content: Text(
@@ -334,7 +400,8 @@ class _TutorHistoryScreenState extends ConsumerState<TutorHistoryScreen> {
             child: const Text('Abbrechen'),
           ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            style:
+            ElevatedButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () => Navigator.pop(ctx, true),
             child: const Text('Alle löschen',
                 style: TextStyle(color: Colors.white)),
@@ -348,10 +415,12 @@ class _TutorHistoryScreenState extends ConsumerState<TutorHistoryScreen> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (_) => const Center(child: CircularProgressIndicator()),
+      builder: (_) =>
+      const Center(child: CircularProgressIndicator()),
     );
 
     try {
+      final tutorChatCleanupService = TutorChatCleanupService();
       await tutorChatCleanupService.deleteAllSessionsForChild(
         userId: userId,
         childId: widget.child.id,
@@ -372,6 +441,7 @@ class _TutorHistoryScreenState extends ConsumerState<TutorHistoryScreen> {
     required String sessionId,
   }) async {
     try {
+      final tutorChatCleanupService = TutorChatCleanupService();
       await tutorChatCleanupService.deleteSession(
         userId: userId,
         childId: widget.child.id,
@@ -410,9 +480,77 @@ class _TutorHistoryScreenState extends ConsumerState<TutorHistoryScreen> {
         return 'Englisch';
       case 'sachkunde':
         return 'Sachkunde';
+      case 'physik':
+        return 'Physik';
+      case 'chemie':
+        return 'Chemie';
+      case 'biologie':
+        return 'Biologie';
+      case 'geschichte':
+        return 'Geschichte';
+      case 'geographie':
+      case 'erdkunde':
+        return 'Geographie';
+      case 'informatik':
+        return 'Informatik';
+      case 'musik':
+        return 'Musik';
+      case 'latein':
+        return 'Latein';
+      case 'französisch':
+        return 'Französisch';
+      case 'spanisch':
+        return 'Spanisch';
       default:
         return 'Allgemein';
     }
+  }
+}
+
+// ============================================================================
+// FLAG-FILTER CHIP
+// ============================================================================
+
+class _FlagFilterChip extends StatelessWidget {
+  final String label;
+  final String flagValue;
+  final bool isSelected;
+  final VoidCallback onTap;
+  final Color color;
+
+  const _FlagFilterChip({
+    required this.label,
+    required this.flagValue,
+    required this.isSelected,
+    required this.onTap,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding:
+        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: isSelected ? color : color.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: color.withOpacity(isSelected ? 1.0 : 0.4),
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: isSelected ? Colors.white : color,
+          ),
+        ),
+      ),
+    );
   }
 }
 
@@ -441,11 +579,20 @@ class _SessionCard extends StatelessWidget {
     final msgCount = data['messageCount'] as int? ?? 0;
     final status = data['status'] as String? ?? 'active';
     final firstQuestion = data['firstQuestion'] as String?;
+    final contentFlag = data['contentFlag'] as String?;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12, left: 16, right: 16),
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      elevation: contentFlag != null ? 3 : 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        // Farbiger Rand bei flagged Sessions
+        side: contentFlag == 'critical'
+            ? const BorderSide(color: Colors.red, width: 1.5)
+            : contentFlag == 'off_topic'
+            ? BorderSide(color: Colors.orange.shade400, width: 1.5)
+            : BorderSide.none,
+      ),
       child: InkWell(
         onTap: () => Navigator.push(
           context,
@@ -457,6 +604,7 @@ class _SessionCard extends StatelessWidget {
               topic: topic,
               startedAt: startedAt,
               childName: child.name,
+              contentFlag: contentFlag,
             ),
           ),
         ),
@@ -468,6 +616,7 @@ class _SessionCard extends StatelessWidget {
             children: [
               Row(
                 children: [
+                  // Fach-Icon
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
@@ -530,6 +679,13 @@ class _SessionCard extends StatelessWidget {
                 ],
               ),
 
+              // ── Content-Flag Banner ──────────────────────────────────────
+              if (contentFlag != null) ...[
+                const SizedBox(height: 10),
+                _ContentFlagBanner(flag: contentFlag),
+              ],
+
+              // ── Erste Frage ──────────────────────────────────────────────
               if (firstQuestion != null && firstQuestion.isNotEmpty) ...[
                 const SizedBox(height: 10),
                 Container(
@@ -563,7 +719,8 @@ class _SessionCard extends StatelessWidget {
                 children: [
                   Text(
                     '← Wischen zum Löschen',
-                    style: TextStyle(fontSize: 11, color: Colors.grey[400]),
+                    style:
+                    TextStyle(fontSize: 11, color: Colors.grey[400]),
                   ),
                   Icon(Icons.chevron_right, color: Colors.grey[400]),
                 ],
@@ -587,8 +744,19 @@ class _SessionCard extends StatelessWidget {
         return 'Englisch';
       case 'sachkunde':
         return 'Sachkunde';
+      case 'physik':
+        return 'Physik';
+      case 'chemie':
+        return 'Chemie';
+      case 'biologie':
+        return 'Biologie';
+      case 'geschichte':
+        return 'Geschichte';
+      case 'geographie':
+      case 'erdkunde':
+        return 'Geographie';
       default:
-        return 'Allgemein';
+        return topic.isEmpty ? 'Allgemein' : topic;
     }
   }
 
@@ -597,13 +765,33 @@ class _SessionCard extends StatelessWidget {
       case 'Mathematik':
         return Colors.orange;
       case 'Deutsch':
-        return Colors.red;
+        return Colors.red.shade700;
       case 'Englisch':
         return Colors.blue;
       case 'Sachkunde':
         return Colors.green;
+      case 'Physik':
+        return Colors.indigo;
+      case 'Chemie':
+        return Colors.teal;
+      case 'Biologie':
+        return Colors.lightGreen.shade700;
+      case 'Geschichte':
+        return Colors.brown;
+      case 'Geographie':
+        return Colors.cyan.shade700;
+      case 'Informatik':
+        return Colors.blueGrey;
+      case 'Musik':
+        return Colors.pink;
+      case 'Latein':
+        return Colors.deepOrange;
+      case 'Französisch':
+        return Colors.blue.shade800;
+      case 'Spanisch':
+        return Colors.red.shade800;
       default:
-        return Colors.grey;
+        return Colors.deepPurple;
     }
   }
 
@@ -616,10 +804,83 @@ class _SessionCard extends StatelessWidget {
       case 'Englisch':
         return Icons.language;
       case 'Sachkunde':
+        return Icons.nature;
+      case 'Physik':
         return Icons.science;
+      case 'Chemie':
+        return Icons.biotech;
+      case 'Biologie':
+        return Icons.eco;
+      case 'Geschichte':
+        return Icons.history_edu;
+      case 'Geographie':
+        return Icons.public;
+      case 'Informatik':
+        return Icons.computer;
+      case 'Musik':
+        return Icons.music_note;
+      case 'Latein':
+        return Icons.translate;
+      case 'Französisch':
+        return Icons.translate;
+      case 'Spanisch':
+        return Icons.translate;
       default:
         return Icons.chat;
     }
+  }
+}
+
+// ============================================================================
+// CONTENT FLAG BANNER
+// ============================================================================
+
+class _ContentFlagBanner extends StatelessWidget {
+  final String flag;
+
+  const _ContentFlagBanner({required this.flag});
+
+  @override
+  Widget build(BuildContext context) {
+    final isCritical = flag == 'critical';
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      decoration: BoxDecoration(
+        color: isCritical ? Colors.red.shade50 : Colors.orange.shade50,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: isCritical
+              ? Colors.red.shade200
+              : Colors.orange.shade300,
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            isCritical ? Icons.warning_rounded : Icons.info_outline,
+            size: 16,
+            color: isCritical ? Colors.red.shade700 : Colors.orange.shade700,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              isCritical
+                  ? '🚨 Bedenklicher Inhalt – bitte Gespräch prüfen'
+                  : '⚠️ Nicht-Schulthema – außerhalb des Lernbereichs',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: isCritical
+                    ? Colors.red.shade700
+                    : Colors.orange.shade700,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -634,6 +895,7 @@ class _SessionDetailScreen extends StatelessWidget {
   final String topic;
   final DateTime? startedAt;
   final String childName;
+  final String? contentFlag;
 
   const _SessionDetailScreen({
     required this.sessionId,
@@ -642,6 +904,7 @@ class _SessionDetailScreen extends StatelessWidget {
     required this.topic,
     required this.childName,
     this.startedAt,
+    this.contentFlag,
   });
 
   @override
@@ -672,49 +935,61 @@ class _SessionDetailScreen extends StatelessWidget {
           ),
         ],
       ),
-      body: StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance
-            .collection('users')
-            .doc(userId)
-            .collection('children')
-            .doc(childId)
-            .collection('tutor_sessions')
-            .doc(sessionId)
-            .collection('messages')
-            .orderBy('timestamp', descending: false)
-            .snapshots(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
+      body: Column(
+        children: [
+          // Flag-Banner oben im Detail, wenn vorhanden
+          if (contentFlag != null)
+            _ContentFlagBanner(flag: contentFlag!),
 
-          final docs = snapshot.data?.docs ?? [];
+          Expanded(
+            child: StreamBuilder<QuerySnapshot>(
+              stream: FirebaseFirestore.instance
+                  .collection('users')
+                  .doc(userId)
+                  .collection('children')
+                  .doc(childId)
+                  .collection('tutor_sessions')
+                  .doc(sessionId)
+                  .collection('messages')
+                  .orderBy('timestamp', descending: false)
+                  .snapshots(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
 
-          if (docs.isEmpty) {
-            return const Center(
-              child: Text('Keine Nachrichten in dieser Session'),
-            );
-          }
+                final docs = snapshot.data?.docs ?? [];
 
-          return ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: docs.length,
-            itemBuilder: (context, i) {
-              final msg = docs[i].data() as Map<String, dynamic>;
-              final isUser = msg['isUser'] as bool? ?? false;
-              final text = msg['text'] as String? ?? '';
-              final timestamp = (msg['timestamp'] as Timestamp?)?.toDate();
+                if (docs.isEmpty) {
+                  return const Center(
+                    child: Text('Keine Nachrichten in dieser Session'),
+                  );
+                }
 
-              return _MessageBubble(
-                isUser: isUser,
-                text: text,
-                timestamp: timestamp,
-                childName: childName,
-                topicColor: topicColor,
-              );
-            },
-          );
-        },
+                return ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: docs.length,
+                  itemBuilder: (context, i) {
+                    final msg =
+                    docs[i].data() as Map<String, dynamic>;
+                    final isUser = msg['isUser'] as bool? ?? false;
+                    final text = msg['text'] as String? ?? '';
+                    final timestamp =
+                    (msg['timestamp'] as Timestamp?)?.toDate();
+
+                    return _MessageBubble(
+                      isUser: isUser,
+                      text: text,
+                      timestamp: timestamp,
+                      childName: childName,
+                      topicColor: topicColor,
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -723,7 +998,8 @@ class _SessionDetailScreen extends StatelessWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        shape:
+        RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Row(
           children: [
             Icon(Icons.delete_outline, color: Colors.red),
@@ -741,10 +1017,11 @@ class _SessionDetailScreen extends StatelessWidget {
             child: const Text('Abbrechen'),
           ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            style:
+            ElevatedButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () => Navigator.pop(ctx, true),
-            child:
-            const Text('Löschen', style: TextStyle(color: Colors.white)),
+            child: const Text('Löschen',
+                style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -752,6 +1029,7 @@ class _SessionDetailScreen extends StatelessWidget {
 
     if (confirmed != true || !context.mounted) return;
 
+    final tutorChatCleanupService = TutorChatCleanupService();
     await tutorChatCleanupService.deleteSession(
       userId: userId,
       childId: childId,
@@ -779,11 +1057,21 @@ class _SessionDetailScreen extends StatelessWidget {
       case 'Mathematik':
         return Colors.orange;
       case 'Deutsch':
-        return Colors.red;
+        return Colors.red.shade700;
       case 'Englisch':
         return Colors.blue;
       case 'Sachkunde':
         return Colors.green;
+      case 'Physik':
+        return Colors.indigo;
+      case 'Chemie':
+        return Colors.teal;
+      case 'Biologie':
+        return Colors.lightGreen.shade700;
+      case 'Geschichte':
+        return Colors.brown;
+      case 'Geographie':
+        return Colors.cyan.shade700;
       default:
         return Colors.deepPurple;
     }
@@ -825,47 +1113,53 @@ class _MessageBubble extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.only(bottom: 4),
               child: Text(
-                isUser ? childName : '🎓 Lerndex',
+                isUser ? childName : 'Lerndex',
                 style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.bold,
-                  color: isUser ? Colors.deepPurple : topicColor,
+                  color: isUser ? topicColor : Colors.deepPurple,
                 ),
               ),
             ),
             Container(
+              padding: const EdgeInsets.symmetric(
+                  horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
-                color:
-                isUser ? Colors.deepPurple.shade50 : Colors.white,
+                color: isUser ? topicColor.withOpacity(0.1) : Colors.white,
                 borderRadius: BorderRadius.only(
                   topLeft: const Radius.circular(16),
                   topRight: const Radius.circular(16),
-                  bottomLeft: Radius.circular(isUser ? 16 : 4),
-                  bottomRight: Radius.circular(isUser ? 4 : 16),
+                  bottomLeft: isUser
+                      ? const Radius.circular(16)
+                      : const Radius.circular(4),
+                  bottomRight: isUser
+                      ? const Radius.circular(4)
+                      : const Radius.circular(16),
                 ),
                 border: Border.all(
                   color: isUser
-                      ? Colors.deepPurple.shade100
+                      ? topicColor.withOpacity(0.2)
                       : Colors.grey.shade200,
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
+                    color: Colors.black.withOpacity(0.04),
                     blurRadius: 4,
                     offset: const Offset(0, 2),
                   ),
                 ],
               ),
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              child: Text(text,
-                  style: const TextStyle(fontSize: 14, height: 1.4)),
+              child: Text(
+                text,
+                style: const TextStyle(fontSize: 14, height: 1.4),
+              ),
             ),
             if (timestamp != null)
               Padding(
-                padding: const EdgeInsets.only(top: 4),
+                padding: const EdgeInsets.only(top: 3),
                 child: Text(
                   '${timestamp!.hour.toString().padLeft(2, '0')}:${timestamp!.minute.toString().padLeft(2, '0')}',
-                  style: TextStyle(fontSize: 10, color: Colors.grey[500]),
+                  style: TextStyle(fontSize: 10, color: Colors.grey[400]),
                 ),
               ),
           ],
