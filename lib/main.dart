@@ -1,43 +1,22 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_ai/firebase_ai.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'firebase_options.dart';
 
-// Imports für Auth-System
+// Auth
 import 'src/features/auth/presentation/login_screen.dart';
 import 'src/features/auth/presentation/active_child_provider.dart';
 import 'src/features/auth/data/auth_repository.dart';
 import 'src/features/auth/data/profile_repository.dart';
-import 'src/features/auth/domain/child_model.dart';
 
-// Import für Quiz-System
-import 'src/features/quiz/presentation/quiz_screen.dart';
-import 'src/features/quiz/data/extended_quiz_repository.dart';
-
-// Imports für Eltern-Dashboard
+// Eltern-Dashboard
 import 'src/features/parent_dashboard/presentation/parent_dashboard_screen.dart';
 import 'src/features/parent_dashboard/presentation/pin_setup_dialog.dart';
 import 'src/features/parent_dashboard/presentation/pin_input_dialog.dart';
 import 'src/features/parent_dashboard/data/pin_repository.dart';
 
-// Imports für Belohnungssystem
-import 'src/features/rewards/presentation/rewards_screen.dart';
-
-// Import KI-Tutor
-import 'src/features/tutor/presentation/tutor_screen.dart';
-
-// ✅ NEU: Schüler-Dashboard mit Bottom App Bar
+// Schüler-Dashboard
 import 'src/features/student_dashboard/presentation/student_dashboard_screen.dart';
-
-import 'src/features/generated_tasks/data/generated_task_models.dart';
-import 'src/features/generated_tasks/data/generated_task_repository.dart';
-import 'src/features/generated_tasks/data/firebase_ai_service_improved.dart';
-import 'src/features/generated_tasks/presentation/improved_ai_task_generator_screen.dart';
-import 'src/features/generated_tasks/presentation/task_approval_screen.dart';
-
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
