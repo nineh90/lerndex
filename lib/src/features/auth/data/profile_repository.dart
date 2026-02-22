@@ -20,6 +20,10 @@ class ProfileRepository {
   /// Stream aller Kinder des eingeloggten Eltern-Accounts
   /// Aktualisiert sich automatisch bei Änderungen in Firestore
   Stream<List<ChildModel>> watchChildren() {
+
+    print('🔍 currentUser: ${_auth.currentUser?.uid}');
+    print('🔍 _uid getter: $_uid');
+
     return _firestore
         .collection('users')
         .doc(_uid)
@@ -292,9 +296,10 @@ ProfileRepository profileRepository(ProfileRepositoryRef ref) {
   );
 }
 
-/// Provider für die Kinder-Liste (Stream)
-/// Aktualisiert sich automatisch
 @riverpod
 Stream<List<ChildModel>> childrenList(ChildrenListRef ref) {
+  final authState = ref.watch(authStateChangesProvider);
+  final user = authState.value;
+  if (user == null) return Stream.value([]);
   return ref.watch(profileRepositoryProvider).watchChildren();
 }

@@ -29,6 +29,11 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
 
     return Scaffold(
       appBar: AppBar(
+        // ── NEU: Zurück zur Kind-Auswahl ──────────────────────────────────
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
         title: const Text('Eltern-Dashboard'),
         backgroundColor: Colors.deepPurple,
         foregroundColor: Colors.white,
@@ -305,7 +310,7 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
           ),
           ElevatedButton(
             onPressed: () async {
-              Navigator.pop(context); // Dialog schließen
+              Navigator.pop(context);
               await ref.read(authRepositoryProvider).signOut();
               if (context.mounted) {
                 Navigator.of(context).pushAndRemoveUntil(
