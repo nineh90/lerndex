@@ -222,12 +222,14 @@ class AuthRepository {
   }
 }
 
-@riverpod
+
+// NACHHER — authStateChanges mit keepAlive damit er nie disposed wird:
+@Riverpod(keepAlive: true)
 AuthRepository authRepository(AuthRepositoryRef ref) {
   return AuthRepository(FirebaseAuth.instance, FirebaseFirestore.instance);
 }
 
-@riverpod
+@Riverpod(keepAlive: true)
 Stream<User?> authStateChanges(AuthStateChangesRef ref) {
   return ref.watch(authRepositoryProvider).authStateChanges();
 }

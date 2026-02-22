@@ -6,14 +6,11 @@ part of 'auth_repository.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$authRepositoryHash() => r'8ee2ff19c054c39e160fd4afbb1cac78d6987acc';
+String _$authRepositoryHash() => r'2c8ad8222b9be48f6b27bf7158bf7eb5ed6a3d34';
 
-/// Provider für AuthRepository (Singleton)
-/// Kann in der ganzen App mit ref.read(authRepositoryProvider) verwendet werden
-///
-/// Copied from [authRepository].
+/// See also [authRepository].
 @ProviderFor(authRepository)
-final authRepositoryProvider = AutoDisposeProvider<AuthRepository>.internal(
+final authRepositoryProvider = Provider<AuthRepository>.internal(
   authRepository,
   name: r'authRepositoryProvider',
   debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
@@ -25,15 +22,12 @@ final authRepositoryProvider = AutoDisposeProvider<AuthRepository>.internal(
 
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
-typedef AuthRepositoryRef = AutoDisposeProviderRef<AuthRepository>;
-String _$authStateChangesHash() => r'af0a0185c59bf3c1ad8a9e041075517b3a2dcc31';
+typedef AuthRepositoryRef = ProviderRef<AuthRepository>;
+String _$authStateChangesHash() => r'516467ccef2d665b1316843bfc1759e7248e9dc2';
 
-/// Provider für den Auth-Status-Stream
-/// Überwacht automatisch, ob jemand ein-/ausgeloggt ist
-///
-/// Copied from [authStateChanges].
+/// See also [authStateChanges].
 @ProviderFor(authStateChanges)
-final authStateChangesProvider = AutoDisposeStreamProvider<User?>.internal(
+final authStateChangesProvider = StreamProvider<User?>.internal(
   authStateChanges,
   name: r'authStateChangesProvider',
   debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
@@ -45,6 +39,6 @@ final authStateChangesProvider = AutoDisposeStreamProvider<User?>.internal(
 
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
-typedef AuthStateChangesRef = AutoDisposeStreamProviderRef<User?>;
+typedef AuthStateChangesRef = StreamProviderRef<User?>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

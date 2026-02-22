@@ -26,12 +26,9 @@ final profileRepositoryProvider =
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef ProfileRepositoryRef = AutoDisposeProviderRef<ProfileRepository>;
-String _$childrenListHash() => r'2b147f217f29d71c60985581f453db3b82512cee';
+String _$childrenListHash() => r'9f9580d794737a33963508eb413c03a4e0d0572c';
 
-/// Provider für die Kinder-Liste (Stream)
-/// Aktualisiert sich automatisch
-///
-/// Copied from [childrenList].
+/// See also [childrenList].
 @ProviderFor(childrenList)
 final childrenListProvider =
     AutoDisposeStreamProvider<List<ChildModel>>.internal(

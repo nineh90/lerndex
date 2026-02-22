@@ -4,6 +4,7 @@ import '../data/auth_repository.dart';
 import 'register_screen.dart';
 import 'email_verification_screen.dart';
 import 'onboarding_screen.dart';
+import 'family_dashboard_screen.dart';
 
 /// Login-Screen für bestehende Nutzer
 /// Neue Nutzer werden zu RegisterScreen weitergeleitet
@@ -42,7 +43,22 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     try {
       await ref.read(authRepositoryProvider).signInWithEmailAndPassword(
           email, password);
-      // Navigation via authStateChanges in main.dart
+
+      if (!mounted) return;
+
+      final onboardingDone =
+      await ref.read(authRepositoryProvider).isOnboardingComplete();
+      if (!mounted) return;
+
+      if (!onboardingDone) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const OnboardingScreen()),
+        );
+      } else {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const FamilyDashboardScreen()),
+        );
+      }
     } catch (e) {
       _showError(e.toString());
     } finally {
@@ -75,8 +91,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (_) => const OnboardingScreen()),
         );
+      } else {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const FamilyDashboardScreen()),
+        );
       }
-      // Sonst: authStateChanges übernimmt Navigation ins Dashboard
     } catch (e) {
       _showError(e.toString());
     } finally {
