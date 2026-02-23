@@ -1,0 +1,725 @@
+{
+    "subject": "Biologie",
+    "questions": [
+        {
+            "grade": 5,
+            "question": "Welches Merkmal ist typisch für alle Säugetiere?",
+            "options": [
+                "Sie legen Eier.",
+                "Sie haben Schuppen.",
+                "Sie säugen ihre Jungen mit Milch.",
+                "Sie können fliegen."
+            ],
+            "answer": "Sie säugen ihre Jungen mit Milch.",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 5,
+            "question": "Wie heißt das grüne Pigment in den Blättern von Pflanzen?",
+            "options": [
+                "Hämoglobin",
+                "Chlorophyll",
+                "Carotin",
+                "Melanin"
+            ],
+            "answer": "Chlorophyll",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 5,
+            "question": "Wie viele Knochen hat das menschliche Skelett ungefähr?",
+            "options": [
+                "Etwa 50",
+                "Etwa 100",
+                "Etwa 200",
+                "Etwa 500"
+            ],
+            "answer": "Etwa 200",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 5,
+            "question": "Welches Organ dient dem Fisch zur Atmung unter Wasser?",
+            "options": [
+                "Lunge",
+                "Haut",
+                "Kiemen",
+                "Luftröhre"
+            ],
+            "answer": "Kiemen",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 5,
+            "question": "Was braucht eine Pflanze für die Photosynthese?",
+            "options": [
+                "Sauerstoff und Zucker",
+                "Licht, Wasser und Kohlenstoffdioxid",
+                "Dunkelheit und Kälte",
+                "Nur Erde"
+            ],
+            "answer": "Licht, Wasser und Kohlenstoffdioxid",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 5,
+            "question": "Welches Gelenk verbindet den Oberschenkel mit dem Unterschenkel?",
+            "options": [
+                "Kugelgelenk",
+                "Scharniergelenk (Knie)",
+                "Sattelgelenk",
+                "Drehgelenk"
+            ],
+            "answer": "Scharniergelenk (Knie)",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 5,
+            "question": "Was ist die Hauptaufgabe der Wurzel einer Pflanze?",
+            "options": [
+                "Insekten anlocken",
+                "Photosynthese betreiben",
+                "Wasser und Nährstoffe aufnehmen",
+                "Samen produzieren"
+            ],
+            "answer": "Wasser und Nährstoffe aufnehmen",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 5,
+            "question": "Welches Tier gehört zu den Wirbeltieren?",
+            "options": [
+                "Regenwurm",
+                "Biene",
+                "Frosch",
+                "Schnecke"
+            ],
+            "answer": "Frosch",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 5,
+            "question": "Wie nennt man Tiere, die sowohl Pflanzen als auch Fleisch fressen?",
+            "options": [
+                "Herbivoren",
+                "Karnivoren",
+                "Omnivoren",
+                "Produzenten"
+            ],
+            "answer": "Omnivoren",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 5,
+            "question": "Welcher Teil der Blüte wird nach der Befruchtung zur Frucht?",
+            "options": [
+                "Kronblatt",
+                "Staubblatt",
+                "Fruchtknoten",
+                "Kelchblatt"
+            ],
+            "answer": "Fruchtknoten",
+            "difficulty": "hard"
+        },
+        {
+            "grade": 6,
+            "question": "Welche Tiergruppe ist wechselwarm und legt Eier an Land ab?",
+            "options": [
+                "Säugetiere",
+                "Vögel",
+                "Reptilien",
+                "Amphibien"
+            ],
+            "answer": "Reptilien",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 6,
+            "question": "Was ist das Hauptmerkmal von Insekten?",
+            "options": [
+                "Zwei Körperabschnitte und 8 Beine",
+                "Drei Körperabschnitte und 6 Beine",
+                "Ein Körperabschnitt und viele Beine",
+                "Keine Beine"
+            ],
+            "answer": "Drei Körperabschnitte und 6 Beine",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 6,
+            "question": "Wie nennt man die Entwicklung vom Ei über die Larve zur Puppe und schließlich zum fertigen Insekt?",
+            "options": [
+                "Evolution",
+                "Metamorphose",
+                "Photosynthese",
+                "Mutation"
+            ],
+            "answer": "Metamorphose",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 6,
+            "question": "Welches dieser Tiere gehört zu den Amphibien?",
+            "options": [
+                "Krokodil",
+                "Feuersalamander",
+                "Eidechse",
+                "Schildkröte"
+            ],
+            "answer": "Feuersalamander",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 6,
+            "question": "Wozu dient die Schwimmblase bei Fischen?",
+            "options": [
+                "Zur Atmung",
+                "Zur Verdauung",
+                "Zum Auf- und Absteigen im Wasser",
+                "Zur Fortpflanzung"
+            ],
+            "answer": "Zum Auf- und Absteigen im Wasser",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 6,
+            "question": "Was schützt die inneren Organe eines Vogels beim Flug und isoliert gegen Kälte?",
+            "options": [
+                "Fell",
+                "Schuppen",
+                "Federn",
+                "Panzer"
+            ],
+            "answer": "Federn",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 6,
+            "question": "Wie verbreitet der Löwenzahn seine Samen?",
+            "options": [
+                "Durch Tiere",
+                "Durch Wasser",
+                "Durch den Wind",
+                "Durch Selbstausbreitung"
+            ],
+            "answer": "Durch den Wind",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 6,
+            "question": "Welches Organ im menschlichen Körper ist für den Gasaustausch (Sauerstoff/CO2) zuständig?",
+            "options": [
+                "Magen",
+                "Leber",
+                "Lunge",
+                "Niere"
+            ],
+            "answer": "Lunge",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 6,
+            "question": "Was versteht man unter 'Winterstarre'?",
+            "options": [
+                "Erhöhte Aktivität bei Kälte",
+                "Absinken der Körpertemperatur auf die Umgebungstemperatur",
+                "Ein tiefer Schlaf von Säugetieren",
+                "Flug in den Süden"
+            ],
+            "answer": "Absinken der Körpertemperatur auf die Umgebungstemperatur",
+            "difficulty": "hard"
+        },
+        {
+            "grade": 6,
+            "question": "Was passiert bei der Bestäubung einer Blume?",
+            "options": [
+                "Samen fallen auf den Boden",
+                "Pollen gelangen auf die Narbe",
+                "Die Blüte verwelkt",
+                "Wasser wird aufgenommen"
+            ],
+            "answer": "Pollen gelangen auf die Narbe",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 7,
+            "question": "Welchen Bestandteil findet man in einer Pflanzenzelle, aber NICHT in einer Tierzelle?",
+            "options": [
+                "Zellkern",
+                "Zellwand",
+                "Mitochondrien",
+                "Zellmembran"
+            ],
+            "answer": "Zellwand",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 7,
+            "question": "Wie nennt man Einzeller, die sich durch Wimpern fortbewegen?",
+            "options": [
+                "Amöben",
+                "Pantoffeltierchen",
+                "Bakterien",
+                "Viren"
+            ],
+            "answer": "Pantoffeltierchen",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 7,
+            "question": "Wo findet im menschlichen Körper die meiste Nährstoffaufnahme statt?",
+            "options": [
+                "Speiseröhre",
+                "Magen",
+                "Dünndarm",
+                "Dickdarm"
+            ],
+            "answer": "Dünndarm",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 7,
+            "question": "Was ist die Hauptfunktion der roten Blutkörperchen?",
+            "options": [
+                "Abwehr von Krankheitserregern",
+                "Blutgerinnung",
+                "Sauerstofftransport",
+                "Energiespeicherung"
+            ],
+            "answer": "Sauerstofftransport",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 7,
+            "question": "Welches Enzym im Speichel beginnt mit der Verdauung von Kohlenhydraten (Stärke)?",
+            "options": [
+                "Pepsin",
+                "Amylase",
+                "Lipase",
+                "Insulin"
+            ],
+            "answer": "Amylase",
+            "difficulty": "hard"
+        },
+        {
+            "grade": 7,
+            "question": "Welcher Teil der Zelle wird oft als 'Kraftwerk der Zelle' bezeichnet?",
+            "options": [
+                "Vakuole",
+                "Chloroplast",
+                "Mitochondrium",
+                "Ribosom"
+            ],
+            "answer": "Mitochondrium",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 7,
+            "question": "Wie vermehren sich Bakterien in der Regel?",
+            "options": [
+                "Durch Befruchtung",
+                "Durch Zellteilung",
+                "Durch Sporen",
+                "Gar nicht"
+            ],
+            "answer": "Durch Zellteilung",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 7,
+            "question": "Was ist der Unterschied zwischen einer Arterie und einer Vene?",
+            "options": [
+                "Arterien führen zum Herzen, Venen weg",
+                "Arterien führen vom Herzen weg, Venen zum Herzen hin",
+                "Venen sind immer sauerstoffreich",
+                "Es gibt keinen Unterschied"
+            ],
+            "answer": "Arterien führen vom Herzen weg, Venen zum Herzen hin",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 7,
+            "question": "Was ist eine Vakuole?",
+            "options": [
+                "Ein Speicherort für Erbinformationen",
+                "Ein großer flüssigkeitsgefüllter Hohlraum in Pflanzenzellen",
+                "Ein Fortbewegungsorgan",
+                "Ein Bestandteil des Blutes"
+            ],
+            "answer": "Ein großer flüssigkeitsgefüllter Hohlraum in Pflanzenzellen",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 7,
+            "question": "Warum sind Viren keine echten Lebewesen im biologischen Sinne?",
+            "options": [
+                "Sie sind zu klein",
+                "Sie haben keinen eigenen Stoffwechsel",
+                "Sie haben keine DNA",
+                "Sie können sich gar nicht vermehren"
+            ],
+            "answer": "Sie haben keinen eigenen Stoffwechsel",
+            "difficulty": "hard"
+        },
+        {
+            "grade": 8,
+            "question": "Welches Hormon reguliert den Blutzuckerspiegel?",
+            "options": [
+                "Adrenalin",
+                "Testosteron",
+                "Insulin",
+                "Östrogen"
+            ],
+            "answer": "Insulin",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 8,
+            "question": "Wie nennt man die Verbindungstelle zwischen zwei Nervenzellen?",
+            "options": [
+                "Axon",
+                "Dendrit",
+                "Synapse",
+                "Myelinscheide"
+            ],
+            "answer": "Synapse",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 8,
+            "question": "Welcher Teil des Auges ist für die Farbwahrnehmung zuständig?",
+            "options": [
+                "Stäbchen",
+                "Zapfen",
+                "Lederhaut",
+                "Pupille"
+            ],
+            "answer": "Zapfen",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 8,
+            "question": "Was passiert bei einer aktiven Impfung?",
+            "options": [
+                "Es werden fertige Antikörper gespritzt",
+                "Es werden abgeschwächte Erreger gespritzt, um das Immunsystem zu trainieren",
+                "Es werden Vitamine gespritzt",
+                "Das Blut wird gereinigt"
+            ],
+            "answer": "Es werden abgeschwächte Erreger gespritzt, um das Immunsystem zu trainieren",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 8,
+            "question": "Welches Organ produziert die Galle zur Fettverdauung?",
+            "options": [
+                "Bauchspeicheldrüse",
+                "Leber",
+                "Gallenblase",
+                "Niere"
+            ],
+            "answer": "Leber",
+            "difficulty": "hard"
+        },
+        {
+            "grade": 8,
+            "question": "Wie nennt man eine unwillkürliche, stets gleich ablaufende Reaktion auf einen Reiz?",
+            "options": [
+                "Gedanke",
+                "Reflex",
+                "Lernen",
+                "Instinkt"
+            ],
+            "answer": "Reflex",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 8,
+            "question": "Was ist die Hauptaufgabe der weißen Blutkörperchen (Leukozyten)?",
+            "options": [
+                "Sauerstofftransport",
+                "Energiegewinnung",
+                "Abwehr von Krankheitserregern",
+                "Transport von Nährstoffen"
+            ],
+            "answer": "Abwehr von Krankheitserregern",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 8,
+            "question": "In welcher Drüse wird das Hormon Adrenalin hauptsächlich gebildet?",
+            "options": [
+                "Schilddrüse",
+                "Nebenniere",
+                "Hirnanhangdrüse",
+                "Bauchspeicheldrüse"
+            ],
+            "answer": "Nebenniere",
+            "difficulty": "hard"
+        },
+        {
+            "grade": 8,
+            "question": "Welcher Teil des Gehirns ist vor allem für das Gleichgewicht und die Koordination zuständig?",
+            "options": [
+                "Großhirn",
+                "Kleinhirn",
+                "Zwischenhirn",
+                "Nachhirn"
+            ],
+            "answer": "Kleinhirn",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 8,
+            "question": "Was bedeutet 'Resistenz' bei Bakterien?",
+            "options": [
+                "Sie vermehren sich schneller",
+                "Sie sind unempfindlich gegenüber Antibiotika",
+                "Sie sterben bei Kälte",
+                "Sie leuchten im Dunkeln"
+            ],
+            "answer": "Sie sind unempfindlich gegenüber Antibiotika",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 9,
+            "question": "Wie viele Chromosomen hat eine normale menschliche Körperzelle?",
+            "options": [
+                "23",
+                "44",
+                "46",
+                "92"
+            ],
+            "answer": "46",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 9,
+            "question": "Wer begründete die klassischen Vererbungsregeln durch Versuche mit Erbsen?",
+            "options": [
+                "Charles Darwin",
+                "Gregor Mendel",
+                "Louis Pasteur",
+                "James Watson"
+            ],
+            "answer": "Gregor Mendel",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 9,
+            "question": "Welche Stickstoffbase paart sich in der DNA immer mit Adenin?",
+            "options": [
+                "Cytosin",
+                "Guanin",
+                "Thymin",
+                "Uracil"
+            ],
+            "answer": "Thymin",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 9,
+            "question": "Wie nennt man die Zellteilung, bei der zwei genetisch identische Tochterzellen entstehen?",
+            "options": [
+                "Meiose",
+                "Mitose",
+                "Mutation",
+                "Modifikation"
+            ],
+            "answer": "Mitose",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 9,
+            "question": "Was ist ein Phänotyp?",
+            "options": [
+                "Die Gesamtheit der Gene",
+                "Das äußere Erscheinungsbild eines Lebwesens",
+                "Ein fossiler Knochen",
+                "Ein spezielles Protein"
+            ],
+            "answer": "Das äußere Erscheinungsbild eines Lebwesens",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 9,
+            "question": "Was versteht man unter 'natürlicher Selektion'?",
+            "options": [
+                "Zufällige Vermehrung",
+                "Überleben der am besten an die Umwelt angepassten Individuen",
+                "Züchtung durch den Menschen",
+                "Veränderung des Erbguts durch Strahlung"
+            ],
+            "answer": "Überleben der am besten an die Umwelt angepassten Individuen",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 9,
+            "question": "Welchen Chromosomensatz besitzen menschliche Keimzellen (Eizellen/Spermien)?",
+            "options": [
+                "Diploiden Satz (2n)",
+                "Haploiden Satz (n)",
+                "Triploiden Satz (3n)",
+                "Gar keinen"
+            ],
+            "answer": "Haploiden Satz (n)",
+            "difficulty": "hard"
+        },
+        {
+            "grade": 9,
+            "question": "Was ist eine Mutation?",
+            "options": [
+                "Eine bewusste Anpassung an die Umwelt",
+                "Eine spontane Veränderung des Erbguts",
+                "Eine Form der Fortpflanzung",
+                "Ein Fachbegriff für Evolution"
+            ],
+            "answer": "Eine spontane Veränderung des Erbguts",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 9,
+            "question": "Wie nennt man Organe, die den gleichen Grundbauplan haben, aber unterschiedliche Funktionen erfüllen können (z.B. Vogelflügel und Menschenarm)?",
+            "options": [
+                "Analoge Organe",
+                "Homologe Organe",
+                "Rudimentäre Organe",
+                "Atavismen"
+            ],
+            "answer": "Homologe Organe",
+            "difficulty": "hard"
+        },
+        {
+            "grade": 9,
+            "question": "Was beschreibt die 1. Mendelsche Regel (Uniformitätsregel)?",
+            "options": [
+                "Die Nachkommen reinerbiger Eltern sind untereinander alle gleich",
+                "Die Nachkommen spalten sich im Verhältnis 3:1 auf",
+                "Gene werden unabhängig voneinander vererbt",
+                "Männliche Nachkommen ähneln immer dem Vater"
+            ],
+            "answer": "Die Nachkommen reinerbiger Eltern sind untereinander alle gleich",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 10,
+            "question": "Wie heißt der Prozess, bei dem die DNA-Information in mRNA umgeschrieben wird?",
+            "options": [
+                "Replikation",
+                "Translation",
+                "Transkription",
+                "Transformation"
+            ],
+            "answer": "Transkription",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 10,
+            "question": "Wo findet die Translation (Eiweißsynthese) in der Zelle statt?",
+            "options": [
+                "Im Zellkern",
+                "An den Ribosomen",
+                "In den Lysosomen",
+                "Im Golgi-Apparat"
+            ],
+            "answer": "An den Ribosomen",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 10,
+            "question": "Welche Theorie zur Evolution stammt von Jean-Baptiste de Lamarck?",
+            "options": [
+                "Selektionstheorie",
+                "Vererbung erworbener Eigenschaften",
+                "Katastrophen-Theorie",
+                "Synthetische Evolutionstheorie"
+            ],
+            "answer": "Vererbung erworbener Eigenschaften",
+            "difficulty": "hard"
+        },
+        {
+            "grade": 10,
+            "question": "Was ist ein 'abiotischer Faktor' in einem Ökosystem?",
+            "options": [
+                "Konkurrenz",
+                "Temperatur",
+                "Parasitismus",
+                "Räuber-Beute-Beziehung"
+            ],
+            "answer": "Temperatur",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 10,
+            "question": "Wie nennt man die Gesamtheit aller Individuen einer Art in einem begrenzten Gebiet?",
+            "options": [
+                "Biozönose",
+                "Biotop",
+                "Population",
+                "Ökosphäre"
+            ],
+            "answer": "Population",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 10,
+            "question": "Was beschreibt das Prinzip der 'ökologischen Nische'?",
+            "options": [
+                "Den Wohnort einer Tierart",
+                "Die Gesamtheit der Ansprüche einer Art an ihre Umwelt",
+                "Ein Versteck im Wald",
+                "Die Fortpflanzungsrate"
+            ],
+            "answer": "Die Gesamtheit der Ansprüche einer Art an ihre Umwelt",
+            "difficulty": "hard"
+        },
+        {
+            "grade": 10,
+            "question": "Was ist die Primärquelle für fast alle Energie in Ökosystemen?",
+            "options": [
+                "Wärme aus dem Erdkern",
+                "Das Sonnenlicht",
+                "Chemische Energie aus Biomasse",
+                "Windenergie"
+            ],
+            "answer": "Das Sonnenlicht",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 10,
+            "question": "Wie nennt man die schrittweise Wiederbesiedlung eines Lebensraums nach einer Störung (z.B. Waldbrand)?",
+            "options": [
+                "Selektion",
+                "Succession",
+                "Symbiose",
+                "Segregation"
+            ],
+            "answer": "Succession",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 10,
+            "question": "Welcher Begriff beschreibt eine Beziehung zwischen zwei Arten, die für beide Partner vorteilhaft ist?",
+            "options": [
+                "Parasitismus",
+                "Konkurrenz",
+                "Symbiose",
+                "Kommensalismus"
+            ],
+            "answer": "Symbiose",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 10,
+            "question": "Was versteht man unter 'biologischer Schädlingsbekämpfung'?",
+            "options": [
+                "Einsatz von chemischen Giften",
+                "Einsatz von natürlichen Fressfeinden der Schädlinge",
+                "Absammeln von Hand",
+                "Gentechnische Veränderung der Pflanzen"
+            ],
+            "answer": "Einsatz von natürlichen Fressfeinden der Schädlinge",
+            "difficulty": "medium"
+        }
+    ]
+}

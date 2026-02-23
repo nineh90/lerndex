@@ -2,87 +2,1323 @@
   "subject": "Deutsch",
   "questions": [
     {
-      "grade": 1,
-      "question": "Welcher Buchstabe kommt nach 'A'?",
-      "options": ["B", "C", "D", "E"],
-      "answer": "B",
+      "grade": 3,
+      "question": "Welches dieser Wörter ist ein Nomen (Hauptwort)?",
+      "options": [
+        "schnell",
+        "laufen",
+        "Haus",
+        "und"
+      ],
+      "answer": "Haus",
       "difficulty": "easy"
     },
     {
-      "grade": 1,
-      "question": "Welches Wort reimt sich auf 'Haus'?",
-      "options": ["Baum", "Maus", "Auto", "Blume"],
-      "answer": "Maus",
+      "grade": 3,
+      "question": "Wie nennt man Wörter, die beschreiben, wie etwas ist?",
+      "options": [
+        "Nomen",
+        "Verben",
+        "Adjektive",
+        "Artikel"
+      ],
+      "answer": "Adjektive",
       "difficulty": "easy"
     },
     {
-      "grade": 2,
-      "question": "Wie viele Silben hat das Wort 'Schokolade'?",
-      "options": ["2", "3", "4", "5"],
-      "answer": "4",
-      "difficulty": "easy"
-    },
-    {
-      "grade": 2,
-      "question": "Welches Wort ist richtig geschrieben?",
-      "options": ["Baum", "Bauhm", "Baumm", "Baom"],
-      "answer": "Baum",
+      "grade": 3,
+      "question": "Welcher Artikel gehört zu 'Sonne'?",
+      "options": [
+        "der",
+        "die",
+        "das",
+        "ein"
+      ],
+      "answer": "die",
       "difficulty": "easy"
     },
     {
       "grade": 3,
       "question": "Was ist das Gegenteil von 'groß'?",
-      "options": ["klein", "dick", "dünn", "lang"],
+      "options": [
+        "breit",
+        "lang",
+        "hoch",
+        "klein"
+      ],
       "answer": "klein",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 3,
+      "question": "Welches Wort ist ein Verb (Tunwort)?",
+      "options": [
+        "Apfel",
+        "schön",
+        "springen",
+        "heute"
+      ],
+      "answer": "springen",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 3,
+      "question": "Wo steht der Punkt in einem Aussagesatz?",
+      "options": [
+        "Am Anfang",
+        "In der Mitte",
+        "Am Ende",
+        "Gar nicht"
+      ],
+      "answer": "Am Ende",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 3,
+      "question": "Wie trennt man das Wort 'Garten'?",
+      "options": [
+        "G-arten",
+        "Gar-ten",
+        "Gart-en",
+        "Ga-rten"
+      ],
+      "answer": "Gar-ten",
       "difficulty": "medium"
     },
     {
       "grade": 3,
-      "question": "Welches Wort ist ein Nomen (Hauptwort)?",
-      "options": ["laufen", "schnell", "Hund", "schön"],
-      "answer": "Hund",
-      "difficulty": "medium"
+      "question": "Welcher Buchstabe wird im Wort 'F_sch' eingesetzt?",
+      "options": [
+        "e",
+        "i",
+        "o",
+        "u"
+      ],
+      "answer": "i",
+      "difficulty": "easy"
     },
     {
-      "grade": 4,
-      "question": "Was ist die 1. Person Singular von 'laufen'?",
-      "options": ["ich laufe", "du läufst", "er läuft", "wir laufen"],
-      "answer": "ich laufe",
-      "difficulty": "medium"
+      "grade": 3,
+      "question": "Was gehört in die Lücke: 'Ich ___ ein Eis.'?",
+      "options": [
+        "esse",
+        "isst",
+        "essen",
+        "esst"
+      ],
+      "answer": "esse",
+      "difficulty": "easy"
     },
     {
-      "grade": 4,
-      "question": "Welches Satzzeichen gehört ans Ende einer Frage?",
-      "options": [".", "!", "?", ","],
+      "grade": 3,
+      "question": "Welches Satzzeichen passt hier: 'Kommst du mit'?",
+      "options": [
+        ".",
+        "!",
+        "?",
+        ","
+      ],
       "answer": "?",
       "difficulty": "easy"
     },
     {
-      "grade": 5,
-      "question": "Was ist ein Synonym für 'glücklich'?",
-      "options": ["traurig", "froh", "wütend", "müde"],
-      "answer": "froh",
+      "grade": 4,
+      "question": "Wie nennt man die Zeitform der Vergangenheit, die man oft in Geschichten nutzt?",
+      "options": [
+        "Präsens",
+        "Präteritum",
+        "Perfekt",
+        "Futur"
+      ],
+      "answer": "Präteritum",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 4,
+      "question": "Was ist das Subjekt im Satz: 'Der Hund bellt laut.'?",
+      "options": [
+        "Der Hund",
+        "bellt",
+        "laut",
+        "bellt laut"
+      ],
+      "answer": "Der Hund",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 4,
+      "question": "Welches Wort wird großgeschrieben?",
+      "options": [
+        "spielen",
+        "grün",
+        "freiheit",
+        "unter"
+      ],
+      "answer": "freiheit",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 4,
+      "question": "Wie heißt die Mehrzahl von 'Baum'?",
+      "options": [
+        "Baums",
+        "Baume",
+        "Bäume",
+        "Bäumer"
+      ],
+      "answer": "Bäume",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 4,
+      "question": "Was ist das Prädikat im Satz: 'Lisa liest ein Buch.'?",
+      "options": [
+        "Lisa",
+        "liest",
+        "ein",
+        "Buch"
+      ],
+      "answer": "liest",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 4,
+      "question": "Welches Wort hat einen Doppelkonsonanten?",
+      "options": [
+        "Hase",
+        "Sonne",
+        "igel",
+        "Vogel"
+      ],
+      "answer": "Sonne",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 4,
+      "question": "Welcher Fall wird mit 'Wen oder was...?' erfragt?",
+      "options": [
+        "Nominativ",
+        "Genitiv",
+        "Dativ",
+        "Akkusativ"
+      ],
+      "answer": "Akkusativ",
+      "difficulty": "hard"
+    },
+    {
+      "grade": 4,
+      "question": "Was ist ein anderes Wort für 'Sagen'?",
+      "options": [
+        "sprechen",
+        "laufen",
+        "sehen",
+        "hören"
+      ],
+      "answer": "sprechen",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 4,
+      "question": "Welches Wort ist zusammengesetzt?",
+      "options": [
+        "Haustür",
+        "laufen",
+        "gelb",
+        "heute"
+      ],
+      "answer": "Haustür",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 4,
+      "question": "Welche Zeitform ist: 'Ich habe gelacht.'?",
+      "options": [
+        "Präsens",
+        "Präteritum",
+        "Perfekt",
+        "Plusquamperfekt"
+      ],
+      "answer": "Perfekt",
       "difficulty": "medium"
     },
     {
       "grade": 5,
-      "question": "Welche Zeitform ist: 'Ich bin gelaufen'?",
-      "options": ["Präsens", "Präteritum", "Perfekt", "Futur"],
-      "answer": "Perfekt",
+      "question": "Wie nennt man die 1. Person Singular von 'sein' im Präsens?",
+      "options": [
+        "ich bist",
+        "ich war",
+        "ich bin",
+        "ich sein"
+      ],
+      "answer": "ich bin",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 5,
+      "question": "Welches Satzzeichen leitet die wörtliche Rede ein?",
+      "options": [
+        "Punkt",
+        "Doppelpunkt",
+        "Komma",
+        "Fragezeichen"
+      ],
+      "answer": "Doppelpunkt",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 5,
+      "question": "Was ist ein 'Personalpronomen'?",
+      "options": [
+        "mein",
+        "ich",
+        "hier",
+        "schön"
+      ],
+      "answer": "ich",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 5,
+      "question": "Welches Wort ist ein Begleiter (Artikel)?",
+      "options": [
+        "ein",
+        "und",
+        "sehr",
+        "oft"
+      ],
+      "answer": "ein",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 5,
+      "question": "Wie nennt man das Satzglied, das nach 'Wem...?' fragt?",
+      "options": [
+        "Subjekt",
+        "Prädikat",
+        "Dativobjekt",
+        "Akkusativobjekt"
+      ],
+      "answer": "Dativobjekt",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 5,
+      "question": "Was ist die Grundform eines Verbs?",
+      "options": [
+        "Stammform",
+        "Infinitiv",
+        "Partizip",
+        "Personalform"
+      ],
+      "answer": "Infinitiv",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 5,
+      "question": "Welcher Buchstabe folgt meistens auf ein 'q'?",
+      "options": [
+        "u",
+        "v",
+        "a",
+        "i"
+      ],
+      "answer": "u",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 5,
+      "question": "Wie heißt die Steigerung von 'gut'?",
+      "options": [
+        "gut, guter, am gutesten",
+        "gut, besser, am besten",
+        "gut, mehr gut, am meisten gut",
+        "gut, best, am bessersten"
+      ],
+      "answer": "gut, besser, am besten",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 5,
+      "question": "Was ist ein 'Vokal'?",
+      "options": [
+        "b, c, d",
+        "a, e, i, o, u",
+        "sch, ch, st",
+        "f, g, h"
+      ],
+      "answer": "a, e, i, o, u",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 5,
+      "question": "Was ist ein Teekesselchen?",
+      "options": [
+        "Ein Synonym",
+        "Ein Wort mit zwei Bedeutungen",
+        "Ein Reim",
+        "Ein Satzanfang"
+      ],
+      "answer": "Ein Wort mit zwei Bedeutungen",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 6,
+      "question": "Welcher Fall ist 'des Vaters'?",
+      "options": [
+        "Nominativ",
+        "Genitiv",
+        "Dativ",
+        "Akkusativ"
+      ],
+      "answer": "Genitiv",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 6,
+      "question": "Welche Zeitform ist 'wir werden gehen'?",
+      "options": [
+        "Präsens",
+        "Perfekt",
+        "Futur I",
+        "Futur II"
+      ],
+      "answer": "Futur I",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 6,
+      "question": "Was ist ein 'Attribut'?",
+      "options": [
+        "Ein Hauptsatz",
+        "Eine Beifügung zur näheren Bestimmung",
+        "Ein Verb",
+        "Ein Satzzeichen"
+      ],
+      "answer": "Eine Beifügung zur näheren Bestimmung",
       "difficulty": "hard"
     },
     {
       "grade": 6,
-      "question": "Was ist ein Akkusativobjekt?",
-      "options": ["Wer?", "Wem?", "Wen oder was?", "Wessen?"],
-      "answer": "Wen oder was?",
-      "difficulty": "hard"
+      "question": "Welche Wortart ist 'weil'?",
+      "options": [
+        "Adjektiv",
+        "Konjunktion",
+        "Präposition",
+        "Nomen"
+      ],
+      "answer": "Konjunktion",
+      "difficulty": "medium"
     },
     {
       "grade": 6,
-      "question": "Welches Wort ist ein Adjektiv?",
-      "options": ["Haus", "laufen", "schnell", "gestern"],
-      "answer": "schnell",
+      "question": "Was ist das Gegenteil von 'Aktiv' in der Grammatik?",
+      "options": [
+        "Inaktiv",
+        "Passiv",
+        "Reaktiv",
+        "Negativ"
+      ],
+      "answer": "Passiv",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 6,
+      "question": "Wie schreibt man das Wort für 'viele Menschen'?",
+      "options": [
+        "Leute",
+        "Läute",
+        "Leite",
+        "Loite"
+      ],
+      "answer": "Leute",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 6,
+      "question": "Welches Wort ist ein Pronomen?",
+      "options": [
+        "laufen",
+        "dieser",
+        "haus",
+        "schön"
+      ],
+      "answer": "dieser",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 6,
+      "question": "Was ist eine 'Fabel'?",
+      "options": [
+        "Ein Sachtext",
+        "Eine Geschichte mit Tieren, die menschlich handeln",
+        "Ein langes Gedicht",
+        "Eine Nachricht"
+      ],
+      "answer": "Eine Geschichte mit Tieren, die menschlich handeln",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 6,
+      "question": "Wie nennt man den Wortstamm von 'laufen'?",
+      "options": [
+        "lau-",
+        "lauf-",
+        "laufen-",
+        "-en"
+      ],
+      "answer": "lauf-",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 6,
+      "question": "Was ist ein 'Relativsatz'?",
+      "options": [
+        "Ein Fragesatz",
+        "Ein Nebensatz, der ein Nomen näher erklärt",
+        "Ein Hauptsatz",
+        "Ein Befehlssatz"
+      ],
+      "answer": "Ein Nebensatz, der ein Nomen näher erklärt",
+      "difficulty": "hard"
+    },
+    {
+      "grade": 7,
+      "question": "Welche Konjunktion leitet einen Kausalsatz ein?",
+      "options": [
+        "obwohl",
+        "da",
+        "dass",
+        "wenn"
+      ],
+      "answer": "da",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 7,
+      "question": "Was ist ein 'Satzgefüge'?",
+      "options": [
+        "Zwei Hauptsätze",
+        "Ein Hauptsatz und mindestens ein Nebensatz",
+        "Nur ein Nebensatz",
+        "Ein Satz ohne Verb"
+      ],
+      "answer": "Ein Hauptsatz und mindestens ein Nebensatz",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 7,
+      "question": "Wie nennt man die Zeitform 'ich hatte gegessen'?",
+      "options": [
+        "Perfekt",
+        "Präteritum",
+        "Plusquamperfekt",
+        "Futur I"
+      ],
+      "answer": "Plusquamperfekt",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 7,
+      "question": "Was ist ein 'Indefinitpronomen'?",
+      "options": [
+        "ich",
+        "jemand",
+        "der",
+        "mein"
+      ],
+      "answer": "jemand",
+      "difficulty": "hard"
+    },
+    {
+      "grade": 7,
+      "question": "Welches ist ein Merkmal einer Inhaltsangabe?",
+      "options": [
+        "Spannung aufbauen",
+        "Eigene Meinung schreiben",
+        "Präsens als Zeitform",
+        "Wörtliche Rede nutzen"
+      ],
+      "answer": "Präsens als Zeitform",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 7,
+      "question": "Was ist eine 'Alliteration'?",
+      "options": [
+        "Gleiche Anfangsbuchstaben bei aufeinanderfolgenden Wörtern",
+        "Ein Reim am Ende",
+        "Ein Vergleich",
+        "Eine Übertreibung"
+      ],
+      "answer": "Gleiche Anfangsbuchstaben bei aufeinanderfolgenden Wörtern",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 7,
+      "question": "Wie nennt man das 'Adverbiale der Zeit'?",
+      "options": [
+        "Lokaladverbiale",
+        "Temporaladverbiale",
+        "Kausaladverbiale",
+        "Modaladverbiale"
+      ],
+      "answer": "Temporaladverbiale",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 7,
+      "question": "Welche Wortart ist 'hinter'?",
+      "options": [
+        "Adjektiv",
+        "Präposition",
+        "Konjunktion",
+        "Adverb"
+      ],
+      "answer": "Präposition",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 7,
+      "question": "Was bedeutet 'indirekte Rede'?",
+      "options": [
+        "Jemand spricht direkt",
+        "Wiedergabe von Gesagtem im Konjunktiv",
+        "Ein Selbstgespräch",
+        "Flüstern"
+      ],
+      "answer": "Wiedergabe von Gesagtem im Konjunktiv",
+      "difficulty": "hard"
+    },
+    {
+      "grade": 7,
+      "question": "Welches Wort ist richtig geschrieben?",
+      "options": [
+        "Rhythmus",
+        "Rhytmus",
+        "Rythmus",
+        "Rhythmuß"
+      ],
+      "answer": "Rhythmus",
+      "difficulty": "hard"
+    },
+    {
+      "grade": 8,
+      "question": "Welches rhetorische Mittel liegt bei 'Todesmutig' vor?",
+      "options": [
+        "Metapher",
+        "Oxymoron",
+        "Hyperbel",
+        "Anapher"
+      ],
+      "answer": "Oxymoron",
+      "difficulty": "hard"
+    },
+    {
+      "grade": 8,
+      "question": "Wie bildet man den Konjunktiv II von 'ich kam'?",
+      "options": [
+        "ich komme",
+        "ich käme",
+        "ich würde kommen",
+        "ich käme / ich würde kommen"
+      ],
+      "answer": "ich käme / ich würde kommen",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 8,
+      "question": "Was ist eine 'Anapher'?",
+      "options": [
+        "Wiederholung gleicher Wörter am Satzanfang",
+        "Übertreibung",
+        "Vermenschlichung",
+        "Gegensatz"
+      ],
+      "answer": "Wiederholung gleicher Wörter am Satzanfang",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 8,
+      "question": "Welches Werk gehört zur Epoche des Sturm und Drang?",
+      "options": [
+        "Die Räuber",
+        "Faust II",
+        "Effi Briest",
+        "Der Schimmelreiter"
+      ],
+      "answer": "Die Räuber",
+      "difficulty": "hard"
+    },
+    {
+      "grade": 8,
+      "question": "Was ist das Hauptmerkmal einer Ballade?",
+      "options": [
+        "Nur erzählend",
+        "Nur dramatisch",
+        "Mischung aus Lyrik, Epik und Dramatik",
+        "Kurzgeschichte"
+      ],
+      "answer": "Mischung aus Lyrik, Epik und Dramatik",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 8,
+      "question": "Was ist ein 'Enjambement'?",
+      "options": [
+        "Ein Zeilensprung im Gedicht",
+        "Ein Endreim",
+        "Ein Metrum",
+        "Eine Strophe"
+      ],
+      "answer": "Ein Zeilensprung im Gedicht",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 8,
+      "question": "Wie nennt man die Begründung in einer Erörterung?",
+      "options": [
+        "These",
+        "Argument",
+        "Beispiel",
+        "Fazit"
+      ],
+      "answer": "Argument",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 8,
+      "question": "Welche Zeitform nutzt man für den Konjunktiv I meistens?",
+      "options": [
+        "Präteritumstamm",
+        "Präsensstamm",
+        "Perfektstamm",
+        "Futurstamm"
+      ],
+      "answer": "Präsensstamm",
+      "difficulty": "hard"
+    },
+    {
+      "grade": 8,
+      "question": "Was ist eine 'Personifikation'?",
+      "options": [
+        "Vermenschlichung von Dingen",
+        "Ein Vergleich",
+        "Eine Steigerung",
+        "Ein Wortspiel"
+      ],
+      "answer": "Vermenschlichung von Dingen",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 8,
+      "question": "Welches Verb ist modal?",
+      "options": [
+        "gehen",
+        "können",
+        "sehen",
+        "kaufen"
+      ],
+      "answer": "können",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 9,
+      "question": "Was kennzeichnet eine Kurzgeschichte?",
+      "options": [
+        "Lange Einleitung",
+        "Offener Schluss",
+        "Viele Hauptpersonen",
+        "Detaillierte Beschreibungen"
+      ],
+      "answer": "Offener Schluss",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 9,
+      "question": "Welcher Autor schrieb 'Andorra'?",
+      "options": [
+        "Bertolt Brecht",
+        "Max Frisch",
+        "Friedrich Dürrenmatt",
+        "Johann Wolfgang von Goethe"
+      ],
+      "answer": "Max Frisch",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 9,
+      "question": "Was ist ein 'Daktylus'?",
+      "options": [
+        "xx'",
+        "x'x",
+        "x'xx",
+        "xx'x"
+      ],
+      "answer": "x'xx",
+      "difficulty": "hard"
+    },
+    {
+      "grade": 9,
+      "question": "Was ist eine 'Parabel'?",
+      "options": [
+        "Eine mathematische Kurve",
+        "Eine lehrhafte Erzählung, die entschlüsselt werden muss",
+        "Ein Liebesgedicht",
+        "Ein Zeitungsartikel"
+      ],
+      "answer": "Eine lehrhafte Erzählung, die entschlüsselt werden muss",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 9,
+      "question": "Was bedeutet 'Antithetik'?",
+      "options": [
+        "Zusammenfassung",
+        "Gegenüberstellung von Gegensätzen",
+        "Reimschema",
+        "Satzbau"
+      ],
+      "answer": "Gegenüberstellung von Gegensätzen",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 9,
+      "question": "In welcher Epoche war die Vernunft das höchste Gut?",
+      "options": [
+        "Barock",
+        "Aufklärung",
+        "Romantik",
+        "Realismus"
+      ],
+      "answer": "Aufklärung",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 9,
+      "question": "Was ist eine 'dialektische Erörterung'?",
+      "options": [
+        "Nur Pro-Argumente",
+        "Gegenüberstellung von Pro und Contra",
+        "Eine Nacherzählung",
+        "Eine Analyse"
+      ],
+      "answer": "Gegenüberstellung von Pro und Contra",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 9,
+      "question": "Was ist ein 'Auktorialer Erzähler'?",
+      "options": [
+        "Ich-Erzähler",
+        "Allwissender Erzähler",
+        "Neutraler Erzähler",
+        "Personaler Erzähler"
+      ],
+      "answer": "Allwissender Erzähler",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 9,
+      "question": "Was ist ein 'Euphemismus'?",
+      "options": [
+        "Eine Beschönigung",
+        "Eine Beleidigung",
+        "Ein Ausruf",
+        "Ein Reim"
+      ],
+      "answer": "Eine Beschönigung",
+      "difficulty": "hard"
+    },
+    {
+      "grade": 9,
+      "question": "Welches Wort ist eine Konjunktion?",
+      "options": [
+        "schön",
+        "obwohl",
+        "unter",
+        "diese"
+      ],
+      "answer": "obwohl",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 10,
+      "question": "Wie nennt man die Literaturepoche von ca. 1770 bis 1785?",
+      "options": [
+        "Klassik",
+        "Sturm und Drang",
+        "Romantik",
+        "Biedermeier"
+      ],
+      "answer": "Sturm und Drang",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 10,
+      "question": "Was ist die Katharsis im antiken Drama?",
+      "options": [
+        "Die Einleitung",
+        "Die Reinigung der Seele von Affekten",
+        "Der Tod des Helden",
+        "Ein Bühnenbild"
+      ],
+      "answer": "Die Reinigung der Seele von Affekten",
+      "difficulty": "hard"
+    },
+    {
+      "grade": 10,
+      "question": "Wer ist der Autor von 'Faust I'?",
+      "options": [
+        "Friedrich Schiller",
+        "Johann Wolfgang von Goethe",
+        "Heinrich Heine",
+        "Thomas Mann"
+      ],
+      "answer": "Johann Wolfgang von Goethe",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 10,
+      "question": "Was ist ein 'Jambus'?",
+      "options": [
+        "unbetont - betont",
+        "betont - unbetont",
+        "betont - betont",
+        "unbetont - unbetont - betont"
+      ],
+      "answer": "unbetont - betont",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 10,
+      "question": "Was ist eine 'Zäsur'?",
+      "options": [
+        "Ein Notenschnitt",
+        "Ein Einschnitt/Pause im Vers",
+        "Ein Endreim",
+        "Eine Strophe"
+      ],
+      "answer": "Ein Einschnitt/Pause im Vers",
+      "difficulty": "hard"
+    },
+    {
+      "grade": 10,
+      "question": "Welches Merkmal ist typisch für die 'Weimarer Klassik'?",
+      "options": [
+        "Formlosigkeit",
+        "Harmonie und Humanität",
+        "Extremer Gefühlsausdruck",
+        "Kritik an der Kirche"
+      ],
+      "answer": "Harmonie und Humanität",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 10,
+      "question": "Was ist 'Ironie'?",
+      "options": [
+        "Etwas ernst meinen",
+        "Das Gegenteil des Gesagten meinen",
+        "Ein lauter Schrei",
+        "Eine Lüge"
+      ],
+      "answer": "Das Gegenteil des Gesagten meinen",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 10,
+      "question": "Was ist eine 'Satyre'?",
+      "options": [
+        "Ein Sachtext",
+        "Spöttische Darstellung von Zuständen",
+        "Ein Märchen",
+        "Ein Kochrezept"
+      ],
+      "answer": "Spöttische Darstellung von Zuständen",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 10,
+      "question": "Welches Reimschema hat ein 'Kreuzreim'?",
+      "options": [
+        "aabb",
+        "abab",
+        "abba",
+        "aaaa"
+      ],
+      "answer": "abab",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 10,
+      "question": "Was ist der 'Höhepunkt' im klassischen Spannungsbogen?",
+      "options": [
+        "Exposition",
+        "Peripetie",
+        "Retardierendes Moment",
+        "Katastrophe"
+      ],
+      "answer": "Peripetie",
+      "difficulty": "hard"
+    },
+    {
+      "grade": 11,
+      "question": "Welches Motiv ist zentral für den Barock?",
+      "options": [
+        "Fernweh",
+        "Vanitas",
+        "Technikglaube",
+        "Emanzipation"
+      ],
+      "answer": "Vanitas",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 11,
+      "question": "Was ist das Kennzeichen des 'Epischen Theaters' nach Brecht?",
+      "options": [
+        "Einfühlung",
+        "Verfremdungseffekt",
+        "Drei Einheiten",
+        "Katharsis"
+      ],
+      "answer": "Verfremdungseffekt",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 11,
+      "question": "Was ist die 'Schwarze Romantik'?",
+      "options": [
+        "Eine Epoche der Trauer",
+        "Unterströmung der Romantik mit Fokus auf das Unheimliche",
+        "Eine politische Bewegung",
+        "Literatur des Bergbaus"
+      ],
+      "answer": "Unterströmung der Romantik mit Fokus auf das Unheimliche",
+      "difficulty": "hard"
+    },
+    {
+      "grade": 11,
+      "question": "Wer schrieb 'Woyzeck'?",
+      "options": [
+        "Georg Büchner",
+        "Gerhart Hauptmann",
+        "Arthur Schnitzler",
+        "Franz Kafka"
+      ],
+      "answer": "Georg Büchner",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 11,
+      "question": "Was ist 'Naturalismus'?",
+      "options": [
+        "Naturgedichte schreiben",
+        "Möglichst exakte Abbildung der Realität (Sekundenstil)",
+        "Flucht in die Natur",
+        "Verherrlichung des Adels"
+      ],
+      "answer": "Möglichst exakte Abbildung der Realität (Sekundenstil)",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 11,
+      "question": "Was ist ein 'Sonett'?",
+      "options": [
+        "Gedicht mit 14 Zeilen (2 Quartette, 2 Terzette)",
+        "Ein kurzer Roman",
+        "Eine Dramenform",
+        "Ein Volkslied"
+      ],
+      "answer": "Gedicht mit 14 Zeilen (2 Quartette, 2 Terzette)",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 11,
+      "question": "Welche Epoche folgt auf den Realismus?",
+      "options": [
+        "Barock",
+        "Naturalismus",
+        "Aufklärung",
+        "Sturm und Drang"
+      ],
+      "answer": "Naturalismus",
+      "difficulty": "hard"
+    },
+    {
+      "grade": 11,
+      "question": "Was bedeutet 'Mimesis'?",
+      "options": [
+        "Verwandlung",
+        "Nachahmung der Natur/Wirklichkeit",
+        "Vergessen",
+        "Übertreibung"
+      ],
+      "answer": "Nachahmung der Natur/Wirklichkeit",
+      "difficulty": "hard"
+    },
+    {
+      "grade": 11,
+      "question": "Was ist ein 'innerer Monolog'?",
+      "options": [
+        "Gespräch zweier Personen",
+        "Wiedergabe von Gedanken einer Figur in der Ich-Form",
+        "Ein Erzählerbericht",
+        "Eine Regieanweisung"
+      ],
+      "answer": "Wiedergabe von Gedanken einer Figur in der Ich-Form",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 11,
+      "question": "Wer gilt als bedeutender Vertreter des Expressionismus?",
+      "options": [
+        "Gottfried Benn",
+        "Johann Wolfgang von Goethe",
+        "Theodor Fontane",
+        "Gotthold Ephraim Lessing"
+      ],
+      "answer": "Gottfried Benn",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 12,
+      "question": "Welches Thema ist zentral in Kafkas 'Die Verwandlung'?",
+      "options": [
+        "Die Liebe",
+        "Entfremdung und soziale Isolation",
+        "Krieg",
+        "Natur"
+      ],
+      "answer": "Entfremdung und soziale Isolation",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 12,
+      "question": "Was versteht man unter 'Intertextualität'?",
+      "options": [
+        "Rechtschreibfehler",
+        "Bezugnahme eines Textes auf einen anderen Text",
+        "Ein Inhaltsverzeichnis",
+        "Die Drucktechnik"
+      ],
+      "answer": "Bezugnahme eines Textes auf einen anderen Text",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 12,
+      "question": "Welches Werk gehört zur 'Trümmerliteratur'?",
+      "options": [
+        "Draußen vor der Tür",
+        "Der Sandmann",
+        "Die Leiden des jungen Werther",
+        "Faust"
+      ],
+      "answer": "Draußen vor der Tür",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 12,
+      "question": "Was ist der 'Poststrukturalismus'?",
+      "options": [
+        "Eine Bauepoche",
+        "Eine philosophische und literaturtheoretische Strömung",
+        "Ein Versmaß",
+        "Eine Gedichtform"
+      ],
+      "answer": "Eine philosophische und literaturtheoretische Strömung",
+      "difficulty": "hard"
+    },
+    {
+      "grade": 12,
+      "question": "Welches Sprachmodell stammt von Karl Bühler?",
+      "options": [
+        "Organon-Modell",
+        "4-Ohren-Modell",
+        "Eisberg-Modell",
+        "Sender-Empfänger-Modell"
+      ],
+      "answer": "Organon-Modell",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 12,
+      "question": "Was ist 'erlebte Rede'?",
+      "options": [
+        "Direkte Rede",
+        "Mischform aus Erzählerbericht und Gedankenwiedergabe (3. Pers. Präteritum)",
+        "Ein Schrei",
+        "Ein Brief"
+      ],
+      "answer": "Mischform aus Erzählerbericht und Gedankenwiedergabe (3. Pers. Präteritum)",
+      "difficulty": "hard"
+    },
+    {
+      "grade": 12,
+      "question": "In welcher Epoche spielt Fontanes 'Effi Briest'?",
+      "options": [
+        "Barock",
+        "Realismus",
+        "Moderne",
+        "Gegenwart"
+      ],
+      "answer": "Realismus",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 12,
+      "question": "Was ist eine 'Synästhesie'?",
+      "options": [
+        "Verschmelzung verschiedener Sinnesbereiche",
+        "Ein Reim",
+        "Eine Wiederholung",
+        "Ein Satzbau"
+      ],
+      "answer": "Verschmelzung verschiedener Sinnesbereiche",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 12,
+      "question": "Was kennzeichnet die 'Neue Sachlichkeit'?",
+      "options": [
+        "Große Gefühle",
+        "Nüchterne, distanzierte Darstellung",
+        "Religiöse Themen",
+        "Phantastische Welten"
+      ],
+      "answer": "Nüchterne, distanzierte Darstellung",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 12,
+      "question": "Was ist das 'Aperçu'?",
+      "options": [
+        "Ein langer Roman",
+        "Ein geistreicher Einfall / kurze Bemerkung",
+        "Ein Theaterstück",
+        "Ein Versfuß"
+      ],
+      "answer": "Ein geistreicher Einfall / kurze Bemerkung",
+      "difficulty": "hard"
+    },
+    {
+      "grade": 13,
+      "question": "Welche Theorie zur Sprachentwicklung stammt von Noam Chomsky?",
+      "options": [
+        "Behaviorismus",
+        "Nativismus",
+        "Kognitivismus",
+        "Interaktionismus"
+      ],
+      "answer": "Nativismus",
+      "difficulty": "hard"
+    },
+    {
+      "grade": 13,
+      "question": "Was ist 'Sprachvarietät'?",
+      "options": [
+        "Rechtschreibreform",
+        "Unterschiedliche Ausprägungen einer Sprache (Dialekt, Soziolekt etc.)",
+        "Fremdsprachen lernen",
+        "Grammatikregeln"
+      ],
+      "answer": "Unterschiedliche Ausprägungen einer Sprache (Dialekt, Soziolekt etc.)",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 13,
+      "question": "Was bedeutet 'Postmoderne' in der Literatur?",
+      "options": [
+        "Rückkehr zu alten Regeln",
+        "Spielerischer Umgang mit Traditionen, Pluralität",
+        "Nur digitale Texte",
+        "Verbot von Reimen"
+      ],
+      "answer": "Spielerischer Umgang mit Traditionen, Pluralität",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 13,
+      "question": "Was ist der 'Sapir-Whorf-Hypothese' zufolge wahr?",
+      "options": [
+        "Sprache beeinflusst das Denken",
+        "Denken ist unabhängig von Sprache",
+        "Jeder lernt Sprachen gleich schnell",
+        "Grammatik ist unwichtig"
+      ],
+      "answer": "Sprache beeinflusst das Denken",
+      "difficulty": "hard"
+    },
+    {
+      "grade": 13,
+      "question": "Was ist 'Dekomposition' in der Literaturanalyse?",
+      "options": [
+        "Texte schreiben",
+        "Zerlegung eines Textes in seine Bestandteile",
+        "Auswendiglernen",
+        "Übersetzen"
+      ],
+      "answer": "Zerlegung eines Textes in seine Bestandteile",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 13,
+      "question": "Wer schrieb den Roman 'Die Blechtrommel'?",
+      "options": [
+        "Günter Grass",
+        "Heinrich Böll",
+        "Uwe Johnson",
+        "Ingeborg Bachmann"
+      ],
+      "answer": "Günter Grass",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 13,
+      "question": "Was ist ein 'Metalyrischer Text'?",
+      "options": [
+        "Ein langes Lied",
+        "Ein Gedicht, das das Dichten selbst zum Thema hat",
+        "Ein Sachtext über Lyrik",
+        "Ein Werbetext"
+      ],
+      "answer": "Ein Gedicht, das das Dichten selbst zum Thema hat",
+      "difficulty": "hard"
+    },
+    {
+      "grade": 13,
+      "question": "Was bedeutet 'Kanonisierung'?",
+      "options": [
+        "Einen Text verbieten",
+        "Aufnahme eines Werks in die Liste der 'bedeutenden' Literatur",
+        "Einen Film drehen",
+        "Texte kürzen"
+      ],
+      "answer": "Aufnahme eines Werks in die Liste der 'bedeutenden' Literatur",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 13,
+      "question": "Was ist 'politische Lyrik'?",
+      "options": [
+        "Liebesgedichte",
+        "Lyrik mit dem Ziel gesellschaftlicher/politischer Einflussnahme",
+        "Gedichte über die Natur",
+        "Gedichte von Politikern"
+      ],
+      "answer": "Lyrik mit dem Ziel gesellschaftlicher/politischer Einflussnahme",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 13,
+      "question": "Was beschreibt der Begriff 'Erzählzeit'?",
+      "options": [
+        "Die Zeit, die in der Geschichte vergeht",
+        "Die Zeit, die man zum Lesen/Erzählen benötigt",
+        "Die Epoche der Geschichte",
+        "Das Alter des Erzählers"
+      ],
+      "answer": "Die Zeit, die man zum Lesen/Erzählen benötigt",
       "difficulty": "medium"
     }
   ]

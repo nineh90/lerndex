@@ -2,73 +2,243 @@
   "subject": "Sachkunde",
   "questions": [
     {
-      "grade": 1,
-      "question": "Welches Tier gibt uns Milch?",
-      "options": ["Hund", "Kuh", "Katze", "Pferd"],
-      "answer": "Kuh",
+      "grade": 3,
+      "question": "In welcher Himmelsrichtung geht die Sonne morgens auf?",
+      "options": [
+        "Norden",
+        "Osten",
+        "Süden",
+        "Westen"
+      ],
+      "answer": "Osten",
       "difficulty": "easy"
     },
     {
-      "grade": 1,
-      "question": "Wie viele Jahreszeiten gibt es?",
-      "options": ["2", "3", "4", "5"],
-      "answer": "4",
+      "grade": 3,
+      "question": "Wie nennt man die unterste Schicht des Waldes?",
+      "options": [
+        "Moosschicht",
+        "Bodenschicht",
+        "Krautschicht",
+        "Strauchschicht"
+      ],
+      "answer": "Bodenschicht",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 3,
+      "question": "Welches Bauteil ist an einem verkehrssicheren Fahrrad zwingend vorgeschrieben?",
+      "options": [
+        "Klingel",
+        "Trinkflaschenhalter",
+        "Federgabel",
+        "Tachometer"
+      ],
+      "answer": "Klingel",
       "difficulty": "easy"
     },
     {
-      "grade": 2,
-      "question": "Welches Organ pumpt Blut durch den Körper?",
-      "options": ["Lunge", "Herz", "Magen", "Gehirn"],
+      "grade": 3,
+      "question": "Was macht ein Igel im Winter?",
+      "options": [
+        "Winterruhe",
+        "Winterschlaf",
+        "Winterstarre",
+        "Er wandert in den Süden"
+      ],
+      "answer": "Winterschlaf",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 3,
+      "question": "Wer leitet die Verwaltung einer Stadt oder Gemeinde?",
+      "options": [
+        "Der Polizist",
+        "Der Landrat",
+        "Der Bürgermeister",
+        "Der Lehrer"
+      ],
+      "answer": "Der Bürgermeister",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 3,
+      "question": "Welcher Baum trägt im Herbst Eicheln?",
+      "options": [
+        "Buche",
+        "Kastanie",
+        "Eiche",
+        "Ahorn"
+      ],
+      "answer": "Eiche",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 3,
+      "question": "Was braucht ein Feuer unbedingt, um brennen zu können?",
+      "options": [
+        "Stickstoff",
+        "Kohlendioxid",
+        "Sauerstoff",
+        "Wasserstoff"
+      ],
+      "answer": "Sauerstoff",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 3,
+      "question": "Wie viele Zähne hat das bleibende Gebiss eines Erwachsenen normalerweise (inkl. Weisheitszähne)?",
+      "options": [
+        "20",
+        "28",
+        "32",
+        "36"
+      ],
+      "answer": "32",
+      "difficulty": "hard"
+    },
+    {
+      "grade": 3,
+      "question": "Welche Getreidesorte wird zur Herstellung von dunklem Brot oft verwendet?",
+      "options": [
+        "Reis",
+        "Mais",
+        "Roggen",
+        "Hirse"
+      ],
+      "answer": "Roggen",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 3,
+      "question": "Die Nadel des Kompasses zeigt immer nach...",
+      "options": [
+        "Norden",
+        "Osten",
+        "Süden",
+        "Westen"
+      ],
+      "answer": "Norden",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 4,
+      "question": "Wie nennt man den Vorgang, wenn Wasser zu Wasserdampf wird?",
+      "options": [
+        "Gefrieren",
+        "Schmelzen",
+        "Verdunsten",
+        "Kondensieren"
+      ],
+      "answer": "Verdunsten",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 4,
+      "question": "Welcher dieser Stoffe leitet elektrischen Strom?",
+      "options": [
+        "Kunststoff",
+        "Holz",
+        "Kupfer",
+        "Glas"
+      ],
+      "answer": "Kupfer",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 4,
+      "question": "Wie heißt die Landeshauptstadt von Bayern?",
+      "options": [
+        "Berlin",
+        "München",
+        "Stuttgart",
+        "Nürnberg"
+      ],
+      "answer": "München",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 4,
+      "question": "Was passiert bei einem Kurzschluss?",
+      "options": [
+        "Die Lampe leuchtet heller",
+        "Der Strom fließt ohne Widerstand",
+        "Die Batterie wird aufgeladen",
+        "Nichts passiert"
+      ],
+      "answer": "Der Strom fließt ohne Widerstand",
+      "difficulty": "hard"
+    },
+    {
+      "grade": 4,
+      "question": "Welches Organ im Körper pumpt das Blut durch die Adern?",
+      "options": [
+        "Lunge",
+        "Magen",
+        "Gehirn",
+        "Herz"
+      ],
       "answer": "Herz",
       "difficulty": "easy"
     },
     {
-      "grade": 2,
-      "question": "Was brauchen Pflanzen zum Wachsen?",
-      "options": ["Wasser", "Licht", "Erde", "Alles davon"],
-      "answer": "Alles davon",
-      "difficulty": "medium"
-    },
-    {
-      "grade": 3,
-      "question": "Wie viele Kontinente gibt es?",
-      "options": ["5", "6", "7", "8"],
-      "answer": "7",
-      "difficulty": "medium"
-    },
-    {
-      "grade": 3,
-      "question": "Welcher Planet ist der Erde am nächsten?",
-      "options": ["Mars", "Venus", "Jupiter", "Saturn"],
-      "answer": "Venus",
+      "grade": 4,
+      "question": "Ein Maßstab auf einer Karte von 1:100 bedeutet...",
+      "options": [
+        "1 cm auf der Karte sind 1 m in echt",
+        "1 cm auf der Karte sind 100 m in echt",
+        "1 cm auf der Karte sind 1 km in echt",
+        "Die Karte ist so groß wie die Wirklichkeit"
+      ],
+      "answer": "1 cm auf der Karte sind 1 m in echt",
       "difficulty": "hard"
     },
     {
       "grade": 4,
-      "question": "Was ist die Hauptstadt von Deutschland?",
-      "options": ["München", "Hamburg", "Berlin", "Köln"],
-      "answer": "Berlin",
+      "question": "In welcher Epoche lebten die Ritter auf Burgen?",
+      "options": [
+        "Steinzeit",
+        "Römerzeit",
+        "Mittelalter",
+        "Neuzeit"
+      ],
+      "answer": "Mittelalter",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 4,
+      "question": "Was gehört in die Biotonne?",
+      "options": [
+        "Alufolie",
+        "Bananenschale",
+        "Zeitungen",
+        "Plastiktüten"
+      ],
+      "answer": "Bananenschale",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 4,
+      "question": "Wie heißt das größte deutsche Bundesland (Fläche)?",
+      "options": [
+        "Hessen",
+        "Niedersachsen",
+        "Bayern",
+        "Nordrhein-Westfalen"
+      ],
+      "answer": "Bayern",
       "difficulty": "medium"
     },
     {
       "grade": 4,
-      "question": "Wie nennt man Tiere, die nur Pflanzen fressen?",
-      "options": ["Fleischfresser", "Pflanzenfresser", "Allesfresser", "Insektenfresser"],
-      "answer": "Pflanzenfresser",
-      "difficulty": "medium"
-    },
-    {
-      "grade": 5,
-      "question": "Aus was besteht Wasser chemisch?",
-      "options": ["H2O", "CO2", "O2", "N2"],
-      "answer": "H2O",
-      "difficulty": "hard"
-    },
-    {
-      "grade": 5,
-      "question": "Wie lange dauert ein Jahr auf der Erde?",
-      "options": ["365 Tage", "360 Tage", "400 Tage", "300 Tage"],
-      "answer": "365 Tage",
+      "question": "Woraus besteht das menschliche Skelett hauptsächlich?",
+      "options": [
+        "Muskeln",
+        "Knochen",
+        "Knorpel",
+        "Sehnen"
+      ],
+      "answer": "Knochen",
       "difficulty": "easy"
     }
   ]

@@ -1,0 +1,1085 @@
+{
+    "subject": "Chemie",
+    "questions": [
+        {
+            "grade": 5,
+            "question": "Wie nennt man den Übergang von fest zu flüssig?",
+            "options": [
+                "Verdampfen",
+                "Schmelzen",
+                "Erstarren",
+                "Sublimieren"
+            ],
+            "answer": "Schmelzen",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 5,
+            "question": "Was ist kein chemischer Stoff?",
+            "options": [
+                "Wasser",
+                "Eisen",
+                "Licht",
+                "Sauerstoff"
+            ],
+            "answer": "Licht",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 5,
+            "question": "Welcher Stoff leitet Wärme besonders gut?",
+            "options": [
+                "Holz",
+                "Kunststoff",
+                "Kupfer",
+                "Luft"
+            ],
+            "answer": "Kupfer",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 5,
+            "question": "Wie nennt man ein Gemisch aus Sand und Wasser?",
+            "options": [
+                "Lösung",
+                "Suspension",
+                "Emulsion",
+                "Legierung"
+            ],
+            "answer": "Suspension",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 5,
+            "question": "Was passiert beim Filtrieren?",
+            "options": [
+                "Stoffe werden verbrannt",
+                "Stoffe werden nach Teilchengröße getrennt",
+                "Stoffe werden magnetisch angezogen",
+                "Stoffe lösen sich auf"
+            ],
+            "answer": "Stoffe werden nach Teilchengröße getrennt",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 5,
+            "question": "Welches Gas brauchen wir zum Atmen?",
+            "options": [
+                "Stickstoff",
+                "Helium",
+                "Sauerstoff",
+                "Kohlenstoffdioxid"
+            ],
+            "answer": "Sauerstoff",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 5,
+            "question": "Was ist die Eigenschaft von gasförmigen Stoffen?",
+            "options": [
+                "Sie haben eine feste Form",
+                "Sie lassen sich leicht komprimieren",
+                "Sie sind immer schwerer als Wasser",
+                "Sie leuchten im Dunkeln"
+            ],
+            "answer": "Sie lassen sich leicht komprimieren",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 5,
+            "question": "Welcher Stoff ist bei Raumtemperatur flüssig?",
+            "options": [
+                "Eisen",
+                "Sauerstoff",
+                "Quecksilber",
+                "Kochsalz"
+            ],
+            "answer": "Quecksilber",
+            "difficulty": "hard"
+        },
+        {
+            "grade": 5,
+            "question": "Was passiert, wenn Wasserdampf abkühlt?",
+            "options": [
+                "Er sublimiert",
+                "Er kondensiert",
+                "Er verdampft",
+                "Er schmilzt"
+            ],
+            "answer": "Er kondensiert",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 5,
+            "question": "Warum schwimmt Eis auf Wasser?",
+            "options": [
+                "Weil es kälter ist",
+                "Wegen der geringeren Dichte von Eis",
+                "Weil es aus Luft besteht",
+                "Weil es fest ist"
+            ],
+            "answer": "Wegen der geringeren Dichte von Eis",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 6,
+            "question": "Was ist ein homogenes Gemisch?",
+            "options": [
+                "Müsli",
+                "Salzwasser",
+                "Granit",
+                "Öl in Wasser"
+            ],
+            "answer": "Salzwasser",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 6,
+            "question": "Mit welchem Verfahren trennt man Salz von Wasser?",
+            "options": [
+                "Filtrieren",
+                "Eindampfen",
+                "Magnetscheiden",
+                "Sieben"
+            ],
+            "answer": "Eindampfen",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 6,
+            "question": "Was ist ein Reinstoff?",
+            "options": [
+                "Leitungswasser",
+                "Destilliertes Wasser",
+                "Luft",
+                "Apfelsaft"
+            ],
+            "answer": "Destilliertes Wasser",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 6,
+            "question": "Wie nennt man ein Gemisch aus zwei Metallen?",
+            "options": [
+                "Emulsion",
+                "Lösung",
+                "Legierung",
+                "Gemenge"
+            ],
+            "answer": "Legierung",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 6,
+            "question": "Welcher Stoff lässt sich mit einem Magneten trennen?",
+            "options": [
+                "Aluminium",
+                "Kupfer",
+                "Eisen",
+                "Blei"
+            ],
+            "answer": "Eisen",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 6,
+            "question": "Was ist eine Emulsion?",
+            "options": [
+                "Salz in Wasser",
+                "Feine Öltröpfchen in Wasser",
+                "Rauch",
+                "Sand in Wasser"
+            ],
+            "answer": "Feine Öltröpfchen in Wasser",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 6,
+            "question": "Wozu dient der Liebig-Kühler bei einer Destillation?",
+            "options": [
+                "Zum Erhitzen",
+                "Zum Auffangen von Feststoffen",
+                "Zum Abkühlen und Verflüssigen von Dämpfen",
+                "Zum Rühren"
+            ],
+            "answer": "Zum Abkühlen und Verflüssigen von Dämpfen",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 6,
+            "question": "Welches Gas ist am stärksten in der Luft vertreten?",
+            "options": [
+                "Sauerstoff",
+                "Stickstoff",
+                "Edelgase",
+                "Kohlenstoffdioxid"
+            ],
+            "answer": "Stickstoff",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 6,
+            "question": "Was ist der Unterschied zwischen einem Gemisch und einer Verbindung?",
+            "options": [
+                "Gemische sind immer flüssig",
+                "In Verbindungen sind Stoffe fest verknüpft",
+                "Gemische lassen sich nicht trennen",
+                "Es gibt keinen Unterschied"
+            ],
+            "answer": "In Verbindungen sind Stoffe fest verknüpft",
+            "difficulty": "hard"
+        },
+        {
+            "grade": 6,
+            "question": "Was ist Chromatografie?",
+            "options": [
+                "Ein Brennverfahren",
+                "Ein Trennverfahren basierend auf unterschiedlicher Löslichkeit/Haftung",
+                "Ein Messgerät für Gewicht",
+                "Eine Form von Metall"
+            ],
+            "answer": "Ein Trennverfahren basierend auf unterschiedlicher Löslichkeit/Haftung",
+            "difficulty": "hard"
+        },
+        {
+            "grade": 7,
+            "question": "Was ist das chemische Symbol für Gold?",
+            "options": [
+                "Ag",
+                "Gd",
+                "Au",
+                "Fe"
+            ],
+            "answer": "Au",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 7,
+            "question": "Wer entwickelte das erste Atommodell (Kugelmodell)?",
+            "options": [
+                "Bohr",
+                "Rutherford",
+                "Dalton",
+                "Einstein"
+            ],
+            "answer": "Dalton",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 7,
+            "question": "Was ist ein Element?",
+            "options": [
+                "Ein Stoff aus verschiedenen Atomen",
+                "Ein Stoff aus nur einer Atomsorte",
+                "Ein Gemisch",
+                "Eine Lösung"
+            ],
+            "answer": "Ein Stoff aus nur einer Atomsorte",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 7,
+            "question": "Welches Symbol steht für Sauerstoff?",
+            "options": [
+                "S",
+                "Sa",
+                "O",
+                "Ox"
+            ],
+            "answer": "O",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 7,
+            "question": "Wie nennt man die kleinste Einheit eines Elements?",
+            "options": [
+                "Molekül",
+                "Proton",
+                "Atom",
+                "Elektron"
+            ],
+            "answer": "Atom",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 7,
+            "question": "Was bedeutet das Symbol 'Fe'?",
+            "options": [
+                "Fett",
+                "Fluor",
+                "Eisen",
+                "Feldspat"
+            ],
+            "answer": "Eisen",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 7,
+            "question": "Welche Ladung haben Protonen?",
+            "options": [
+                "Negativ",
+                "Neutral",
+                "Positiv",
+                "Keine"
+            ],
+            "answer": "Positiv",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 7,
+            "question": "Was ist die Formel für Wasser?",
+            "options": [
+                "HO2",
+                "H2O",
+                "H2O2",
+                "HO"
+            ],
+            "answer": "H2O",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 7,
+            "question": "Wie viele Protonen hat Wasserstoff?",
+            "options": [
+                "1",
+                "2",
+                "0",
+                "8"
+            ],
+            "answer": "1",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 7,
+            "question": "Was ist der Kern eines Atoms nach Rutherford?",
+            "options": [
+                "Masselos",
+                "Positiv geladen und massereich",
+                "Negativ geladen",
+                "Ein leerer Raum"
+            ],
+            "answer": "Positiv geladen und massereich",
+            "difficulty": "hard"
+        },
+        {
+            "grade": 8,
+            "question": "Was ist eine exotherme Reaktion?",
+            "options": [
+                "Energie wird aufgenommen",
+                "Energie wird abgegeben",
+                "Keine Energieänderung",
+                "Reaktion findet nicht statt"
+            ],
+            "answer": "Energie wird abgegeben",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 8,
+            "question": "Was ist eine Oxidation?",
+            "options": [
+                "Reaktion mit Wasser",
+                "Reaktion mit Sauerstoff",
+                "Zerfall von Stoffen",
+                "Mischen von Metallen"
+            ],
+            "answer": "Reaktion mit Sauerstoff",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 8,
+            "question": "Was ist die Aktivierungsenergie?",
+            "options": [
+                "Energie am Ende einer Reaktion",
+                "Energie, die zum Starten einer Reaktion nötig ist",
+                "Energie einer Batterie",
+                "Wärme der Umgebung"
+            ],
+            "answer": "Energie, die zum Starten einer Reaktion nötig ist",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 8,
+            "question": "Was ist ein Katalysator?",
+            "options": [
+                "Ein Stoff, der Reaktionen verlangsamt",
+                "Ein Stoff, der die Aktivierungsenergie senkt",
+                "Ein Messgerät",
+                "Ein Reaktionsprodukt"
+            ],
+            "answer": "Ein Stoff, der die Aktivierungsenergie senkt",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 8,
+            "question": "Was entsteht bei der Verbrennung von Magnesium?",
+            "options": [
+                "Magnesiumchlorid",
+                "Magnesiumoxid",
+                "Magnesiumsulfat",
+                "Magnesiumhydrid"
+            ],
+            "answer": "Magnesiumoxid",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 8,
+            "question": "Wie lautet das Gesetz von der Erhaltung der Masse?",
+            "options": [
+                "Masse geht verloren",
+                "Masse nimmt zu",
+                "Gesamtmasse bleibt bei chemischen Reaktionen gleich",
+                "Masse ist unwichtig"
+            ],
+            "answer": "Gesamtmasse bleibt bei chemischen Reaktionen gleich",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 8,
+            "question": "Was ist eine Analyse in der Chemie?",
+            "options": [
+                "Zusammenfügen von Stoffen",
+                "Zerlegen einer Verbindung in ihre Elemente",
+                "Messen der Temperatur",
+                "Filtern von Wasser"
+            ],
+            "answer": "Zerlegen einer Verbindung in ihre Elemente",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 8,
+            "question": "Welche Farbe hat die Flamme von Kupfer?",
+            "options": [
+                "Rot",
+                "Gelb",
+                "Grün-Blau",
+                "Violett"
+            ],
+            "answer": "Grün-Blau",
+            "difficulty": "hard"
+        },
+        {
+            "grade": 8,
+            "question": "Was ist ein Oxid?",
+            "options": [
+                "Ein Element",
+                "Eine Verbindung aus einem Element und Sauerstoff",
+                "Eine Säure",
+                "Ein Edelgas"
+            ],
+            "answer": "Eine Verbindung aus einem Element und Sauerstoff",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 8,
+            "question": "Was passiert bei einer endothermen Reaktion mit der Umgebungstemperatur?",
+            "options": [
+                "Sie steigt",
+                "Sie sinkt",
+                "Sie bleibt gleich",
+                "Sie wird unendlich"
+            ],
+            "answer": "Sie sinkt",
+            "difficulty": "hard"
+        },
+        {
+            "grade": 9,
+            "question": "Welche Ladung haben Elektronen?",
+            "options": [
+                "Positiv",
+                "Neutral",
+                "Negativ",
+                "Variabel"
+            ],
+            "answer": "Negativ",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 9,
+            "question": "Wie nennt man die Zeilen im Periodensystem?",
+            "options": [
+                "Gruppen",
+                "Perioden",
+                "Familien",
+                "Spalten"
+            ],
+            "answer": "Perioden",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 9,
+            "question": "Was haben Elemente der gleichen Gruppe gemeinsam?",
+            "options": [
+                "Gleiche Anzahl an Protonen",
+                "Gleiche Anzahl an Valenzelektronen",
+                "Gleiche Masse",
+                "Gleiche Periode"
+            ],
+            "answer": "Gleiche Anzahl an Valenzelektronen",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 9,
+            "question": "Wie nennt man die Bindung zwischen Metallen und Nichtmetallen?",
+            "options": [
+                "Atombindung",
+                "Ionenbindung",
+                "Metallbindung",
+                "Van-der-Waals-Bindung"
+            ],
+            "answer": "Ionenbindung",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 9,
+            "question": "Was ist ein Ion?",
+            "options": [
+                "Ein neutrales Atom",
+                "Ein elektrisch geladenes Atom oder Molekül",
+                "Ein Kernteilchen",
+                "Ein Lichtteilchen"
+            ],
+            "answer": "Ein elektrisch geladenes Atom oder Molekül",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 9,
+            "question": "Was ist die Edelgasregel (Oktettregel)?",
+            "options": [
+                "8 Protonen im Kern",
+                "8 Elektronen in der äußersten Schale",
+                "8 Neutronen",
+                "Reaktion mit 8 Stoffen"
+            ],
+            "answer": "8 Elektronen in der äußersten Schale",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 9,
+            "question": "Was ist der pH-Wert einer neutralen Lösung?",
+            "options": [
+                "0",
+                "1",
+                "7",
+                "14"
+            ],
+            "answer": "7",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 9,
+            "question": "Welches Ion ist für den sauren Charakter verantwortlich?",
+            "options": [
+                "OH-",
+                "Cl-",
+                "H3O+",
+                "Na+"
+            ],
+            "answer": "H3O+",
+            "difficulty": "hard"
+        },
+        {
+            "grade": 9,
+            "question": "Was ist die Formel von Schwefelsäure?",
+            "options": [
+                "HCl",
+                "H2SO4",
+                "HNO3",
+                "H2CO3"
+            ],
+            "answer": "H2SO4",
+            "difficulty": "hard"
+        },
+        {
+            "grade": 9,
+            "question": "Was passiert bei einer Neutralisation?",
+            "options": [
+                "Säure und Lauge reagieren zu Wasser und Salz",
+                "Metall verbrennt",
+                "Eis schmilzt",
+                "Wasser verdampft"
+            ],
+            "answer": "Säure und Lauge reagieren zu Wasser und Salz",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 10,
+            "question": "Wie nennt man die Kohlenwasserstoffe mit nur Einfachbindungen?",
+            "options": [
+                "Alkene",
+                "Alkine",
+                "Alkane",
+                "Alkohole"
+            ],
+            "answer": "Alkane",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 10,
+            "question": "Was ist die allgemeine Summenformel der Alkane?",
+            "options": [
+                "CnH2n",
+                "CnH2n+2",
+                "CnH2n-2",
+                "CnHn"
+            ],
+            "answer": "CnH2n+2",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 10,
+            "question": "Wie heißt das einfachste Alkan?",
+            "options": [
+                "Ethan",
+                "Propan",
+                "Methan",
+                "Butan"
+            ],
+            "answer": "Methan",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 10,
+            "question": "Welche funktionelle Gruppe besitzen Alkohole?",
+            "options": [
+                "Carboxylgruppe",
+                "Aminogruppe",
+                "Hydroxygruppe (-OH)",
+                "Aldehydgruppe"
+            ],
+            "answer": "Hydroxygruppe (-OH)",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 10,
+            "question": "Was ist Isomerie?",
+            "options": [
+                "Gleiche Masse, anderes Element",
+                "Gleiche Summenformel, andere Strukturformel",
+                "Gleiche Farbe",
+                "Verschiedene Aggregatzustände"
+            ],
+            "answer": "Gleiche Summenformel, andere Strukturformel",
+            "difficulty": "hard"
+        },
+        {
+            "grade": 10,
+            "question": "Wie nennt man die Reaktion von Alkanen mit Halogenen?",
+            "options": [
+                "Addition",
+                "Substitution",
+                "Eliminierung",
+                "Polykondensation"
+            ],
+            "answer": "Substitution",
+            "difficulty": "hard"
+        },
+        {
+            "grade": 10,
+            "question": "Was ist die Summenformel von Ethanol?",
+            "options": [
+                "CH4O",
+                "C2H6O",
+                "C2H4O",
+                "C3H8O"
+            ],
+            "answer": "C2H6O",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 10,
+            "question": "Was ist die Eigenschaft von kurzkettigen Alkanen?",
+            "options": [
+                "Fest",
+                "Flüssig",
+                "Gasförmig",
+                "Metallisch"
+            ],
+            "answer": "Gasförmig",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 10,
+            "question": "Wie lautet die funktionelle Gruppe der Carbonsäuren?",
+            "options": [
+                "-OH",
+                "-CHO",
+                "-COOH",
+                "-NH2"
+            ],
+            "answer": "-COOH",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 10,
+            "question": "Was ist Esterbildung?",
+            "options": [
+                "Säure + Metall",
+                "Säure + Alkohol",
+                "Lauge + Wasser",
+                "Alkohol + Wasser"
+            ],
+            "answer": "Säure + Alkohol",
+            "difficulty": "hard"
+        },
+        {
+            "grade": 11,
+            "question": "Was besagt das Massenwirkungsgesetz (MWG)?",
+            "options": [
+                "Masse bleibt gleich",
+                "Zusammenhang zwischen Konzentrationen von Edukten und Produkten im Gleichgewicht",
+                "Energie ist konstant",
+                "Druck erhöht die Masse"
+            ],
+            "answer": "Zusammenhang zwischen Konzentrationen von Edukten und Produkten im Gleichgewicht",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 11,
+            "question": "Was ist ein chemisches Gleichgewicht?",
+            "options": [
+                "Reaktion ist gestoppt",
+                "Hin- und Rückreaktion laufen gleich schnell ab",
+                "Edukte sind verbraucht",
+                "Produkte sind fest"
+            ],
+            "answer": "Hin- und Rückreaktion laufen gleich schnell ab",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 11,
+            "question": "Welches Prinzip beschreibt die Flucht vor dem Zwang?",
+            "options": [
+                "Hess'scher Satz",
+                "Le Chatelier",
+                "Pauli-Prinzip",
+                "Avogadro-Gesetz"
+            ],
+            "answer": "Le Chatelier",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 11,
+            "question": "Wie wirkt eine Druckerhöhung auf ein Gasgleichgewicht, wenn rechts weniger Mol Teilchen sind?",
+            "options": [
+                "Gleichgewicht verschiebt sich nach links",
+                "Gleichgewicht verschiebt sich nach rechts",
+                "Keine Auswirkung",
+                "Temperatur sinkt"
+            ],
+            "answer": "Gleichgewicht verschiebt sich nach rechts",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 11,
+            "question": "Was ist die molare Masse (M)?",
+            "options": [
+                "Masse von 1 Liter",
+                "Masse von 1 Mol eines Stoffes (g/mol)",
+                "Dichte des Stoffes",
+                "Anzahl der Atome"
+            ],
+            "answer": "Masse von 1 Mol eines Stoffes (g/mol)",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 11,
+            "question": "Was ist die Einheit der Stoffmenge (n)?",
+            "options": [
+                "Gramm",
+                "Liter",
+                "Mol",
+                "Celsius"
+            ],
+            "answer": "Mol",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 11,
+            "question": "Was beschreibt die Enthalpie (H)?",
+            "options": [
+                "Die Unordnung",
+                "Den Wärmeinhalt eines Systems",
+                "Den Druck",
+                "Die Geschwindigkeit"
+            ],
+            "answer": "Den Wärmeinhalt eines Systems",
+            "difficulty": "hard"
+        },
+        {
+            "grade": 11,
+            "question": "Was ist Entropie (S)?",
+            "options": [
+                "Maß für die Ordnung",
+                "Maß für die Unordnung",
+                "Temperaturunterschied",
+                "Elektronenfluss"
+            ],
+            "answer": "Maß für die Unordnung",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 11,
+            "question": "Was sagt die Gibb'sche freie Enthalpie (G) aus?",
+            "options": [
+                "Ob eine Reaktion exotherm ist",
+                "Ob eine Reaktion freiwillig (spontan) abläuft",
+                "Die Farbe der Lösung",
+                "Den pH-Wert"
+            ],
+            "answer": "Ob eine Reaktion freiwillig (spontan) abläuft",
+            "difficulty": "hard"
+        },
+        {
+            "grade": 11,
+            "question": "Wie lautet die universelle Gaskonstante (R) etwa?",
+            "options": [
+                "8,314 J/(mol*K)",
+                "6,022 * 10^23",
+                "9,81 m/s^2",
+                "1,013 bar"
+            ],
+            "answer": "8,314 J/(mol*K)",
+            "difficulty": "hard"
+        },
+        {
+            "grade": 12,
+            "question": "Was ist eine Redoxreaktion?",
+            "options": [
+                "Reaktion mit Wasser",
+                "Elektronenübertragungsreaktion",
+                "Protonenübertragung",
+                "Säure-Base-Reaktion"
+            ],
+            "answer": "Elektronenübertragungsreaktion",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 12,
+            "question": "Was passiert bei einer Oxidation (erweitert)?",
+            "options": [
+                "Aufnahme von Elektronen",
+                "Abgabe von Elektronen",
+                "Abgabe von Protonen",
+                "Aufnahme von Sauerstoff nur"
+            ],
+            "answer": "Abgabe von Elektronen",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 12,
+            "question": "Was ist ein Oxidationsmittel?",
+            "options": [
+                "Ein Stoff, der selbst oxidiert wird",
+                "Ein Stoff, der Elektronen abgibt",
+                "Ein Stoff, der andere oxidiert und selbst reduziert wird",
+                "Ein Metall"
+            ],
+            "answer": "Ein Stoff, der andere oxidiert und selbst reduziert wird",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 12,
+            "question": "Was ist die Oxidationszahl von Sauerstoff in den meisten Verbindungen?",
+            "options": [
+                "0",
+                "+2",
+                "-2",
+                "-1"
+            ],
+            "answer": "-2",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 12,
+            "question": "Was ist eine galvanische Zelle?",
+            "options": [
+                "Ein Gerät zum Messen von Licht",
+                "Vorrichtung zur Umwandlung chemischer in elektrische Energie",
+                "Ein Schmelzofen",
+                "Ein Filter"
+            ],
+            "answer": "Vorrichtung zur Umwandlung chemischer in elektrische Energie",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 12,
+            "question": "Wie nennt man die Elektrode, an der die Oxidation stattfindet?",
+            "options": [
+                "Kathode",
+                "Anode",
+                "Diode",
+                "Elektrolyt"
+            ],
+            "answer": "Anode",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 12,
+            "question": "Was beschreibt die Nernst-Gleichung?",
+            "options": [
+                "Den pH-Wert",
+                "Abhängigkeit des Elektrodenpotentials von der Konzentration",
+                "Die Masse eines Atoms",
+                "Die Lichtgeschwindigkeit"
+            ],
+            "answer": "Abhängigkeit des Elektrodenpotentials von der Konzentration",
+            "difficulty": "hard"
+        },
+        {
+            "grade": 12,
+            "question": "Welches Metall ist edler als Wasserstoff?",
+            "options": [
+                "Zink",
+                "Magnesium",
+                "Kupfer",
+                "Eisen"
+            ],
+            "answer": "Kupfer",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 12,
+            "question": "Was passiert bei der Elektrolyse?",
+            "options": [
+                "Spontane Reaktion erzeugt Strom",
+                "Erzwungene chemische Reaktion durch elektrischen Strom",
+                "Wasser gefriert",
+                "Metall schmilzt"
+            ],
+            "answer": "Erzwungene chemische Reaktion durch elektrischen Strom",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 12,
+            "question": "Was ist die Faraday-Konstante (F) etwa?",
+            "options": [
+                "96485 C/mol",
+                "8,314 J/mol",
+                "6 * 10^23",
+                "1,6 * 10^-19"
+            ],
+            "answer": "96485 C/mol",
+            "difficulty": "hard"
+        },
+        {
+            "grade": 13,
+            "question": "Was ist ein Polymer?",
+            "options": [
+                "Ein kleines Molekül",
+                "Ein Riesenmolekül aus vielen Monomeren",
+                "Ein Edelmetall",
+                "Ein radioaktives Element"
+            ],
+            "answer": "Ein Riesenmolekül aus vielen Monomeren",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 13,
+            "question": "Wie nennt man die Verknüpfung von Aminosäuren?",
+            "options": [
+                "Esterbindung",
+                "Peptidbindung",
+                "Ionenbindung",
+                "Glykosidische Bindung"
+            ],
+            "answer": "Peptidbindung",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 13,
+            "question": "Welche Zuckerform ist Traubenzucker?",
+            "options": [
+                "Fructose",
+                "Glucose",
+                "Saccharose",
+                "Lactose"
+            ],
+            "answer": "Glucose",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 13,
+            "question": "Was ist ein Polysaccharid?",
+            "options": [
+                "Fruchtzucker",
+                "Stärke",
+                "Rohrzucker",
+                "Milchzucker"
+            ],
+            "answer": "Stärke",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 13,
+            "question": "Was ist Polykondensation?",
+            "options": [
+                "Reaktion ohne Nebenprodukt",
+                "Reaktion unter Abspaltung kleiner Moleküle (z.B. Wasser)",
+                "Verbrennung",
+                "Lösen in Säure"
+            ],
+            "answer": "Reaktion unter Abspaltung kleiner Moleküle (z.B. Wasser)",
+            "difficulty": "hard"
+        },
+        {
+            "grade": 13,
+            "question": "Was ist die Primärstruktur eines Proteins?",
+            "options": [
+                "Faltung im Raum",
+                "Abfolge der Aminosäuren (Sequenz)",
+                "Zusammenlagerung mehrerer Ketten",
+                "Helix-Struktur"
+            ],
+            "answer": "Abfolge der Aminosäuren (Sequenz)",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 13,
+            "question": "Welcher Kunststoff ist ein Duroplast?",
+            "options": [
+                "Polyethylen (PE)",
+                "Bakelit",
+                "Polystyrol (PS)",
+                "PVC"
+            ],
+            "answer": "Bakelit",
+            "difficulty": "hard"
+        },
+        {
+            "grade": 13,
+            "question": "Was ist die Aufgabe von Enzymen im Körper?",
+            "options": [
+                "Energiespeicher",
+                "Biokatalysatoren",
+                "Baustoff für Knochen",
+                "Transport von Sauerstoff nur"
+            ],
+            "answer": "Biokatalysatoren",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 13,
+            "question": "Woraus bestehen Fette?",
+            "options": [
+                "Aminosäuren",
+                "Glycerin und Fettsäuren",
+                "Zuckerketten",
+                "Nukleotiden"
+            ],
+            "answer": "Glycerin und Fettsäuren",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 13,
+            "question": "Was ist ein Thermoplast?",
+            "options": [
+                "Wird beim Erwärmen verformbar",
+                "Schmilzt nie",
+                "Ist immer flüssig",
+                "Leitet Strom"
+            ],
+            "answer": "Wird beim Erwärmen verformbar",
+            "difficulty": "easy"
+        }
+    ]
+}

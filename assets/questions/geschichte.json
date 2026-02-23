@@ -1,0 +1,1085 @@
+{
+    "subject": "Geschichte",
+    "questions": [
+        {
+            "grade": 5,
+            "question": "Wie nennt man die Epoche, in der die Menschen als Jäger und Sammler lebten?",
+            "options": [
+                "Bronzezeit",
+                "Altsteinzeit",
+                "Mittelalter",
+                "Eisenzeit"
+            ],
+            "answer": "Altsteinzeit",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 5,
+            "question": "Welcher Fluss war für das Überleben im alten Ägypten entscheidend?",
+            "options": [
+                "Rhein",
+                "Donau",
+                "Nil",
+                "Tigris"
+            ],
+            "answer": "Nil",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 5,
+            "question": "Was bauten die Ägypter als Grabstätten für ihre Pharaonen?",
+            "options": [
+                "Burgen",
+                "Tempel",
+                "Pyramiden",
+                "Kathedralen"
+            ],
+            "answer": "Pyramiden",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 5,
+            "question": "Wie nennt man die Schrift der alten Ägypter?",
+            "options": [
+                "Keilschrift",
+                "Latein",
+                "Hieroglyphen",
+                "Griechisch"
+            ],
+            "answer": "Hieroglyphen",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 5,
+            "question": "Was bedeutet der Begriff 'sesshaft'?",
+            "options": [
+                "Immer auf Wanderschaft sein",
+                "An einem festen Ort wohnen",
+                "In Höhlen malen",
+                "Tiere jagen"
+            ],
+            "answer": "An einem festen Ort wohnen",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 5,
+            "question": "Welches Metall markiert das Ende der Steinzeit?",
+            "options": [
+                "Aluminium",
+                "Gold",
+                "Kupfer",
+                "Silber"
+            ],
+            "answer": "Kupfer",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 5,
+            "question": "Warum mumifizierten die Ägypter ihre Toten?",
+            "options": [
+                "Aus Platzgründen",
+                "Für das Weiterleben im Jenseits",
+                "Weil es Gesetz war",
+                "Zur Abschreckung"
+            ],
+            "answer": "Für das Weiterleben im Jenseits",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 5,
+            "question": "Was ist eine 'Quelle' in der Geschichte?",
+            "options": [
+                "Nur ein kleiner Fluss",
+                "Ein Zeugnis aus der Vergangenheit",
+                "Ein Geschichtsbuch",
+                "Eine Erfindung"
+            ],
+            "answer": "Ein Zeugnis aus der Vergangenheit",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 5,
+            "question": "Welches Tier wurde in Ägypten als heilig verehrt?",
+            "options": [
+                "Hund",
+                "Pferd",
+                "Katze",
+                "Elefant"
+            ],
+            "answer": "Katze",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 5,
+            "question": "Was erfanden die Menschen in der Jungsteinzeit?",
+            "options": [
+                "Das Auto",
+                "Ackerbau und Viehzucht",
+                "Den Computer",
+                "Das Schießpulver"
+            ],
+            "answer": "Ackerbau und Viehzucht",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 6,
+            "question": "In welcher Stadt fanden die ersten Olympischen Spiele der Antike statt?",
+            "options": [
+                "Athen",
+                "Rom",
+                "Olympia",
+                "Sparta"
+            ],
+            "answer": "Olympia",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 6,
+            "question": "Wie hieß der berühmte Herrscher, der das Römische Reich zur Kaiserzeit anführte?",
+            "options": [
+                "Alexander der Große",
+                "Julius Cäsar",
+                "Augustus",
+                "Perikles"
+            ],
+            "answer": "Augustus",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 6,
+            "question": "Was war das 'Forum Romanum'?",
+            "options": [
+                "Ein Marktplatz und Zentrum des öffentlichen Lebens",
+                "Ein Kriegsschiff",
+                "Ein Tempel für alle Götter",
+                "Ein Aquädukt"
+            ],
+            "answer": "Ein Marktplatz und Zentrum des öffentlichen Lebens",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 6,
+            "question": "Welche Staatsform wurde in Athen entwickelt?",
+            "options": [
+                "Monarchie",
+                "Diktatur",
+                "Demokratie",
+                "Oligarchie"
+            ],
+            "answer": "Demokratie",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 6,
+            "question": "Wie nennt man die römischen Wasserleitungen?",
+            "options": [
+                "Kanäle",
+                "Aquädukte",
+                "Thermen",
+                "Viadukte"
+            ],
+            "answer": "Aquädukte",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 6,
+            "question": "Wer kämpfte im Kolosseum in Rom?",
+            "options": [
+                "Senatoren",
+                "Philosophen",
+                "Gladiatoren",
+                "Pharaonen"
+            ],
+            "answer": "Gladiatoren",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 6,
+            "question": "Was war die Akropolis?",
+            "options": [
+                "Ein Hafen",
+                "Ein Stadtberg mit Tempelanlagen",
+                "Ein griechisches Theater",
+                "Ein römischer Palast"
+            ],
+            "answer": "Ein Stadtberg mit Tempelanlagen",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 6,
+            "question": "Welche Sprache sprachen die Römer?",
+            "options": [
+                "Griechisch",
+                "Italienisch",
+                "Latein",
+                "Französisch"
+            ],
+            "answer": "Latein",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 6,
+            "question": "Wie nannte man die schwer bewaffneten Fußsoldaten im alten Griechenland?",
+            "options": [
+                "Legionäre",
+                "Hopliten",
+                "Ritter",
+                "Janitscharen"
+            ],
+            "answer": "Hopliten",
+            "difficulty": "hard"
+        },
+        {
+            "grade": 6,
+            "question": "Was war der Limes?",
+            "options": [
+                "Ein römisches Getränk",
+                "Eine Grenzbefestigung des Römischen Reiches",
+                "Ein griechischer Gott",
+                "Ein Gesetz"
+            ],
+            "answer": "Eine Grenzbefestigung des Römischen Reiches",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 7,
+            "question": "Wie nennt man das System im Mittelalter, bei dem Land gegen Dienste verliehen wurde?",
+            "options": [
+                "Kapitalismus",
+                "Lehnswesen",
+                "Demokratie",
+                "Zunftordnung"
+            ],
+            "answer": "Lehnswesen",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 7,
+            "question": "Wer stand an der Spitze der mittelalterlichen Ständegesellschaft?",
+            "options": [
+                "Der Papst",
+                "Der König/Kaiser",
+                "Die Ritter",
+                "Die Bauern"
+            ],
+            "answer": "Der König/Kaiser",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 7,
+            "question": "Welche Krankheit löschte im 14. Jahrhundert fast ein Drittel der europäischen Bevölkerung aus?",
+            "options": [
+                "Grippe",
+                "Pest",
+                "Cholera",
+                "Pocken"
+            ],
+            "answer": "Pest",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 7,
+            "question": "Was war die Hauptaufgabe eines Klosters im Mittelalter?",
+            "options": [
+                "Kriegführung",
+                "Handel",
+                "Gebet, Arbeit und Bewahrung von Wissen",
+                "Bau von Burgen"
+            ],
+            "answer": "Gebet, Arbeit und Bewahrung von Wissen",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 7,
+            "question": "Wie nannte man die Zusammenschlüsse von Handwerkern im Mittelalter?",
+            "options": [
+                "Gewerkschaften",
+                "Zünfte",
+                "Parteien",
+                "Orden"
+            ],
+            "answer": "Zünfte",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 7,
+            "question": "In welcher Epoche bauten die Menschen gotische Kathedralen?",
+            "options": [
+                "Antike",
+                "Frühe Neuzeit",
+                "Mittelalter",
+                "Aufklärung"
+            ],
+            "answer": "Mittelalter",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 7,
+            "question": "Was war das Ziel der Kreuzzüge?",
+            "options": [
+                "Entdeckung Amerikas",
+                "Rückeroberung Jerusalems",
+                "Gründung von Universitäten",
+                "Vertreibung der Wikinger"
+            ],
+            "answer": "Rückeroberung Jerusalems",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 7,
+            "question": "Wie hieß der fränkische Herrscher, der im Jahr 800 zum Kaiser gekrönt wurde?",
+            "options": [
+                "Ludwig der Fromme",
+                "Karl der Große",
+                "Friedrich Barbarossa",
+                "Otto der Große"
+            ],
+            "answer": "Karl der Große",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 7,
+            "question": "Was war ein 'Höriger'?",
+            "options": [
+                "Ein Musiker",
+                "Ein unfreier Bauer, der seinem Herrn verpflichtet war",
+                "Ein Berater des Königs",
+                "Ein Ritter ohne Land"
+            ],
+            "answer": "Ein unfreier Bauer, der seinem Herrn verpflichtet war",
+            "difficulty": "hard"
+        },
+        {
+            "grade": 7,
+            "question": "Welches Ereignis gilt traditionell als Ende des Mittelalters?",
+            "options": [
+                "Die Erfindung des Rads",
+                "Die Entdeckung Amerikas 1492",
+                "Der Bau der Chinesischen Mauer",
+                "Die Krönung Karls des Großen"
+            ],
+            "answer": "Die Entdeckung Amerikas 1492",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 8,
+            "question": "Wer erfand um 1450 den Buchdruck mit beweglichen Metalllettern?",
+            "options": [
+                "Martin Luther",
+                "Johannes Gutenberg",
+                "Leonardo da Vinci",
+                "Christoph Kolumbus"
+            ],
+            "answer": "Johannes Gutenberg",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 8,
+            "question": "Wie hieß der Mönch, der 1517 die Reformation einleitete?",
+            "options": [
+                "Johannes Calvin",
+                "Huldrych Zwingli",
+                "Martin Luther",
+                "Erasmus von Rotterdam"
+            ],
+            "answer": "Martin Luther",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 8,
+            "question": "Was war der zentrale Slogan der Französischen Revolution?",
+            "options": [
+                "Friede, Freude, Eierkuchen",
+                "Freiheit, Gleichheit, Brüderlichkeit",
+                "Einigkeit und Recht und Freiheit",
+                "Land und Brot"
+            ],
+            "answer": "Freiheit, Gleichheit, Brüderlichkeit",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 8,
+            "question": "Wer herrschte als 'Sonnenkönig' in Frankreich?",
+            "options": [
+                "Napoleon Bonaparte",
+                "Ludwig XIV.",
+                "Karl V.",
+                "Heinrich VIII."
+            ],
+            "answer": "Ludwig XIV.",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 8,
+            "question": "Welches Ereignis begann am 14. Juli 1789?",
+            "options": [
+                "Der Dreißigjährige Krieg",
+                "Der Sturm auf die Bastille",
+                "Die Krönung Napoleons",
+                "Der Wiener Kongress"
+            ],
+            "answer": "Der Sturm auf die Bastille",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 8,
+            "question": "Was war der 'Ablasshandel'?",
+            "options": [
+                "Handel mit Gewürzen",
+                "Freikauf von Sündenstrafen durch Geld",
+                "Verkauf von Kirchenland",
+                "Eine Steuer für Bauern"
+            ],
+            "answer": "Freikauf von Sündenstrafen durch Geld",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 8,
+            "question": "In welchem Land begann die Industrielle Revolution?",
+            "options": [
+                "Deutschland",
+                "Frankreich",
+                "USA",
+                "England"
+            ],
+            "answer": "England",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 8,
+            "question": "Was war das Ziel der Aufklärung?",
+            "options": [
+                "Die Macht der Kirche stärken",
+                "Den Verstand benutzen und Vorurteile überwinden",
+                "Zurück zum Mittelalter",
+                "Einführung der Monarchie"
+            ],
+            "answer": "Den Verstand benutzen und Vorurteile überwinden",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 8,
+            "question": "Wer krönte sich 1804 selbst zum Kaiser der Franzosen?",
+            "options": [
+                "Ludwig XVI.",
+                "Robespierre",
+                "Napoleon Bonaparte",
+                "Charles de Gaulle"
+            ],
+            "answer": "Napoleon Bonaparte",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 8,
+            "question": "Was wurde auf dem Wiener Kongress 1815 beschlossen?",
+            "options": [
+                "Die Gründung der EU",
+                "Die Neuordnung Europas nach Napoleon",
+                "Das Ende des Buchdrucks",
+                "Der Beginn des Ersten Weltkriegs"
+            ],
+            "answer": "Die Neuordnung Europas nach Napoleon",
+            "difficulty": "hard"
+        },
+        {
+            "grade": 9,
+            "question": "Wann wurde das Deutsche Kaiserreich proklamiert?",
+            "options": [
+                "1848",
+                "1871",
+                "1914",
+                "1918"
+            ],
+            "answer": "1871",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 9,
+            "question": "Wer war der erste Reichskanzler des Deutschen Kaiserreichs?",
+            "options": [
+                "Wilhelm I.",
+                "Otto von Bismarck",
+                "Friedrich Ebert",
+                "Paul von Hindenburg"
+            ],
+            "answer": "Otto von Bismarck",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 9,
+            "question": "Was war die Hauptursache für den Imperialismus?",
+            "options": [
+                "Umweltschutz",
+                "Streben nach Rohstoffen, Absatzmärkten und Macht",
+                "Religiöse Toleranz",
+                "Tourismus"
+            ],
+            "answer": "Streben nach Rohstoffen, Absatzmärkten und Macht",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 9,
+            "question": "Welches Attentat löste den Ersten Weltkrieg aus?",
+            "options": [
+                "Attentat auf Hitler",
+                "Attentat von Sarajevo",
+                "Attentat auf Lincoln",
+                "Anschlag auf die Bastille"
+            ],
+            "answer": "Attentat von Sarajevo",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 9,
+            "question": "Von wann bis wann dauerte der Erste Weltkrieg?",
+            "options": [
+                "1914 - 1918",
+                "1939 - 1945",
+                "1870 - 1871",
+                "1917 - 1921"
+            ],
+            "answer": "1914 - 1918",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 9,
+            "question": "Was kennzeichnete den Krieg an der Westfront im Ersten Weltkrieg?",
+            "options": [
+                "Blitzkrieg",
+                "Stellungskrieg (Grabenkrieg)",
+                "Seekrieg",
+                "Partisanenkrieg"
+            ],
+            "answer": "Stellungskrieg (Grabenkrieg)",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 9,
+            "question": "Was war die 'Soziale Frage' im 19. Jahrhundert?",
+            "options": [
+                "Frage nach dem Wahlrecht für Frauen",
+                "Notlage und Elend der Arbeiterklasse",
+                "Die Suche nach neuen Kolonien",
+                "Die Einführung des Telefons"
+            ],
+            "answer": "Notlage und Elend der Arbeiterklasse",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 9,
+            "question": "Wer veröffentlichte 1848 das 'Kommunistische Manifest'?",
+            "options": [
+                "Bismarck und Wilhelm I.",
+                "Marx und Engels",
+                "Lassalle und Bebel",
+                "Goethe und Schiller"
+            ],
+            "answer": "Marx und Engels",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 9,
+            "question": "Was passierte in der Russischen Revolution 1917?",
+            "options": [
+                "Sturz des Zaren und Machtübernahme der Bolschewiki",
+                "Einführung der Demokratie",
+                "Sieg Russlands im Weltkrieg",
+                "Gründung der NATO"
+            ],
+            "answer": "Sturz des Zaren und Machtübernahme der Bolschewiki",
+            "difficulty": "hard"
+        },
+        {
+            "grade": 9,
+            "question": "Wie hieß der Friedensvertrag nach dem Ersten Weltkrieg?",
+            "options": [
+                "Vertrag von Trianon",
+                "Friede von Münster",
+                "Versailler Vertrag",
+                "Potsdamer Abkommen"
+            ],
+            "answer": "Versailler Vertrag",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 10,
+            "question": "Wie hieß die erste deutsche Demokratie?",
+            "options": [
+                "Bundesrepublik Deutschland",
+                "Weimarer Republik",
+                "Drittes Reich",
+                "DDR"
+            ],
+            "answer": "Weimarer Republik",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 10,
+            "question": "An welchem Tag wurde Adolf Hitler zum Reichskanzler ernannt?",
+            "options": [
+                "9. November 1918",
+                "30. Januar 1933",
+                "1. September 1939",
+                "8. Mai 1945"
+            ],
+            "answer": "30. Januar 1933",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 10,
+            "question": "Was geschah während der 'Reichspogromnacht' 1938?",
+            "options": [
+                "Wahl Hitlers",
+                "Systematische Gewalt gegen Juden und Synagogen",
+                "Ende des Zweiten Weltkriegs",
+                "Bau der Mauer"
+            ],
+            "answer": "Systematische Gewalt gegen Juden und Synagogen",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 10,
+            "question": "Womit begann am 1. September 1939 der Zweite Weltkrieg?",
+            "options": [
+                "Angriff auf die Sowjetunion",
+                "Überfall auf Polen",
+                "Angriff auf Pearl Harbor",
+                "D-Day"
+            ],
+            "answer": "Überfall auf Polen",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 10,
+            "question": "Was bezeichnet der Begriff 'Holocaust' (Shoah)?",
+            "options": [
+                "Den Luftkrieg",
+                "Der Völkermord an ca. 6 Millionen Juden",
+                "Die Eroberung Berlins",
+                "Die Teilung Deutschlands"
+            ],
+            "answer": "Der Völkermord an ca. 6 Millionen Juden",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 10,
+            "question": "Wann kapitulierte die deutsche Wehrmacht bedingungslos (Ende des 2. WK in Europa)?",
+            "options": [
+                "30. April 1945",
+                "8. Mai 1945",
+                "17. Juni 1953",
+                "3. Oktober 1990"
+            ],
+            "answer": "8. Mai 1945",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 10,
+            "question": "Was war der 'Eiserne Vorhang'?",
+            "options": [
+                "Ein Schutzwall gegen Ritter",
+                "Grenze zwischen den Westmächten und dem Ostblock",
+                "Eine Erfindung der Industrie",
+                "Die Berliner Mauer"
+            ],
+            "answer": "Grenze zwischen den Westmächten und dem Ostblock",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 10,
+            "question": "Wann wurde die Bundesrepublik Deutschland (BRD) gegründet?",
+            "options": [
+                "1945",
+                "1948",
+                "1949",
+                "1955"
+            ],
+            "answer": "1949",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 10,
+            "question": "Wie hieß das Wirtschaftssystem der DDR?",
+            "options": [
+                "Soziale Marktwirtschaft",
+                "Planwirtschaft",
+                "Kapitalismus",
+                "Tauschhandel"
+            ],
+            "answer": "Planwirtschaft",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 10,
+            "question": "Welches Ereignis markiert das Ende der DDR und der Teilung?",
+            "options": [
+                "Bau der Mauer 1961",
+                "Mauerfall am 9. Nov. 1989",
+                "Gründung der NATO",
+                "Währungsreform"
+            ],
+            "answer": "Mauerfall am 9. Nov. 1989",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 11,
+            "question": "Was war der Kern der 'Magna Carta' (1215)?",
+            "options": [
+                "Absolute Macht des Königs",
+                "Einschränkung der königlichen Macht gegenüber dem Adel",
+                "Abschaffung der Sklaverei",
+                "Gründung der Kirche von England"
+            ],
+            "answer": "Einschränkung der königlichen Macht gegenüber dem Adel",
+            "difficulty": "hard"
+        },
+        {
+            "grade": 11,
+            "question": "Welches Menschenbild prägte die Renaissance?",
+            "options": [
+                "Gottgefällige Unterwürfigkeit",
+                "Der Mensch als Zentrum und Maß aller Dinge",
+                "Der Mensch als reines Arbeitstier",
+                "Die Ablehnung jeglicher Bildung"
+            ],
+            "answer": "Der Mensch als Zentrum und Maß aller Dinge",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 11,
+            "question": "Was war die 'Goldene Bulle' von 1356?",
+            "options": [
+                "Ein päpstliches Dekret",
+                "Das 'Grundgesetz' des Heiligen Römischen Reiches zur Königswahl",
+                "Ein Handelsabkommen mit Gold",
+                "Ein Friedensvertrag mit Frankreich"
+            ],
+            "answer": "Das 'Grundgesetz' des Heiligen Römischen Reiches zur Königswahl",
+            "difficulty": "hard"
+        },
+        {
+            "grade": 11,
+            "question": "Was versteht man unter 'Säkularisierung'?",
+            "options": [
+                "Verstärkung des Kircheneinflusses",
+                "Trennung von Kirche und Staat / Verweltlichung",
+                "Bau von neuen Kirchen",
+                "Bekehrung von Heiden"
+            ],
+            "answer": "Trennung von Kirche und Staat / Verweltlichung",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 11,
+            "question": "Was war der 'Westfälische Friede' 1648?",
+            "options": [
+                "Ende der Französischen Revolution",
+                "Ende des Dreißigjährigen Krieges",
+                "Beginn des Siebenjährigen Krieges",
+                "Frieden zwischen USA und England"
+            ],
+            "answer": "Ende des Dreißigjährigen Krieges",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 11,
+            "question": "Welche Staatsform lehnt die Aufklärung ab?",
+            "options": [
+                "Republik",
+                "Demokratie",
+                "Absolutismus",
+                "Konstitutionelle Monarchie"
+            ],
+            "answer": "Absolutismus",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 11,
+            "question": "Wer schrieb die Unabhängigkeitserklärung der Vereinigten Staaten (1776)?",
+            "options": [
+                "George Washington",
+                "Thomas Jefferson",
+                "Benjamin Franklin",
+                "Abraham Lincoln"
+            ],
+            "answer": "Thomas Jefferson",
+            "difficulty": "hard"
+        },
+        {
+            "grade": 11,
+            "question": "Was war das 'Heilige Römische Reich Deutscher Nation'?",
+            "options": [
+                "Ein moderner Nationalstaat",
+                "Ein übernationales Herrschaftsgebilde",
+                "Eine Kolonie Roms",
+                "Ein Militärbündnis"
+            ],
+            "answer": "Ein übernationales Herrschaftsgebilde",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 11,
+            "question": "Was forderte der Dritte Stand in Frankreich vor 1789?",
+            "options": [
+                "Mehr Steuern für Arme",
+                "Gleiche Rechte und politische Mitbestimmung",
+                "Die Rückkehr zur Leibeigenschaft",
+                "Die Abschaffung des Buchdrucks"
+            ],
+            "answer": "Gleiche Rechte und politische Mitbestimmung",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 11,
+            "question": "Wie nennt man die Epoche der Wiederentdeckung der Antike?",
+            "options": [
+                "Barock",
+                "Aufklärung",
+                "Renaissance",
+                "Romantik"
+            ],
+            "answer": "Renaissance",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 12,
+            "question": "Was war die 'Emser Depesche'?",
+            "options": [
+                "Ein Telegramm, das zum Deutsch-Französischen Krieg 1870 beitrug",
+                "Ein Liebesbrief",
+                "Ein Gesetzestext",
+                "Eine Schiffsmeldung"
+            ],
+            "answer": "Ein Telegramm, das zum Deutsch-Französischen Krieg 1870 beitrug",
+            "difficulty": "hard"
+        },
+        {
+            "grade": 12,
+            "question": "Was versteht man unter 'Kulturkampf' unter Bismarck?",
+            "options": [
+                "Kampf gegen Frankreich",
+                "Konflikt zwischen dem Staat und der katholischen Kirche",
+                "Förderung von Museen",
+                "Kampf gegen Analphabetismus"
+            ],
+            "answer": "Konflikt zwischen dem Staat und der katholischen Kirche",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 12,
+            "question": "Was war der 'Schlieffen-Plan'?",
+            "options": [
+                "Wirtschaftsplan für Deutschland",
+                "Militärstrategie für einen Zweifrontenkrieg",
+                "Plan zum Bau der Flotte",
+                "Sozialversicherungssystem"
+            ],
+            "answer": "Militärstrategie für einen Zweifrontenkrieg",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 12,
+            "question": "Was war die 'Dolchstoßlegende'?",
+            "options": [
+                "Eine Sage aus dem Mittelalter",
+                "Rechtsextreme Propaganda über die Niederlage im 1. WK",
+                "Eine Erfindung der SPD",
+                "Ein Märchen der Brüder Grimm"
+            ],
+            "answer": "Rechtsextreme Propaganda über die Niederlage im 1. WK",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 12,
+            "question": "Welche Wirtschaftskrise erschütterte 1929 die Welt?",
+            "options": [
+                "Ölkrise",
+                "Weltwirtschaftskrise (Schwarzer Freitag)",
+                "Hyperinflation 1923",
+                "Dotcom-Blase"
+            ],
+            "answer": "Weltwirtschaftskrise (Schwarzer Freitag)",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 12,
+            "question": "Was war das 'Ermächtigungsgesetz' 1933?",
+            "options": [
+                "Ein Gesetz zur Frauenförderung",
+                "Die rechtliche Basis für Hitlers Diktatur",
+                "Einführung des Mindestlohns",
+                "Ein Gesetz zum Naturschutz"
+            ],
+            "answer": "Die rechtliche Basis für Hitlers Diktatur",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 12,
+            "question": "Was geschah auf der Wannseekonferenz 1942?",
+            "options": [
+                "Planung des Überfalls auf Polen",
+                "Organisation der 'Endlösung der Judenfrage'",
+                "Friedensverhandlungen mit England",
+                "Gründung der UNO"
+            ],
+            "answer": "Organisation der 'Endlösung der Judenfrage'",
+            "difficulty": "hard"
+        },
+        {
+            "grade": 12,
+            "question": "Was besagte die 'Containment-Politik' der USA?",
+            "options": [
+                "Förderung des Kommunismus",
+                "Eindämmung der sowjetischen Expansion",
+                "Isolationismus",
+                "Abrüstung"
+            ],
+            "answer": "Eindämmung der sowjetischen Expansion",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 12,
+            "question": "Was war das 'Wunder von Bern'?",
+            "options": [
+                "Ein politisches Abkommen",
+                "Der Sieg Deutschlands bei der Fußball-WM 1954",
+                "Eine religiöse Erscheinung",
+                "Die Gründung der Schweiz"
+            ],
+            "answer": "Der Sieg Deutschlands bei der Fußball-WM 1954",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 12,
+            "question": "Welcher Kanzler steht für die 'Neue Ostpolitik' (Wandel durch Annäherung)?",
+            "options": [
+                "Konrad Adenauer",
+                "Willy Brandt",
+                "Helmut Kohl",
+                "Angela Merkel"
+            ],
+            "answer": "Willy Brandt",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 13,
+            "question": "Was war die 'Kubakrise' 1962?",
+            "options": [
+                "Ein Handelsstreit",
+                "Höhepunkt des Kalten Krieges durch sowjetische Raketen auf Kuba",
+                "Eine Revolution in Havanna",
+                "Ein Vulkanausbruch"
+            ],
+            "answer": "Höhepunkt des Kalten Krieges durch sowjetische Raketen auf Kuba",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 13,
+            "question": "Was bedeutete 'Perestroika' unter Michail Gorbatschow?",
+            "options": [
+                "Verschärfung der Zensur",
+                "Umgestaltung des sowjetischen Systems",
+                "Militärische Aufrüstung",
+                "Verbot von Westfernsehen"
+            ],
+            "answer": "Umgestaltung des sowjetischen Systems",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 13,
+            "question": "Wann traten die fünf neuen Bundesländer der Bundesrepublik bei?",
+            "options": [
+                "9. November 1989",
+                "1. Juli 1990",
+                "3. Oktober 1990",
+                "1. Januar 1991"
+            ],
+            "answer": "3. Oktober 1990",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 13,
+            "question": "Was war die 'Zwei-plus-Vier-Vertrag'?",
+            "options": [
+                "Ein Handelsvertrag zwischen 6 Staaten",
+                "Völkerrechtliche Grundlage für die deutsche Einheit",
+                "Ein Vertrag zur Kernkraft",
+                "Ein Fußballabkommen"
+            ],
+            "answer": "Völkerrechtliche Grundlage für die deutsche Einheit",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 13,
+            "question": "Welche Organisation wurde 1992 durch den Vertrag von Maastricht gegründet?",
+            "options": [
+                "UNO",
+                "NATO",
+                "Europäische Union (EU)",
+                "Warschauer Pakt"
+            ],
+            "answer": "Europäische Union (EU)",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 13,
+            "question": "Was war der 'Stellvertreterkrieg'?",
+            "options": [
+                "Krieg zwischen Robotern",
+                "Konflikt, bei dem Supermächte Drittstaaten für ihre Interessen kämpfen ließen",
+                "Ein diplomatischer Streit",
+                "Krieg um Parlamentssitze"
+            ],
+            "answer": "Konflikt, bei dem Supermächte Drittstaaten für ihre Interessen kämpfen ließen",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 13,
+            "question": "Was ereignete sich am 11. September 2001?",
+            "options": [
+                "Mauerfall",
+                "Terroranschläge auf das World Trade Center",
+                "Gründung des Euro",
+                "Ende des Vietnamkriegs"
+            ],
+            "answer": "Terroranschläge auf das World Trade Center",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 13,
+            "question": "Was ist die Kernidee der 'Globalisierung'?",
+            "options": [
+                "Abschottung der Märkte",
+                "Weltweite Verflechtung in Wirtschaft, Politik und Kultur",
+                "Rückkehr zur Landwirtschaft",
+                "Bau von Mauern"
+            ],
+            "answer": "Weltweite Verflechtung in Wirtschaft, Politik und Kultur",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 13,
+            "question": "Was war der 'Prager Frühling' 1968?",
+            "options": [
+                "Ein Musikfestival",
+                "Versuch einer Demokratisierung in der Tschechoslowakei",
+                "Ein Wetterereignis",
+                "Die Gründung von Skoda"
+            ],
+            "answer": "Versuch einer Demokratisierung in der Tschechoslowakei",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 13,
+            "question": "Was besagt die 'Hallstein-Doktrin'?",
+            "options": [
+                "Alleingültigkeitsanspruch der BRD und Nichtanerkennung der DDR",
+                "Anerkennung beider Staaten",
+                "Ein Plan zum Autobahnbau",
+                "Ein Bildungsgesetz"
+            ],
+            "answer": "Alleingültigkeitsanspruch der BRD und Nichtanerkennung der DDR",
+            "difficulty": "hard"
+        }
+    ]
+}

@@ -4,71 +4,1321 @@
     {
       "grade": 3,
       "question": "Was heißt 'Hund' auf Englisch?",
-      "options": ["cat", "dog", "bird", "fish"],
-      "answer": "dog",
+      "options": [
+        "Cat",
+        "Bird",
+        "Dog",
+        "Mouse"
+      ],
+      "answer": "Dog",
       "difficulty": "easy"
     },
     {
       "grade": 3,
-      "question": "Wie sagt man 'Hallo' auf Englisch?",
-      "options": ["Goodbye", "Hello", "Thank you", "Please"],
-      "answer": "Hello",
+      "question": "Welche Farbe ist 'yellow'?",
+      "options": [
+        "Rot",
+        "Blau",
+        "Grün",
+        "Gelb"
+      ],
+      "answer": "Gelb",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 3,
+      "question": "Wie zählt man richtig: one, two, ...?",
+      "options": [
+        "four",
+        "three",
+        "five",
+        "six"
+      ],
+      "answer": "three",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 3,
+      "question": "Was sagt man zur Begrüßung am Morgen?",
+      "options": [
+        "Good night",
+        "Good afternoon",
+        "Good morning",
+        "Goodbye"
+      ],
+      "answer": "Good morning",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 3,
+      "question": "Was bedeutet 'apple'?",
+      "options": [
+        "Banane",
+        "Apfel",
+        "Birne",
+        "Erdbeere"
+      ],
+      "answer": "Apfel",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 3,
+      "question": "Wie heißt 'Mutter' auf Englisch?",
+      "options": [
+        "Father",
+        "Sister",
+        "Brother",
+        "Mother"
+      ],
+      "answer": "Mother",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 3,
+      "question": "Welches Tier ist ein 'rabbit'?",
+      "options": [
+        "Hase",
+        "Kuh",
+        "Schwein",
+        "Pferd"
+      ],
+      "answer": "Hase",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 3,
+      "question": "Was bedeutet 'I like football'?",
+      "options": [
+        "Ich spiele Tennis.",
+        "Ich mag Fußball.",
+        "Ich habe einen Ball.",
+        "Fußball ist doof."
+      ],
+      "answer": "Ich mag Fußball.",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 3,
+      "question": "Welche Zahl ist 'ten'?",
+      "options": [
+        "2",
+        "5",
+        "10",
+        "12"
+      ],
+      "answer": "10",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 3,
+      "question": "Was ist ein 'pencil'?",
+      "options": [
+        "Lineal",
+        "Radiergummi",
+        "Bleistift",
+        "Schere"
+      ],
+      "answer": "Bleistift",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 4,
+      "question": "Wie heißt 'Tisch' auf Englisch?",
+      "options": [
+        "Chair",
+        "Table",
+        "Bed",
+        "Door"
+      ],
+      "answer": "Table",
       "difficulty": "easy"
     },
     {
       "grade": 4,
-      "question": "What color is the sky?",
-      "options": ["red", "green", "blue", "yellow"],
-      "answer": "blue",
+      "question": "Was ist das Gegenteil von 'big'?",
+      "options": [
+        "Small",
+        "Large",
+        "Tall",
+        "Long"
+      ],
+      "answer": "Small",
       "difficulty": "easy"
     },
     {
       "grade": 4,
-      "question": "How many days are in a week?",
-      "options": ["5", "6", "7", "8"],
-      "answer": "7",
+      "question": "Welcher Wochentag folgt auf 'Monday'?",
+      "options": [
+        "Wednesday",
+        "Friday",
+        "Sunday",
+        "Tuesday"
+      ],
+      "answer": "Tuesday",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 4,
+      "question": "Was bedeutet 'Where are you from'?",
+      "options": [
+        "Wie alt bist du?",
+        "Woher kommst du?",
+        "Wie geht es dir?",
+        "Wo wohnst du?"
+      ],
+      "answer": "Woher kommst du?",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 4,
+      "question": "Was heißt 'Milch'?",
+      "options": [
+        "Water",
+        "Juice",
+        "Milk",
+        "Tea"
+      ],
+      "answer": "Milk",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 4,
+      "question": "Welches Wort passt: 'I ___ a book.'?",
+      "options": [
+        "read",
+        "eat",
+        "jump",
+        "sleep"
+      ],
+      "answer": "read",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 4,
+      "question": "Wie sagt man 'Ich bin neun Jahre alt'?",
+      "options": [
+        "I have nine years.",
+        "I am nine years old.",
+        "I am nine old years.",
+        "My age is nine."
+      ],
+      "answer": "I am nine years old.",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 4,
+      "question": "Was ist 'breakfast'?",
+      "options": [
+        "Mittagessen",
+        "Abendessen",
+        "Frühstück",
+        "Nachtisch"
+      ],
+      "answer": "Frühstück",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 4,
+      "question": "Was heißt 'Fenster'?",
+      "options": [
+        "Wall",
+        "Floor",
+        "Window",
+        "Ceiling"
+      ],
+      "answer": "Window",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 4,
+      "question": "Welches Tier kann fliegen?",
+      "options": [
+        "Elephant",
+        "Bird",
+        "Snake",
+        "Cat"
+      ],
+      "answer": "Bird",
       "difficulty": "easy"
     },
     {
       "grade": 5,
-      "question": "What is the opposite of 'hot'?",
-      "options": ["warm", "cold", "cool", "wet"],
-      "answer": "cold",
+      "question": "Welches Hilfsverb nutzt man für Fragen im Simple Present?",
+      "options": [
+        "be",
+        "do",
+        "have",
+        "can"
+      ],
+      "answer": "do",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 5,
+      "question": "He/She/It - das ___ muss mit!",
+      "options": [
+        "e",
+        "d",
+        "s",
+        "ing"
+      ],
+      "answer": "s",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 5,
+      "question": "Was ist die Pluralform von 'mouse'?",
+      "options": [
+        "mouses",
+        "mice",
+        "mices",
+        "meese"
+      ],
+      "answer": "mice",
       "difficulty": "medium"
     },
     {
       "grade": 5,
-      "question": "I ___ to school every day.",
-      "options": ["go", "goes", "going", "went"],
-      "answer": "go",
+      "question": "Welches Pronomen ist korrekt: 'This is my sister. ___ is 12.'?",
+      "options": [
+        "He",
+        "It",
+        "She",
+        "They"
+      ],
+      "answer": "She",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 5,
+      "question": "Wie heißt die Verlaufsform (Present Progressive) von 'play'?",
+      "options": [
+        "played",
+        "playing",
+        "plays",
+        "player"
+      ],
+      "answer": "playing",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 5,
+      "question": "Was bedeutet 'behind'?",
+      "options": [
+        "vor",
+        "neben",
+        "hinter",
+        "unter"
+      ],
+      "answer": "hinter",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 5,
+      "question": "Welcher Artikel wird vor 'apple' benutzt?",
+      "options": [
+        "a",
+        "an",
+        "the",
+        "some"
+      ],
+      "answer": "an",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 5,
+      "question": "Wie sagt man 'Es gibt...' im Singular?",
+      "options": [
+        "There are",
+        "There is",
+        "It gives",
+        "They are"
+      ],
+      "answer": "There is",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 5,
+      "question": "Was ist das englische Wort für 'Dienstag'?",
+      "options": [
+        "Thursday",
+        "Tuesday",
+        "Wednesday",
+        "Friday"
+      ],
+      "answer": "Tuesday",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 5,
+      "question": "Wie bildet man die Verneinung von 'I like'?",
+      "options": [
+        "I like not",
+        "I don't like",
+        "I am not like",
+        "I no like"
+      ],
+      "answer": "I don't like",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 6,
+      "question": "Was ist die Simple Past Form von 'go'?",
+      "options": [
+        "goed",
+        "gone",
+        "went",
+        "goes"
+      ],
+      "answer": "went",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 6,
+      "question": "Wie bildet man den Komparativ von 'tall'?",
+      "options": [
+        "more tall",
+        "taller",
+        "tallest",
+        "tally"
+      ],
+      "answer": "taller",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 6,
+      "question": "Welche Zeitform nutzt man für Handlungen, die jetzt gerade passieren?",
+      "options": [
+        "Simple Present",
+        "Present Progressive",
+        "Simple Past",
+        "Future"
+      ],
+      "answer": "Present Progressive",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 6,
+      "question": "Was ist die Steigerung von 'good'?",
+      "options": [
+        "gooder, goodest",
+        "better, best",
+        "more good, most good",
+        "well, better"
+      ],
+      "answer": "better, best",
       "difficulty": "medium"
     },
     {
       "grade": 6,
-      "question": "She ___ her homework yesterday.",
-      "options": ["do", "does", "did", "doing"],
-      "answer": "did",
+      "question": "Wie fragt man nach dem Preis?",
+      "options": [
+        "How many is it?",
+        "How much is it?",
+        "What cost it?",
+        "How price is it?"
+      ],
+      "answer": "How much is it?",
       "difficulty": "medium"
     },
     {
       "grade": 6,
-      "question": "What is the past tense of 'eat'?",
-      "options": ["eated", "ate", "eating", "eats"],
-      "answer": "ate",
+      "question": "Was ist die korrekte Form: 'Yesterday I ___ to the cinema.'?",
+      "options": [
+        "go",
+        "was going",
+        "went",
+        "gone"
+      ],
+      "answer": "went",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 6,
+      "question": "Wie heißt 'furchtbar' auf Englisch?",
+      "options": [
+        "wonderful",
+        "terrible",
+        "great",
+        "nice"
+      ],
+      "answer": "terrible",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 6,
+      "question": "Welche Form ist korrekt: 'She ___ her homework yet.'?",
+      "options": [
+        "hasn't done",
+        "didn't done",
+        "don't do",
+        "not did"
+      ],
+      "answer": "hasn't done",
+      "difficulty": "hard"
+    },
+    {
+      "grade": 6,
+      "question": "Was ist ein 'adverb' zu 'quick'?",
+      "options": [
+        "quicker",
+        "quickest",
+        "quickly",
+        "quickness"
+      ],
+      "answer": "quickly",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 6,
+      "question": "Wie drückt man eine Absicht für die Zukunft aus (Plan)?",
+      "options": [
+        "will-future",
+        "going to-future",
+        "Simple Present",
+        "Past"
+      ],
+      "answer": "going to-future",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 7,
+      "question": "Wann benutzt man das 'Present Perfect'?",
+      "options": [
+        "Abgeschlossene Handlung",
+        "Handlung mit Bezug zur Gegenwart",
+        "Gewohnheiten",
+        "Zukunftspläne"
+      ],
+      "answer": "Handlung mit Bezug zur Gegenwart",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 7,
+      "question": "Welches Relativpronomen nutzt man für Personen?",
+      "options": [
+        "which",
+        "who",
+        "whose",
+        "where"
+      ],
+      "answer": "who",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 7,
+      "question": "Wie bildet man den 'Conditional I' (if-Satz)?",
+      "options": [
+        "if + Simple Present, will + Verb",
+        "if + Simple Past, would + Verb",
+        "if + Past Perfect, would have + pp",
+        "if + will, Present"
+      ],
+      "answer": "if + Simple Present, will + Verb",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 7,
+      "question": "Was ist der Unterschied zwischen 'since' und 'for'?",
+      "options": [
+        "Kein Unterschied",
+        "since für Zeitpunkt, for für Zeitraum",
+        "for für Zeitpunkt, since für Zeitraum",
+        "since nur im Past"
+      ],
+      "answer": "since für Zeitpunkt, for für Zeitraum",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 7,
+      "question": "Wie heißt die 3. Form (Past Participle) von 'see'?",
+      "options": [
+        "saw",
+        "seed",
+        "seen",
+        "sees"
+      ],
+      "answer": "seen",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 7,
+      "question": "Was bedeutet 'to be interested in'?",
+      "options": [
+        "interessant sein",
+        "sich interessieren für",
+        "Interesse wecken",
+        "jemanden interessieren"
+      ],
+      "answer": "sich interessieren für",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 7,
+      "question": "Welches Wort ist ein 'Adverb of Manner'?",
+      "options": [
+        "fast",
+        "always",
+        "here",
+        "today"
+      ],
+      "answer": "fast",
       "difficulty": "hard"
     },
     {
       "grade": 7,
-      "question": "If I ___ rich, I would travel the world.",
-      "options": ["am", "was", "were", "be"],
-      "answer": "were",
-      "difficulty": "hard"
+      "question": "Vervollständige: 'If it rains, we ___ stay at home.'",
+      "options": [
+        "would",
+        "will",
+        "did",
+        "stayed"
+      ],
+      "answer": "will",
+      "difficulty": "easy"
     },
     {
       "grade": 7,
-      "question": "What does 'library' mean?",
-      "options": ["Bibliothek", "Schule", "Park", "Museum"],
-      "answer": "Bibliothek",
+      "question": "Wie nennt man die Form 'the most beautiful'?",
+      "options": [
+        "Komparativ",
+        "Superlativ",
+        "Positiv",
+        "Adverb"
+      ],
+      "answer": "Superlativ",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 7,
+      "question": "Was ist das Past Participle von 'write'?",
+      "options": [
+        "wrote",
+        "written",
+        "writed",
+        "writing"
+      ],
+      "answer": "written",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 8,
+      "question": "Wie bildet man das Passiv im Simple Present?",
+      "options": [
+        "am/is/are + Past Participle",
+        "was/were + Past Participle",
+        "have been + Past Participle",
+        "will be + Verb"
+      ],
+      "answer": "am/is/are + Past Participle",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 8,
+      "question": "Was ist die Struktur des 'Conditional II'?",
+      "options": [
+        "if + Simple Past, would + Infinitiv",
+        "if + Simple Present, will + Infinitiv",
+        "if + Past Perfect, would have + pp",
+        "if + would, Past"
+      ],
+      "answer": "if + Simple Past, would + Infinitiv",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 8,
+      "question": "Wann verwendet man das 'Past Progressive'?",
+      "options": [
+        "Kurze Handlung im Past",
+        "Hintergrundhandlung/andauernde Handlung im Past",
+        "Zukunft",
+        "Gewohnheit"
+      ],
+      "answer": "Hintergrundhandlung/andauernde Handlung im Past",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 8,
+      "question": "Was ist ein 'Gerund'?",
+      "options": [
+        "Die ing-Form als Nomen",
+        "Die 2. Verbform",
+        "Ein Hilfsverb",
+        "Ein Adjektiv"
+      ],
+      "answer": "Die ing-Form als Nomen",
+      "difficulty": "hard"
+    },
+    {
+      "grade": 8,
+      "question": "Welche Konjunktion passt: '___ I was tired, I went to the party.'?",
+      "options": [
+        "Because",
+        "Although",
+        "Despite",
+        "However"
+      ],
+      "answer": "Although",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 8,
+      "question": "Was ist das Past Participle von 'break'?",
+      "options": [
+        "broke",
+        "broken",
+        "breaked",
+        "breaking"
+      ],
+      "answer": "broken",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 8,
+      "question": "Wie heißt 'Vorteil' auf Englisch?",
+      "options": [
+        "Adverb",
+        "Adventure",
+        "Advantage",
+        "Advice"
+      ],
+      "answer": "Advantage",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 8,
+      "question": "Was ist die indirekte Rede (Reported Speech) von: 'I am happy'?",
+      "options": [
+        "He said he is happy.",
+        "He said he was happy.",
+        "He said I was happy.",
+        "He told he was happy."
+      ],
+      "answer": "He said he was happy.",
+      "difficulty": "hard"
+    },
+    {
+      "grade": 8,
+      "question": "Was bedeutet 'to avoid'?",
+      "options": [
+        "anbieten",
+        "vermeiden",
+        "erreichen",
+        "erlauben"
+      ],
+      "answer": "vermeiden",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 8,
+      "question": "Welches Hilfsverb wird für das 'Past Perfect' genutzt?",
+      "options": [
+        "have",
+        "has",
+        "had",
+        "did"
+      ],
+      "answer": "had",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 9,
+      "question": "Wie bildet man den 'Conditional III'?",
+      "options": [
+        "if + Past Perfect, would have + Past Participle",
+        "if + Simple Past, would + Verb",
+        "if + Present, will + Verb",
+        "if + would have, Past Perfect"
+      ],
+      "answer": "if + Past Perfect, would have + Past Participle",
+      "difficulty": "hard"
+    },
+    {
+      "grade": 9,
+      "question": "Was passiert beim 'Backshift of tenses' in der indirekten Rede mit 'Simple Past'?",
+      "options": [
+        "Bleibt gleich",
+        "Wird zu Present Perfect",
+        "Wird zu Past Perfect",
+        "Wird zu Future"
+      ],
+      "answer": "Wird zu Past Perfect",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 9,
+      "question": "Welches Partizip nutzt man zur Verkürzung von Relativsätzen mit aktiver Bedeutung?",
+      "options": [
+        "Present Participle (-ing)",
+        "Past Participle (-ed)",
+        "Perfect Participle",
+        "Gerund"
+      ],
+      "answer": "Present Participle (-ing)",
+      "difficulty": "hard"
+    },
+    {
+      "grade": 9,
+      "question": "Was bedeutet der Begriff 'Ambiguity'?",
+      "options": [
+        "Eindeutigkeit",
+        "Mehrdeutigkeit",
+        "Gegensatz",
+        "Übertreibung"
+      ],
+      "answer": "Mehrdeutigkeit",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 9,
+      "question": "Welches Wort ist ein Synonym für 'significant'?",
+      "options": [
+        "small",
+        "important",
+        "useful",
+        "boring"
+      ],
+      "answer": "important",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 9,
+      "question": "Vervollständige: 'He suggested ___ to the park.'",
+      "options": [
+        "to go",
+        "going",
+        "go",
+        "gone"
+      ],
+      "answer": "going",
+      "difficulty": "hard"
+    },
+    {
+      "grade": 9,
+      "question": "Was ist die Bedeutung von 'unless'?",
+      "options": [
+        "wenn nicht / außer wenn",
+        "obwohl",
+        "weil",
+        "sobald"
+      ],
+      "answer": "wenn nicht / außer wenn",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 9,
+      "question": "Welche Zeitform ist 'I have been working'?",
+      "options": [
+        "Present Perfect",
+        "Present Perfect Progressive",
+        "Past Perfect",
+        "Past Progressive"
+      ],
+      "answer": "Present Perfect Progressive",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 9,
+      "question": "Was ist eine 'Question Tag' zu 'You are British, ___?'",
+      "options": [
+        "aren't you",
+        "don't you",
+        "isn't it",
+        "are you"
+      ],
+      "answer": "aren't you",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 9,
+      "question": "Was bedeutet 'prejudice'?",
+      "options": [
+        "Stolz",
+        "Vorurteil",
+        "Gerechtigkeit",
+        "Eindruck"
+      ],
+      "answer": "Vorurteil",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 10,
+      "question": "Was ist ein 'phrasal verb'?",
+      "options": [
+        "Ein Verb mit Vorsilbe",
+        "Ein Verb kombiniert mit einer Präposition/Adverb",
+        "Ein unregelmäßiges Verb",
+        "Ein Hilfsverb"
+      ],
+      "answer": "Ein Verb kombiniert mit einer Präposition/Adverb",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 10,
+      "question": "Welches literarische Mittel ist 'The wind whispered'?",
+      "options": [
+        "Metaphor",
+        "Simile",
+        "Personification",
+        "Alliteration"
+      ],
+      "answer": "Personification",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 10,
+      "question": "Was ist der Unterschied zwischen 'denotation' und 'connotation'?",
+      "options": [
+        "Kein Unterschied",
+        "Wörterbuchdefinition vs. mitschwingende Bedeutung",
+        "Aussprache vs. Schreibweise",
+        "Subjekt vs. Objekt"
+      ],
+      "answer": "Wörterbuchdefinition vs. mitschwingende Bedeutung",
+      "difficulty": "hard"
+    },
+    {
+      "grade": 10,
+      "question": "Wie bildet man das Passiv mit Modalverben (z.B. must)?",
+      "options": [
+        "must be + Past Participle",
+        "must have + Past Participle",
+        "must been + Verb",
+        "must being + Verb"
+      ],
+      "answer": "must be + Past Participle",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 10,
+      "question": "Was bedeutet 'to jeopardize'?",
+      "options": [
+        "unterstützen",
+        "gefährden",
+        "bewundern",
+        "verbessern"
+      ],
+      "answer": "gefährden",
+      "difficulty": "hard"
+    },
+    {
+      "grade": 10,
+      "question": "Welche Zeitform nutzt man für einen 'Zeitplan' in der Zukunft?",
+      "options": [
+        "will-future",
+        "Simple Present",
+        "Present Progressive",
+        "going to-future"
+      ],
+      "answer": "Simple Present",
+      "difficulty": "hard"
+    },
+    {
+      "grade": 10,
+      "question": "Was ist ein 'similie'?",
+      "options": [
+        "Ein Vergleich mit 'like' oder 'as'",
+        "Eine Übertreibung",
+        "Ein Wortspiel",
+        "Ein kurzer Satz"
+      ],
+      "answer": "Ein Vergleich mit 'like' oder 'as'",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 10,
+      "question": "Was ist das Gegenteil von 'voluntary'?",
+      "options": [
+        "free",
+        "compulsory",
+        "optional",
+        "willing"
+      ],
+      "answer": "compulsory",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 10,
+      "question": "Was ist 'Indirect Speech' von: 'Where do you live?'?",
+      "options": [
+        "He asked where I lived.",
+        "He asked where do I live.",
+        "He asked where did I live.",
+        "He asked where I live."
+      ],
+      "answer": "He asked where I lived.",
+      "difficulty": "hard"
+    },
+    {
+      "grade": 10,
+      "question": "Was bedeutet 'inevitable'?",
+      "options": [
+        "unvermeidlich",
+        "unglaublich",
+        "unwichtig",
+        "unmöglich"
+      ],
+      "answer": "unvermeidlich",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 11,
+      "question": "Was ist das Hauptmerkmal einer 'Dystopia'?",
+      "options": [
+        "Perfekte Welt",
+        "Schreckensszenario/repressive Gesellschaft",
+        "Historischer Rückblick",
+        "Liebesgeschichte"
+      ],
+      "answer": "Schreckensszenario/repressive Gesellschaft",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 11,
+      "question": "Was bedeutet 'alliteration'?",
+      "options": [
+        "Gleiche Endreime",
+        "Gleiche Anfangsbuchstaben aufeinanderfolgender Wörter",
+        "Wortwiederholung am Satzende",
+        "Gegenteilige Bedeutung"
+      ],
+      "answer": "Gleiche Anfangsbuchstaben aufeinanderfolgender Wörter",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 11,
+      "question": "Was beschreibt der 'American Dream' ursprünglich?",
+      "options": [
+        "Reichtum für alle",
+        "Chancengleichheit und Erfolg durch harte Arbeit",
+        "Besitz eines Hauses",
+        "Politische Macht"
+      ],
+      "answer": "Chancengleichheit und Erfolg durch harte Arbeit",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 11,
+      "question": "Welches Stilmittel ist 'Life is a roller coaster'?",
+      "options": [
+        "Simile",
+        "Metaphor",
+        "Hyperbole",
+        "Oxymoron"
+      ],
+      "answer": "Metaphor",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 11,
+      "question": "Was ist ein 'unreliable narrator'?",
+      "options": [
+        "Ein Erzähler, dem man nicht voll trauen kann",
+        "Ein allwissender Erzähler",
+        "Ein langweiliger Erzähler",
+        "Ein fiktiver Erzähler"
+      ],
+      "answer": "Ein Erzähler, dem man nicht voll trauen kann",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 11,
+      "question": "Was ist eine 'hyperbole'?",
+      "options": [
+        "Untertreibung",
+        "Übertreibung",
+        "Anspielung",
+        "Wortneuschöpfung"
+      ],
+      "answer": "Übertreibung",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 11,
+      "question": "Welche Funktion hat ein 'Connective'?",
+      "options": [
+        "Verbindung von Sätzen/Gedanken",
+        "Beschreibung von Nomen",
+        "Ersetzen von Verben",
+        "Markieren von Fragen"
+      ],
+      "answer": "Verbindung von Sätzen/Gedanken",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 11,
+      "question": "Was bedeutet 'alienation'?",
+      "options": [
+        "Annäherung",
+        "Entfremdung",
+        "Bereicherung",
+        "Zustimmung"
+      ],
+      "answer": "Entfremdung",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 11,
+      "question": "Was ist 'onomatopoeia'?",
+      "options": [
+        "Lautmalerei (z.B. bang, sizzle)",
+        "Versmaß",
+        "Strophenform",
+        "Bildliche Sprache"
+      ],
+      "answer": "Lautmalerei (z.B. bang, sizzle)",
+      "difficulty": "hard"
+    },
+    {
+      "grade": 11,
+      "question": "Was kennzeichnet ein 'sonnet'?",
+      "options": [
+        "10 Zeilen",
+        "14 Zeilen",
+        "Reimlos",
+        "Nur ein Quartett"
+      ],
+      "answer": "14 Zeilen",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 12,
+      "question": "Was ist das Hauptthema von Shakespeares 'Macbeth'?",
+      "options": [
+        "Liebe",
+        "Ehrgeiz und Machtgier",
+        "Rache",
+        "Eifersucht"
+      ],
+      "answer": "Ehrgeiz und Machtgier",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 12,
+      "question": "In welcher Epoche lebte William Shakespeare?",
+      "options": [
+        "Victorian Era",
+        "Elizabethan Era",
+        "Romantic Era",
+        "Modernism"
+      ],
+      "answer": "Elizabethan Era",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 12,
+      "question": "Was bedeutet 'post-colonialism' in der Literatur?",
+      "options": [
+        "Literatur über die Zukunft",
+        "Literatur, die sich mit den Folgen der Kolonialisierung befasst",
+        "Reiseliteratur",
+        "Britische Klassik"
+      ],
+      "answer": "Literatur, die sich mit den Folgen der Kolonialisierung befasst",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 12,
+      "question": "Was ist ein 'soliloquy'?",
+      "options": [
+        "Ein Dialog",
+        "Ein Selbstgespräch einer Figur auf der Bühne",
+        "Ein Regiehinweis",
+        "Ein Epilog"
+      ],
+      "answer": "Ein Selbstgespräch einer Figur auf der Bühne",
+      "difficulty": "hard"
+    },
+    {
+      "grade": 12,
+      "question": "Welches Versmaß ist typisch für Shakespeare?",
+      "options": [
+        "Dactyl",
+        "Iambic pentameter",
+        "Trochee",
+        "Anapest"
+      ],
+      "answer": "Iambic pentameter",
+      "difficulty": "hard"
+    },
+    {
+      "grade": 12,
+      "question": "Was bedeutet der Begriff 'Manifest Destiny'?",
+      "options": [
+        "Glauben an göttliche Vorsehung zur Expansion der USA",
+        "Ein Gesetz in England",
+        "Ein Schiffsname",
+        "Eine Liebeserklärung"
+      ],
+      "answer": "Glauben an göttliche Vorsehung zur Expansion der USA",
+      "difficulty": "hard"
+    },
+    {
+      "grade": 12,
+      "question": "Was ist 'blank verse'?",
+      "options": [
+        "Reimloser Vers",
+        "Gereimter Vers",
+        "Kurzes Gedicht",
+        "Prosa"
+      ],
+      "answer": "Reimloser Vers",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 12,
+      "question": "Was ist 'irony'?",
+      "options": [
+        "Das Gegenteil von dem sagen, was man meint",
+        "Witzige Erzählung",
+        "Große Traurigkeit",
+        "Detaillierte Beschreibung"
+      ],
+      "answer": "Das Gegenteil von dem sagen, was man meint",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 12,
+      "question": "Wer schrieb '1984'?",
+      "options": [
+        "Aldous Huxley",
+        "George Orwell",
+        "Ray Bradbury",
+        "William Golding"
+      ],
+      "answer": "George Orwell",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 12,
+      "question": "Was ist 'satire'?",
+      "options": [
+        "Kritik durch Humor, Ironie oder Übertreibung",
+        "Ein Sachbuch",
+        "Eine Biografie",
+        "Ein Drama"
+      ],
+      "answer": "Kritik durch Humor, Ironie oder Übertreibung",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 13,
+      "question": "Was beschreibt der Begriff 'Global Village'?",
+      "options": [
+        "Ein Dorf in Afrika",
+        "Die Vernetzung der Welt durch Medien/Technik",
+        "Landwirtschaft",
+        "Tourismus"
+      ],
+      "answer": "Die Vernetzung der Welt durch Medien/Technik",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 13,
+      "question": "Was ist 'intertextuality'?",
+      "options": [
+        "Beziehung zwischen verschiedenen Texten",
+        "Übersetzung",
+        "Rechtschreibung",
+        "Buchdruck"
+      ],
+      "answer": "Beziehung zwischen verschiedenen Texten",
+      "difficulty": "hard"
+    },
+    {
+      "grade": 13,
+      "question": "Was bedeutet 'euphemism'?",
+      "options": [
+        "Beschönigung",
+        "Beleidigung",
+        "Wiederholung",
+        "Ausruf"
+      ],
+      "answer": "Beschönigung",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 13,
+      "question": "Was ist 'stream of consciousness'?",
+      "options": [
+        "Ein flüssiges Gespräch",
+        "Wiedergabe von ungefilterten Gedankenflüssen",
+        "Ein Gedicht über Wasser",
+        "Wissenschaftlicher Text"
+      ],
+      "answer": "Wiedergabe von ungefilterten Gedankenflüssen",
+      "difficulty": "hard"
+    },
+    {
+      "grade": 13,
+      "question": "Was ist die Kernbotschaft von 'The Great Gatsby' (Kritik)?",
+      "options": [
+        "Party machen ist gut",
+        "Vergänglichkeit des American Dream",
+        "Sportliche Erfolge",
+        "Familienwerte"
+      ],
+      "answer": "Vergänglichkeit des American Dream",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 13,
+      "question": "Was bedeutet 'oxymoron'?",
+      "options": [
+        "Verbindung widersprüchlicher Begriffe (z.B. bittersüß)",
+        "Übertreibung",
+        "Stufenweise Steigerung",
+        "Ein langer Vers"
+      ],
+      "answer": "Verbindung widersprüchlicher Begriffe (z.B. bittersüß)",
+      "difficulty": "hard"
+    },
+    {
+      "grade": 13,
+      "question": "Was ist 'foreshadowing'?",
+      "options": [
+        "Rückblick",
+        "Vorausdeutung auf kommende Ereignisse",
+        "Schattenwurf",
+        "Kapitelüberschrift"
+      ],
+      "answer": "Vorausdeutung auf kommende Ereignisse",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 13,
+      "question": "Was ist ein 'protagonist'?",
+      "options": [
+        "Der Gegenspieler",
+        "Die Hauptfigur",
+        "Ein Nebendarsteller",
+        "Der Autor"
+      ],
+      "answer": "Die Hauptfigur",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 13,
+      "question": "Was bedeutet 'ambivalence'?",
+      "options": [
+        "Eindeutigkeit",
+        "Zwiespältigkeit / Doppelwertigkeit",
+        "Stärke",
+        "Schwäche"
+      ],
+      "answer": "Zwiespältigkeit / Doppelwertigkeit",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 13,
+      "question": "Was ist die Funktion eines 'epilogue'?",
+      "options": [
+        "Einleitung",
+        "Schlusswort / Nachspiel",
+        "Höhepunkt",
+        "Wendepunkt"
+      ],
+      "answer": "Schlusswort / Nachspiel",
       "difficulty": "medium"
     }
   ]

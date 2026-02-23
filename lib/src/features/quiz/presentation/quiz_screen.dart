@@ -48,10 +48,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
     final user = ref.read(authStateChangesProvider).value;
 
     if (child != null && user != null) {
-      _timeTracker = LearningTimeTracker(
-        userId: user.uid,
-        childId: child.id,
-      );
+      _timeTracker = LearningTimeTracker(userId: user.uid, childId: child.id);
       _timeTracker!.startTracking();
     }
 
@@ -78,19 +75,18 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
     final child = ref.read(activeChildProvider);
     if (child == null) return;
 
-    // ⭐ NEU: User-ID holen für generierte Aufgaben
     final user = ref.read(authStateChangesProvider).value;
     final userId = user?.uid ?? '';
 
-    // ⭐ NEU: Verwende erweiterten Repository
-    final questions = await ref.read(extendedQuizRepositoryProvider).loadQuizForChild(
-      userId: userId,
-      childId: child.id,
-      subject: widget.subject,
-      grade: child.grade,
-      questionCount: 5,
-      includeGenerated: true, // Generierte Aufgaben einschließen
-    );
+    final questions = await ref
+        .read(extendedQuizRepositoryProvider)
+        .loadQuizForChild(
+          userId: userId,
+          childId: child.id,
+          child: child,
+          subject: widget.subject,
+          questionCount: 5,
+        );
 
     if (mounted) {
       setState(() {
@@ -127,7 +123,9 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
             xpToAdd: 5,
           );
 
-          print('✅ XP gespeichert: ${xpResult.newXP} XP, Level: ${xpResult.newLevel}');
+          print(
+            '✅ XP gespeichert: ${xpResult.newXP} XP, Level: ${xpResult.newLevel}',
+          );
 
           if (xpResult.leveledUp && mounted) {
             print('🎉 LEVEL UP zu Level ${xpResult.newLevel}');
@@ -159,7 +157,6 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
 
             return;
           }
-
         } catch (e, stackTrace) {
           print('❌ Fehler beim Speichern von XP: $e');
           print('Stack: $stackTrace');
@@ -228,7 +225,6 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
       );
 
       print('✅ Dialog geschlossen');
-
     } catch (e, stackTrace) {
       print('❌ Fehler in _showLevelUpDialogImmediate: $e');
       print('Stack: $stackTrace');
@@ -287,10 +283,9 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
         print('✅ Streak aktualisiert: $newStreak Tage');
 
         // 4️⃣ Sterne vergeben
-        await ref.read(profileRepositoryProvider).updateStars(
-          child.id,
-          _correctAnswers * 2,
-        );
+        await ref
+            .read(profileRepositoryProvider)
+            .updateStars(child.id, _correctAnswers * 2);
         print('✅ Sterne vergeben: ${_correctAnswers * 2}');
 
         // 5️⃣ Kind-Daten laden und Streak-Wert überschreiben
@@ -314,11 +309,13 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
           if (unlockedRewards.isNotEmpty && mounted) {
             print('🎁 ${unlockedRewards.length} Belohnungen freigeschaltet!');
 
-            final streakRewards = unlockedRewards.where(
-                  (r) => r.trigger.toString().contains('streak'),
-            ).toList();
+            final streakRewards = unlockedRewards
+                .where((r) => r.trigger.toString().contains('streak'))
+                .toList();
             if (streakRewards.isNotEmpty) {
-              print('🔥 Streak-Belohnung(en): ${streakRewards.map((r) => r.title).join(', ')}');
+              print(
+                '🔥 Streak-Belohnung(en): ${streakRewards.map((r) => r.title).join(', ')}',
+              );
             }
 
             Future.delayed(const Duration(milliseconds: 500), () {
@@ -573,8 +570,9 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
       animation: _feedbackController,
       builder: (context, child) {
         return Container(
-          color: (_wasCorrect ? Colors.green : Colors.red)
-              .withOpacity(_fadeAnimation.value * 0.9),
+          color: (_wasCorrect ? Colors.green : Colors.red).withOpacity(
+            _fadeAnimation.value * 0.9,
+          ),
           child: Center(
             child: Transform.scale(
               scale: _scaleAnimation.value,
@@ -647,12 +645,17 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
                         style: TextStyle(
                           fontSize: 60,
                           fontWeight: FontWeight.bold,
-                          color: percentage >= 80 ? Colors.green : Colors.orange,
+                          color: percentage >= 80
+                              ? Colors.green
+                              : Colors.orange,
                         ),
                       ),
                       Text(
                         '$_correctAnswers von ${_questions.length} richtig',
-                        style: const TextStyle(fontSize: 18, color: Colors.grey),
+                        style: const TextStyle(
+                          fontSize: 18,
+                          color: Colors.grey,
+                        ),
                       ),
                       const Divider(height: 40),
                       _RewardRow(
@@ -675,7 +678,10 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.white,
                     foregroundColor: _getSubjectColor(),
-                    padding: const EdgeInsets.symmetric(horizontal: 50, vertical: 18),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 50,
+                      vertical: 18,
+                    ),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(30),
                     ),
@@ -734,7 +740,9 @@ class _AnswerButton extends StatelessWidget {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(15),
             side: BorderSide(
-              color: onPressed == null ? Colors.grey.shade300 : color.withOpacity(0.3),
+              color: onPressed == null
+                  ? Colors.grey.shade300
+                  : color.withOpacity(0.3),
               width: 2,
             ),
           ),

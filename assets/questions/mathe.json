@@ -2,88 +2,1324 @@
   "subject": "Mathe",
   "questions": [
     {
-      "grade": 1,
-      "question": "Was ist 2 + 3?",
-      "options": ["4", "5", "6", "7"],
-      "answer": "5",
-      "difficulty": "easy"
-    },
-    {
-      "grade": 1,
-      "question": "Wie viele Äpfel sind es? 🍎🍎🍎",
-      "options": ["2", "3", "4", "5"],
-      "answer": "3",
-      "difficulty": "easy"
-    },
-    {
-      "grade": 2,
-      "question": "Was ist 7 + 8?",
-      "options": ["14", "15", "16", "17"],
-      "answer": "15",
-      "difficulty": "easy"
-    },
-    {
-      "grade": 2,
-      "question": "Was ist 10 - 6?",
-      "options": ["3", "4", "5", "6"],
-      "answer": "4",
+      "grade": 3,
+      "question": "Was ist 140 + 260?",
+      "options": [
+        "300",
+        "380",
+        "400",
+        "420"
+      ],
+      "answer": "400",
       "difficulty": "easy"
     },
     {
       "grade": 3,
-      "question": "Was ist 5 × 4?",
-      "options": ["15", "20", "25", "30"],
-      "answer": "20",
+      "question": "Was ist 7 * 8?",
+      "options": [
+        "54",
+        "56",
+        "62",
+        "64"
+      ],
+      "answer": "56",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 3,
+      "question": "Wie viele Ecken hat ein Würfel?",
+      "options": [
+        "4",
+        "6",
+        "8",
+        "12"
+      ],
+      "answer": "8",
       "difficulty": "medium"
     },
     {
       "grade": 3,
-      "question": "Was ist 18 : 3?",
-      "options": ["4", "5", "6", "7"],
+      "question": "Was ist die Hälfte von 500?",
+      "options": [
+        "200",
+        "225",
+        "250",
+        "300"
+      ],
+      "answer": "250",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 3,
+      "question": "Wie viele Minuten hat eine halbe Stunde?",
+      "options": [
+        "15",
+        "20",
+        "30",
+        "45"
+      ],
+      "answer": "30",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 3,
+      "question": "Was ist 81 : 9?",
+      "options": [
+        "7",
+        "8",
+        "9",
+        "10"
+      ],
+      "answer": "9",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 3,
+      "question": "Welche Zahl ist der Nachfolger von 999?",
+      "options": [
+        "998",
+        "1000",
+        "1001",
+        "1100"
+      ],
+      "answer": "1000",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 3,
+      "question": "Was ist 500 - 125?",
+      "options": [
+        "325",
+        "375",
+        "385",
+        "425"
+      ],
+      "answer": "375",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 3,
+      "question": "Wie viele Zentimeter sind 2 Meter?",
+      "options": [
+        "20 cm",
+        "100 cm",
+        "200 cm",
+        "2000 cm"
+      ],
+      "answer": "200 cm",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 3,
+      "question": "Ein Heft kostet 80 Cent. Wie viel kosten 3 Hefte?",
+      "options": [
+        "1,60 €",
+        "2,40 €",
+        "3,20 €",
+        "24,00 €"
+      ],
+      "answer": "2,40 €",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 4,
+      "question": "Was ist 1200 + 3800?",
+      "options": [
+        "4000",
+        "4800",
+        "5000",
+        "5200"
+      ],
+      "answer": "5000",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 4,
+      "question": "Was ergibt 15 * 4?",
+      "options": [
+        "45",
+        "60",
+        "75",
+        "90"
+      ],
+      "answer": "60",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 4,
+      "question": "Wie viele Gramm sind 1,5 Kilogramm?",
+      "options": [
+        "150 g",
+        "1000 g",
+        "1500 g",
+        "15000 g"
+      ],
+      "answer": "1500 g",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 4,
+      "question": "Wie viele Kanten hat ein Quader?",
+      "options": [
+        "6",
+        "8",
+        "10",
+        "12"
+      ],
+      "answer": "12",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 4,
+      "question": "Was ist 10000 - 1?",
+      "options": [
+        "9000",
+        "9900",
+        "9990",
+        "9999"
+      ],
+      "answer": "9999",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 4,
+      "question": "Ein Quadrat hat eine Seitenlänge von 5 cm. Wie groß ist der Umfang?",
+      "options": [
+        "10 cm",
+        "15 cm",
+        "20 cm",
+        "25 cm"
+      ],
+      "answer": "20 cm",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 4,
+      "question": "Was ist 144 : 12?",
+      "options": [
+        "10",
+        "11",
+        "12",
+        "14"
+      ],
+      "answer": "12",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 4,
+      "question": "Welche Zahl liegt genau zwischen 200 und 300?",
+      "options": [
+        "240",
+        "250",
+        "260",
+        "275"
+      ],
+      "answer": "250",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 4,
+      "question": "Wie viele Milliliter sind ein halber Liter?",
+      "options": [
+        "50 ml",
+        "250 ml",
+        "500 ml",
+        "750 ml"
+      ],
+      "answer": "500 ml",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 4,
+      "question": "Was ist 70 * 30?",
+      "options": [
+        "210",
+        "1200",
+        "2100",
+        "21000"
+      ],
+      "answer": "2100",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 5,
+      "question": "Welche der folgenden Zahlen ist eine Primzahl?",
+      "options": [
+        "9",
+        "15",
+        "17",
+        "21"
+      ],
+      "answer": "17",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 5,
+      "question": "Was ist der Wert von 10 hoch 3?",
+      "options": [
+        "30",
+        "100",
+        "300",
+        "1000"
+      ],
+      "answer": "1000",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 5,
+      "question": "Wie nennt man den Punkt (0|0) im Koordinatensystem?",
+      "options": [
+        "Nullpunkt",
+        "Ursprung",
+        "Zentrum",
+        "Startpunkt"
+      ],
+      "answer": "Ursprung",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 5,
+      "question": "Was ist -5 + 8?",
+      "options": [
+        "-13",
+        "-3",
+        "3",
+        "13"
+      ],
+      "answer": "3",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 5,
+      "question": "Wie viel ist 0,5 + 0,25?",
+      "options": [
+        "0,30",
+        "0,70",
+        "0,75",
+        "1,25"
+      ],
+      "answer": "0,75",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 5,
+      "question": "Ein Rechteck ist 4 cm lang und 3 cm breit. Wie groß ist der Flächeninhalt?",
+      "options": [
+        "7 cm²",
+        "12 cm²",
+        "14 cm²",
+        "24 cm²"
+      ],
+      "answer": "12 cm²",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 5,
+      "question": "Was ist der größte gemeinsame Teiler (ggT) von 12 und 18?",
+      "options": [
+        "2",
+        "3",
+        "6",
+        "12"
+      ],
       "answer": "6",
       "difficulty": "medium"
     },
     {
-      "grade": 4,
-      "question": "Was ist 12 × 7?",
-      "options": ["72", "84", "96", "108"],
-      "answer": "84",
+      "grade": 5,
+      "question": "Wie viele Symmetrieachsen hat ein Quadrat?",
+      "options": [
+        "2",
+        "4",
+        "6",
+        "unendlich"
+      ],
+      "answer": "4",
       "difficulty": "medium"
     },
     {
-      "grade": 4,
+      "grade": 5,
+      "question": "Runde 4567 auf Hunderter.",
+      "options": [
+        "4500",
+        "4560",
+        "4570",
+        "4600"
+      ],
+      "answer": "4600",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 5,
+      "question": "Was ist 1/4 als Dezimalzahl?",
+      "options": [
+        "0,14",
+        "0,20",
+        "0,25",
+        "0,40"
+      ],
+      "answer": "0,25",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 6,
       "question": "Was ist 1/2 + 1/4?",
-      "options": ["1/4", "2/4", "3/4", "4/4"],
+      "options": [
+        "2/6",
+        "1/6",
+        "3/4",
+        "3/8"
+      ],
       "answer": "3/4",
       "difficulty": "medium"
     },
     {
-      "grade": 5,
+      "grade": 6,
+      "question": "Berechne: 0,2 * 0,3",
+      "options": [
+        "0,06",
+        "0,6",
+        "6",
+        "0,006"
+      ],
+      "answer": "0,06",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 6,
+      "question": "Wie viel ist 2/3 von 21?",
+      "options": [
+        "7",
+        "12",
+        "14",
+        "18"
+      ],
+      "answer": "14",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 6,
+      "question": "Ein Würfel hat eine Kantenlänge von 3 cm. Wie groß ist das Volumen?",
+      "options": [
+        "9 cm³",
+        "18 cm³",
+        "27 cm³",
+        "54 cm³"
+      ],
+      "answer": "27 cm³",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 6,
+      "question": "Kürze den Bruch 12/16 so weit wie möglich.",
+      "options": [
+        "6/8",
+        "3/4",
+        "2/3",
+        "1/2"
+      ],
+      "answer": "3/4",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 6,
+      "question": "Was ist der Kehrwert von 5?",
+      "options": [
+        "-5",
+        "0,5",
+        "1/5",
+        "5/1"
+      ],
+      "answer": "1/5",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 6,
+      "question": "Wie groß ist die Winkelsumme in einem Viereck?",
+      "options": [
+        "90°",
+        "180°",
+        "270°",
+        "360°"
+      ],
+      "answer": "360°",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 6,
+      "question": "Was ist -12 - (-5)?",
+      "options": [
+        "-17",
+        "-7",
+        "7",
+        "17"
+      ],
+      "answer": "-7",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 6,
+      "question": "Ein Kreis hat einen Radius von 4 cm. Wie lang ist der Durchmesser?",
+      "options": [
+        "2 cm",
+        "4 cm",
+        "8 cm",
+        "16 cm"
+      ],
+      "answer": "8 cm",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 6,
       "question": "Was ist 15% von 200?",
-      "options": ["20", "25", "30", "35"],
+      "options": [
+        "15",
+        "30",
+        "45",
+        "60"
+      ],
       "answer": "30",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 7,
+      "question": "Dreisatz: 3 kg Äpfel kosten 6 €. Wie viel kosten 5 kg?",
+      "options": [
+        "8 €",
+        "9 €",
+        "10 €",
+        "12 €"
+      ],
+      "answer": "10 €",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 7,
+      "question": "Wie groß ist die Winkelsumme in jedem Dreieck?",
+      "options": [
+        "90°",
+        "180°",
+        "360°",
+        "variiert"
+      ],
+      "answer": "180°",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 7,
+      "question": "Vereinfache den Term: 4x + 5y - 2x + y",
+      "options": [
+        "2x + 6y",
+        "6x + 6y",
+        "2x + 4y",
+        "8xy"
+      ],
+      "answer": "2x + 6y",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 7,
+      "question": "Was ist der Wert von x in der Gleichung: 2x + 10 = 30?",
+      "options": [
+        "5",
+        "10",
+        "15",
+        "20"
+      ],
+      "answer": "10",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 7,
+      "question": "Wie viel sind 20% von 50 €?",
+      "options": [
+        "5 €",
+        "10 €",
+        "15 €",
+        "20 €"
+      ],
+      "answer": "10 €",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 7,
+      "question": "Ein Kapital von 1000 € wird mit 2% p.a. verzinst. Wie viele Zinsen fallen nach einem Jahr an?",
+      "options": [
+        "2 €",
+        "20 €",
+        "200 €",
+        "220 €"
+      ],
+      "answer": "20 €",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 7,
+      "question": "Wie nennt man Winkel, die sich zu 180° ergänzen?",
+      "options": [
+        "Scheitelwinkel",
+        "Stufenwinkel",
+        "Nebenwinkel",
+        "Wechselwinkel"
+      ],
+      "answer": "Nebenwinkel",
       "difficulty": "hard"
     },
     {
-      "grade": 5,
-      "question": "Was ist die Fläche eines Rechtecks mit 5cm × 8cm?",
-      "options": ["30 cm²", "35 cm²", "40 cm²", "45 cm²"],
-      "answer": "40 cm²",
+      "grade": 7,
+      "question": "Berechne: -3 * (-4) + 2",
+      "options": [
+        "-14",
+        "-10",
+        "10",
+        "14"
+      ],
+      "answer": "14",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 7,
+      "question": "Was ist die Definition eines gleichschenkligen Dreiecks?",
+      "options": [
+        "Alle Seiten gleich lang",
+        "Zwei Seiten gleich lang",
+        "Ein rechter Winkel",
+        "Alle Winkel 60°"
+      ],
+      "answer": "Zwei Seiten gleich lang",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 7,
+      "question": "Was ist das Ergebnis von 2/5 : 1/2?",
+      "options": [
+        "1/5",
+        "4/5",
+        "1/4",
+        "5/4"
+      ],
+      "answer": "4/5",
       "difficulty": "hard"
     },
     {
-      "grade": 6,
-      "question": "Was ist (-3) × 4?",
-      "options": ["-12", "-7", "7", "12"],
-      "answer": "-12",
+      "grade": 8,
+      "question": "Wie lautet die allgemeine Formel für eine lineare Funktion?",
+      "options": [
+        "y = ax² + b",
+        "y = mx + n",
+        "y = a/x",
+        "y = sin(x)"
+      ],
+      "answer": "y = mx + n",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 8,
+      "question": "Was besagt der Satz des Pythagoras für ein rechtwinkliges Dreieck mit Hypotenuse c?",
+      "options": [
+        "a + b = c",
+        "a² + b² = c²",
+        "a * b = c",
+        "a² - b² = c²"
+      ],
+      "answer": "a² + b² = c²",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 8,
+      "question": "Wie heißt die erste binomische Formel?",
+      "options": [
+        "(a-b)²",
+        "a² - b²",
+        "(a+b)² = a² + 2ab + b²",
+        "(a+b)(a-b)"
+      ],
+      "answer": "(a+b)² = a² + 2ab + b²",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 8,
+      "question": "Was ist die Quadratwurzel aus 169?",
+      "options": [
+        "11",
+        "12",
+        "13",
+        "14"
+      ],
+      "answer": "13",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 8,
+      "question": "Bestimme die Steigung m der Geraden durch (0|0) und (2|4).",
+      "options": [
+        "0,5",
+        "1",
+        "2",
+        "4"
+      ],
+      "answer": "2",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 8,
+      "question": "Wie groß ist der Umfang eines Kreises mit Radius r?",
+      "options": [
+        "U = π * r",
+        "U = 2 * π * r",
+        "U = π * r²",
+        "U = 2 * r"
+      ],
+      "answer": "U = 2 * π * r",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 8,
+      "question": "Löse nach x auf: 3x - 5 = 10",
+      "options": [
+        "x = 3",
+        "x = 5",
+        "x = 15",
+        "x = 45"
+      ],
+      "answer": "x = 5",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 8,
+      "question": "Was ist 2 hoch 5?",
+      "options": [
+        "10",
+        "25",
+        "32",
+        "64"
+      ],
+      "answer": "32",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 8,
+      "question": "Welche Steigung hat eine waagerechte Gerade?",
+      "options": [
+        "0",
+        "1",
+        "-1",
+        "unendlich"
+      ],
+      "answer": "0",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 8,
+      "question": "Zwei Geraden sind parallel, wenn...",
+      "options": [
+        "ihre y-Achsenabschnitte gleich sind",
+        "ihre Steigungen gleich sind",
+        "sie sich schneiden",
+        "sie senkrecht aufeinander stehen"
+      ],
+      "answer": "ihre Steigungen gleich sind",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 9,
+      "question": "Wie lautet die pq-Formel zur Lösung von x² + px + q = 0?",
+      "options": [
+        "x = -p ± √q",
+        "x = -p/2 ± √( (p/2)² - q )",
+        "x = p ± √( p² - 4q )",
+        "x = -q ± √p"
+      ],
+      "answer": "x = -p/2 ± √( (p/2)² - q )",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 9,
+      "question": "Was ist der Sinus eines Winkels im rechtwinkligen Dreieck?",
+      "options": [
+        "Ankathete / Hypotenuse",
+        "Gegenkathete / Hypotenuse",
+        "Gegenkathete / Ankathete",
+        "Hypotenuse / Gegenkathete"
+      ],
+      "answer": "Gegenkathete / Hypotenuse",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 9,
+      "question": "Wie groß ist das Volumen eines Zylinders?",
+      "options": [
+        "V = π * r * h",
+        "V = 2 * π * r * h",
+        "V = π * r² * h",
+        "V = 1/3 * π * r² * h"
+      ],
+      "answer": "V = π * r² * h",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 9,
+      "question": "Was ist die Lösung von x² - 25 = 0?",
+      "options": [
+        "x = 5",
+        "x = -5",
+        "x = 5 oder x = -5",
+        "Keine Lösung"
+      ],
+      "answer": "x = 5 oder x = -5",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 9,
+      "question": "Berechne den Wert von (x + 3)(x - 3).",
+      "options": [
+        "x² + 9",
+        "x² - 9",
+        "x² - 6x + 9",
+        "x² + 6x + 9"
+      ],
+      "answer": "x² - 9",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 9,
+      "question": "Wie groß ist die Wahrscheinlichkeit, bei einem fairen Würfel eine Primzahl (2, 3, 5) zu werfen?",
+      "options": [
+        "1/6",
+        "1/3",
+        "1/2",
+        "2/3"
+      ],
+      "answer": "1/2",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 9,
+      "question": "Was ist der Satz des Thales?",
+      "options": [
+        "Winkel im Halbkreis ist 90°",
+        "Winkelsumme ist 180°",
+        "a² + b² = c²",
+        "Stufenwinkel sind gleich"
+      ],
+      "answer": "Winkel im Halbkreis ist 90°",
       "difficulty": "hard"
     },
     {
-      "grade": 6,
-      "question": "Was ist 2³ (2 hoch 3)?",
-      "options": ["6", "8", "9", "12"],
-      "answer": "8",
+      "grade": 9,
+      "question": "Ein Kegel hat das gleiche r und h wie ein Zylinder. Sein Volumen ist...",
+      "options": [
+        "halb so groß",
+        "ein Drittel so groß",
+        "gleich groß",
+        "doppelt so groß"
+      ],
+      "answer": "ein Drittel so groß",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 9,
+      "question": "Was ist √2 * √8?",
+      "options": [
+        "√10",
+        "√16 = 4",
+        "16",
+        "2"
+      ],
+      "answer": "√16 = 4",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 9,
+      "question": "Was ist der Tangens von 45°?",
+      "options": [
+        "0",
+        "0,5",
+        "1",
+        "√2"
+      ],
+      "answer": "1",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 10,
+      "question": "Was ist log₂(8)?",
+      "options": [
+        "2",
+        "3",
+        "4",
+        "16"
+      ],
+      "answer": "3",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 10,
+      "question": "Welche Funktion beschreibt exponentielles Wachstum?",
+      "options": [
+        "f(x) = mx + n",
+        "f(x) = x²",
+        "f(x) = a * bˣ",
+        "f(x) = 1/x"
+      ],
+      "answer": "f(x) = a * bˣ",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 10,
+      "question": "Wie lautet das Volumen einer Kugel mit Radius r?",
+      "options": [
+        "V = 4 * π * r²",
+        "V = 4/3 * π * r³",
+        "V = π * r² * h",
+        "V = 2 * π * r"
+      ],
+      "answer": "V = 4/3 * π * r³",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 10,
+      "question": "Was ist der Wert von cos(90°)?",
+      "options": [
+        "0",
+        "1",
+        "-1",
+        "0,5"
+      ],
+      "answer": "0",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 10,
+      "question": "Wie berechnet man die Mitternachtsformel für ax² + bx + c = 0?",
+      "options": [
+        "x = -b ± √D / 2a",
+        "x = -p/2",
+        "x = -c/a",
+        "x = b² - 4ac"
+      ],
+      "answer": "x = -b ± √D / 2a",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 10,
+      "question": "In einem Einheitskreis entspricht die y-Koordinate eines Punktes auf dem Kreis dem...",
+      "options": [
+        "Cosinus",
+        "Sinus",
+        "Tangens",
+        "Radius"
+      ],
+      "answer": "Sinus",
       "difficulty": "hard"
+    },
+    {
+      "grade": 10,
+      "question": "Was ist die Periodenlänge der Funktion f(x) = sin(x)?",
+      "options": [
+        "π",
+        "2π",
+        "180°",
+        "1"
+      ],
+      "answer": "2π",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 10,
+      "question": "Was passiert mit dem Funktionswert von f(x) = 2ˣ, wenn x um 1 erhöht wird?",
+      "options": [
+        "Er steigt um 1",
+        "Er steigt um 2",
+        "Er verdoppelt sich",
+        "Er bleibt gleich"
+      ],
+      "answer": "Er verdoppelt sich",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 10,
+      "question": "Wie viele Nullstellen kann eine quadratische Funktion höchstens haben?",
+      "options": [
+        "0",
+        "1",
+        "2",
+        "unendlich"
+      ],
+      "answer": "2",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 10,
+      "question": "Was ist das Bogenmaß von 180°?",
+      "options": [
+        "π/2",
+        "π",
+        "2π",
+        "1"
+      ],
+      "answer": "π",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 11,
+      "question": "Was ist die Ableitung von f(x) = x²?",
+      "options": [
+        "f'(x) = 2",
+        "f'(x) = 2x",
+        "f'(x) = x",
+        "f'(x) = 1/2 x²"
+      ],
+      "answer": "f'(x) = 2x",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 11,
+      "question": "Wie groß ist der Betrag des Vektors v = (3, 4)?",
+      "options": [
+        "5",
+        "7",
+        "12",
+        "25"
+      ],
+      "answer": "5",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 11,
+      "question": "Was ist die Ableitung von f(x) = eˣ?",
+      "options": [
+        "f'(x) = x * eˣ⁻¹",
+        "f'(x) = eˣ",
+        "f'(x) = ln(x)",
+        "f'(x) = 1/eˣ"
+      ],
+      "answer": "f'(x) = eˣ",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 11,
+      "question": "Welche Bedingung muss für einen Extrempunkt gelten?",
+      "options": [
+        "f(x) = 0",
+        "f'(x) = 0",
+        "f''(x) = 0",
+        "f(0) = x"
+      ],
+      "answer": "f'(x) = 0",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 11,
+      "question": "Wie lautet das Skalarprodukt der Vektoren (1, 2) und (3, -1)?",
+      "options": [
+        "1",
+        "5",
+        "7",
+        "(3, -2)"
+      ],
+      "answer": "1",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 11,
+      "question": "Was bedeutet es, wenn das Skalarprodukt zweier Vektoren Null ist?",
+      "options": [
+        "Sie sind parallel",
+        "Sie sind senkrecht",
+        "Ein Vektor ist der Nullvektor",
+        "Sie sind gleich lang"
+      ],
+      "answer": "Sie sind senkrecht",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 11,
+      "question": "Was ist der Grenzwert von 1/x für x gegen unendlich?",
+      "options": [
+        "0",
+        "1",
+        "unendlich",
+        "nicht definiert"
+      ],
+      "answer": "0",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 11,
+      "question": "Wie lautet die Ableitung von f(x) = sin(x)?",
+      "options": [
+        "-sin(x)",
+        "cos(x)",
+        "-cos(x)",
+        "tan(x)"
+      ],
+      "answer": "cos(x)",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 11,
+      "question": "Was ist f'(x) für f(x) = 5x + 3?",
+      "options": [
+        "0",
+        "3",
+        "5",
+        "5x"
+      ],
+      "answer": "5",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 11,
+      "question": "Welche Symmetrie weist die Funktion f(x) = x⁴ + x² auf?",
+      "options": [
+        "Achsensymmetrie zur y-Achse",
+        "Punktsymmetrie zum Ursprung",
+        "Keine Symmetrie",
+        "Achsensymmetrie zur x-Achse"
+      ],
+      "answer": "Achsensymmetrie zur y-Achse",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 12,
+      "question": "Was ist das unbestimmte Integral von f(x) = x?",
+      "options": [
+        "1",
+        "x²",
+        "1/2 x² + C",
+        "2x + C"
+      ],
+      "answer": "1/2 x² + C",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 12,
+      "question": "Wie lautet der Erwartungswert E(X) einer binomialverteilten Zufallsgröße?",
+      "options": [
+        "n * p",
+        "n * p * (1-p)",
+        "√ (n * p)",
+        "p / n"
+      ],
+      "answer": "n * p",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 12,
+      "question": "Was ist die Ableitung von f(x) = ln(x)?",
+      "options": [
+        "eˣ",
+        "1/x",
+        "x",
+        "1"
+      ],
+      "answer": "1/x",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 12,
+      "question": "Wie berechnet man das Kreuzprodukt zweier Vektoren im R³?",
+      "options": [
+        "Es ergibt einen Skalar",
+        "Es ergibt einen Vektor senkrecht zu beiden",
+        "Es ist immer Null",
+        "Es ist die Summe der Komponenten"
+      ],
+      "answer": "Es ergibt einen Vektor senkrecht zu beiden",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 12,
+      "question": "Was besagt der Hauptsatz der Differential- und Integralrechnung?",
+      "options": [
+        "∫ f(x) dx = F(b) - F(a)",
+        "f'(x) = ∫ f(x) dx",
+        "F'(x) = f(x)",
+        "Jede Funktion ist integrierbar"
+      ],
+      "answer": "∫ f(x) dx = F(b) - F(a)",
+      "difficulty": "hard"
+    },
+    {
+      "grade": 12,
+      "question": "Welche Regel nutzt man zur Ableitung von f(x) = g(h(x))?",
+      "options": [
+        "Produktregel",
+        "Quotientenregel",
+        "Kettenregel",
+        "Summenregel"
+      ],
+      "answer": "Kettenregel",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 12,
+      "question": "Was ist eine Stammfunktion von cos(x)?",
+      "options": [
+        "sin(x)",
+        "-sin(x)",
+        "cos(x)",
+        "tan(x)"
+      ],
+      "answer": "sin(x)",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 12,
+      "question": "Wofür steht das 'sigma' (σ) in der Statistik?",
+      "options": [
+        "Erwartungswert",
+        "Varianz",
+        "Standardabweichung",
+        "Stichprobenumfang"
+      ],
+      "answer": "Standardabweichung",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 12,
+      "question": "Eine Ebene im Raum kann dargestellt werden durch...",
+      "options": [
+        "Parameterform",
+        "Koordinatenform",
+        "Normalenform",
+        "Alle genannten"
+      ],
+      "answer": "Alle genannten",
+      "difficulty": "easy"
+    },
+    {
+      "grade": 12,
+      "question": "Was ist das Integral von 1/x dx?",
+      "options": [
+        "-1/x²",
+        "ln|x| + C",
+        "1",
+        "x⁰"
+      ],
+      "answer": "ln|x| + C",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 13,
+      "question": "Was ist das Ergebnis von ∫ e^{2x} dx?",
+      "options": [
+        "e^{2x} + C",
+        "2e^{2x} + C",
+        "1/2 e^{2x} + C",
+        "eˣ + C"
+      ],
+      "answer": "1/2 e^{2x} + C",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 13,
+      "question": "Welches Verfahren dient zur numerischen Bestimmung von Nullstellen?",
+      "options": [
+        "Gauß-Verfahren",
+        "Newton-Verfahren",
+        "Satz des Pythagoras",
+        "Bernoulli-Kette"
+      ],
+      "answer": "Newton-Verfahren",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 13,
+      "question": "Was beschreibt ein Hypothesentest in der Stochastik?",
+      "options": [
+        "Den genauen Wert eines Parameters",
+        "Die Entscheidung zwischen zwei Annahmen",
+        "Die Berechnung von Erwartungswerten",
+        "Die Zeichnung von Baumdiagrammen"
+      ],
+      "answer": "Die Entscheidung zwischen zwei Annahmen",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 13,
+      "question": "Die Ableitung von f(x) = x * ln(x) lautet nach der Produktregel...",
+      "options": [
+        "ln(x)",
+        "1",
+        "ln(x) + 1",
+        "x/x"
+      ],
+      "answer": "ln(x) + 1",
+      "difficulty": "hard"
+    },
+    {
+      "grade": 13,
+      "question": "Wie berechnet man das Volumen eines Rotationskörpers bei Rotation um die x-Achse?",
+      "options": [
+        "∫ f(x) dx",
+        "π * ∫ [f(x)]² dx",
+        "2π * ∫ f(x) dx",
+        "∫ f'(x) dx"
+      ],
+      "answer": "π * ∫ [f(x)]² dx",
+      "difficulty": "hard"
+    },
+    {
+      "grade": 13,
+      "question": "Was ist eine stochastische Matrix?",
+      "options": [
+        "Matrix mit nur Nullen",
+        "Matrix, deren Spaltensummen 1 ergeben",
+        "Matrix mit Determinante 0",
+        "Eine Einheitsmatrix"
+      ],
+      "answer": "Matrix, deren Spaltensummen 1 ergeben",
+      "difficulty": "medium"
+    },
+    {
+      "grade": 13,
+      "question": "Was ist die partielle Integration?",
+      "options": [
+        "∫ u'v = uv - ∫ uv'",
+        "∫ (u+v) = ∫ u + ∫ v",
+        "(uv)' = u'v + uv'",
+        "f(g(x))' = f'(g(x)) * g'(x)"
+      ],
+      "answer": "∫ u'v = uv - ∫ uv'",
+      "difficulty": "hard"
+    },
+    {
+      "grade": 13,
+      "question": "Wie groß ist der Abstand des Punktes (0,0,0) von der Ebene x + y + z = 3?",
+      "options": [
+        "1",
+        "3",
+        "√3",
+        "9"
+      ],
+      "answer": "√3",
+      "difficulty": "hard"
+    },
+    {
+      "grade": 13,
+      "question": "Was ist die Ableitung von f(x) = 2ˣ?",
+      "options": [
+        "x * 2ˣ⁻¹",
+        "2ˣ * ln(2)",
+        "2ˣ",
+        "ln(2ˣ)"
+      ],
+      "answer": "2ˣ * ln(2)",
+      "difficulty": "hard"
+    },
+    {
+      "grade": 13,
+      "question": "Was versteht man unter dem Signifikanzniveau α?",
+      "options": [
+        "Wahrscheinlichkeit für Fehler 1. Art",
+        "Wahrscheinlichkeit für Fehler 2. Art",
+        "Die Trefferquote",
+        "Der Stichprobenumfang"
+      ],
+      "answer": "Wahrscheinlichkeit für Fehler 1. Art",
+      "difficulty": "medium"
     }
   ]
 }

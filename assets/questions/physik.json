@@ -1,0 +1,1085 @@
+{
+    "subject": "Physik",
+    "questions": [
+        {
+            "grade": 5,
+            "question": "Was ist eine natürliche Lichtquelle?",
+            "options": [
+                "Taschenlampe",
+                "Mond",
+                "Sonne",
+                "Spiegel"
+            ],
+            "answer": "Sonne",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 5,
+            "question": "Was passiert, wenn man zwei gleiche Magnetpole (z. B. Nord und Nord) zusammenführt?",
+            "options": [
+                "Sie ziehen sich an",
+                "Sie stoßen sich ab",
+                "Nichts passiert",
+                "Sie werden heiß"
+            ],
+            "answer": "Sie stoßen sich ab",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 5,
+            "question": "In welcher Einheit wird die Temperatur in Deutschland üblicherweise gemessen?",
+            "options": [
+                "Kelvin",
+                "Grad Celsius",
+                "Fahrenheit",
+                "Newton"
+            ],
+            "answer": "Grad Celsius",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 5,
+            "question": "Welches Material leitet elektrischen Strom?",
+            "options": [
+                "Kunststoff",
+                "Glas",
+                "Kupfer",
+                "Holz"
+            ],
+            "answer": "Kupfer",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 5,
+            "question": "Wie breitet sich Licht im leeren Raum aus?",
+            "options": [
+                "In Schlangenlinien",
+                "Im Kreis",
+                "Geradlinig",
+                "Gar nicht"
+            ],
+            "answer": "Geradlinig",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 5,
+            "question": "Was ist der Gefrierpunkt von reinem Wasser?",
+            "options": [
+                "-10 °C",
+                "0 °C",
+                "10 °C",
+                "100 °C"
+            ],
+            "answer": "0 °C",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 5,
+            "question": "Was zeigt die Nadel eines Kompasses normalerweise an?",
+            "options": [
+                "Den geografischen Osten",
+                "Den magnetischen Südpol der Erde",
+                "Die Sonne",
+                "Den magnetischen Nordpol der Erde"
+            ],
+            "answer": "Den magnetischen Nordpol der Erde",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 5,
+            "question": "Wie nennt man den Übergang von flüssig zu gasförmig?",
+            "options": [
+                "Schmelzen",
+                "Erstarren",
+                "Verdampfen",
+                "Kondensieren"
+            ],
+            "answer": "Verdampfen",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 5,
+            "question": "Warum sehen wir den Mond leuchten?",
+            "options": [
+                "Er brennt wie die Sonne",
+                "Er reflektiert das Sonnenlicht",
+                "Er ist elektrisch geladen",
+                "Er besteht aus Phosphor"
+            ],
+            "answer": "Er reflektiert das Sonnenlicht",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 5,
+            "question": "Welches Bauteil unterbricht einen Stromkreis?",
+            "options": [
+                "Kabel",
+                "Batterie",
+                "Schalter",
+                "Glühbirne"
+            ],
+            "answer": "Schalter",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 6,
+            "question": "Was passiert bei der Reihenschaltung von Lampen, wenn eine Lampe kaputt geht?",
+            "options": [
+                "Alle anderen leuchten weiter",
+                "Alle anderen gehen aus",
+                "Die anderen werden heller",
+                "Die Batterie explodiert"
+            ],
+            "answer": "Alle anderen gehen aus",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 6,
+            "question": "Wie nennt man eine Linse, die Lichtstrahlen in einem Punkt sammelt?",
+            "options": [
+                "Zerstreuungslinse",
+                "Sammellinse",
+                "Hohlspiegel",
+                "Prisma"
+            ],
+            "answer": "Sammellinse",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 6,
+            "question": "Was ist ein Schattenraum?",
+            "options": [
+                "Ein Raum ohne Lichtquellen",
+                "Der Bereich hinter einem beleuchteten Körper",
+                "Ein schwarzes Loch",
+                "Eine Sonnenfinsternis"
+            ],
+            "answer": "Der Bereich hinter einem beleuchteten Körper",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 6,
+            "question": "Welches Gesetz beschreibt die Reflexion am ebenen Spiegel?",
+            "options": [
+                "Einfallswinkel = Reflexionswinkel",
+                "Einfallswinkel > Reflexionswinkel",
+                "Licht bricht immer ab",
+                "Kraft = Gegenkraft"
+            ],
+            "answer": "Einfallswinkel = Reflexionswinkel",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 6,
+            "question": "Wozu dient ein Eisenkern in einer Spule?",
+            "options": [
+                "Damit sie schwerer wird",
+                "Um das Magnetfeld zu verstärken",
+                "Um Strom zu sparen",
+                "Zur Kühlung"
+            ],
+            "answer": "Um das Magnetfeld zu verstärken",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 6,
+            "question": "Ein Hebel ist im Gleichgewicht, wenn...",
+            "options": [
+                "nur eine Seite belastet ist",
+                "Kraft mal Kraftarm auf beiden Seiten gleich ist",
+                "er senkrecht steht",
+                "die Last sehr schwer ist"
+            ],
+            "answer": "Kraft mal Kraftarm auf beiden Seiten gleich ist",
+            "difficulty": "hard"
+        },
+        {
+            "grade": 6,
+            "question": "Was passiert mit Luft, wenn sie erwärmt wird?",
+            "options": [
+                "Sie zieht sich zusammen",
+                "Sie dehnt sich aus",
+                "Sie wird schwerer",
+                "Nichts passiert"
+            ],
+            "answer": "Sie dehnt sich aus",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 6,
+            "question": "Warum schwimmt ein Schiff aus Stahl?",
+            "options": [
+                "Weil Stahl leichter als Wasser ist",
+                "Wegen der Form (Verdrängung)",
+                "Weil es einen Motor hat",
+                "Wegen der Oberflächenspannung"
+            ],
+            "answer": "Wegen der Form (Verdrängung)",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 6,
+            "question": "Wie nennt man Stoffe, die Magnete anziehen?",
+            "options": [
+                "Isolatoren",
+                "Ferromagnetische Stoffe",
+                "Edelmetalle",
+                "Kristalle"
+            ],
+            "answer": "Ferromagnetische Stoffe",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 6,
+            "question": "Was ist das Kennzeichen einer Lochkamera?",
+            "options": [
+                "Das Bild ist aufrecht",
+                "Das Bild ist verwaschen",
+                "Das Bild steht auf dem Kopf",
+                "Sie braucht keinen Film"
+            ],
+            "answer": "Das Bild steht auf dem Kopf",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 7,
+            "question": "In welcher Einheit wird die Kraft gemessen?",
+            "options": [
+                "Kilogramm",
+                "Joule",
+                "Watt",
+                "Newton"
+            ],
+            "answer": "Newton",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 7,
+            "question": "Wie groß ist der Ortsfaktor $g$ auf der Erde (gerundet)?",
+            "options": [
+                "1,6 N/kg",
+                "5 N/kg",
+                "9,81 N/kg",
+                "12 N/kg"
+            ],
+            "answer": "9,81 N/kg",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 7,
+            "question": "Was berechnet man mit der Formel $\\rho = m / V$?",
+            "options": [
+                "Druck",
+                "Leistung",
+                "Dichte",
+                "Geschwindigkeit"
+            ],
+            "answer": "Dichte",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 7,
+            "question": "Wie nennt man die Kraft, mit der eine gespannte Feder zurückzieht?",
+            "options": [
+                "Gewichtskraft",
+                "Reibungskraft",
+                "Federkraft",
+                "Magnetkraft"
+            ],
+            "answer": "Federkraft",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 7,
+            "question": "Was passiert mit dem Luftdruck, wenn man auf einen hohen Berg steigt?",
+            "options": [
+                "Er steigt",
+                "Er bleibt gleich",
+                "Er sinkt",
+                "Er verschwindet"
+            ],
+            "answer": "Er sinkt",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 7,
+            "question": "Was besagt das Hooke'sche Gesetz?",
+            "options": [
+                "$F = m \\cdot a$",
+                "$F = D \\cdot \\Delta l$",
+                "$p = F / A$",
+                "$E = m \\cdot c^2$"
+            ],
+            "answer": "$F = D \\cdot \\Delta l$",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 7,
+            "question": "Wie nennt man den Druck in ruhenden Flüssigkeiten?",
+            "options": [
+                "Luftdruck",
+                "Auftrieb",
+                "Schweredruck",
+                "Reibungsdruck"
+            ],
+            "answer": "Schweredruck",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 7,
+            "question": "Welche Wirkung hat eine lose Rolle?",
+            "options": [
+                "Sie ändert die Richtung",
+                "Sie halbiert die Kraft",
+                "Sie verdoppelt den Weg",
+                "Sie halbiert die Kraft und verdoppelt den Weg"
+            ],
+            "answer": "Sie halbiert die Kraft und verdoppelt den Weg",
+            "difficulty": "hard"
+        },
+        {
+            "grade": 7,
+            "question": "Wovon hängt die Reibungskraft ab?",
+            "options": [
+                "Nur von der Fläche",
+                "Von der Beschaffenheit der Oberflächen und der Normalkraft",
+                "Nur von der Geschwindigkeit",
+                "Vom Luftdruck"
+            ],
+            "answer": "Von der Beschaffenheit der Oberflächen und der Normalkraft",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 7,
+            "question": "Ein Körper taucht in Wasser ein. Die Auftriebskraft ist gleich...",
+            "options": [
+                "der Gewichtskraft des Körpers",
+                "der Gewichtskraft des verdrängten Wassers",
+                "dem Volumen des Körpers",
+                "10 Newton"
+            ],
+            "answer": "der Gewichtskraft des verdrängten Wassers",
+            "difficulty": "hard"
+        },
+        {
+            "grade": 8,
+            "question": "In welcher Einheit wird Energie gemessen?",
+            "options": [
+                "Newton",
+                "Joule",
+                "Watt",
+                "Volt"
+            ],
+            "answer": "Joule",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 8,
+            "question": "Was beschreibt die Formel $W = F \\cdot s$?",
+            "options": [
+                "Leistung",
+                "Druck",
+                "Mechanische Arbeit",
+                "Potenzielle Energie"
+            ],
+            "answer": "Mechanische Arbeit",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 8,
+            "question": "Wie nennt man Energie, die ein Körper aufgrund seiner Höhe besitzt?",
+            "options": [
+                "Kinetische Energie",
+                "Spannenergie",
+                "Potenzielle Energie",
+                "Thermische Energie"
+            ],
+            "answer": "Potenzielle Energie",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 8,
+            "question": "Was besagt der Energieerhaltungssatz?",
+            "options": [
+                "Energie kann verbraucht werden",
+                "Energie kann erzeugt werden",
+                "Energie kann nur umgewandelt werden",
+                "Energie verschwindet bei Reibung"
+            ],
+            "answer": "Energie kann nur umgewandelt werden",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 8,
+            "question": "Was ist Leistung physikalisch?",
+            "options": [
+                "Arbeit mal Zeit",
+                "Arbeit pro Zeit",
+                "Kraft mal Weg",
+                "Kraft pro Fläche"
+            ],
+            "answer": "Arbeit pro Zeit",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 8,
+            "question": "Was gibt der Wirkungsgrad an?",
+            "options": [
+                "Wie viel Energie verloren geht",
+                "Das Verhältnis von genutzter zu zugeführter Energie",
+                "Die Geschwindigkeit einer Maschine",
+                "Die maximale Kraft"
+            ],
+            "answer": "Das Verhältnis von genutzter zu zugeführter Energie",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 8,
+            "question": "Was passiert am absoluten Nullpunkt (0 Kelvin)?",
+            "options": [
+                "Wasser gefriert",
+                "Teilchenbewegung kommt fast zum Stillstand",
+                "Luft wird flüssig",
+                "Es wird 0 °C"
+            ],
+            "answer": "Teilchenbewegung kommt fast zum Stillstand",
+            "difficulty": "hard"
+        },
+        {
+            "grade": 8,
+            "question": "Welche Art des Wärmetransports benötigt kein Medium (Vakuum)?",
+            "options": [
+                "Wärmeleitung",
+                "Wärmeströmung (Konvektion)",
+                "Wärmestrahlung",
+                "Reibung"
+            ],
+            "answer": "Wärmestrahlung",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 8,
+            "question": "Was ist die spezifische Wärmekapazität?",
+            "options": [
+                "Die maximale Temperatur eines Stoffes",
+                "Die Energie, um 1 kg eines Stoffes um 1 K zu erwärmen",
+                "Die Schmelztemperatur",
+                "Die Dichte bei Wärme"
+            ],
+            "answer": "Die Energie, um 1 kg eines Stoffes um 1 K zu erwärmen",
+            "difficulty": "hard"
+        },
+        {
+            "grade": 8,
+            "question": "Was passiert bei der 'Anomalie des Wassers'?",
+            "options": [
+                "Wasser kocht bei 100 Grad",
+                "Wasser hat bei 4 °C seine größte Dichte",
+                "Eis ist schwerer als Wasser",
+                "Wasser leitet Strom"
+            ],
+            "answer": "Wasser hat bei 4 °C seine größte Dichte",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 9,
+            "question": "Wie lautet das Ohm'sche Gesetz?",
+            "options": [
+                "$U = R \\cdot I$",
+                "$P = U \\cdot I$",
+                "$F = m \\cdot a$",
+                "$W = F \\cdot s$"
+            ],
+            "answer": "$U = R \\cdot I$",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 9,
+            "question": "Was beschreibt das 1. Newton'sche Gesetz (Trägheitsgesetz)?",
+            "options": [
+                "$F = m \\cdot a$",
+                "Körper verharren im Zustand der Ruhe oder Bewegung, solange keine Kraft wirkt",
+                "Kraft = Gegenkraft",
+                "Energie bleibt erhalten"
+            ],
+            "answer": "Körper verharren im Zustand der Ruhe oder Bewegung, solange keine Kraft wirkt",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 9,
+            "question": "Wie nennt man eine Bewegung mit konstanter Beschleunigung?",
+            "options": [
+                "Gleichförmige Bewegung",
+                "Gleichmäßig beschleunigte Bewegung",
+                "Kreisbewegung",
+                "Harmonische Schwingung"
+            ],
+            "answer": "Gleichmäßig beschleunigte Bewegung",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 9,
+            "question": "Welche Einheit hat der elektrische Widerstand?",
+            "options": [
+                "Volt",
+                "Ampere",
+                "Ohm",
+                "Watt"
+            ],
+            "answer": "Ohm",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 9,
+            "question": "Wie lautet die Formel für die kinetische Energie?",
+            "options": [
+                "$m \\cdot g \\cdot h$",
+                "$1/2 \\cdot m \\cdot v^2$",
+                "$F \\cdot s$",
+                "$P \\cdot t$"
+            ],
+            "answer": "$1/2 \\cdot m \\cdot v^2$",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 9,
+            "question": "Was ist die elektrische Leistung?",
+            "options": [
+                "$U / I$",
+                "$R \\cdot I$",
+                "$U \\cdot I$",
+                "$W / s$"
+            ],
+            "answer": "$U \\cdot I$",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 9,
+            "question": "Was passiert bei einem Transformator mit zwei Spulen, wenn die Sekundärspule mehr Windungen hat?",
+            "options": [
+                "Die Spannung wird kleiner",
+                "Die Spannung wird größer",
+                "Die Frequenz ändert sich",
+                "Nichts passiert"
+            ],
+            "answer": "Die Spannung wird größer",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 9,
+            "question": "Welches Bauteil speichert elektrische Ladung?",
+            "options": [
+                "Widerstand",
+                "Spule",
+                "Kondensator",
+                "Transistor"
+            ],
+            "answer": "Kondensator",
+            "difficulty": "hard"
+        },
+        {
+            "grade": 9,
+            "question": "Was ist die Ursache für die Lorentzkraft?",
+            "options": [
+                "Ruhende Ladung im E-Feld",
+                "Bewegte Ladung im Magnetfeld",
+                "Reibung",
+                "Gravitation"
+            ],
+            "answer": "Bewegte Ladung im Magnetfeld",
+            "difficulty": "hard"
+        },
+        {
+            "grade": 9,
+            "question": "Wie groß ist die Schallgeschwindigkeit in Luft etwa?",
+            "options": [
+                "300.000 km/s",
+                "1200 km/h (340 m/s)",
+                "100 m/s",
+                "Schall hat keine feste Geschwindigkeit"
+            ],
+            "answer": "1200 km/h (340 m/s)",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 10,
+            "question": "Was ist Radioaktivität?",
+            "options": [
+                "Das Leuchten von Atomen",
+                "Der spontane Zerfall instabiler Atomkerne",
+                "Das Erhitzen von Metallen",
+                "Elektromagnetische Wellen vom Radio"
+            ],
+            "answer": "Der spontane Zerfall instabiler Atomkerne",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 10,
+            "question": "Welche Strahlungsart besteht aus Heliumkernen?",
+            "options": [
+                "Alphastrahlung",
+                "Betastrahlung",
+                "Gammastrahlung",
+                "Röntgenstrahlung"
+            ],
+            "answer": "Alphastrahlung",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 10,
+            "question": "Was besagt die Lenz'sche Regel bei der Induktion?",
+            "options": [
+                "Strom fließt immer im Kreis",
+                "Der Induktionsstrom ist seiner Ursache entgegengerichtet",
+                "Spannung ist proportional zum Widerstand",
+                "Energie geht verloren"
+            ],
+            "answer": "Der Induktionsstrom ist seiner Ursache entgegengerichtet",
+            "difficulty": "hard"
+        },
+        {
+            "grade": 10,
+            "question": "Was versteht man unter der Halbwertszeit?",
+            "options": [
+                "Die halbe Lebensdauer eines Atoms",
+                "Die Zeit, in der die Hälfte der Kerne zerfallen ist",
+                "Die Zeit bis zur Kernschmelze",
+                "50 Jahre"
+            ],
+            "answer": "Die Zeit, in der die Hälfte der Kerne zerfallen ist",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 10,
+            "question": "Was passiert bei der Kernspaltung im Atomkraftwerk?",
+            "options": [
+                "Zwei Kerne verschmelzen",
+                "Ein schwerer Kern wird durch Neutronenbeschuss geteilt",
+                "Atome verbrennen",
+                "Elektronen werden abgegeben"
+            ],
+            "answer": "Ein schwerer Kern wird durch Neutronenbeschuss geteilt",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 10,
+            "question": "Welches Teilchen löst die Kettenreaktion bei der Spaltung von Uran-235 aus?",
+            "options": [
+                "Proton",
+                "Elektron",
+                "Neutron",
+                "Positron"
+            ],
+            "answer": "Neutron",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 10,
+            "question": "Was ist die Einheit der Aktivität eines radioaktiven Stoffes?",
+            "options": [
+                "Sievert",
+                "Gray",
+                "Becquerel",
+                "Joule"
+            ],
+            "answer": "Becquerel",
+            "difficulty": "hard"
+        },
+        {
+            "grade": 10,
+            "question": "Wie heißen Atome desselben Elements mit unterschiedlicher Neutronenzahl?",
+            "options": [
+                "Ionen",
+                "Isotope",
+                "Moleküle",
+                "Quarks"
+            ],
+            "answer": "Isotope",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 10,
+            "question": "Welches Gesetz beschreibt die Planetenbewegungen?",
+            "options": [
+                "Newtonsche Gesetze",
+                "Keplersche Gesetze",
+                "Ohm'sches Gesetz",
+                "Hubble-Gesetz"
+            ],
+            "answer": "Keplersche Gesetze",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 10,
+            "question": "Was ist ein Generator?",
+            "options": [
+                "Ein Gerät, das mechanische Energie in elektrische Energie umwandelt",
+                "Ein Motor",
+                "Ein Heizgerät",
+                "Ein Transformator"
+            ],
+            "answer": "Ein Gerät, das mechanische Energie in elektrische Energie umwandelt",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 11,
+            "question": "Wie lautet die Formel für die Zentripetalkraft?",
+            "options": [
+                "$m \\cdot g$",
+                "$m \\cdot v^2 / r$",
+                "$1/2 \\cdot m \\cdot v^2$",
+                "$F \\cdot s$"
+            ],
+            "answer": "$m \\cdot v^2 / r$",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 11,
+            "question": "Was ist die Einheit der elektrischen Feldstärke $E$?",
+            "options": [
+                "Volt",
+                "Newton",
+                "V/m (oder N/C)",
+                "Tesla"
+            ],
+            "answer": "V/m (oder N/C)",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 11,
+            "question": "Wie berechnet man die Coulombkraft zwischen zwei Punktladungen?",
+            "options": [
+                "$F = m \\cdot a$",
+                "$F = k \\cdot q_1 \\cdot q_2 / r^2$",
+                "$F = G \\cdot m_1 \\cdot m_2 / r^2$",
+                "$F = B \\cdot I \\cdot l$"
+            ],
+            "answer": "$F = k \\cdot q_1 \\cdot q_2 / r^2$",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 11,
+            "question": "Was beschreibt das elektrische Potential?",
+            "options": [
+                "Die Kraft auf eine Ladung",
+                "Die Energie pro Ladung",
+                "Die Geschwindigkeit von Elektronen",
+                "Die Kapazität"
+            ],
+            "answer": "Die Energie pro Ladung",
+            "difficulty": "hard"
+        },
+        {
+            "grade": 11,
+            "question": "Was ist die Kapazität eines Kondensators?",
+            "options": [
+                "Die maximale Spannung",
+                "Das Verhältnis von Ladung zu Spannung ($C = Q / U$)",
+                "Der Widerstand",
+                "Die Größe des Metallplattentyps"
+            ],
+            "answer": "Das Verhältnis von Ladung zu Spannung ($C = Q / U$)",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 11,
+            "question": "Welche Bahnform hat ein Körper beim waagerechten Wurf (ohne Luftwiderstand)?",
+            "options": [
+                "Gerade",
+                "Kreis",
+                "Parabel",
+                "Hyperbel"
+            ],
+            "answer": "Parabel",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 11,
+            "question": "Was ist das Gravitationsgesetz von Newton?",
+            "options": [
+                "$F = m \\cdot g$",
+                "$F = G \\cdot m_1 \\cdot m_2 / r^2$",
+                "$F = p \\cdot A$",
+                "$E = m \\cdot c^2$"
+            ],
+            "answer": "$F = G \\cdot m_1 \\cdot m_2 / r^2$",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 11,
+            "question": "Welche Richtung hat die Feldstärke in einem homogenen Plattenkondensator?",
+            "options": [
+                "Von minus nach plus",
+                "Von plus nach minus",
+                "Im Kreis",
+                "Parallel zu den Platten"
+            ],
+            "answer": "Von plus nach minus",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 11,
+            "question": "Was misst der Halleffekt?",
+            "options": [
+                "Lichtgeschwindigkeit",
+                "Magnetische Flussdichte $B$",
+                "Luftdruck",
+                "Masse von Elektronen"
+            ],
+            "answer": "Magnetische Flussdichte $B$",
+            "difficulty": "hard"
+        },
+        {
+            "grade": 11,
+            "question": "Was ist die Einheit der magnetischen Flussdichte?",
+            "options": [
+                "Weber",
+                "Henry",
+                "Tesla",
+                "Farad"
+            ],
+            "answer": "Tesla",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 12,
+            "question": "Was ist eine Schwingung?",
+            "options": [
+                "Eine einmalige Auslenkung",
+                "Eine zeitlich periodische Änderung einer physikalischen Größe",
+                "Eine geradlinige Bewegung",
+                "Ein Lichtstrahl"
+            ],
+            "answer": "Eine zeitlich periodische Änderung einer physikalischen Größe",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 12,
+            "question": "Wie lautet die Formel für die Schwingungsdauer eines Fadenpendels?",
+            "options": [
+                "$T = 2\\pi \\cdot \\sqrt{l/g}$",
+                "$T = 2\\pi \\cdot \\sqrt{m/D}$",
+                "$T = 1/f$",
+                "$T = s/v$"
+            ],
+            "answer": "$T = 2\\pi \\cdot \\sqrt{l/g}$",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 12,
+            "question": "Was ist Interferenz?",
+            "options": [
+                "Die Brechung von Licht",
+                "Die Überlagerung von Wellen",
+                "Die Reflexion an Oberflächen",
+                "Das Verschwinden von Schall"
+            ],
+            "answer": "Die Überlagerung von Wellen",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 12,
+            "question": "Welches Experiment beweist die Wellennatur des Lichts?",
+            "options": [
+                "Photoeffekt",
+                "Doppelspaltversuch",
+                "Millikan-Versuch",
+                "Streuversuch"
+            ],
+            "answer": "Doppelspaltversuch",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 12,
+            "question": "Was ist eine stehende Welle?",
+            "options": [
+                "Eine Welle, die sich nicht bewegt",
+                "Resultierende Welle aus Überlagerung zweier gegenläufiger Wellen gleicher Frequenz",
+                "Eine Schallwelle im Vakuum",
+                "Eine Wasserwelle"
+            ],
+            "answer": "Resultierende Welle aus Überlagerung zweier gegenläufiger Wellen gleicher Frequenz",
+            "difficulty": "hard"
+        },
+        {
+            "grade": 12,
+            "question": "Was beschreibt die Thomson-Gleichung für den Schwingkreis?",
+            "options": [
+                "$f = 1 / (2\\pi \\cdot \\sqrt{LC})$",
+                "$E = h \\cdot f$",
+                "$U = L \\cdot dI/dt$",
+                "$c = f \\cdot \\lambda$"
+            ],
+            "answer": "$f = 1 / (2\\pi \\cdot \\sqrt{LC})$",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 12,
+            "question": "Was ist Beugung (Diffraktion)?",
+            "options": [
+                "Ablenkung von Wellen an Hindernissen",
+                "Farbtrennung durch ein Prisma",
+                "Spiegelung",
+                "Absorption"
+            ],
+            "answer": "Ablenkung von Wellen an Hindernissen",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 12,
+            "question": "Was ist Licht physikalisch?",
+            "options": [
+                "Ein reiner Teilchenstrom",
+                "Eine elektromagnetische Welle",
+                "Ein Gas",
+                "Eine mechanische Welle"
+            ],
+            "answer": "Eine elektromagnetische Welle",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 12,
+            "question": "Was bedeutet Polarisation?",
+            "options": [
+                "Erhöhung der Lichtgeschwindigkeit",
+                "Einschränkung der Schwingungsrichtung einer Transversalwelle",
+                "Ablenkung durch Magnete",
+                "Lichtteilung"
+            ],
+            "answer": "Einschränkung der Schwingungsrichtung einer Transversalwelle",
+            "difficulty": "hard"
+        },
+        {
+            "grade": 12,
+            "question": "Welche Welle ist eine Longitudinalwelle?",
+            "options": [
+                "Lichtwelle",
+                "Mikrowelle",
+                "Schallwelle in Luft",
+                "Wasserwelle"
+            ],
+            "answer": "Schallwelle in Luft",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 13,
+            "question": "Was erklärt der Photoelektrische Effekt?",
+            "options": [
+                "Wellennatur des Lichts",
+                "Teilchennatur des Lichts (Photonen)",
+                "Relativität der Zeit",
+                "Radioaktivität"
+            ],
+            "answer": "Teilchennatur des Lichts (Photonen)",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 13,
+            "question": "Wie lautet Einsteins Formel für die Ruheenergie?",
+            "options": [
+                "$E = 1/2 \\cdot m \\cdot v^2$",
+                "$E = h \\cdot f$",
+                "$E = m \\cdot c^2$",
+                "$E = p^2 / 2m$"
+            ],
+            "answer": "$E = m \\cdot c^2$",
+            "difficulty": "easy"
+        },
+        {
+            "grade": 13,
+            "question": "Was besagt die Heisenberg'sche Unschärferelation?",
+            "options": [
+                "Ort und Impuls eines Teilchens können nicht gleichzeitig beliebig genau bestimmt werden",
+                "Licht ist immer eine Welle",
+                "Zeit ist absolut",
+                "Energie ist unendlich"
+            ],
+            "answer": "Ort und Impuls eines Teilchens können nicht gleichzeitig beliebig genau bestimmt werden",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 13,
+            "question": "Was ist die de-Broglie-Wellenlänge?",
+            "options": [
+                "Wellenlänge von Licht im Glas",
+                "Wellenlänge, die jedem bewegten Teilchen zugeordnet werden kann",
+                "Radius eines Atoms",
+                "Abstand der Galaxien"
+            ],
+            "answer": "Wellenlänge, die jedem bewegten Teilchen zugeordnet werden kann",
+            "difficulty": "hard"
+        },
+        {
+            "grade": 13,
+            "question": "Was passiert bei der Zeitdilatation in der Speziellen Relativitätstheorie?",
+            "options": [
+                "Die Zeit läuft für bewegte Beobachter langsamer",
+                "Die Zeit läuft schneller",
+                "Die Zeit bleibt stehen",
+                "Zeit existiert nicht"
+            ],
+            "answer": "Die Zeit läuft für bewegte Beobachter langsamer",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 13,
+            "question": "Welche Teilchen gehören nach dem Standardmodell zu den Leptonen?",
+            "options": [
+                "Protonen",
+                "Quarks",
+                "Elektronen",
+                "Neutronen"
+            ],
+            "answer": "Elektronen",
+            "difficulty": "hard"
+        },
+        {
+            "grade": 13,
+            "question": "Was beschreibt die Bragg-Gleichung?",
+            "options": [
+                "Reflexion von Röntgenstrahlen an Kristallen",
+                "Kernspaltung",
+                "Expansion des Universums",
+                "Photoeffekt"
+            ],
+            "answer": "Reflexion von Röntgenstrahlen an Kristallen",
+            "difficulty": "hard"
+        },
+        {
+            "grade": 13,
+            "question": "Was ist ein Photon?",
+            "options": [
+                "Ein positiv geladenes Teilchen",
+                "Ein Lichtquant / Energiepaket",
+                "Ein Kernteilchen",
+                "Ein Atom"
+            ],
+            "answer": "Ein Lichtquant / Energiepaket",
+            "difficulty": "medium"
+        },
+        {
+            "grade": 13,
+            "question": "Was besagt das Äquivalenzprinzip der Allgemeinen Relativitätstheorie?",
+            "options": [
+                "$E=mc^2$",
+                "Schwere und träge Masse sind äquivalent",
+                "Licht ist immer gleich schnell",
+                "Energie bleibt erhalten"
+            ],
+            "answer": "Schwere und träge Masse sind äquivalent",
+            "difficulty": "hard"
+        },
+        {
+            "grade": 13,
+            "question": "Was ist die Rotverschiebung in der Kosmologie?",
+            "options": [
+                "Abkühlung der Sterne",
+                "Verschiebung des Spektrums ferner Galaxien durch Expansion des Raums",
+                "Sonnenuntergang",
+                "Rost auf Mars"
+            ],
+            "answer": "Verschiebung des Spektrums ferner Galaxien durch Expansion des Raums",
+            "difficulty": "medium"
+        }
+    ]
+}
