@@ -180,22 +180,13 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   Future<void> _openDashboard() async {
     if (!mounted) return;
 
-    // PIN-Abfrage
-    final verified = await showDialog<bool>(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => const PinInputDialog(),
+    // Zurück zur Root-Navigation → main.dart zeigt jetzt FamilyDashboardScreen
+    // (weil onboardingCompleted = true)
+    // Von dort aus wird das ParentDashboardScreen normal gepusht
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const FamilyDashboardScreen()),
+      (route) => false,
     );
-
-    if (verified == true && mounted) {
-      // Zurück zur Root-Navigation → main.dart zeigt jetzt FamilyDashboardScreen
-      // (weil onboardingCompleted = true)
-      // Von dort aus wird das ParentDashboardScreen normal gepusht
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => const FamilyDashboardScreen()),
-        (route) => false,
-      );
-    }
   }
 
   // =========================================================================
