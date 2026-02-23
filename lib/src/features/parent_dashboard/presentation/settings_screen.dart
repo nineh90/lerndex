@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../auth/data/auth_repository.dart';
 import '../../auth/data/profile_repository.dart';
-import '../../auth/presentation/login_screen.dart';
-import '../../../../main.dart'; // für accountDeletionInProgressProvider
+import '../../../../main.dart';
+import '../data/pin_repository.dart';
 
 /// Einstellungsbereich im Elterndashboard
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -30,9 +31,31 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           // ── Abschnitt: Konto ─────────────────────────────────────────
           const _SectionHeader(title: 'Konto'),
 
-          // TODO: E-Mail ändern (später)
-          // TODO: Passwort ändern (später)
-          // TODO: PIN ändern (später)
+          // ── Passwort ändern ───────────────────────────────────────────
+          ListTile(
+            leading: const Icon(Icons.lock_outline, color: Colors.deepPurple),
+            title: const Text('Passwort ändern'),
+            subtitle: const Text(
+              'Lege ein neues Anmelde-Passwort fest',
+              style: TextStyle(fontSize: 12),
+            ),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => _showChangePasswordDialog(context),
+          ),
+
+          // ── PIN ändern ────────────────────────────────────────────────
+          ListTile(
+            leading: const Icon(Icons.pin_outlined, color: Colors.deepPurple),
+            title: const Text('Eltern-PIN ändern'),
+            subtitle: const Text(
+              'Ändere deinen 4–6-stelligen Eltern-PIN',
+              style: TextStyle(fontSize: 12),
+            ),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => _showChangePinDialog(context),
+          ),
+
+          const Divider(indent: 16, endIndent: 16),
 
           // ── Konto löschen ────────────────────────────────────────────
           ListTile(
@@ -63,6 +86,338 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
+  // ── Passwort ändern ──────────────────────────────────────────────────────
+  Future<void> _showChangePasswordDialog(BuildContext context) async {
+    final currentPwController = TextEditingController();
+    final newPwController = TextEditingController();
+    final confirmPwController = TextEditingController();
+    bool obscureCurrent = true;
+    bool obscureNew = true;
+    bool obscureConfirm = true;
+    String? error;
+    bool loading = false;
+
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: const Row(
+            children: [
+              Icon(Icons.lock_outline, color: Colors.deepPurple),
+              SizedBox(width: 8),
+              Text('Passwort ändern'),
+            ],
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildPasswordField(
+                  controller: currentPwController,
+                  label: 'Aktuelles Passwort',
+                  obscure: obscureCurrent,
+                  onToggle: () =>
+                      setDialogState(() => obscureCurrent = !obscureCurrent),
+                ),
+                const SizedBox(height: 12),
+                _buildPasswordField(
+                  controller: newPwController,
+                  label: 'Neues Passwort',
+                  obscure: obscureNew,
+                  onToggle: () =>
+                      setDialogState(() => obscureNew = !obscureNew),
+                ),
+                const SizedBox(height: 12),
+                _buildPasswordField(
+                  controller: confirmPwController,
+                  label: 'Neues Passwort bestätigen',
+                  obscure: obscureConfirm,
+                  onToggle: () =>
+                      setDialogState(() => obscureConfirm = !obscureConfirm),
+                  errorText: error,
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: loading ? null : () => Navigator.of(context).pop(),
+              child: const Text('Abbrechen'),
+            ),
+            ElevatedButton(
+              onPressed: loading
+                  ? null
+                  : () async {
+                      final current = currentPwController.text.trim();
+                      final newPw = newPwController.text;
+                      final confirm = confirmPwController.text;
+
+                      if (current.isEmpty || newPw.isEmpty || confirm.isEmpty) {
+                        setDialogState(
+                          () => error = 'Bitte alle Felder ausfüllen.',
+                        );
+                        return;
+                      }
+                      if (newPw.length < 6) {
+                        setDialogState(
+                          () => error =
+                              'Neues Passwort muss mind. 6 Zeichen haben.',
+                        );
+                        return;
+                      }
+                      if (newPw != confirm) {
+                        setDialogState(
+                          () => error = 'Passwörter stimmen nicht überein.',
+                        );
+                        return;
+                      }
+
+                      setDialogState(() {
+                        loading = true;
+                        error = null;
+                      });
+
+                      try {
+                        final user = FirebaseAuth.instance.currentUser!;
+                        final cred = EmailAuthProvider.credential(
+                          email: user.email!,
+                          password: current,
+                        );
+                        await user.reauthenticateWithCredential(cred);
+                        await user.updatePassword(newPw);
+
+                        if (context.mounted) {
+                          Navigator.of(context).pop();
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Passwort erfolgreich geändert ✓'),
+                              backgroundColor: Colors.green,
+                            ),
+                          );
+                        }
+                      } on FirebaseAuthException catch (e) {
+                        String msg;
+                        if (e.code == 'wrong-password' ||
+                            e.code == 'invalid-credential') {
+                          msg = 'Aktuelles Passwort ist falsch.';
+                        } else if (e.code == 'too-many-requests') {
+                          msg = 'Zu viele Versuche. Bitte warte kurz.';
+                        } else {
+                          msg = e.message ?? 'Unbekannter Fehler.';
+                        }
+                        setDialogState(() {
+                          error = msg;
+                          loading = false;
+                        });
+                      } catch (e) {
+                        setDialogState(() {
+                          error = 'Fehler: $e';
+                          loading = false;
+                        });
+                      }
+                    },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.deepPurple,
+                foregroundColor: Colors.white,
+              ),
+              child: loading
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Text('Speichern'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPasswordField({
+    required TextEditingController controller,
+    required String label,
+    required bool obscure,
+    required VoidCallback onToggle,
+    String? errorText,
+  }) {
+    return TextField(
+      controller: controller,
+      obscureText: obscure,
+      decoration: InputDecoration(
+        labelText: label,
+        border: const OutlineInputBorder(),
+        errorText: errorText,
+        suffixIcon: IconButton(
+          icon: Icon(obscure ? Icons.visibility : Icons.visibility_off),
+          onPressed: onToggle,
+        ),
+      ),
+    );
+  }
+
+  // ── PIN ändern ───────────────────────────────────────────────────────────
+  Future<void> _showChangePinDialog(BuildContext context) async {
+    final oldPinController = TextEditingController();
+    final newPinController = TextEditingController();
+    final confirmPinController = TextEditingController();
+    String? error;
+    bool loading = false;
+
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: const Row(
+            children: [
+              Icon(Icons.pin_outlined, color: Colors.deepPurple),
+              SizedBox(width: 8),
+              Text('Eltern-PIN ändern'),
+            ],
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildPinField(
+                  controller: oldPinController,
+                  label: 'Aktueller PIN',
+                  errorText: error,
+                ),
+                const SizedBox(height: 12),
+                _buildPinField(
+                  controller: newPinController,
+                  label: 'Neuer PIN (4–6 Ziffern)',
+                ),
+                const SizedBox(height: 12),
+                _buildPinField(
+                  controller: confirmPinController,
+                  label: 'Neuer PIN bestätigen',
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: loading ? null : () => Navigator.of(context).pop(),
+              child: const Text('Abbrechen'),
+            ),
+            ElevatedButton(
+              onPressed: loading
+                  ? null
+                  : () async {
+                      final old = oldPinController.text;
+                      final newPin = newPinController.text;
+                      final confirm = confirmPinController.text;
+
+                      if (old.isEmpty || newPin.isEmpty || confirm.isEmpty) {
+                        setDialogState(
+                          () => error = 'Bitte alle Felder ausfüllen.',
+                        );
+                        return;
+                      }
+                      if (newPin.length < 4 || newPin.length > 6) {
+                        setDialogState(
+                          () => error = 'Neuer PIN muss 4–6 Ziffern haben.',
+                        );
+                        return;
+                      }
+                      if (newPin != confirm) {
+                        setDialogState(
+                          () => error = 'PINs stimmen nicht überein.',
+                        );
+                        return;
+                      }
+
+                      setDialogState(() {
+                        loading = true;
+                        error = null;
+                      });
+
+                      try {
+                        final user = ref.read(authStateChangesProvider).value;
+                        if (user == null) throw Exception('Nicht eingeloggt');
+
+                        final changed = await ref
+                            .read(pinRepositoryProvider)
+                            .changePin(user.uid, old, newPin);
+
+                        if (!changed) {
+                          setDialogState(() {
+                            error = 'Aktueller PIN ist falsch.';
+                            loading = false;
+                          });
+                          return;
+                        }
+
+                        if (context.mounted) {
+                          Navigator.of(context).pop();
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('PIN erfolgreich geändert ✓'),
+                              backgroundColor: Colors.green,
+                            ),
+                          );
+                        }
+                      } catch (e) {
+                        setDialogState(() {
+                          error = 'Fehler: $e';
+                          loading = false;
+                        });
+                      }
+                    },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.deepPurple,
+                foregroundColor: Colors.white,
+              ),
+              child: loading
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Text('Speichern'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPinField({
+    required TextEditingController controller,
+    required String label,
+    String? errorText,
+  }) {
+    return TextField(
+      controller: controller,
+      obscureText: true,
+      keyboardType: TextInputType.number,
+      maxLength: 6,
+      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+      decoration: InputDecoration(
+        labelText: label,
+        prefixIcon: const Icon(Icons.pin),
+        border: const OutlineInputBorder(),
+        errorText: errorText,
+      ),
+    );
+  }
+
   /// Schritt 1: Bestätigungs-Dialog zeigen
   Future<void> _confirmDeleteAccount(BuildContext context) async {
     final confirmed = await showDialog<bool>(
@@ -72,7 +427,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
 
     if (confirmed == true && mounted) {
-      await _askPasswordAndDelete(context);
+      // ignore: use_build_context_synchronously – mounted guard is correct here
+      await _askPasswordAndDelete(this.context);
     }
   }
 
@@ -295,7 +651,7 @@ class _DeleteAccountDialogState extends State<_DeleteAccountDialog> {
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.red,
             foregroundColor: Colors.white,
-            disabledBackgroundColor: Colors.red.withOpacity(0.3),
+            disabledBackgroundColor: Colors.red.withValues(alpha: 0.3),
           ),
           child: const Text('Weiter'),
         ),
