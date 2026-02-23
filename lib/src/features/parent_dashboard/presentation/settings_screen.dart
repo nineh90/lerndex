@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../../auth/data/auth_repository.dart';
 import '../../auth/data/profile_repository.dart';
 import '../../auth/presentation/login_screen.dart';
+import '../../../../main.dart'; // für accountDeletionInProgressProvider
 
 /// Einstellungsbereich im Elterndashboard
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -46,10 +47,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
             trailing: _isDeletingAccount
                 ? const SizedBox(
-              width: 20,
-              height: 20,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            )
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
                 : const Icon(Icons.chevron_right),
             onTap: _isDeletingAccount
                 ? null
@@ -71,7 +72,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
 
     if (confirmed == true && mounted) {
-      // Schritt 2: Passwort zur Re-Authentifizierung abfragen
       await _askPasswordAndDelete(context);
     }
   }
@@ -86,8 +86,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       barrierDismissible: false,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          shape:
-          RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
           title: const Text('Passwort bestätigen'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
@@ -106,9 +107,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   border: const OutlineInputBorder(),
                   suffixIcon: IconButton(
                     icon: Icon(
-                        obscure ? Icons.visibility : Icons.visibility_off),
-                    onPressed: () =>
-                        setDialogState(() => obscure = !obscure),
+                      obscure ? Icons.visibility : Icons.visibility_off,
+                    ),
+                    onPressed: () => setDialogState(() => obscure = !obscure),
                   ),
                 ),
               ),
@@ -120,8 +121,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               child: const Text('Abbrechen'),
             ),
             ElevatedButton(
-              onPressed: () =>
-                  Navigator.pop(context, passwordController.text),
+              onPressed: () => Navigator.pop(context, passwordController.text),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.red,
                 foregroundColor: Colors.white,
@@ -132,8 +132,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         ),
       ),
     );
-
-    passwordController.dispose();
 
     if (password == null || password.isEmpty) return;
     if (!mounted) return;
@@ -151,32 +149,35 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         throw Exception('Kein Benutzer angemeldet.');
       }
 
-      // Re-Authentifizierung – Firebase verlangt das vor user.delete()
       final credential = EmailAuthProvider.credential(
         email: user.email!,
         password: password,
       );
       await user.reauthenticateWithCredential(credential);
 
-      // Alle Firestore-Daten löschen
-      await ref.read(profileRepositoryProvider).deleteAllUserData();
+      // Referenzen cachen
+      final profileRepo = ref.read(profileRepositoryProvider);
 
-      // Firebase Auth Account löschen
-      await ref.read(authRepositoryProvider).deleteAccount();
+      // Firestore-Daten löschen
+      await profileRepo.deleteAllUserData();
 
-      // Stack komplett leeren und zum Login navigieren
+      // Flag setzen damit MyApp nicht auf authStateChanges reagiert
+      ref.read(accountDeletionInProgressProvider.notifier).state = true;
+
+      // Auth-Account löschen
+      await FirebaseAuth.instance.currentUser?.delete();
+
+      // Zum Übergangs-Screen navigieren und ALLES aus dem Stack werfen
       if (mounted) {
         Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (_) => const LoginScreen()),
-              (route) => false,
+          MaterialPageRoute(builder: (_) => const AccountDeletedScreen()),
+          (route) => false,
         );
       }
-
-      // authStateChanges emittiert null → App navigiert automatisch zum Login
-
     } on FirebaseAuthException catch (e) {
       if (!mounted) return;
       setState(() => _isDeletingAccount = false);
+      ref.read(accountDeletionInProgressProvider.notifier).state = false;
 
       String message;
       if (e.code == 'wrong-password' || e.code == 'invalid-credential') {
@@ -193,6 +194,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _isDeletingAccount = false);
+      ref.read(accountDeletionInProgressProvider.notifier).state = false;
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Fehler beim Löschen: $e'),
@@ -270,8 +273,7 @@ class _DeleteAccountDialogState extends State<_DeleteAccountDialog> {
               Checkbox(
                 value: _understood,
                 activeColor: Colors.red,
-                onChanged: (val) =>
-                    setState(() => _understood = val ?? false),
+                onChanged: (val) => setState(() => _understood = val ?? false),
               ),
               const Expanded(
                 child: Text(
