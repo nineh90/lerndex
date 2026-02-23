@@ -4,31 +4,74 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../auth/domain/child_model.dart';
 import '../../auth/data/auth_repository.dart';
-import '../../../ai/firebase_ai_service.dart';
-import '../../tutor/presentation/tutor_provider.dart';
+import '../../generated_tasks/data/generated_task_models.dart';
+import '../../generated_tasks/data/generated_task_repository.dart';
+import '../../generated_tasks/data/firebase_ai_service_improved.dart';
+import '../../student_dashboard/presentation/student_dashboard_screen.dart'
+    show getSubjectsForChild, SubjectConfig;
 
 /// 📸 KI-AUFGABENGENERATOR FÜR ELTERN
 ///
-/// Eltern können Fotos von Schulaufgaben hochladen
-/// → KI analysiert sie
-/// → KI erstellt personalisierte Übungen im gleichen Stil
+/// - Dynamische Fächer basierend auf Kind (Klasse + Schulform)
+/// - Foto von Schulaufgabe → KI generiert Multiple-Choice-Übungen
+/// - Auto-Save direkt nach Generierung → sofort in "Freigeben" sichtbar
 
-class AITaskGeneratorScreen extends ConsumerStatefulWidget {
+class ImprovedAITaskGeneratorScreen extends ConsumerStatefulWidget {
   final ChildModel child;
 
-  const AITaskGeneratorScreen({super.key, required this.child});
+  const ImprovedAITaskGeneratorScreen({super.key, required this.child});
 
   @override
-  ConsumerState<AITaskGeneratorScreen> createState() => _AITaskGeneratorScreenState();
+  ConsumerState<ImprovedAITaskGeneratorScreen> createState() =>
+      _ImprovedAITaskGeneratorScreenState();
 }
 
-class _AITaskGeneratorScreenState extends ConsumerState<AITaskGeneratorScreen> {
+class _ImprovedAITaskGeneratorScreenState
+    extends ConsumerState<ImprovedAITaskGeneratorScreen> {
+
+  Subject? _selectedSubject;
   File? _selectedImage;
   bool _isGenerating = false;
-  GeneratedTaskResult? _result;
+  List<GeneratedQuestion>? _generatedQuestions;
+  String? _errorMessage;
   int _numberOfTasks = 5;
 
   final ImagePicker _picker = ImagePicker();
+
+  // ---------------------------------------------------------------------------
+  // Dynamische Fächerliste – identisch zu getSubjectsForChild im Schüler-Dashboard
+  // ---------------------------------------------------------------------------
+
+  List<Subject> _getAvailableSubjects() {
+    final configs = getSubjectsForChild(widget.child);
+
+    const stringToSubject = {
+      'Mathe': Subject.mathe,
+      'Deutsch': Subject.deutsch,
+      'Englisch': Subject.englisch,
+      'Sachkunde': Subject.sachkunde,
+    };
+
+    final result = <Subject>[];
+    final seen = <Subject>{};
+
+    for (final config in configs) {
+      final s = stringToSubject[config.subject];
+      if (s != null && !seen.contains(s)) {
+        result.add(s);
+        seen.add(s);
+      }
+    }
+
+    // Fallback: Alle 4 wenn Mapping leer (z.B. nur Biologie/Physik/Geschichte)
+    return result.isEmpty
+        ? [Subject.mathe, Subject.deutsch, Subject.englisch, Subject.sachkunde]
+        : result;
+  }
+
+  // ---------------------------------------------------------------------------
+  // BUILD
+  // ---------------------------------------------------------------------------
 
   @override
   Widget build(BuildContext context) {
@@ -48,27 +91,43 @@ class _AITaskGeneratorScreenState extends ConsumerState<AITaskGeneratorScreen> {
             _buildInfoCard(),
             const SizedBox(height: 24),
 
-            // Bild-Auswahl
-            if (_selectedImage == null) ...[
-              _buildImagePicker(),
-            ] else ...[
-              _buildImagePreview(),
-              const SizedBox(height: 16),
-              _buildTaskCountSelector(),
-              const SizedBox(height: 24),
-              _buildGenerateButton(),
+            // Schritt 1: Fach auswählen (dynamisch)
+            _buildSubjectSelector(),
+            const SizedBox(height: 24),
+
+            // Schritt 2: Bild (nur wenn Fach gewählt)
+            if (_selectedSubject != null) ...[
+              if (_selectedImage == null) ...[
+                _buildImagePicker(),
+              ] else ...[
+                _buildImagePreview(),
+                const SizedBox(height: 16),
+                _buildTaskCountSelector(),
+                const SizedBox(height: 24),
+                _buildGenerateButton(),
+              ],
             ],
 
             // Ergebnis
-            if (_result != null) ...[
+            if (_generatedQuestions != null) ...[
               const SizedBox(height: 32),
               _buildResults(),
+            ],
+
+            // Fehler
+            if (_errorMessage != null) ...[
+              const SizedBox(height: 16),
+              _buildErrorCard(),
             ],
           ],
         ),
       ),
     );
   }
+
+  // ---------------------------------------------------------------------------
+  // INFO CARD
+  // ---------------------------------------------------------------------------
 
   Widget _buildInfoCard() {
     return Container(
@@ -90,14 +149,15 @@ class _AITaskGeneratorScreenState extends ConsumerState<AITaskGeneratorScreen> {
                   color: Colors.deepPurple,
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Icon(Icons.auto_awesome, color: Colors.white, size: 28),
+                child: const Icon(Icons.auto_awesome,
+                    color: Colors.white, size: 28),
               ),
               const SizedBox(width: 16),
-              const Expanded(
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
+                    const Text(
                       'KI-Aufgabengenerator',
                       style: TextStyle(
                         fontSize: 18,
@@ -105,10 +165,10 @@ class _AITaskGeneratorScreenState extends ConsumerState<AITaskGeneratorScreen> {
                         color: Colors.black87,
                       ),
                     ),
-                    SizedBox(height: 4),
+                    const SizedBox(height: 4),
                     Text(
-                      'Schulstoff aus der Schule direkt in die App',
-                      style: TextStyle(
+                      'Klasse ${widget.child.grade} · ${widget.child.schoolType}',
+                      style: const TextStyle(
                         fontSize: 13,
                         color: Colors.black54,
                       ),
@@ -121,34 +181,115 @@ class _AITaskGeneratorScreenState extends ConsumerState<AITaskGeneratorScreen> {
           const SizedBox(height: 16),
           const Divider(),
           const SizedBox(height: 12),
-          _InfoRow(
-            icon: Icons.photo_camera,
-            text: 'Foto von Hausaufgaben/Arbeitsblättern machen',
-          ),
+          _InfoRow(icon: Icons.subject, text: 'Passendes Fach auswählen'),
           const SizedBox(height: 8),
           _InfoRow(
-            icon: Icons.psychology,
-            text: 'KI analysiert Thema, Stil & Schwierigkeit',
-          ),
+              icon: Icons.photo_camera,
+              text: 'Foto von Hausaufgaben/Arbeitsblättern machen'),
           const SizedBox(height: 8),
           _InfoRow(
-            icon: Icons.create,
-            text: 'Ähnliche Übungen werden automatisch erstellt',
-          ),
+              icon: Icons.psychology,
+              text: 'KI erstellt ähnliche Multiple-Choice-Übungen'),
           const SizedBox(height: 8),
           _InfoRow(
-            icon: Icons.school,
-            text: 'Perfekt abgestimmt auf ${widget.child.name}',
-          ),
+              icon: Icons.check_circle,
+              text: 'Aufgaben sofort in "Freigeben" sichtbar'),
         ],
       ),
     );
   }
 
+  // ---------------------------------------------------------------------------
+  // FACH-SELEKTOR (dynamisch, passend zum Kind)
+  // ---------------------------------------------------------------------------
+
+  Widget _buildSubjectSelector() {
+    final availableSubjects = _getAvailableSubjects();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Fach auswählen',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 12),
+        Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          children: availableSubjects.map((subject) {
+            final isSelected = _selectedSubject == subject;
+            return GestureDetector(
+              onTap: () {
+                setState(() {
+                  _selectedSubject = subject;
+                  _selectedImage = null;
+                  _generatedQuestions = null;
+                  _errorMessage = null;
+                });
+              },
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 18, vertical: 11),
+                decoration: BoxDecoration(
+                  color: isSelected ? Colors.deepPurple : Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: isSelected
+                        ? Colors.deepPurple
+                        : Colors.grey.shade300,
+                    width: 2,
+                  ),
+                  boxShadow: isSelected
+                      ? [
+                    BoxShadow(
+                      color: Colors.deepPurple.withOpacity(0.25),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    )
+                  ]
+                      : [],
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      _getSubjectIcon(subject),
+                      size: 20,
+                      color: isSelected
+                          ? Colors.white
+                          : Colors.grey.shade700,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      subject.displayName,
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        color: isSelected
+                            ? Colors.white
+                            : Colors.grey.shade800,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+      ],
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // BILD-AUSWAHL
+  // ---------------------------------------------------------------------------
+
   Widget _buildImagePicker() {
     return Column(
       children: [
-        const SizedBox(height: 16),
+        const SizedBox(height: 8),
 
         // Kamera-Button
         SizedBox(
@@ -170,11 +311,8 @@ class _AITaskGeneratorScreenState extends ConsumerState<AITaskGeneratorScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(
-                    Icons.camera_alt,
-                    size: 64,
-                    color: Colors.deepPurple.shade300,
-                  ),
+                  Icon(Icons.camera_alt,
+                      size: 64, color: Colors.deepPurple.shade300),
                   const SizedBox(height: 12),
                   Text(
                     'Foto aufnehmen',
@@ -188,9 +326,7 @@ class _AITaskGeneratorScreenState extends ConsumerState<AITaskGeneratorScreen> {
                   Text(
                     'Schulaufgabe fotografieren',
                     style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.deepPurple.shade400,
-                    ),
+                        fontSize: 14, color: Colors.deepPurple.shade400),
                   ),
                 ],
               ),
@@ -211,15 +347,14 @@ class _AITaskGeneratorScreenState extends ConsumerState<AITaskGeneratorScreen> {
               decoration: BoxDecoration(
                 color: Colors.blue.shade50,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: Colors.blue.shade200,
-                  width: 2,
-                ),
+                border:
+                Border.all(color: Colors.blue.shade200, width: 2),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.photo_library, size: 40, color: Colors.blue.shade400),
+                  Icon(Icons.photo_library,
+                      size: 40, color: Colors.blue.shade400),
                   const SizedBox(width: 16),
                   Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -236,9 +371,7 @@ class _AITaskGeneratorScreenState extends ConsumerState<AITaskGeneratorScreen> {
                       Text(
                         'Vorhandenes Foto auswählen',
                         style: TextStyle(
-                          fontSize: 13,
-                          color: Colors.blue.shade400,
-                        ),
+                            fontSize: 13, color: Colors.blue.shade400),
                       ),
                     ],
                   ),
@@ -257,13 +390,9 @@ class _AITaskGeneratorScreenState extends ConsumerState<AITaskGeneratorScreen> {
       children: [
         const Text(
           'Ausgewähltes Foto',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-          ),
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 12),
-
         Stack(
           children: [
             ClipRRect(
@@ -274,18 +403,15 @@ class _AITaskGeneratorScreenState extends ConsumerState<AITaskGeneratorScreen> {
                 fit: BoxFit.cover,
               ),
             ),
-
-            // Entfernen-Button
             Positioned(
               top: 8,
               right: 8,
               child: IconButton(
-                onPressed: () {
-                  setState(() {
-                    _selectedImage = null;
-                    _result = null;
-                  });
-                },
+                onPressed: () => setState(() {
+                  _selectedImage = null;
+                  _generatedQuestions = null;
+                  _errorMessage = null;
+                }),
                 icon: const Icon(Icons.close),
                 style: IconButton.styleFrom(
                   backgroundColor: Colors.black54,
@@ -298,6 +424,10 @@ class _AITaskGeneratorScreenState extends ConsumerState<AITaskGeneratorScreen> {
       ],
     );
   }
+
+  // ---------------------------------------------------------------------------
+  // ANZAHL-SELEKTOR
+  // ---------------------------------------------------------------------------
 
   Widget _buildTaskCountSelector() {
     return Container(
@@ -312,13 +442,9 @@ class _AITaskGeneratorScreenState extends ConsumerState<AITaskGeneratorScreen> {
         children: [
           const Text(
             'Anzahl Aufgaben',
-            style: TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.bold,
-            ),
+            style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 12),
-
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -330,7 +456,6 @@ class _AITaskGeneratorScreenState extends ConsumerState<AITaskGeneratorScreen> {
                 iconSize: 32,
                 color: Colors.deepPurple,
               ),
-
               Text(
                 '$_numberOfTasks Aufgaben',
                 style: const TextStyle(
@@ -339,7 +464,6 @@ class _AITaskGeneratorScreenState extends ConsumerState<AITaskGeneratorScreen> {
                   color: Colors.deepPurple,
                 ),
               ),
-
               IconButton(
                 onPressed: _numberOfTasks < 10
                     ? () => setState(() => _numberOfTasks++)
@@ -350,14 +474,10 @@ class _AITaskGeneratorScreenState extends ConsumerState<AITaskGeneratorScreen> {
               ),
             ],
           ),
-
           const SizedBox(height: 8),
           Text(
             'Empfohlen: 5 Aufgaben',
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.grey.shade600,
-            ),
+            style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
             textAlign: TextAlign.center,
           ),
         ],
@@ -365,25 +485,33 @@ class _AITaskGeneratorScreenState extends ConsumerState<AITaskGeneratorScreen> {
     );
   }
 
+  // ---------------------------------------------------------------------------
+  // GENERIER-BUTTON
+  // ---------------------------------------------------------------------------
+
   Widget _buildGenerateButton() {
     return SizedBox(
       width: double.infinity,
       height: 56,
       child: ElevatedButton.icon(
-        onPressed: _isGenerating ? null : _generateTasks,
+        onPressed: _isGenerating ? null : _generateAndSave,
         icon: _isGenerating
             ? const SizedBox(
           width: 20,
           height: 20,
           child: CircularProgressIndicator(
             strokeWidth: 2,
-            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+            valueColor:
+            AlwaysStoppedAnimation<Color>(Colors.white),
           ),
         )
             : const Icon(Icons.auto_awesome, size: 24),
         label: Text(
-          _isGenerating ? 'KI generiert Aufgaben...' : 'Aufgaben generieren',
-          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          _isGenerating
+              ? 'KI generiert Aufgaben...'
+              : 'Aufgaben generieren',
+          style:
+          const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.deepPurple,
@@ -397,43 +525,12 @@ class _AITaskGeneratorScreenState extends ConsumerState<AITaskGeneratorScreen> {
     );
   }
 
+  // ---------------------------------------------------------------------------
+  // ERGEBNIS
+  // ---------------------------------------------------------------------------
+
   Widget _buildResults() {
-    if (!_result!.success) {
-      return Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: Colors.red.shade50,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.red.shade200),
-        ),
-        child: Row(
-          children: [
-            Icon(Icons.error_outline, color: Colors.red.shade700, size: 32),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Fehler beim Generieren',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.red.shade900,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    _result!.errorMessage ?? 'Unbekannter Fehler',
-                    style: TextStyle(color: Colors.red.shade700),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      );
-    }
+    final questions = _generatedQuestions!;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -456,19 +553,17 @@ class _AITaskGeneratorScreenState extends ConsumerState<AITaskGeneratorScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      '✨ Aufgaben generiert!',
+                      '✨ Aufgaben generiert & gespeichert!',
                       style: TextStyle(
-                        fontSize: 20,
+                        fontSize: 18,
                         fontWeight: FontWeight.bold,
                         color: Colors.white,
                       ),
                     ),
                     Text(
-                      '${_result!.tasks.length} Übungen für ${widget.child.name}',
+                      '${questions.length} Übungen für ${widget.child.name} · Jetzt in "Freigeben" sichtbar',
                       style: const TextStyle(
-                        fontSize: 14,
-                        color: Colors.white,
-                      ),
+                          fontSize: 13, color: Colors.white),
                     ),
                   ],
                 ),
@@ -479,23 +574,16 @@ class _AITaskGeneratorScreenState extends ConsumerState<AITaskGeneratorScreen> {
 
         const SizedBox(height: 24),
 
-        // Aufgaben-Liste
         const Text(
-          'Generierte Aufgaben',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          ),
+          'Generierte Aufgaben (Vorschau)',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 12),
 
-        ...List.generate(_result!.tasks.length, (index) {
-          final task = _result!.tasks[index];
-          return _TaskCard(
-            task: task,
-            index: index + 1,
-          );
-        }),
+        ...questions.asMap().entries.map((entry) => _QuestionCard(
+          question: entry.value,
+          index: entry.key + 1,
+        )),
 
         const SizedBox(height: 24),
 
@@ -504,28 +592,29 @@ class _AITaskGeneratorScreenState extends ConsumerState<AITaskGeneratorScreen> {
           children: [
             Expanded(
               child: OutlinedButton.icon(
-                onPressed: _shareAsQuiz,
-                icon: const Icon(Icons.school),
-                label: const Text('Als Quiz teilen'),
+                onPressed: () => setState(() {
+                  _selectedImage = null;
+                  _generatedQuestions = null;
+                  _errorMessage = null;
+                }),
+                icon: const Icon(Icons.refresh),
+                label: const Text('Neu generieren'),
                 style: OutlinedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 12),
-                  side: const BorderSide(color: Colors.deepPurple, width: 2),
+                  side:
+                  const BorderSide(color: Colors.deepPurple, width: 2),
                 ),
               ),
             ),
             const SizedBox(width: 12),
             Expanded(
               child: ElevatedButton.icon(
-                onPressed: () {
-                  setState(() {
-                    _selectedImage = null;
-                    _result = null;
-                  });
-                },
-                icon: const Icon(Icons.refresh),
-                label: const Text('Neu generieren'),
+                onPressed: () => Navigator.pop(context),
+                icon: const Icon(Icons.check),
+                label: const Text('Fertig'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.deepPurple,
+                  foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 12),
                 ),
               ),
@@ -536,6 +625,47 @@ class _AITaskGeneratorScreenState extends ConsumerState<AITaskGeneratorScreen> {
     );
   }
 
+  Widget _buildErrorCard() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.red.shade50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.red.shade200),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.error_outline, color: Colors.red.shade700, size: 32),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Fehler beim Generieren',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.red.shade900,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  _errorMessage!,
+                  style: TextStyle(color: Colors.red.shade700),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // ACTIONS
+  // ---------------------------------------------------------------------------
+
   Future<void> _pickImage(ImageSource source) async {
     try {
       final XFile? image = await _picker.pickImage(
@@ -544,15 +674,13 @@ class _AITaskGeneratorScreenState extends ConsumerState<AITaskGeneratorScreen> {
         maxHeight: 1080,
         imageQuality: 85,
       );
-
       if (image != null) {
         setState(() {
           _selectedImage = File(image.path);
+          _errorMessage = null;
         });
       }
     } catch (e) {
-      print('Fehler beim Bild-Auswahl: $e');
-
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -564,42 +692,59 @@ class _AITaskGeneratorScreenState extends ConsumerState<AITaskGeneratorScreen> {
     }
   }
 
-  Future<void> _generateTasks() async {
-    if (_selectedImage == null) return;
+  /// Generiert Aufgaben mit KI und speichert sie DIREKT in Firestore.
+  /// Ein Schritt – kein separater Speichern-Button nötig.
+  Future<void> _generateAndSave() async {
+    if (_selectedImage == null || _selectedSubject == null) return;
 
-    setState(() => _isGenerating = true);
+    setState(() {
+      _isGenerating = true;
+      _errorMessage = null;
+    });
 
     try {
-      final aiService = ref.read(firebaseAIServiceProvider);
+      final authRepo = ref.read(authRepositoryProvider);
+      final userId = authRepo.currentUser?.uid;
+      if (userId == null) throw Exception('Nicht angemeldet');
 
+      // 1. KI generiert Multiple-Choice-Aufgaben
+      final aiService = ref.read(improvedFirebaseAIServiceProvider);
       final result = await aiService.generateTasksFromImage(
         imageFile: _selectedImage!,
         child: widget.child,
-        userId: ref.read(authStateChangesProvider).value!.uid,
+        userId: userId,
+        subject: _selectedSubject!,
         numberOfTasks: _numberOfTasks,
       );
 
-      if (mounted) {
-        setState(() {
-          _result = result;
-          _isGenerating = false;
-        });
+      if (!result.success || result.questions.isEmpty) {
+        throw Exception(
+            result.errorMessage ?? 'KI hat keine Aufgaben generiert');
+      }
 
-        if (result.success) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('✅ Aufgaben erfolgreich generiert!'),
-              backgroundColor: Colors.green,
-            ),
-          );
-        }
+      // 2. Direkt in Firestore speichern → sofort in Freigabe-Liste
+      final repository = ref.read(generatedTaskRepositoryProvider);
+      await repository.saveGeneratedBatch(
+        userId: userId,
+        childId: widget.child.id,
+        childName: widget.child.name,
+        subject: _selectedSubject!,
+        imageUrl: result.imageUrl ?? '',
+        questions: result.questions,
+      );
+
+      if (mounted) {
+        setState(() => _generatedQuestions = result.questions);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('✅ Aufgaben generiert & gespeichert!'),
+            backgroundColor: Colors.green,
+          ),
+        );
       }
     } catch (e) {
-      print('Fehler beim Generieren: $e');
-
       if (mounted) {
-        setState(() => _isGenerating = false);
-
+        setState(() => _errorMessage = e.toString());
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Fehler: $e'),
@@ -608,23 +753,32 @@ class _AITaskGeneratorScreenState extends ConsumerState<AITaskGeneratorScreen> {
           ),
         );
       }
+    } finally {
+      if (mounted) setState(() => _isGenerating = false);
     }
   }
 
-  void _shareAsQuiz() {
-    // TODO: Quiz aus generierten Aufgaben erstellen
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Funktion kommt bald: Aufgaben als Quiz speichern'),
-        backgroundColor: Colors.orange,
-      ),
-    );
+  // ---------------------------------------------------------------------------
+  // HILFSMETHODEN
+  // ---------------------------------------------------------------------------
+
+  IconData _getSubjectIcon(Subject subject) {
+    switch (subject) {
+      case Subject.mathe:
+        return Icons.calculate;
+      case Subject.deutsch:
+        return Icons.menu_book;
+      case Subject.englisch:
+        return Icons.language;
+      case Subject.sachkunde:
+        return Icons.science;
+    }
   }
 }
 
-// ============================================================================
+// =============================================================================
 // WIDGETS
-// ============================================================================
+// =============================================================================
 
 class _InfoRow extends StatelessWidget {
   final IconData icon;
@@ -641,10 +795,7 @@ class _InfoRow extends StatelessWidget {
         Expanded(
           child: Text(
             text,
-            style: const TextStyle(
-              fontSize: 13,
-              color: Colors.black87,
-            ),
+            style: const TextStyle(fontSize: 13, color: Colors.black87),
           ),
         ),
       ],
@@ -652,18 +803,19 @@ class _InfoRow extends StatelessWidget {
   }
 }
 
-class _TaskCard extends StatefulWidget {
-  final GeneratedTask task;
+/// Aufklappbare Multiple-Choice-Vorschau-Karte
+class _QuestionCard extends StatefulWidget {
+  final GeneratedQuestion question;
   final int index;
 
-  const _TaskCard({required this.task, required this.index});
+  const _QuestionCard({required this.question, required this.index});
 
   @override
-  State<_TaskCard> createState() => _TaskCardState();
+  State<_QuestionCard> createState() => _QuestionCardState();
 }
 
-class _TaskCardState extends State<_TaskCard> {
-  bool _showSolution = false;
+class _QuestionCardState extends State<_QuestionCard> {
+  bool _expanded = false;
 
   @override
   Widget build(BuildContext context) {
@@ -672,172 +824,204 @@ class _TaskCardState extends State<_TaskCard> {
       elevation: 2,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: _getDifficultyColor().withOpacity(0.3), width: 2),
+        side: BorderSide(
+            color: _getDifficultyColor().withOpacity(0.3), width: 2),
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header
-            Row(
-              children: [
-                Container(
-                  width: 32,
-                  height: 32,
-                  decoration: BoxDecoration(
-                    color: _getDifficultyColor(),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Center(
-                    child: Text(
-                      '${widget.index}',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
+      child: InkWell(
+        onTap: () => setState(() => _expanded = !_expanded),
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header
+              Row(
+                children: [
+                  Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      color: _getDifficultyColor(),
+                      shape: BoxShape.circle,
                     ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        widget.task.topic,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey.shade600,
-                          fontWeight: FontWeight.w500,
+                    child: Center(
+                      child: Text(
+                        '${widget.index}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
                         ),
                       ),
-                      Row(
-                        children: [
-                          Icon(
-                            _getDifficultyIcon(),
-                            size: 16,
-                            color: _getDifficultyColor(),
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            _getDifficultyText(),
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: _getDifficultyColor(),
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 12),
-            const Divider(),
-            const SizedBox(height: 12),
-
-            // Aufgabe
-            Text(
-              widget.task.question,
-              style: const TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w500,
-                height: 1.4,
-              ),
-            ),
-
-            const SizedBox(height: 16),
-
-            // Lösung anzeigen/verstecken
-            InkWell(
-              onTap: () => setState(() => _showSolution = !_showSolution),
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                decoration: BoxDecoration(
-                  color: _showSolution
-                      ? Colors.green.shade50
-                      : Colors.grey.shade100,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: _showSolution
-                        ? Colors.green.shade200
-                        : Colors.grey.shade300,
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      _showSolution ? Icons.visibility_off : Icons.visibility,
-                      size: 20,
-                      color: _showSolution ? Colors.green.shade700 : Colors.grey.shade600,
                     ),
-                    const SizedBox(width: 8),
-                    Text(
-                      _showSolution ? 'Lösung ausblenden' : 'Lösung anzeigen',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: _showSolution ? Colors.green.shade700 : Colors.grey.shade700,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-            // Lösung
-            if (_showSolution) ...[
-              const SizedBox(height: 12),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.green.shade50,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.green.shade200),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Icon(Icons.check_circle, size: 20, color: Colors.green.shade700),
-                        const SizedBox(width: 8),
                         Text(
-                          'Musterlösung',
+                          widget.question.topic,
                           style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.green.shade700,
+                            fontSize: 12,
+                            color: Colors.grey.shade600,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        Row(
+                          children: [
+                            Icon(_getDifficultyIcon(),
+                                size: 16,
+                                color: _getDifficultyColor()),
+                            const SizedBox(width: 4),
+                            Text(
+                              _getDifficultyText(),
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: _getDifficultyColor(),
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  Icon(
+                    _expanded
+                        ? Icons.keyboard_arrow_up
+                        : Icons.keyboard_arrow_down,
+                    color: Colors.grey,
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 12),
+              const Divider(),
+              const SizedBox(height: 8),
+
+              // Frage
+              Text(
+                widget.question.question,
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w500,
+                  height: 1.4,
+                ),
+              ),
+
+              // Antworten + Lösung (aufgeklappt)
+              if (_expanded) ...[
+                const SizedBox(height: 16),
+                ...widget.question.options.map((option) {
+                  final isCorrect =
+                      option == widget.question.correctAnswer;
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: isCorrect
+                          ? Colors.green.shade50
+                          : Colors.grey.shade50,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: isCorrect
+                            ? Colors.green.shade300
+                            : Colors.grey.shade200,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          isCorrect
+                              ? Icons.check_circle
+                              : Icons.radio_button_unchecked,
+                          size: 18,
+                          color: isCorrect
+                              ? Colors.green
+                              : Colors.grey.shade400,
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            option,
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: isCorrect
+                                  ? Colors.green.shade800
+                                  : Colors.grey.shade700,
+                              fontWeight: isCorrect
+                                  ? FontWeight.w600
+                                  : FontWeight.normal,
+                            ),
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      widget.task.solution,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        height: 1.4,
-                      ),
+                  );
+                }),
+                if (widget.question.solution != null &&
+                    widget.question.solution!.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: Colors.green.shade50,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.green.shade200),
                     ),
-                  ],
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(Icons.check_circle,
+                                size: 18,
+                                color: Colors.green.shade700),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Erklärung',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.green.shade700,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          widget.question.solution!,
+                          style: const TextStyle(
+                              fontSize: 14, height: 1.4),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ] else ...[
+                const SizedBox(height: 8),
+                Text(
+                  'Tippen zum Aufklappen · ${widget.question.options.length} Antwortmöglichkeiten',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey.shade500,
+                    fontStyle: FontStyle.italic,
+                  ),
                 ),
-              ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );
   }
 
   Color _getDifficultyColor() {
-    switch (widget.task.difficulty.toLowerCase()) {
+    switch (widget.question.difficulty.toLowerCase()) {
       case 'easy':
         return Colors.green;
       case 'medium':
@@ -850,7 +1034,7 @@ class _TaskCardState extends State<_TaskCard> {
   }
 
   IconData _getDifficultyIcon() {
-    switch (widget.task.difficulty.toLowerCase()) {
+    switch (widget.question.difficulty.toLowerCase()) {
       case 'easy':
         return Icons.trending_down;
       case 'medium':
@@ -863,7 +1047,7 @@ class _TaskCardState extends State<_TaskCard> {
   }
 
   String _getDifficultyText() {
-    switch (widget.task.difficulty.toLowerCase()) {
+    switch (widget.question.difficulty.toLowerCase()) {
       case 'easy':
         return 'Leicht';
       case 'medium':
