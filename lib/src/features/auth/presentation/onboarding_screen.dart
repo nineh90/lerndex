@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:lerndex1/src/features/auth/presentation/family_dashboard_screen.dart';
 import '../data/auth_repository.dart';
 import '../../parent_dashboard/data/pin_repository.dart';
 import '../../parent_dashboard/presentation/pin_input_dialog.dart';
@@ -92,9 +93,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       await ref.read(pinRepositoryProvider).setPin(user.uid, pin);
 
       // 2. Name + onboardingCompleted setzen
-      await ref.read(authRepositoryProvider).completeOnboarding(
-        displayName: _nameController.text.trim(),
-      );
+      await ref
+          .read(authRepositoryProvider)
+          .completeOnboarding(displayName: _nameController.text.trim());
 
       if (!mounted) return;
 
@@ -107,8 +108,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text(e.toString()), backgroundColor: Colors.red),
+          SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
         );
       }
     } finally {
@@ -132,8 +132,10 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
             children: [
               // Progress Indicator
               Padding(
-                padding:
-                const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 16,
+                ),
                 child: Row(
                   children: List.generate(3, (i) {
                     return Expanded(
@@ -178,7 +180,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   Future<void> _openDashboard() async {
     if (!mounted) return;
 
-    // PIN-Abfrage direkt starten — PIN wurde gerade im Onboarding gesetzt
+    // PIN-Abfrage
     final verified = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
@@ -186,10 +188,12 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     );
 
     if (verified == true && mounted) {
-      // Stack komplett leeren und zum Eltern-Dashboard navigieren
+      // Zurück zur Root-Navigation → main.dart zeigt jetzt FamilyDashboardScreen
+      // (weil onboardingCompleted = true)
+      // Von dort aus wird das ParentDashboardScreen normal gepusht
       Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => const ParentDashboardScreen()),
-            (route) => false,
+        MaterialPageRoute(builder: (_) => const FamilyDashboardScreen()),
+        (route) => false,
       );
     }
   }
@@ -209,9 +213,10 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           const Text(
             'Wie heißt du?',
             style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                color: Colors.white),
+              fontSize: 28,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
           ),
           const SizedBox(height: 8),
           const Text(
@@ -223,7 +228,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 
           Card(
             shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20)),
+              borderRadius: BorderRadius.circular(20),
+            ),
             elevation: 8,
             child: Padding(
               padding: const EdgeInsets.all(24),
@@ -237,7 +243,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                         labelText: 'Dein vollständiger Name',
                         prefixIcon: const Icon(Icons.person_outline),
                         border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12)),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
                       textCapitalization: TextCapitalization.words,
                       textInputAction: TextInputAction.done,
@@ -261,17 +268,25 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF6B21A8),
                           shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12)),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
                         child: const Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Text('Weiter',
-                                style: TextStyle(
-                                    fontSize: 16, color: Colors.white)),
+                            Text(
+                              'Weiter',
+                              style: TextStyle(
+                                fontSize: 16,
+                                color: Colors.white,
+                              ),
+                            ),
                             SizedBox(width: 8),
-                            Icon(Icons.arrow_forward,
-                                color: Colors.white, size: 18),
+                            Icon(
+                              Icons.arrow_forward,
+                              color: Colors.white,
+                              size: 18,
+                            ),
                           ],
                         ),
                       ),
@@ -301,9 +316,10 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           const Text(
             'Eltern-PIN erstellen',
             style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                color: Colors.white),
+              fontSize: 28,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
           ),
           const SizedBox(height: 8),
           const Text(
@@ -315,7 +331,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 
           Card(
             shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20)),
+              borderRadius: BorderRadius.circular(20),
+            ),
             elevation: 8,
             child: Padding(
               padding: const EdgeInsets.all(24),
@@ -330,18 +347,24 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                         color: const Color(0xFF6B21A8).withOpacity(0.08),
                         borderRadius: BorderRadius.circular(10),
                         border: Border.all(
-                            color: const Color(0xFF6B21A8).withOpacity(0.2)),
+                          color: const Color(0xFF6B21A8).withOpacity(0.2),
+                        ),
                       ),
                       child: const Row(
                         children: [
-                          Icon(Icons.info_outline,
-                              color: Color(0xFF6B21A8), size: 20),
+                          Icon(
+                            Icons.info_outline,
+                            color: Color(0xFF6B21A8),
+                            size: 20,
+                          ),
                           SizedBox(width: 10),
                           Expanded(
                             child: Text(
                               'Merke dir diesen PIN gut! Du brauchst ihn um Fortschritte, Chats und Einstellungen deiner Kinder einzusehen.',
                               style: TextStyle(
-                                  fontSize: 13, color: Color(0xFF6B21A8)),
+                                fontSize: 13,
+                                color: Color(0xFF6B21A8),
+                              ),
                             ),
                           ),
                         ],
@@ -356,15 +379,14 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                         labelText: 'PIN (4-6 Ziffern)',
                         prefixIcon: const Icon(Icons.pin_outlined),
                         border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12)),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                         errorText: _pinError,
                       ),
                       keyboardType: TextInputType.number,
                       obscureText: true,
                       maxLength: 6,
-                      inputFormatters: [
-                        FilteringTextInputFormatter.digitsOnly
-                      ],
+                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                       textInputAction: TextInputAction.next,
                       validator: (v) {
                         if (v == null || v.length < 4) {
@@ -382,14 +404,13 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                         labelText: 'PIN bestätigen',
                         prefixIcon: const Icon(Icons.check_circle_outline),
                         border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12)),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
                       keyboardType: TextInputType.number,
                       obscureText: true,
                       maxLength: 6,
-                      inputFormatters: [
-                        FilteringTextInputFormatter.digitsOnly
-                      ],
+                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                       textInputAction: TextInputAction.done,
                       onFieldSubmitted: (_) => _finishOnboarding(),
                       validator: (v) {
@@ -409,27 +430,36 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF6B21A8),
                           shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12)),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
                         child: _isLoading
                             ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                              color: Colors.white, strokeWidth: 2),
-                        )
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2,
+                                ),
+                              )
                             : const Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text('PIN speichern & weiter',
-                                style: TextStyle(
-                                    fontSize: 16,
-                                    color: Colors.white)),
-                            SizedBox(width: 8),
-                            Icon(Icons.arrow_forward,
-                                color: Colors.white, size: 18),
-                          ],
-                        ),
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text(
+                                    'PIN speichern & weiter',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                  SizedBox(width: 8),
+                                  Icon(
+                                    Icons.arrow_forward,
+                                    color: Colors.white,
+                                    size: 18,
+                                  ),
+                                ],
+                              ),
                       ),
                     ),
                   ],
@@ -470,9 +500,10 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
             'Herzlich willkommen,\n$firstName! 🎉',
             textAlign: TextAlign.center,
             style: const TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                color: Colors.white),
+              fontSize: 28,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
           ),
           const SizedBox(height: 16),
           const Text(
@@ -490,14 +521,16 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16)),
+                  borderRadius: BorderRadius.circular(16),
+                ),
               ),
               child: const Text(
                 'Los geht\'s! 🚀',
                 style: TextStyle(
-                    fontSize: 18,
-                    color: Color(0xFF6B21A8),
-                    fontWeight: FontWeight.bold),
+                  fontSize: 18,
+                  color: Color(0xFF6B21A8),
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
           ),
