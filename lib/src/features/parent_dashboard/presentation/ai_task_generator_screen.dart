@@ -8,7 +8,7 @@ import '../../generated_tasks/data/generated_task_models.dart';
 import '../../generated_tasks/data/generated_task_repository.dart';
 import '../../generated_tasks/data/firebase_ai_service_improved.dart';
 import '../../student_dashboard/presentation/student_dashboard_screen.dart'
-    show getSubjectsForChild, SubjectConfig;
+    show getSubjectsForChild;
 
 /// 📸 KI-AUFGABENGENERATOR FÜR ELTERN
 ///
@@ -28,7 +28,6 @@ class ImprovedAITaskGeneratorScreen extends ConsumerStatefulWidget {
 
 class _ImprovedAITaskGeneratorScreenState
     extends ConsumerState<ImprovedAITaskGeneratorScreen> {
-
   Subject? _selectedSubject;
   File? _selectedImage;
   bool _isGenerating = false;
@@ -149,8 +148,11 @@ class _ImprovedAITaskGeneratorScreenState
                   color: Colors.deepPurple,
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Icon(Icons.auto_awesome,
-                    color: Colors.white, size: 28),
+                child: const Icon(
+                  Icons.auto_awesome,
+                  color: Colors.white,
+                  size: 28,
+                ),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -181,19 +183,22 @@ class _ImprovedAITaskGeneratorScreenState
           const SizedBox(height: 16),
           const Divider(),
           const SizedBox(height: 12),
-          _InfoRow(icon: Icons.subject, text: 'Passendes Fach auswählen'),
+          const _InfoRow(icon: Icons.subject, text: 'Passendes Fach auswählen'),
           const SizedBox(height: 8),
-          _InfoRow(
-              icon: Icons.photo_camera,
-              text: 'Foto von Hausaufgaben/Arbeitsblättern machen'),
+          const _InfoRow(
+            icon: Icons.photo_camera,
+            text: 'Foto von Hausaufgaben/Arbeitsblättern machen',
+          ),
           const SizedBox(height: 8),
-          _InfoRow(
-              icon: Icons.psychology,
-              text: 'KI erstellt ähnliche Multiple-Choice-Übungen'),
+          const _InfoRow(
+            icon: Icons.psychology,
+            text: 'KI erstellt ähnliche Multiple-Choice-Übungen',
+          ),
           const SizedBox(height: 8),
-          _InfoRow(
-              icon: Icons.check_circle,
-              text: 'Aufgaben sofort in "Freigeben" sichtbar'),
+          const _InfoRow(
+            icon: Icons.check_circle,
+            text: 'Aufgaben sofort in "Freigeben" sichtbar',
+          ),
         ],
       ),
     );
@@ -231,7 +236,9 @@ class _ImprovedAITaskGeneratorScreenState
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 180),
                 padding: const EdgeInsets.symmetric(
-                    horizontal: 18, vertical: 11),
+                  horizontal: 18,
+                  vertical: 11,
+                ),
                 decoration: BoxDecoration(
                   color: isSelected ? Colors.deepPurple : Colors.white,
                   borderRadius: BorderRadius.circular(12),
@@ -243,12 +250,12 @@ class _ImprovedAITaskGeneratorScreenState
                   ),
                   boxShadow: isSelected
                       ? [
-                    BoxShadow(
-                      color: Colors.deepPurple.withOpacity(0.25),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    )
-                  ]
+                          BoxShadow(
+                            color: Colors.deepPurple.withValues(alpha: 0.25),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ]
                       : [],
                 ),
                 child: Row(
@@ -257,9 +264,7 @@ class _ImprovedAITaskGeneratorScreenState
                     Icon(
                       _getSubjectIcon(subject),
                       size: 20,
-                      color: isSelected
-                          ? Colors.white
-                          : Colors.grey.shade700,
+                      color: isSelected ? Colors.white : Colors.grey.shade700,
                     ),
                     const SizedBox(width: 8),
                     Text(
@@ -267,9 +272,7 @@ class _ImprovedAITaskGeneratorScreenState
                       style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.bold,
-                        color: isSelected
-                            ? Colors.white
-                            : Colors.grey.shade800,
+                        color: isSelected ? Colors.white : Colors.grey.shade800,
                       ),
                     ),
                   ],
@@ -311,8 +314,11 @@ class _ImprovedAITaskGeneratorScreenState
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.camera_alt,
-                      size: 64, color: Colors.deepPurple.shade300),
+                  Icon(
+                    Icons.camera_alt,
+                    size: 64,
+                    color: Colors.deepPurple.shade300,
+                  ),
                   const SizedBox(height: 12),
                   Text(
                     'Foto aufnehmen',
@@ -326,7 +332,9 @@ class _ImprovedAITaskGeneratorScreenState
                   Text(
                     'Schulaufgabe fotografieren',
                     style: TextStyle(
-                        fontSize: 14, color: Colors.deepPurple.shade400),
+                      fontSize: 14,
+                      color: Colors.deepPurple.shade400,
+                    ),
                   ),
                 ],
               ),
@@ -347,14 +355,16 @@ class _ImprovedAITaskGeneratorScreenState
               decoration: BoxDecoration(
                 color: Colors.blue.shade50,
                 borderRadius: BorderRadius.circular(16),
-                border:
-                Border.all(color: Colors.blue.shade200, width: 2),
+                border: Border.all(color: Colors.blue.shade200, width: 2),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.photo_library,
-                      size: 40, color: Colors.blue.shade400),
+                  Icon(
+                    Icons.photo_library,
+                    size: 40,
+                    color: Colors.blue.shade400,
+                  ),
                   const SizedBox(width: 16),
                   Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -371,7 +381,9 @@ class _ImprovedAITaskGeneratorScreenState
                       Text(
                         'Vorhandenes Foto auswählen',
                         style: TextStyle(
-                            fontSize: 13, color: Colors.blue.shade400),
+                          fontSize: 13,
+                          color: Colors.blue.shade400,
+                        ),
                       ),
                     ],
                   ),
@@ -497,21 +509,17 @@ class _ImprovedAITaskGeneratorScreenState
         onPressed: _isGenerating ? null : _generateAndSave,
         icon: _isGenerating
             ? const SizedBox(
-          width: 20,
-          height: 20,
-          child: CircularProgressIndicator(
-            strokeWidth: 2,
-            valueColor:
-            AlwaysStoppedAnimation<Color>(Colors.white),
-          ),
-        )
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                ),
+              )
             : const Icon(Icons.auto_awesome, size: 24),
         label: Text(
-          _isGenerating
-              ? 'KI generiert Aufgaben...'
-              : 'Aufgaben generieren',
-          style:
-          const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          _isGenerating ? 'KI generiert Aufgaben...' : 'Aufgaben generieren',
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.deepPurple,
@@ -562,8 +570,7 @@ class _ImprovedAITaskGeneratorScreenState
                     ),
                     Text(
                       '${questions.length} Übungen für ${widget.child.name} · Jetzt in "Freigeben" sichtbar',
-                      style: const TextStyle(
-                          fontSize: 13, color: Colors.white),
+                      style: const TextStyle(fontSize: 13, color: Colors.white),
                     ),
                   ],
                 ),
@@ -580,10 +587,9 @@ class _ImprovedAITaskGeneratorScreenState
         ),
         const SizedBox(height: 12),
 
-        ...questions.asMap().entries.map((entry) => _QuestionCard(
-          question: entry.value,
-          index: entry.key + 1,
-        )),
+        ...questions.asMap().entries.map(
+          (entry) => _QuestionCard(question: entry.value, index: entry.key + 1),
+        ),
 
         const SizedBox(height: 24),
 
@@ -601,8 +607,7 @@ class _ImprovedAITaskGeneratorScreenState
                 label: const Text('Neu generieren'),
                 style: OutlinedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 12),
-                  side:
-                  const BorderSide(color: Colors.deepPurple, width: 2),
+                  side: const BorderSide(color: Colors.deepPurple, width: 2),
                 ),
               ),
             ),
@@ -719,7 +724,8 @@ class _ImprovedAITaskGeneratorScreenState
 
       if (!result.success || result.questions.isEmpty) {
         throw Exception(
-            result.errorMessage ?? 'KI hat keine Aufgaben generiert');
+          result.errorMessage ?? 'KI hat keine Aufgaben generiert',
+        );
       }
 
       // 2. Direkt in Firestore speichern → sofort in Freigabe-Liste
@@ -825,7 +831,9 @@ class _QuestionCardState extends State<_QuestionCard> {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
         side: BorderSide(
-            color: _getDifficultyColor().withOpacity(0.3), width: 2),
+          color: _getDifficultyColor().withValues(alpha: 0.3),
+          width: 2,
+        ),
       ),
       child: InkWell(
         onTap: () => setState(() => _expanded = !_expanded),
@@ -871,9 +879,11 @@ class _QuestionCardState extends State<_QuestionCard> {
                         ),
                         Row(
                           children: [
-                            Icon(_getDifficultyIcon(),
-                                size: 16,
-                                color: _getDifficultyColor()),
+                            Icon(
+                              _getDifficultyIcon(),
+                              size: 16,
+                              color: _getDifficultyColor(),
+                            ),
                             const SizedBox(width: 4),
                             Text(
                               _getDifficultyText(),
@@ -915,12 +925,13 @@ class _QuestionCardState extends State<_QuestionCard> {
               if (_expanded) ...[
                 const SizedBox(height: 16),
                 ...widget.question.options.map((option) {
-                  final isCorrect =
-                      option == widget.question.correctAnswer;
+                  final isCorrect = option == widget.question.correctAnswer;
                   return Container(
                     margin: const EdgeInsets.only(bottom: 8),
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 10),
+                      horizontal: 12,
+                      vertical: 10,
+                    ),
                     decoration: BoxDecoration(
                       color: isCorrect
                           ? Colors.green.shade50
@@ -978,9 +989,11 @@ class _QuestionCardState extends State<_QuestionCard> {
                       children: [
                         Row(
                           children: [
-                            Icon(Icons.check_circle,
-                                size: 18,
-                                color: Colors.green.shade700),
+                            Icon(
+                              Icons.check_circle,
+                              size: 18,
+                              color: Colors.green.shade700,
+                            ),
                             const SizedBox(width: 8),
                             Text(
                               'Erklärung',
@@ -995,8 +1008,7 @@ class _QuestionCardState extends State<_QuestionCard> {
                         const SizedBox(height: 6),
                         Text(
                           widget.question.solution!,
-                          style: const TextStyle(
-                              fontSize: 14, height: 1.4),
+                          style: const TextStyle(fontSize: 14, height: 1.4),
                         ),
                       ],
                     ),

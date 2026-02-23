@@ -2,13 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/auth_repository.dart';
 import '../data/profile_repository.dart';
-import '../domain/child_model.dart';
 import 'active_child_provider.dart';
 import '../../parent_dashboard/data/pin_repository.dart';
 import '../../parent_dashboard/presentation/pin_setup_dialog.dart';
 import '../../parent_dashboard/presentation/pin_input_dialog.dart';
 import '../../parent_dashboard/presentation/parent_dashboard_screen.dart';
-import '../../student_dashboard/presentation/student_dashboard_screen.dart';
 
 // ============================================================================
 // PARENT ADMIN DASHBOARD (Kind-Auswahl)
@@ -44,13 +42,16 @@ class FamilyDashboardScreen extends ConsumerWidget {
                 children: [
                   const Icon(Icons.child_care, size: 80, color: Colors.grey),
                   const SizedBox(height: 16),
-                  const Text('Noch keine Kinder angelegt',
-                      style: TextStyle(fontSize: 18, color: Colors.grey)),
+                  const Text(
+                    'Noch keine Kinder angelegt',
+                    style: TextStyle(fontSize: 18, color: Colors.grey),
+                  ),
                   const SizedBox(height: 8),
                   const Text(
-                      'Öffne das Eltern-Dashboard um ein Kind hinzuzufügen',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: Colors.grey)),
+                    'Öffne das Eltern-Dashboard um ein Kind hinzuzufügen',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.grey),
+                  ),
                   const SizedBox(height: 24),
                   ElevatedButton.icon(
                     onPressed: () => _openParentDashboard(context, ref),
@@ -74,7 +75,8 @@ class FamilyDashboardScreen extends ConsumerWidget {
               return Card(
                 margin: const EdgeInsets.only(bottom: 12),
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16)),
+                  borderRadius: BorderRadius.circular(16),
+                ),
                 child: ListTile(
                   contentPadding: const EdgeInsets.all(16),
                   leading: CircleAvatar(
@@ -83,14 +85,19 @@ class FamilyDashboardScreen extends ConsumerWidget {
                     child: Text(
                       child.name[0].toUpperCase(),
                       style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold),
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
-                  title: Text(child.name,
-                      style: const TextStyle(
-                          fontWeight: FontWeight.bold, fontSize: 16)),
+                  title: Text(
+                    child.name,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
                   subtitle: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -99,13 +106,19 @@ class FamilyDashboardScreen extends ConsumerWidget {
                       const SizedBox(height: 4),
                       Row(
                         children: [
-                          const Icon(Icons.stars,
-                              size: 16, color: Colors.amber),
+                          const Icon(
+                            Icons.stars,
+                            size: 16,
+                            color: Colors.amber,
+                          ),
                           const SizedBox(width: 4),
                           Text('${child.stars}'),
                           const SizedBox(width: 16),
-                          const Icon(Icons.emoji_events,
-                              size: 16, color: Colors.orange),
+                          const Icon(
+                            Icons.emoji_events,
+                            size: 16,
+                            color: Colors.orange,
+                          ),
                           const SizedBox(width: 4),
                           Text('Level ${child.level}'),
                         ],
@@ -117,17 +130,14 @@ class FamilyDashboardScreen extends ConsumerWidget {
                     child: ElevatedButton(
                       onPressed: () {
                         ref.read(activeChildProvider.notifier).select(child);
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => const StudentDashboardScreen(),
-                          ),
-                        );
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.green,
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 6, vertical: 4),
+                          horizontal: 6,
+                          vertical: 4,
+                        ),
                         minimumSize: const Size(0, 32),
                       ),
                       child: const Row(
@@ -151,13 +161,13 @@ class FamilyDashboardScreen extends ConsumerWidget {
     );
   }
 
-  Future<void> _openParentDashboard(
-      BuildContext context, WidgetRef ref) async {
+  Future<void> _openParentDashboard(BuildContext context, WidgetRef ref) async {
     final user = ref.read(authStateChangesProvider).value;
     if (user == null) return;
 
-    final hasPin =
-    await ref.read(pinRepositoryProvider).hasPinSet(user.uid);
+    final hasPin = await ref.read(pinRepositoryProvider).hasPinSet(user.uid);
+
+    if (!context.mounted) return;
 
     if (!hasPin) {
       final created = await showDialog<bool>(
@@ -167,6 +177,8 @@ class FamilyDashboardScreen extends ConsumerWidget {
       );
       if (created != true) return;
     }
+
+    if (!context.mounted) return;
 
     final verified = await showDialog<bool>(
       context: context,
