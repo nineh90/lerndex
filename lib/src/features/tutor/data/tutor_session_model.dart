@@ -143,15 +143,15 @@ class TutorSession {
   // in eine gemeinsame ContentAnalyzer-Klasse konsolidieren.
   static String? detectContentFlag(String text) {
     final q = text.toLowerCase().trim();
-
     // ── 🚨 CRITICAL: Bedenkliche Inhalte ─────────────────────────────────────
     // Gewalt
     if (q.contains('töten') || q.contains('umbringen') ||
         q.contains('ermorden') || q.contains('morden') ||
         q.contains('angreifen') || q.contains('schlagen') ||
-        q.contains('prügeln') || q.contains('verletzen') &&
-        q.contains('absicht') || q.contains('waffe') ||
-        q.contains('messer') && q.contains('person') ||
+        q.contains('prügeln') ||
+        (q.contains('verletzen') && q.contains('absicht')) ||
+        q.contains('waffe') ||
+        (q.contains('messer') && q.contains('person')) ||
         q.contains('pistole') || q.contains('schuss') ||
         q.contains('bombe') || q.contains('sprengen')) {
       return 'critical';
@@ -176,10 +176,9 @@ class TutorSession {
     // Drogen / gefährliche Substanzen
     if (q.contains('drogen') || q.contains('kokain') ||
         q.contains('heroin') || q.contains('crystal') ||
-        q.contains('cannabis') && q.contains('kaufen') ||
-        q.contains('kiffen') && q.contains('wie') ||
-        q.contains('alkohol') && q.contains('trinken') &&
-            q.contains('wie viel')) {
+        (q.contains('cannabis') && q.contains('kaufen')) ||
+        (q.contains('kiffen') && q.contains('wie')) ||
+        (q.contains('alkohol') && q.contains('trinken') && q.contains('wie viel'))) {
       return 'critical';
     }
 

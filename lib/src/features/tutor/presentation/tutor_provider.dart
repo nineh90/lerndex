@@ -265,20 +265,30 @@ class TutorNotifier extends StateNotifier<List<ChatMessage>> {
         final sessionData = sessionDoc.data();
         final hasFirstQuestion = sessionData?['firstQuestion'] != null;
 
+        final updates = <String, dynamic>{};
+
+        // Erste Frage: Thema erkennen
         if (!hasFirstQuestion) {
           final topic = detectTopic(message.text);
-          final contentFlag = TutorSession.detectContentFlag(message.text);
+          updates['firstQuestion'] = message.text;
+          updates['detectedTopic'] = topic;
+          print('🎯 Thema erkannt: $topic (aus: "${message.text}")');
+        }
 
-          final updates = <String, dynamic>{
-            'firstQuestion': message.text,
-            'detectedTopic': topic,
-          };
-
-          if (contentFlag != null) {
-            updates['contentFlag'] = contentFlag;
-            print('🚩 Content-Flag erkannt: $contentFlag (aus: "${message.text}")');
+        // Content-Flag: JEDE User-Nachricht prüfen (nicht nur die erste!)
+        final newFlag = TutorSession.detectContentFlag(message.text);
+        if (newFlag != null) {
+          final currentFlag = sessionData?['contentFlag'] as String?;
+          // Upgrade-Logik: critical schlägt off_topic, nie downgraden
+          final shouldUpdate = currentFlag == null ||
+              (newFlag == 'critical' && currentFlag != 'critical');
+          if (shouldUpdate) {
+            updates['contentFlag'] = newFlag;
+            print('🚩 Content-Flag gesetzt/upgraded: $newFlag (aus: "${message.text}")');
           }
+        }
 
+        if (updates.isNotEmpty) {
           await _firestore
               .collection('users')
               .doc(_userId)
@@ -287,8 +297,6 @@ class TutorNotifier extends StateNotifier<List<ChatMessage>> {
               .collection('tutor_sessions')
               .doc(sessionId)
               .update(updates);
-
-          print('🎯 Thema erkannt: $topic (aus: "${message.text}")');
         }
       }
     } catch (e) {

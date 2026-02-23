@@ -8,6 +8,7 @@ import '../../parent_dashboard/data/pin_repository.dart';
 import '../../parent_dashboard/presentation/pin_setup_dialog.dart';
 import '../../parent_dashboard/presentation/pin_input_dialog.dart';
 import '../../parent_dashboard/presentation/parent_dashboard_screen.dart';
+import '../../student_dashboard/presentation/student_dashboard_screen.dart';
 
 // ============================================================================
 // PARENT ADMIN DASHBOARD (Kind-Auswahl)
@@ -114,8 +115,14 @@ class FamilyDashboardScreen extends ConsumerWidget {
                   trailing: SizedBox(
                     width: 110,
                     child: ElevatedButton(
-                      onPressed: () =>
-                          ref.read(activeChildProvider.notifier).select(child),
+                      onPressed: () {
+                        ref.read(activeChildProvider.notifier).select(child);
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const StudentDashboardScreen(),
+                          ),
+                        );
+                      },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.green,
                         foregroundColor: Colors.white,
