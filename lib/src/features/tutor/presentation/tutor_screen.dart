@@ -10,6 +10,8 @@ import '../../learning_time/learning_time_tracker.dart';
 import '../../rewards/data/xp_service.dart';
 import '../../rewards/data/reward_service.dart';
 
+const int _kMaxXpPerSession = 20;
+
 /// Chat-Screen mit dem KI-Tutor
 class TutorScreen extends ConsumerStatefulWidget {
   const TutorScreen({super.key});
@@ -22,6 +24,7 @@ class _TutorScreenState extends ConsumerState<TutorScreen> {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   LearningTimeTracker? _timeTracker;
+  OverlayEntry? _xpOverlay;
 
   @override
   void initState() {
@@ -31,20 +34,34 @@ class _TutorScreenState extends ConsumerState<TutorScreen> {
     final user = ref.read(authStateChangesProvider).value;
 
     if (child != null && user != null) {
-      _timeTracker = LearningTimeTracker(
-        userId: user.uid,
-        childId: child.id,
-      );
+      _timeTracker = LearningTimeTracker(userId: user.uid, childId: child.id);
       _timeTracker!.startTracking();
       print('⏱️ Tutor: Zeit-Tracking gestartet');
     }
   }
 
+  void _showXpAnimation(int xpGained) {
+    _xpOverlay?.remove();
+    _xpOverlay = OverlayEntry(
+      builder: (context) => _XpGainOverlay(
+        xpGained: xpGained,
+        onDone: () {
+          _xpOverlay?.remove();
+          _xpOverlay = null;
+        },
+      ),
+    );
+    Overlay.of(context).insert(_xpOverlay!);
+  }
+
   @override
   void dispose() async {
+    _xpOverlay?.remove();
     if (_timeTracker != null) {
       _timeTracker!.stopTracking();
-      print('⏹️ Tutor: Stoppe Zeit-Tracking bei ${_timeTracker!.trackedSeconds} Sekunden');
+      print(
+        '⏹️ Tutor: Stoppe Zeit-Tracking bei ${_timeTracker!.trackedSeconds} Sekunden',
+      );
 
       try {
         await _timeTracker!.saveTime();
@@ -77,7 +94,9 @@ class _TutorScreenState extends ConsumerState<TutorScreen> {
             );
 
             if (unlockedRewards.isNotEmpty) {
-              print('🎁 Tutor: ${unlockedRewards.length} Belohnungen freigeschaltet!');
+              print(
+                '🎁 Tutor: ${unlockedRewards.length} Belohnungen freigeschaltet!',
+              );
             }
           }
         }
@@ -122,10 +141,19 @@ class _TutorScreenState extends ConsumerState<TutorScreen> {
     final child = ref.watch(activeChildProvider);
 
     if (child == null) {
-      return const Scaffold(
-        body: Center(child: Text('Kein Kind ausgewählt')),
-      );
+      return const Scaffold(body: Center(child: Text('Kein Kind ausgewählt')));
     }
+
+    // ✅ XP-Gain Listener → Animation triggern
+    ref.listen(tutorXpGainProvider(child.id), (previous, gained) {
+      if (gained > 0) {
+        _showXpAnimation(gained);
+        // Reset damit nächstes Event wieder feuert
+        Future.microtask(() {
+          ref.read(tutorXpGainProvider(child.id).notifier).state = 0;
+        });
+      }
+    });
 
     return Scaffold(
       appBar: AppBar(
@@ -141,7 +169,8 @@ class _TutorScreenState extends ConsumerState<TutorScreen> {
                 builder: (context) => AlertDialog(
                   title: const Text('Chat löschen?'),
                   content: const Text(
-                      'Möchtest du den Chat wirklich löschen und neu starten?'),
+                    'Möchtest du den Chat wirklich löschen und neu starten?',
+                  ),
                   actions: [
                     TextButton(
                       onPressed: () => Navigator.pop(context),
@@ -167,69 +196,50 @@ class _TutorScreenState extends ConsumerState<TutorScreen> {
       ),
       body: Column(
         children: [
-          // Info-Banner
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(12),
-            color: Colors.blue.shade50,
-            child: Row(
-              children: [
-                const Icon(Icons.info_outline, color: Colors.blue, size: 20),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'Frag mich alles über Mathe, Deutsch, Englisch und mehr!',
-                    style: TextStyle(
-                      color: Colors.blue.shade800,
-                      fontSize: 13,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
+          // Reaktiver XP-Banner mit Fortschrittsbalken
+          _TutorXpBanner(childId: child.id),
 
           // Chat-Nachrichten
           Expanded(
             child: messages.isEmpty
                 ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.smart_toy,
-                    size: 80,
-                    color: Colors.deepPurple.shade200,
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Hallo ${child.name}! 👋',
-                    style: const TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.smart_toy,
+                          size: 80,
+                          color: Colors.deepPurple.shade200,
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Hallo ${child.name}! 👋',
+                          style: const TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        const Text(
+                          'Ich bin dein persönlicher Lernbegleiter.\nStell mir eine Frage!',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(color: Colors.grey),
+                        ),
+                      ],
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Ich bin dein persönlicher Lernbegleiter.\nStell mir eine Frage!',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: Colors.grey),
-                  ),
-                ],
-              ),
-            )
+                  )
                 : ListView.builder(
-              controller: _scrollController,
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-              itemCount: messages.length,
-              itemBuilder: (context, index) {
-                final message = messages[index];
-                return _MessageBubble(
-                  message: message,
-                  childName: child.name,
-                );
-              },
-            ),
+                    controller: _scrollController,
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                    itemCount: messages.length,
+                    itemBuilder: (context, index) {
+                      final message = messages[index];
+                      return _MessageBubble(
+                        message: message,
+                        childName: child.name,
+                      );
+                    },
+                  ),
           ),
 
           // ── Eingabe-Leiste ──────────────────────────────────────────────
@@ -306,6 +316,176 @@ class _TutorScreenState extends ConsumerState<TutorScreen> {
 }
 
 // ============================================================================
+// REAKTIVER XP-BANNER
+// ============================================================================
+
+class _TutorXpBanner extends ConsumerWidget {
+  final String childId;
+  const _TutorXpBanner({required this.childId});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final sessionXP = ref.watch(tutorSessionXpProvider(childId));
+    final remaining = (_kMaxXpPerSession - sessionXP).clamp(
+      0,
+      _kMaxXpPerSession,
+    );
+    final limitReached = remaining <= 0;
+    final progress = (sessionXP / _kMaxXpPerSession).clamp(0.0, 1.0);
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      color: limitReached ? Colors.orange.shade50 : Colors.purple.shade50,
+      child: Row(
+        children: [
+          const Text('⚡', style: TextStyle(fontSize: 16)),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      limitReached
+                          ? 'Session-Limit erreicht 🎉'
+                          : 'Hol dir noch $remaining XP – lern mit mir!',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: limitReached
+                            ? Colors.orange.shade800
+                            : Colors.purple.shade800,
+                      ),
+                    ),
+                    Text(
+                      '$sessionXP / $_kMaxXpPerSession XP',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.purple.shade600,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: TweenAnimationBuilder<double>(
+                    tween: Tween(begin: 0.0, end: progress),
+                    duration: const Duration(milliseconds: 400),
+                    curve: Curves.easeOut,
+                    builder: (_, value, __) => LinearProgressIndicator(
+                      value: value,
+                      minHeight: 5,
+                      backgroundColor: Colors.purple.shade100,
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        limitReached ? Colors.orange : Colors.deepPurple,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ============================================================================
+// +XP ANIMATIONS-OVERLAY
+// ============================================================================
+
+class _XpGainOverlay extends StatefulWidget {
+  final int xpGained;
+  final VoidCallback onDone;
+  const _XpGainOverlay({required this.xpGained, required this.onDone});
+
+  @override
+  State<_XpGainOverlay> createState() => _XpGainOverlayState();
+}
+
+class _XpGainOverlayState extends State<_XpGainOverlay>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _ctrl;
+  late Animation<double> _opacity;
+  late Animation<Offset> _slide;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    );
+    _opacity = TweenSequence([
+      TweenSequenceItem(tween: Tween(begin: 0.0, end: 1.0), weight: 20),
+      TweenSequenceItem(tween: Tween(begin: 1.0, end: 1.0), weight: 50),
+      TweenSequenceItem(tween: Tween(begin: 1.0, end: 0.0), weight: 30),
+    ]).animate(_ctrl);
+    _slide = Tween<Offset>(
+      begin: const Offset(0, 0),
+      end: const Offset(0, -0.6),
+    ).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOut));
+
+    _ctrl.forward().then((_) => widget.onDone());
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned(
+      top: MediaQuery.of(context).padding.top + kToolbarHeight + 60,
+      right: 20,
+      child: SlideTransition(
+        position: _slide,
+        child: FadeTransition(
+          opacity: _opacity,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.deepPurple,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.deepPurple.withOpacity(0.4),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('⚡', style: TextStyle(fontSize: 14)),
+                const SizedBox(width: 4),
+                Text(
+                  '+${widget.xpGained} XP',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 15,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ============================================================================
 // MESSAGE BUBBLE
 // ============================================================================
 
@@ -313,10 +493,7 @@ class _MessageBubble extends StatelessWidget {
   final ChatMessage message;
   final String childName;
 
-  const _MessageBubble({
-    required this.message,
-    required this.childName,
-  });
+  const _MessageBubble({required this.message, required this.childName});
 
   @override
   Widget build(BuildContext context) {
@@ -348,8 +525,9 @@ class _MessageBubble extends StatelessWidget {
                     height: 16,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
-                      valueColor:
-                      AlwaysStoppedAnimation<Color>(Colors.deepPurple),
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        Colors.deepPurple,
+                      ),
                     ),
                   ),
                   SizedBox(width: 10),
@@ -375,13 +553,11 @@ class _MessageBubble extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.end,
-        mainAxisAlignment:
-        isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+        mainAxisAlignment: isUser
+            ? MainAxisAlignment.end
+            : MainAxisAlignment.start,
         children: [
-          if (!isUser) ...[
-            _buildTutorAvatar(),
-            const SizedBox(width: 8),
-          ],
+          if (!isUser) ...[_buildTutorAvatar(), const SizedBox(width: 8)],
           Flexible(
             child: Container(
               constraints: BoxConstraints(
@@ -404,29 +580,32 @@ class _MessageBubble extends StatelessWidget {
                 ],
               ),
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 10,
+                ),
                 child: isUser
                     ? Text(
-                  message.text,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 15,
-                  ),
-                )
+                        message.text,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 15,
+                        ),
+                      )
                     : MarkdownBody(
-                  data: message.text,
-                  styleSheet: MarkdownStyleSheet(
-                    p: const TextStyle(fontSize: 15, color: Colors.black87),
-                    strong: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                ),
+                        data: message.text,
+                        styleSheet: MarkdownStyleSheet(
+                          p: const TextStyle(
+                            fontSize: 15,
+                            color: Colors.black87,
+                          ),
+                          strong: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ),
               ),
             ),
           ),
-          if (isUser) ...[
-            const SizedBox(width: 8),
-            _buildChildAvatar(),
-          ],
+          if (isUser) ...[const SizedBox(width: 8), _buildChildAvatar()],
         ],
       ),
     );
@@ -442,19 +621,15 @@ class _MessageBubble extends StatelessWidget {
           width: 36,
           height: 36,
           fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => const Icon(
-            Icons.school,
-            size: 20,
-            color: Colors.deepPurple,
-          ),
+          errorBuilder: (_, __, ___) =>
+              const Icon(Icons.school, size: 20, color: Colors.deepPurple),
         ),
       ),
     );
   }
 
   Widget _buildChildAvatar() {
-    final initial =
-    childName.isNotEmpty ? childName[0].toUpperCase() : '?';
+    final initial = childName.isNotEmpty ? childName[0].toUpperCase() : '?';
     return CircleAvatar(
       radius: 18,
       backgroundColor: Colors.deepPurple,

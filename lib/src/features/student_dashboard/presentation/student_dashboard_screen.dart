@@ -9,7 +9,6 @@ import '../../quiz/presentation/quiz_screen.dart';
 import '../../rewards/presentation/rewards_screen.dart';
 import '../../tutor/presentation/tutor_screen.dart';
 import '../../tutor/presentation/tutor_provider.dart';
-import '../../rewards/data/xp_service.dart';
 
 // ============================================================================
 // DYNAMISCHE FÄCHER-KONFIGURATION
@@ -188,108 +187,122 @@ class _StudentDashboardScreenState
     final activeChild = ref.watch(activeChildProvider);
     if (activeChild == null) return const SizedBox.shrink();
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFF5F3FF),
-      appBar: AppBar(
-        title: Text(_appBarTitle(activeChild.name)),
-        backgroundColor: Colors.deepPurple,
-        foregroundColor: Colors.white,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => ref.read(activeChildProvider.notifier).deselect(),
-          tooltip: 'Abmelden',
-        ),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 12),
-            child: GestureDetector(
-              onTap: () => _showAvatarSettings(context, activeChild),
-              child: CircleAvatar(
-                radius: 18,
-                backgroundColor: Colors.white24,
-                child: Text(
-                  activeChild.name[0].toUpperCase(),
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
+    return PopScope(
+      // System-Back abfangen wenn wir nicht auf Tab 0 sind
+      canPop: _currentTab == 0,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop && _currentTab != 0) {
+          setState(() => _currentTab = 0);
+        }
+      },
+      child: Scaffold(
+        backgroundColor: const Color(0xFFF5F3FF),
+        appBar: AppBar(
+          title: Text(_appBarTitle(activeChild.name)),
+          backgroundColor: Colors.deepPurple,
+          foregroundColor: Colors.white,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () {
+              if (_currentTab != 0) {
+                // In einem Tab → zurück zu Tab 0 (Home)
+                setState(() => _currentTab = 0);
+              } else {
+                // Auf Tab 0 → wirklich raus aus dem StudentDashboard
+                Navigator.of(context).pop();
+              }
+            },
+            tooltip: _currentTab != 0 ? 'Zurück zum Home' : 'Abmelden',
+          ),
+          actions: [
+            Padding(
+              padding: const EdgeInsets.only(right: 12),
+              child: GestureDetector(
+                onTap: () => _showAvatarSettings(context, activeChild),
+                child: CircleAvatar(
+                  radius: 18,
+                  backgroundColor: Colors.white24,
+                  child: Text(
+                    activeChild.name[0].toUpperCase(),
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
-        ],
-      ),
-      body: _buildBody(activeChild),
-      floatingActionButton: SizedBox(
-        width: 68,
-        height: 68,
-        child: FloatingActionButton(
-          heroTag: 'tutor_fab',
-          onPressed: () => _openTutor(context, activeChild),
-          backgroundColor: Colors.deepPurple.shade200,
-          elevation: 6,
-          shape: const CircleBorder(),
-          tooltip: 'KI-Tutor öffnen',
-          // ── GEÄNDERT: lerndex_logo.png statt Icons.smart_toy ──────────
-          child: ClipOval(
-            child: Image.asset(
-              'assets/images/lerndex_logo.png',
-              width: 55,
-              height: 55,
-              fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => const Icon(
-                Icons.school,
-                color: Colors.white,
-                size: 32,
+          ],
+        ),
+        body: _buildBody(activeChild),
+        floatingActionButton: SizedBox(
+          width: 68,
+          height: 68,
+          child: FloatingActionButton(
+            heroTag: 'tutor_fab',
+            onPressed: () => _openTutor(context, activeChild),
+            backgroundColor: Colors.deepPurple.shade200,
+            elevation: 6,
+            shape: const CircleBorder(),
+            tooltip: 'KI-Tutor öffnen',
+            // ── GEÄNDERT: lerndex_logo.png statt Icons.smart_toy ──────────
+            child: ClipOval(
+              child: Image.asset(
+                'assets/images/lerndex_logo.png',
+                width: 55,
+                height: 55,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) =>
+                    const Icon(Icons.school, color: Colors.white, size: 32),
               ),
             ),
+            // ─────────────────────────────────────────────────────────────
           ),
-          // ─────────────────────────────────────────────────────────────
         ),
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-      bottomNavigationBar: BottomAppBar(
-        shape: const CircularNotchedRectangle(),
-        notchMargin: 6,
-        color: Colors.white,
-        elevation: 8,
-        child: SizedBox(
-          height: 60,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _NavItem(
-                icon: Icons.home_outlined,
-                activeIcon: Icons.home,
-                label: 'Lernen',
-                selected: _currentTab == 0,
-                onTap: () => setState(() => _currentTab = 0),
-              ),
-              _NavItem(
-                icon: Icons.card_giftcard_outlined,
-                activeIcon: Icons.card_giftcard,
-                label: 'Belohnungen',
-                selected: _currentTab == 1,
-                onTap: () => setState(() => _currentTab = 1),
-              ),
-              const SizedBox(width: 60),
-              _NavItem(
-                icon: Icons.history_outlined,
-                activeIcon: Icons.history,
-                label: 'Verlauf',
-                selected: _currentTab == 2,
-                onTap: () => setState(() => _currentTab = 2),
-              ),
-              _NavItem(
-                icon: Icons.bar_chart_outlined,
-                activeIcon: Icons.bar_chart,
-                label: 'Statistik',
-                selected: _currentTab == 3,
-                onTap: () => setState(() => _currentTab = 3),
-              ),
-            ],
+        floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+        bottomNavigationBar: BottomAppBar(
+          shape: const CircularNotchedRectangle(),
+          notchMargin: 6,
+          color: Colors.white,
+          elevation: 8,
+          child: SizedBox(
+            height: 60,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _NavItem(
+                  icon: Icons.home_outlined,
+                  activeIcon: Icons.home,
+                  label: 'Lernen',
+                  selected: _currentTab == 0,
+                  onTap: () => setState(() => _currentTab = 0),
+                ),
+                _NavItem(
+                  icon: Icons.card_giftcard_outlined,
+                  activeIcon: Icons.card_giftcard,
+                  label: 'Belohnungen',
+                  selected: _currentTab == 1,
+                  onTap: () => setState(() => _currentTab = 1),
+                ),
+                const SizedBox(width: 60),
+                _NavItem(
+                  icon: Icons.history_outlined,
+                  activeIcon: Icons.history,
+                  label: 'Verlauf',
+                  selected: _currentTab == 2,
+                  onTap: () => setState(() => _currentTab = 2),
+                ),
+                _NavItem(
+                  icon: Icons.bar_chart_outlined,
+                  activeIcon: Icons.bar_chart,
+                  label: 'Statistik',
+                  selected: _currentTab == 3,
+                  onTap: () => setState(() => _currentTab = 3),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -390,8 +403,7 @@ class _NavItem extends StatelessWidget {
               style: TextStyle(
                 fontSize: 10,
                 color: selected ? Colors.deepPurple : Colors.grey,
-                fontWeight:
-                selected ? FontWeight.bold : FontWeight.normal,
+                fontWeight: selected ? FontWeight.bold : FontWeight.normal,
               ),
             ),
           ],
@@ -499,13 +511,20 @@ class _HomeTab extends ConsumerWidget {
 // HERO HEADER – nahtlos an AppBar, enthält Level/Sterne/XP
 // ============================================================================
 
-class _HeroHeader extends StatelessWidget {
+// ============================================================================
+// HERO HEADER – nahtlos an AppBar, enthält Level/Sterne/XP
+// Live via Firestore-Stream → updated sofort nach Tutor-Session
+// ============================================================================
+
+class _HeroHeader extends ConsumerWidget {
   final ChildModel child;
 
   const _HeroHeader({required this.child});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final user = ref.watch(authStateChangesProvider).value;
+
     return Container(
       width: double.infinity,
       decoration: const BoxDecoration(
@@ -520,56 +539,85 @@ class _HeroHeader extends StatelessWidget {
         ),
       ),
       padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
-      child: Column(
-        children: [
-          // Level & Sterne Badges
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              _HeaderBadge(emoji: '🏆', label: 'Level ${child.level}'),
-              _HeaderBadge(emoji: '⭐', label: '${child.stars} Sterne'),
-            ],
-          ),
-          const SizedBox(height: 18),
-          // XP-Fortschrittsbalken
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    '${child.xp} XP',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 13,
-                    ),
+      child: user == null
+          ? _buildContent(
+              child.level,
+              child.stars,
+              child.xp,
+              child.xpToNextLevel,
+            )
+          : StreamBuilder<DocumentSnapshot>(
+              stream: FirebaseFirestore.instance
+                  .collection('users')
+                  .doc(user.uid)
+                  .collection('children')
+                  .doc(child.id)
+                  .snapshots(),
+              builder: (context, snapshot) {
+                final data = snapshot.data?.data() as Map<String, dynamic>?;
+                final level = data?['level'] as int? ?? child.level;
+                final stars = data?['stars'] as int? ?? child.stars;
+                final xp = data?['xp'] as int? ?? child.xp;
+                final xpToNextLevel =
+                    data?['xpToNextLevel'] as int? ?? child.xpToNextLevel;
+                return _buildContent(level, stars, xp, xpToNextLevel);
+              },
+            ),
+    );
+  }
+
+  Widget _buildContent(int level, int stars, int xp, int xpToNextLevel) {
+    final progress = xpToNextLevel > 0
+        ? (xp / xpToNextLevel).clamp(0.0, 1.0)
+        : 0.0;
+    return Column(
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            _HeaderBadge(emoji: '🏆', label: 'Level $level'),
+            _HeaderBadge(emoji: '⭐', label: '$stars Sterne'),
+          ],
+        ),
+        const SizedBox(height: 18),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  '$xp XP',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
                   ),
-                  Text(
-                    'Bis Level ${child.level + 1}: ${child.xpToNextLevel} XP',
-                    style: const TextStyle(
-                      color: Colors.white70,
-                      fontSize: 12,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(10),
-                child: LinearProgressIndicator(
-                  value: child.xpProgress.clamp(0.0, 1.0),
+                ),
+                Text(
+                  'Bis Level ${level + 1}: $xpToNextLevel XP',
+                  style: const TextStyle(color: Colors.white70, fontSize: 12),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: TweenAnimationBuilder<double>(
+                tween: Tween(begin: 0.0, end: progress),
+                duration: const Duration(milliseconds: 500),
+                curve: Curves.easeOut,
+                builder: (_, value, __) => LinearProgressIndicator(
+                  value: value,
                   minHeight: 14,
                   backgroundColor: Colors.white24,
-                  valueColor:
-                  const AlwaysStoppedAnimation<Color>(Colors.amber),
+                  valueColor: const AlwaysStoppedAnimation<Color>(Colors.amber),
                 ),
               ),
-            ],
-          ),
-        ],
-      ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 }
@@ -633,9 +681,10 @@ class _PlayfulSubjectTileState extends State<_PlayfulSubjectTile>
       vsync: this,
       duration: const Duration(milliseconds: 100),
     );
-    _scaleAnim = Tween<double>(begin: 1.0, end: 0.94).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
+    _scaleAnim = Tween<double>(
+      begin: 1.0,
+      end: 0.94,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
   }
 
   @override
@@ -803,8 +852,11 @@ class _LiveLearningTimeCard extends ConsumerWidget {
                   children: [
                     Row(
                       children: [
-                        Icon(Icons.timer_outlined,
-                            size: 14, color: Colors.deepPurple.shade400),
+                        Icon(
+                          Icons.timer_outlined,
+                          size: 14,
+                          color: Colors.deepPurple.shade400,
+                        ),
                         const SizedBox(width: 4),
                         Text(
                           'Lernzeit gesamt',
@@ -818,12 +870,13 @@ class _LiveLearningTimeCard extends ConsumerWidget {
                           const SizedBox(width: 8),
                           Container(
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 6, vertical: 2),
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
                             decoration: BoxDecoration(
                               color: Colors.green.shade50,
                               borderRadius: BorderRadius.circular(8),
-                              border:
-                              Border.all(color: Colors.green.shade300),
+                              border: Border.all(color: Colors.green.shade300),
                             ),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
@@ -880,8 +933,11 @@ class _LiveLearningTimeCard extends ConsumerWidget {
                 children: [
                   Row(
                     children: [
-                      const Icon(Icons.local_fire_department,
-                          size: 14, color: Colors.orange),
+                      const Icon(
+                        Icons.local_fire_department,
+                        size: 14,
+                        color: Colors.orange,
+                      ),
                       const SizedBox(width: 4),
                       Text(
                         'Streak',
@@ -921,8 +977,11 @@ class _TimeBlock extends StatelessWidget {
   final String label;
   final bool small;
 
-  const _TimeBlock(
-      {required this.value, required this.label, this.small = false});
+  const _TimeBlock({
+    required this.value,
+    required this.label,
+    this.small = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -947,8 +1006,7 @@ class _TimeBlock extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 3),
-        Text(label,
-            style: TextStyle(fontSize: 9, color: Colors.grey[500])),
+        Text(label, style: TextStyle(fontSize: 9, color: Colors.grey[500])),
       ],
     );
   }
@@ -1013,8 +1071,11 @@ class _TutorHistoryTab extends ConsumerWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.chat_bubble_outline,
-                    size: 80, color: Colors.grey[300]),
+                Icon(
+                  Icons.chat_bubble_outline,
+                  size: 80,
+                  color: Colors.grey[300],
+                ),
                 const SizedBox(height: 16),
                 Text(
                   'Noch kein Verlauf',
@@ -1036,17 +1097,16 @@ class _TutorHistoryTab extends ConsumerWidget {
           itemBuilder: (context, index) {
             final doc = visibleDocs[index];
             final session = doc.data() as Map<String, dynamic>;
-            final startedAt =
-            (session['startedAt'] as Timestamp?)?.toDate();
-            final topic =
-                session['detectedTopic'] as String? ?? 'Allgemein';
+            final startedAt = (session['startedAt'] as Timestamp?)?.toDate();
+            final topic = session['detectedTopic'] as String? ?? 'Allgemein';
             final msgCount = session['messageCount'] as int? ?? 0;
             final status = session['status'] as String? ?? 'active';
 
             return Card(
               margin: const EdgeInsets.only(bottom: 12),
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14)),
+                borderRadius: BorderRadius.circular(14),
+              ),
               elevation: 2,
               child: InkWell(
                 borderRadius: BorderRadius.circular(14),
@@ -1072,8 +1132,11 @@ class _TutorHistoryTab extends ConsumerWidget {
                           color: _topicColor(topic).withOpacity(0.12),
                           borderRadius: BorderRadius.circular(10),
                         ),
-                        child: Icon(_topicIcon(topic),
-                            color: _topicColor(topic), size: 22),
+                        child: Icon(
+                          _topicIcon(topic),
+                          color: _topicColor(topic),
+                          size: 22,
+                        ),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
@@ -1094,7 +1157,9 @@ class _TutorHistoryTab extends ConsumerWidget {
                                   ? _formatDate(startedAt)
                                   : 'Datum unbekannt',
                               style: TextStyle(
-                                  fontSize: 12, color: Colors.grey[600]),
+                                fontSize: 12,
+                                color: Colors.grey[600],
+                              ),
                             ),
                           ],
                         ),
@@ -1102,13 +1167,19 @@ class _TutorHistoryTab extends ConsumerWidget {
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
-                          Text('$msgCount Nachrichten',
-                              style: TextStyle(
-                                  fontSize: 11, color: Colors.grey[600])),
+                          Text(
+                            '$msgCount Nachrichten',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: Colors.grey[600],
+                            ),
+                          ),
                           const SizedBox(height: 4),
                           Container(
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 3),
+                              horizontal: 8,
+                              vertical: 3,
+                            ),
                             decoration: BoxDecoration(
                               color: status == 'completed'
                                   ? Colors.green.shade50
@@ -1116,9 +1187,7 @@ class _TutorHistoryTab extends ConsumerWidget {
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text(
-                              status == 'completed'
-                                  ? 'Abgeschlossen'
-                                  : 'Aktiv',
+                              status == 'completed' ? 'Abgeschlossen' : 'Aktiv',
                               style: TextStyle(
                                 fontSize: 10,
                                 color: status == 'completed'
@@ -1224,7 +1293,9 @@ class _SessionDetailScreen extends StatelessWidget {
               Text(
                 '${startedAt!.day}.${startedAt!.month}.${startedAt!.year}',
                 style: const TextStyle(
-                    fontSize: 12, fontWeight: FontWeight.normal),
+                  fontSize: 12,
+                  fontWeight: FontWeight.normal,
+                ),
               ),
           ],
         ),
@@ -1260,19 +1331,20 @@ class _SessionDetailScreen extends StatelessWidget {
               final isUser = msg['isUser'] as bool? ?? false;
               final text = msg['text'] as String? ?? '';
               return Align(
-                alignment:
-                isUser ? Alignment.centerRight : Alignment.centerLeft,
+                alignment: isUser
+                    ? Alignment.centerRight
+                    : Alignment.centerLeft,
                 child: Container(
                   margin: const EdgeInsets.only(bottom: 8),
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 14, vertical: 10),
+                    horizontal: 14,
+                    vertical: 10,
+                  ),
                   constraints: BoxConstraints(
-                      maxWidth:
-                      MediaQuery.of(context).size.width * 0.75),
+                    maxWidth: MediaQuery.of(context).size.width * 0.75,
+                  ),
                   decoration: BoxDecoration(
-                    color: isUser
-                        ? Colors.deepPurple
-                        : Colors.grey.shade200,
+                    color: isUser ? Colors.deepPurple : Colors.grey.shade200,
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Text(
@@ -1336,39 +1408,45 @@ class _StatisticsTab extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const _SectionHeader(
-                  icon: Icons.emoji_events, title: 'Meine Erfolge'),
+                icon: Icons.emoji_events,
+                title: 'Meine Erfolge',
+              ),
               const SizedBox(height: 12),
               Row(
                 children: [
                   Expanded(
                     child: _StatCard(
-                        icon: Icons.star,
-                        color: Colors.amber,
-                        value: '$stars',
-                        label: 'Sterne'),
+                      icon: Icons.star,
+                      color: Colors.amber,
+                      value: '$stars',
+                      label: 'Sterne',
+                    ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: _StatCard(
-                        icon: Icons.emoji_events,
-                        color: Colors.deepPurple,
-                        value: 'Lvl $level',
-                        label: 'Level'),
+                      icon: Icons.emoji_events,
+                      color: Colors.deepPurple,
+                      value: 'Lvl $level',
+                      label: 'Level',
+                    ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: _StatCard(
-                        icon: Icons.bolt,
-                        color: Colors.orange,
-                        value: '$xp XP',
-                        label: 'Gesamt'),
+                      icon: Icons.bolt,
+                      color: Colors.orange,
+                      value: '$xp XP',
+                      label: 'Gesamt',
+                    ),
                   ),
                 ],
               ),
               const SizedBox(height: 24),
               const _SectionHeader(
-                  icon: Icons.local_fire_department,
-                  title: 'Lern-Streak'),
+                icon: Icons.local_fire_department,
+                title: 'Lern-Streak',
+              ),
               const SizedBox(height: 12),
               Container(
                 width: double.infinity,
@@ -1376,10 +1454,7 @@ class _StatisticsTab extends ConsumerWidget {
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: streak > 0
-                        ? [
-                      Colors.orange.shade400,
-                      Colors.deepOrange.shade600
-                    ]
+                        ? [Colors.orange.shade400, Colors.deepOrange.shade600]
                         : [Colors.grey.shade300, Colors.grey.shade400],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
@@ -1388,8 +1463,11 @@ class _StatisticsTab extends ConsumerWidget {
                 ),
                 child: Column(
                   children: [
-                    const Icon(Icons.local_fire_department,
-                        size: 48, color: Colors.white),
+                    const Icon(
+                      Icons.local_fire_department,
+                      size: 48,
+                      color: Colors.white,
+                    ),
                     const SizedBox(height: 8),
                     Text(
                       '$streak',
@@ -1399,16 +1477,16 @@ class _StatisticsTab extends ConsumerWidget {
                         color: Colors.white,
                       ),
                     ),
-                    const Text('Tage Lern-Streak',
-                        style:
-                        TextStyle(fontSize: 16, color: Colors.white)),
+                    const Text(
+                      'Tage Lern-Streak',
+                      style: TextStyle(fontSize: 16, color: Colors.white),
+                    ),
                     if (streak == 0)
                       const Padding(
                         padding: EdgeInsets.only(top: 8),
                         child: Text(
                           'Lerne heute, um deinen Streak zu starten!',
-                          style: TextStyle(
-                              fontSize: 12, color: Colors.white70),
+                          style: TextStyle(fontSize: 12, color: Colors.white70),
                           textAlign: TextAlign.center,
                         ),
                       ),
@@ -1416,13 +1494,13 @@ class _StatisticsTab extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: 24),
-              const _SectionHeader(
-                  icon: Icons.quiz, title: 'Quiz-Statistiken'),
+              const _SectionHeader(icon: Icons.quiz, title: 'Quiz-Statistiken'),
               const SizedBox(height: 12),
               Card(
                 elevation: 2,
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16)),
+                  borderRadius: BorderRadius.circular(16),
+                ),
                 child: Padding(
                   padding: const EdgeInsets.all(20),
                   child: Row(
@@ -1458,19 +1536,21 @@ class _StatisticsTab extends ConsumerWidget {
               Card(
                 elevation: 2,
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16)),
+                  borderRadius: BorderRadius.circular(16),
+                ),
                 child: Padding(
                   padding: const EdgeInsets.all(20),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(Icons.access_time,
-                          color: Colors.deepPurple, size: 28),
+                      const Icon(
+                        Icons.access_time,
+                        color: Colors.deepPurple,
+                        size: 28,
+                      ),
                       const SizedBox(width: 12),
                       Text(
-                        hours > 0
-                            ? '${hours}h ${minutes}min'
-                            : '${minutes}min',
+                        hours > 0 ? '${hours}h ${minutes}min' : '${minutes}min',
                         style: const TextStyle(
                           fontSize: 28,
                           fontWeight: FontWeight.bold,
@@ -1480,8 +1560,7 @@ class _StatisticsTab extends ConsumerWidget {
                       const SizedBox(width: 8),
                       Text(
                         'Gesamte Lernzeit',
-                        style: TextStyle(
-                            fontSize: 13, color: Colors.grey[600]),
+                        style: TextStyle(fontSize: 13, color: Colors.grey[600]),
                       ),
                     ],
                   ),
@@ -1526,13 +1605,15 @@ class _StatCard extends StatelessWidget {
         children: [
           Icon(icon, color: color, size: 24),
           const SizedBox(height: 6),
-          Text(value,
-              style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.bold,
-                  color: color)),
-          Text(label,
-              style: TextStyle(fontSize: 11, color: Colors.grey[600])),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+          ),
+          Text(label, style: TextStyle(fontSize: 11, color: Colors.grey[600])),
         ],
       ),
     );
@@ -1569,8 +1650,11 @@ class _InfoTile extends StatelessWidget {
   final String label;
   final String value;
 
-  const _InfoTile(
-      {required this.icon, required this.label, required this.value});
+  const _InfoTile({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1578,11 +1662,11 @@ class _InfoTile extends StatelessWidget {
       children: [
         Icon(icon, color: Colors.deepPurple, size: 22),
         const SizedBox(height: 6),
-        Text(value,
-            style: const TextStyle(
-                fontSize: 18, fontWeight: FontWeight.bold)),
-        Text(label,
-            style: TextStyle(fontSize: 11, color: Colors.grey[600])),
+        Text(
+          value,
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
+        Text(label, style: TextStyle(fontSize: 11, color: Colors.grey[600])),
       ],
     );
   }
@@ -1628,8 +1712,7 @@ class _AvatarSettingsSheet extends StatelessWidget {
           const SizedBox(height: 12),
           Text(
             child.name,
-            style: const TextStyle(
-                fontSize: 20, fontWeight: FontWeight.bold),
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
           Text(
             'Level ${child.level} · ${child.stars} ⭐',
@@ -1652,16 +1735,18 @@ class _AvatarSettingsSheet extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Avatar anpassen',
-                          style: TextStyle(fontWeight: FontWeight.bold)),
-                      Text('Folgt in Kürze',
-                          style: TextStyle(
-                              fontSize: 12, color: Colors.grey)),
+                      Text(
+                        'Avatar anpassen',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      Text(
+                        'Folgt in Kürze',
+                        style: TextStyle(fontSize: 12, color: Colors.grey),
+                      ),
                     ],
                   ),
                 ),
-                Icon(Icons.lock_outline,
-                    color: Colors.grey[400], size: 18),
+                Icon(Icons.lock_outline, color: Colors.grey[400], size: 18),
               ],
             ),
           ),

@@ -64,7 +64,9 @@ class XPService {
           .collection('children')
           .doc(childId);
 
-      final result = await _firestore.runTransaction<XPResult>((transaction) async {
+      final result = await _firestore.runTransaction<XPResult>((
+        transaction,
+      ) async {
         final snapshot = await transaction.get(docRef);
 
         if (!snapshot.exists) {
@@ -96,11 +98,96 @@ class XPService {
         );
       });
 
-      print('✅ XP hinzugefügt: +$xpToAdd XP → Gesamt: ${result.newXP} XP, Level: ${result.newLevel}');
+      print(
+        '✅ XP hinzugefügt: +$xpToAdd XP → Gesamt: ${result.newXP} XP, Level: ${result.newLevel}',
+      );
       return result;
     } catch (e) {
       print('❌ Fehler beim Hinzufügen von XP: $e');
       rethrow;
+    }
+  }
+
+  // =========================================================================
+  // TUTOR XP – mit Session- und Tageslimit
+  // =========================================================================
+
+  /// Vergib XP für eine Tutor-Nachricht.
+  /// Gibt null zurück wenn das Session- oder Tageslimit bereits erreicht ist.
+  Future<XPResult?> addTutorXP({
+    required String userId,
+    required String childId,
+    required int sessionXpSoFar,
+    int xpPerMessage = 2,
+    int maxXpPerSession = 20,
+    int maxXpPerDay = 50,
+  }) async {
+    if (sessionXpSoFar >= maxXpPerSession) return null;
+
+    try {
+      final docRef = _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('children')
+          .doc(childId);
+
+      return await _firestore.runTransaction<XPResult?>((transaction) async {
+        final snapshot = await transaction.get(docRef);
+        if (!snapshot.exists) return null;
+
+        final data = snapshot.data()!;
+
+        // Tageslimit prüfen mit Tages-Reset
+        final lastDate = (data['tutorXpLastDate'] as Timestamp?)?.toDate();
+        final now = DateTime.now();
+        final today = DateTime(now.year, now.month, now.day);
+
+        int tutorXpToday = data['tutorXpToday'] ?? 0;
+        if (lastDate == null ||
+            DateTime(lastDate.year, lastDate.month, lastDate.day) != today) {
+          tutorXpToday = 0; // Neuer Tag → Reset
+        }
+
+        if (tutorXpToday >= maxXpPerDay) return null;
+
+        // Kleinsten erlaubten Wert aus allen Limits wählen
+        final remainingDay = maxXpPerDay - tutorXpToday;
+        final remainingSession = maxXpPerSession - sessionXpSoFar;
+        final actualXP = [
+          xpPerMessage,
+          remainingDay,
+          remainingSession,
+        ].reduce((a, b) => a < b ? a : b);
+
+        if (actualXP <= 0) return null;
+
+        final currentXP = data['xp'] ?? 0;
+        final currentLevel = data['level'] ?? 1;
+        final newXP = currentXP + actualXP;
+        final newLevel = calculateLevelFromXP(newXP);
+        final leveledUp = newLevel > currentLevel;
+        final xpToNext = calculateXPToNextLevel(newXP, newLevel);
+
+        transaction.update(docRef, {
+          'xp': newXP,
+          'level': newLevel,
+          'xpToNextLevel': xpToNext,
+          'tutorXpToday': tutorXpToday + actualXP,
+          'tutorXpLastDate': Timestamp.fromDate(now),
+          'lastXPGain': FieldValue.serverTimestamp(),
+        });
+
+        return XPResult(
+          newXP: newXP,
+          newLevel: newLevel,
+          leveledUp: leveledUp,
+          xpGained: actualXP,
+          xpToNextLevel: xpToNext,
+        );
+      });
+    } catch (e) {
+      print('❌ addTutorXP Fehler: $e');
+      return null;
     }
   }
 

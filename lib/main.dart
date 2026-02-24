@@ -3,20 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 
-// Auth
 import 'src/features/auth/presentation/login_screen.dart';
 import 'src/features/auth/presentation/onboarding_screen.dart';
-import 'src/features/auth/presentation/active_child_provider.dart';
 import 'src/features/auth/presentation/family_dashboard_screen.dart';
 import 'src/features/auth/data/auth_repository.dart';
 
-// Schüler-Dashboard
-import 'src/features/student_dashboard/presentation/student_dashboard_screen.dart';
-
-// ============================================================================
-// GLOBALER PROVIDER: Account-Löschung läuft
-// Verhindert dass MyApp während der Löschung auf authStateChanges reagiert
-// ============================================================================
 final accountDeletionInProgressProvider = StateProvider<bool>((ref) => false);
 
 void main() async {
@@ -32,8 +23,6 @@ class MyApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final isDeletingAccount = ref.watch(accountDeletionInProgressProvider);
 
-    // Wenn Account gerade gelöscht wird → statischen Screen zeigen
-    // NICHT auf authStateChanges reagieren, das würde den Crash verursachen
     if (isDeletingAccount) {
       return MaterialApp(
         title: 'Lerndex',
@@ -47,7 +36,6 @@ class MyApp extends ConsumerWidget {
     }
 
     final authState = ref.watch(authStateChangesProvider);
-    final activeChild = ref.watch(activeChildProvider);
 
     return MaterialApp(
       title: 'Lerndex',
@@ -58,14 +46,8 @@ class MyApp extends ConsumerWidget {
       ),
       home: authState.when(
         data: (user) {
-          // Nicht eingeloggt → Login
           if (user == null) return const LoginScreen();
-
-          // Kind aktiv → Schüler-Dashboard
-          if (activeChild != null) return const StudentDashboardScreen();
-
-          // Eingeloggt → Onboarding-Check
-          return _OnboardingGate();
+          return const _OnboardingGate();
         },
         loading: () =>
             const Scaffold(body: Center(child: CircularProgressIndicator())),
@@ -75,9 +57,11 @@ class MyApp extends ConsumerWidget {
   }
 }
 
-/// Prüft ob Onboarding abgeschlossen ist.
-/// Falls nicht → OnboardingScreen, sonst → FamilyDashboardScreen
+/// Prüft Onboarding, dann zeigt FamilyDashboard.
+/// Die Navigation zum StudentDashboard übernimmt FamilyDashboardScreen selbst.
 class _OnboardingGate extends ConsumerWidget {
+  const _OnboardingGate();
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return FutureBuilder<bool>(
@@ -88,23 +72,14 @@ class _OnboardingGate extends ConsumerWidget {
             body: Center(child: CircularProgressIndicator()),
           );
         }
-
-        final onboardingDone = snapshot.data ?? false;
-
-        if (!onboardingDone) {
-          return const OnboardingScreen();
-        }
-
-        return const FamilyDashboardScreen();
+        return snapshot.data == true
+            ? const FamilyDashboardScreen()
+            : const OnboardingScreen();
       },
     );
   }
 }
 
-// ============================================================================
-// ÜBERGANGS-SCREEN NACH ACCOUNT-LÖSCHUNG
-// Kein ConsumerWidget! Watched keine Provider.
-// ============================================================================
 class AccountDeletedScreen extends StatefulWidget {
   const AccountDeletedScreen({super.key});
 
@@ -118,12 +93,9 @@ class _AccountDeletedScreenState extends State<AccountDeletedScreen> {
     super.initState();
     Future.delayed(const Duration(seconds: 2), () {
       if (mounted) {
-        // Flag zurücksetzen
         ProviderScope.containerOf(
           context,
         ).read(accountDeletionInProgressProvider.notifier).state = false;
-
-        // Direkt zum LoginScreen navigieren und Stack leeren
         Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(builder: (_) => const LoginScreen()),
           (route) => false,

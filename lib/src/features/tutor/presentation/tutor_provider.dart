@@ -5,6 +5,7 @@ import '../data/tutor_session_model.dart'; // ✅ NEU: für TutorSession.detectC
 import '../../auth/presentation/active_child_provider.dart';
 import '../../auth/data/auth_repository.dart';
 import '../../../ai/firebase_ai_service.dart';
+import '../../rewards/data/xp_service.dart';
 
 class TutorNotifier extends StateNotifier<List<ChatMessage>> {
   TutorNotifier(this._aiService, this._ref, this._childId, this._userId)
@@ -20,6 +21,9 @@ class TutorNotifier extends StateNotifier<List<ChatMessage>> {
   bool _isLoadingHistory = false;
   String? _currentSessionId;
   bool _hasUserSentMessage = false;
+
+  static const int maxXpPerSession = 20;
+  static const int maxXpPerDay = 50;
 
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
@@ -187,6 +191,11 @@ class TutorNotifier extends StateNotifier<List<ChatMessage>> {
       state = [...state.where((m) => !m.isLoading), tutorMessage];
 
       _saveChatMessage(tutorMessage);
+
+      // ✅ XP vergeben – nicht bei Ablehnungsantworten (kein Schulthema)
+      if (!_isRejectionResponse(response)) {
+        await _awardTutorXP();
+      }
     } catch (e) {
       // ❌ Fehler beim Senden der Nachricht: $e
 
@@ -290,6 +299,45 @@ class TutorNotifier extends StateNotifier<List<ChatMessage>> {
       }
     } catch (e) {
       // ⚠️ Fehler beim Speichern: $e
+    }
+  }
+
+  /// Erkennt Ablehnungsantworten des Tutors (→ keine XP für Nicht-Schulthemen)
+  bool _isRejectionResponse(String response) {
+    final lower = response.toLowerCase();
+    return (lower.contains('lernbegleiter') && lower.contains('schulfach')) ||
+        lower.contains('nur bei schulfächern') ||
+        lower.contains('helfe dir nur');
+  }
+
+  /// Vergib XP via XPService und updated den reaktiven SessionXP-Provider
+  Future<void> _awardTutorXP() async {
+    final xpService = _ref.read(xpServiceProvider);
+    final currentSessionXP = _ref.read(tutorSessionXpProvider(_childId));
+
+    final result = await xpService.addTutorXP(
+      userId: _userId,
+      childId: _childId,
+      sessionXpSoFar: currentSessionXP,
+    );
+
+    if (result != null && result.xpGained > 0) {
+      // Reaktiven State updaten → Banner updated sofort
+      _ref.read(tutorSessionXpProvider(_childId).notifier).state =
+          currentSessionXP + result.xpGained;
+
+      // XP-Gain Event für +XP Animation im Screen
+      _ref.read(tutorXpGainProvider(_childId).notifier).state = result.xpGained;
+
+      print(
+        '✨ Tutor XP: +${result.xpGained} '
+        '(Session: ${currentSessionXP + result.xpGained}/$maxXpPerSession)',
+      );
+    } else {
+      print(
+        '⏸️ Tutor XP: Limit erreicht '
+        '(Session: $currentSessionXP/$maxXpPerSession)',
+      );
     }
   }
 
@@ -1762,6 +1810,20 @@ class TutorNotifier extends StateNotifier<List<ChatMessage>> {
     }
   }
 }
+
+// ============================================================================
+// XP STATE PROVIDER – reaktiv, per childId
+// ============================================================================
+
+/// Gesammelte Session-XP – reaktiv, wird im Banner angezeigt
+final tutorSessionXpProvider = StateProvider.family<int, String>(
+  (ref, childId) => 0,
+);
+
+/// XP-Gain Event für +XP Animation – wird kurz auf >0 gesetzt, dann zurück auf 0
+final tutorXpGainProvider = StateProvider.family<int, String>(
+  (ref, childId) => 0,
+);
 
 // ============================================================================
 // PROVIDER
