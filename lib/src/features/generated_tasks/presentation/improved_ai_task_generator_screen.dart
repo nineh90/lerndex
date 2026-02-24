@@ -67,8 +67,13 @@ class ImprovedFirebaseAIService {
         '📸 Analysiere Schulaufgabe für ${child.name} (${subject.displayName})...',
       );
 
-      // 1. Bild hochladen zu Firebase Storage
-      final imageUrl = await _uploadImage(imageFile, userId, child.id, subject);
+      // 1. Bild hochladen zu Firebase Storage (optional – Fehler blockiert nicht die KI-Generierung)
+      String? imageUrl;
+      try {
+        imageUrl = await _uploadImage(imageFile, userId, child.id, subject);
+      } catch (uploadError) {
+        print('⚠️ Bild-Upload fehlgeschlagen (wird ignoriert): $uploadError');
+      }
 
       // 2. Bild als Bytes lesen
       final Uint8List imageBytes = await imageFile.readAsBytes();
