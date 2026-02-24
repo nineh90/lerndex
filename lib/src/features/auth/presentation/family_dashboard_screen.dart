@@ -67,87 +67,95 @@ class FamilyDashboardScreen extends ConsumerWidget {
             );
           }
 
-          return ListView.builder(
+          return GridView.builder(
             padding: const EdgeInsets.all(16),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
+              childAspectRatio: 0.85,
+            ),
             itemCount: children.length,
             itemBuilder: (context, index) {
               final child = children[index];
               return Card(
-                margin: const EdgeInsets.only(bottom: 12),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
                 ),
-                child: ListTile(
-                  contentPadding: const EdgeInsets.all(16),
-                  leading: CircleAvatar(
-                    backgroundColor: const Color(0xFF6B21A8),
-                    radius: 24,
-                    child: Text(
-                      child.name[0].toUpperCase(),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                  title: Text(
-                    child.name,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
-                  ),
-                  subtitle: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const SizedBox(height: 4),
-                      Text('${child.schoolType} • Klasse ${child.grade}'),
-                      const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          const Icon(
-                            Icons.stars,
-                            size: 16,
-                            color: Colors.amber,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(16),
+                  onTap: () {
+                    ref.read(activeChildProvider.notifier).select(child);
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        CircleAvatar(
+                          backgroundColor: const Color(0xFF6B21A8),
+                          radius: 28,
+                          child: Text(
+                            child.name[0].toUpperCase(),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
-                          const SizedBox(width: 4),
-                          Text('${child.stars}'),
-                          const SizedBox(width: 16),
-                          const Icon(
-                            Icons.emoji_events,
-                            size: 16,
-                            color: Colors.orange,
-                          ),
-                          const SizedBox(width: 4),
-                          Text('Level ${child.level}'),
-                        ],
-                      ),
-                    ],
-                  ),
-                  trailing: SizedBox(
-                    width: 110,
-                    child: ElevatedButton(
-                      onPressed: () {
-                        ref.read(activeChildProvider.notifier).select(child);
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 4,
                         ),
-                        minimumSize: const Size(0, 32),
-                      ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.play_arrow, size: 14),
-                          SizedBox(width: 3),
-                          Text('Lernen', style: TextStyle(fontSize: 11)),
-                        ],
-                      ),
+                        const SizedBox(height: 10),
+                        Text(
+                          child.name,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 15,
+                          ),
+                          textAlign: TextAlign.center,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Klasse ${child.grade}',
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: Colors.grey,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            onPressed: () {
+                              ref
+                                  .read(activeChildProvider.notifier)
+                                  .select(child);
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF4CAF50),
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 4),
+                              minimumSize: const Size(0, 28),
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.play_arrow, size: 14),
+                                SizedBox(width: 3),
+                                Text(
+                                  'Lernen',
+                                  style: TextStyle(fontSize: 12),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
