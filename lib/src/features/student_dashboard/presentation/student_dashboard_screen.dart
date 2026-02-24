@@ -7,8 +7,27 @@ import '../../auth/data/auth_repository.dart';
 import '../../auth/domain/child_model.dart';
 import '../../quiz/presentation/quiz_screen.dart';
 import '../../rewards/presentation/rewards_screen.dart';
+import '../../rewards/data/reward_service.dart';
+import '../../rewards/domain/reward_enums.dart';
 import '../../tutor/presentation/tutor_screen.dart';
 import '../../tutor/presentation/tutor_provider.dart';
+
+// Provider: Anzahl der einlösbaren Belohnungen für das aktive Kind
+final _availableRewardsCountProvider = StreamProvider<int>((ref) {
+  final activeChild = ref.watch(activeChildProvider);
+  final userAsync = ref.watch(authStateChangesProvider);
+  final user = userAsync.value;
+
+  if (activeChild == null || user == null) return Stream.value(0);
+
+  return ref
+      .read(rewardServiceProvider)
+      .getRewardsStream(userId: user.uid, childId: activeChild.id)
+      .map(
+        (rewards) =>
+            rewards.where((r) => r.status == RewardStatus.approved).length,
+      );
+});
 
 // ============================================================================
 // DYNAMISCHE FÄCHER-KONFIGURATION
@@ -187,6 +206,9 @@ class _StudentDashboardScreenState
     final activeChild = ref.watch(activeChildProvider);
     if (activeChild == null) return const SizedBox.shrink();
 
+    final availableRewardsCount =
+        ref.watch(_availableRewardsCountProvider).valueOrNull ?? 0;
+
     return PopScope(
       // System-Back abfangen wenn wir nicht auf Tab 0 sind
       canPop: _currentTab == 0,
@@ -285,6 +307,7 @@ class _StudentDashboardScreenState
                   label: 'Belohnungen',
                   selected: _currentTab == 1,
                   onTap: () => setState(() => _currentTab = 1),
+                  badgeCount: availableRewardsCount,
                 ),
                 const SizedBox(width: 60),
                 _NavItem(
@@ -373,6 +396,7 @@ class _NavItem extends StatelessWidget {
   final String label;
   final bool selected;
   final VoidCallback onTap;
+  final int badgeCount;
 
   const _NavItem({
     required this.icon,
@@ -380,6 +404,7 @@ class _NavItem extends StatelessWidget {
     required this.label,
     required this.selected,
     required this.onTap,
+    this.badgeCount = 0,
   });
 
   @override
@@ -392,10 +417,41 @@ class _NavItem extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              selected ? activeIcon : icon,
-              color: selected ? Colors.deepPurple : Colors.grey,
-              size: 24,
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Icon(
+                  selected ? activeIcon : icon,
+                  color: selected ? Colors.deepPurple : Colors.grey,
+                  size: 24,
+                ),
+                if (badgeCount > 0)
+                  Positioned(
+                    top: -6,
+                    right: -8,
+                    child: Container(
+                      padding: const EdgeInsets.all(3),
+                      constraints: const BoxConstraints(
+                        minWidth: 16,
+                        minHeight: 16,
+                      ),
+                      decoration: const BoxDecoration(
+                        color: Colors.red,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Text(
+                        badgeCount > 99 ? '99+' : '$badgeCount',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 9,
+                          fontWeight: FontWeight.bold,
+                          height: 1,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ),
+              ],
             ),
             const SizedBox(height: 2),
             Text(
@@ -1597,9 +1653,9 @@ class _StatCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withOpacity(0.3)),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Column(
         children: [
