@@ -2,9 +2,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 /// 🎯 STATUS EINER GENERIERTEN AUFGABE
 enum TaskApprovalStatus {
-  pending,    // Wartet auf Freigabe
-  approved,   // Von Eltern freigegeben
-  rejected,   // Von Eltern abgelehnt
+  pending, // Wartet auf Freigabe
+  approved, // Von Eltern freigegeben
+  rejected, // Von Eltern abgelehnt
 }
 
 extension TaskApprovalStatusExtension on TaskApprovalStatus {
@@ -41,6 +41,10 @@ enum Subject {
   deutsch,
   englisch,
   sachkunde,
+  biologie,
+  chemie,
+  physik,
+  geschichte,
 }
 
 extension SubjectExtension on Subject {
@@ -54,11 +58,36 @@ extension SubjectExtension on Subject {
         return 'Englisch';
       case Subject.sachkunde:
         return 'Sachkunde';
+      case Subject.biologie:
+        return 'Biologie';
+      case Subject.chemie:
+        return 'Chemie';
+      case Subject.physik:
+        return 'Physik';
+      case Subject.geschichte:
+        return 'Geschichte';
     }
   }
 
   String get value {
     return toString().split('.').last;
+  }
+
+  /// Verfügbare Klassen je Fach – abgeleitet aus den assets/questions/*.json
+  static const Map<Subject, List<int>> availableGrades = {
+    Subject.mathe: [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13],
+    Subject.deutsch: [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13],
+    Subject.englisch: [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13],
+    Subject.sachkunde: [3, 4],
+    Subject.biologie: [5, 6, 7, 8, 9, 10],
+    Subject.chemie: [5, 6, 7, 8, 9, 10, 11, 12, 13],
+    Subject.physik: [5, 6, 7, 8, 9, 10, 11, 12, 13],
+    Subject.geschichte: [5, 6, 7, 8, 9, 10, 11, 12, 13],
+  };
+
+  /// Prüft ob das Fach für die angegebene Klasse Fragen enthält
+  bool isAvailableForGrade(int grade) {
+    return availableGrades[this]?.contains(grade) ?? false;
   }
 
   static Subject fromString(String value) {
@@ -69,6 +98,14 @@ extension SubjectExtension on Subject {
         return Subject.englisch;
       case 'sachkunde':
         return Subject.sachkunde;
+      case 'biologie':
+        return Subject.biologie;
+      case 'chemie':
+        return Subject.chemie;
+      case 'physik':
+        return Subject.physik;
+      case 'geschichte':
+        return Subject.geschichte;
       default:
         return Subject.mathe;
     }
@@ -81,13 +118,13 @@ class GeneratedQuestion {
   final String question;
   final List<String> options;
   final String correctAnswer;
-  final String? solution;        // Optionale ausführliche Lösung
-  final String difficulty;       // easy, medium, hard
-  final String topic;            // z.B. "Bruchrechnung", "Grammatik"
+  final String? solution; // Optionale ausführliche Lösung
+  final String difficulty; // easy, medium, hard
+  final String topic; // z.B. "Bruchrechnung", "Grammatik"
   final TaskApprovalStatus status;
   final DateTime createdAt;
   final DateTime? approvedAt;
-  final String? approvedBy;      // Eltern-User-ID
+  final String? approvedBy; // Eltern-User-ID
   final String? rejectionReason;
 
   GeneratedQuestion({
@@ -115,7 +152,9 @@ class GeneratedQuestion {
       solution: data['solution'],
       difficulty: data['difficulty'] ?? 'medium',
       topic: data['topic'] ?? '',
-      status: TaskApprovalStatusExtension.fromString(data['status'] ?? 'pending'),
+      status: TaskApprovalStatusExtension.fromString(
+        data['status'] ?? 'pending',
+      ),
       createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       approvedAt: (data['approvedAt'] as Timestamp?)?.toDate(),
       approvedBy: data['approvedBy'],
@@ -196,15 +235,21 @@ class GeneratedTaskBatch {
   });
 
   factory GeneratedTaskBatch.fromFirestore(
-      DocumentSnapshot doc,
-      List<GeneratedQuestion> questions,
-      ) {
+    DocumentSnapshot doc,
+    List<GeneratedQuestion> questions,
+  ) {
     final data = doc.data() as Map<String, dynamic>;
 
     // Zähle Status
-    final approved = questions.where((q) => q.status == TaskApprovalStatus.approved).length;
-    final pending = questions.where((q) => q.status == TaskApprovalStatus.pending).length;
-    final rejected = questions.where((q) => q.status == TaskApprovalStatus.rejected).length;
+    final approved = questions
+        .where((q) => q.status == TaskApprovalStatus.approved)
+        .length;
+    final pending = questions
+        .where((q) => q.status == TaskApprovalStatus.pending)
+        .length;
+    final rejected = questions
+        .where((q) => q.status == TaskApprovalStatus.rejected)
+        .length;
 
     return GeneratedTaskBatch(
       id: doc.id,
@@ -266,9 +311,9 @@ class QuizQuestion {
 
   /// Erstellt eine QuizQuestion aus einer GeneratedQuestion
   factory QuizQuestion.fromGeneratedQuestion(
-      GeneratedQuestion generated,
-      int grade,
-      ) {
+    GeneratedQuestion generated,
+    int grade,
+  ) {
     return QuizQuestion(
       grade: grade,
       question: generated.question,

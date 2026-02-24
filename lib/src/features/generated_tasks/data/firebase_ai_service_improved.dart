@@ -63,7 +63,9 @@ class ImprovedFirebaseAIService {
     try {
       if (!_isInitialized) await initialize();
 
-      print('📸 Analysiere Schulaufgabe für ${child.name} (${subject.displayName})...');
+      print(
+        '📸 Analysiere Schulaufgabe für ${child.name} (${subject.displayName})...',
+      );
 
       // 1. Bild hochladen zu Firebase Storage
       final imageUrl = await _uploadImage(imageFile, userId, child.id, subject);
@@ -110,7 +112,6 @@ class ImprovedFirebaseAIService {
         questions: questions,
         imageUrl: imageUrl,
       );
-
     } catch (e) {
       print('❌ Fehler bei Aufgabengenerierung: $e');
       return GeneratedTaskResult(
@@ -269,16 +270,64 @@ Typische Themen je Klassenstufe:
 
 Achte auf wissenschaftliche Korrektheit und altersgerechte Erklärungen!
 ''';
+
+      case Subject.biologie:
+        return '''
+FACH: BIOLOGIE
+Typische Themen je Klassenstufe:
+- Klasse 5-6: Zellen, Pflanzen, Tiere, Ökosysteme
+- Klasse 7-8: Genetik, Evolution, menschlicher Körper
+- Klasse 9-10: Fortpflanzung, Neurobiologie, Ökologie
+- Klasse 11-13: Molekularbiologie, Genetik, Biochemie
+
+Achte auf biologische Fachbegriffe und wissenschaftliche Korrektheit!
+''';
+
+      case Subject.chemie:
+        return '''
+FACH: CHEMIE
+Typische Themen je Klassenstufe:
+- Klasse 5-6: Stoffe und ihre Eigenschaften, Trennverfahren
+- Klasse 7-8: Atombau, chemische Bindungen, Reaktionen
+- Klasse 9-10: Säuren, Basen, Salze, Oxidation
+- Klasse 11-13: Organische Chemie, Elektrochemie, Reaktionskinetik
+
+Achte auf chemische Fachbegriffe und korrekte Formeln!
+''';
+
+      case Subject.physik:
+        return '''
+FACH: PHYSIK
+Typische Themen je Klassenstufe:
+- Klasse 5-6: Mechanik, Kräfte, einfache Maschinen
+- Klasse 7-8: Elektrizität, Magnetismus, Optik
+- Klasse 9-10: Wellen, Energie, Wärmelehre
+- Klasse 11-13: Quantenphysik, Relativitätstheorie, Atomphysik
+
+Achte auf physikalische Einheiten und Formeln!
+''';
+
+      case Subject.geschichte:
+        return '''
+FACH: GESCHICHTE
+Typische Themen je Klassenstufe:
+- Klasse 5-6: Antike, Ägypten, Griechen, Römer
+- Klasse 7-8: Mittelalter, Neuzeit, Reformation
+- Klasse 9-10: Industrialisierung, Weltkriege, Weimarer Republik
+- Klasse 11-13: NS-Zeit, Kalter Krieg, Zeitgeschichte
+
+Achte auf historische Fakten und zeitliche Einordnung!
+''';
     }
   }
 
   /// Lädt Bild zu Firebase Storage hoch
   Future<String> _uploadImage(
-      File imageFile,
-      String userId,
-      String childId,
-      Subject subject,
-      ) async {
+    File imageFile,
+    String userId,
+    String childId,
+    Subject subject,
+  ) async {
     final timestamp = DateTime.now().millisecondsSinceEpoch;
     final path = 'task_images/$userId/$childId/${subject.value}/$timestamp.jpg';
 
@@ -336,17 +385,19 @@ Achte auf wissenschaftliche Korrektheit und altersgerechte Erklärungen!
             continue;
           }
 
-          questions.add(GeneratedQuestion(
-            id: '', // Wird beim Speichern gesetzt
-            question: json['question'].toString(),
-            options: options,
-            correctAnswer: correctAnswer,
-            solution: json['solution']?.toString(),
-            difficulty: json['difficulty']?.toString() ?? 'medium',
-            topic: json['topic']?.toString() ?? '',
-            status: TaskApprovalStatus.pending,
-            createdAt: DateTime.now(),
-          ));
+          questions.add(
+            GeneratedQuestion(
+              id: '', // Wird beim Speichern gesetzt
+              question: json['question'].toString(),
+              options: options,
+              correctAnswer: correctAnswer,
+              solution: json['solution']?.toString(),
+              difficulty: json['difficulty']?.toString() ?? 'medium',
+              topic: json['topic']?.toString() ?? '',
+              status: TaskApprovalStatus.pending,
+              createdAt: DateTime.now(),
+            ),
+          );
         } catch (e) {
           print('⚠️ Fehler beim Parsen einer Aufgabe: $e');
           continue;
@@ -354,7 +405,6 @@ Achte auf wissenschaftliche Korrektheit und altersgerechte Erklärungen!
       }
 
       return questions;
-
     } catch (e) {
       print('❌ JSON Parse Fehler: $e');
       print('Text war: $jsonText');
@@ -385,7 +435,9 @@ class GeneratedTaskResult {
 // RIVERPOD PROVIDER
 // ========================================================================
 
-final improvedFirebaseAIServiceProvider = Provider<ImprovedFirebaseAIService>((ref) {
+final improvedFirebaseAIServiceProvider = Provider<ImprovedFirebaseAIService>((
+  ref,
+) {
   final service = ImprovedFirebaseAIService();
   service.initialize();
   return service;

@@ -49,6 +49,10 @@ class _ImprovedAITaskGeneratorScreenState
       'Deutsch': Subject.deutsch,
       'Englisch': Subject.englisch,
       'Sachkunde': Subject.sachkunde,
+      'Biologie': Subject.biologie,
+      'Chemie': Subject.chemie,
+      'Physik': Subject.physik,
+      'Geschichte': Subject.geschichte,
     };
 
     final result = <Subject>[];
@@ -62,9 +66,11 @@ class _ImprovedAITaskGeneratorScreenState
       }
     }
 
-    // Fallback: Alle 4 wenn Mapping leer (z.B. nur Biologie/Physik/Geschichte)
+    // Fallback: nach Klasse filtern wenn Mapping leer
     return result.isEmpty
-        ? [Subject.mathe, Subject.deutsch, Subject.englisch, Subject.sachkunde]
+        ? Subject.values
+              .where((s) => s.isAvailableForGrade(widget.child.grade))
+              .toList()
         : result;
   }
 
@@ -777,7 +783,15 @@ class _ImprovedAITaskGeneratorScreenState
       case Subject.englisch:
         return Icons.language;
       case Subject.sachkunde:
+        return Icons.park;
+      case Subject.biologie:
+        return Icons.biotech;
+      case Subject.chemie:
         return Icons.science;
+      case Subject.physik:
+        return Icons.bolt;
+      case Subject.geschichte:
+        return Icons.history_edu;
     }
   }
 }

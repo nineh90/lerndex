@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:lerndex1/src/features/parent_dashboard/presentation/ai_task_generator_screen.dart';
 import '../../auth/domain/child_model.dart';
 import '../../auth/data/auth_repository.dart';
 import '../../rewards/presentation/manage_rewards_screen.dart';
 import '../../rewards/data/xp_service.dart';
-import '../../generated_tasks/presentation/improved_ai_task_generator_screen.dart';
 import '../../generated_tasks/presentation/task_approval_screen.dart';
 import '../../generated_tasks/data/generated_task_repository.dart';
 import 'child_statistics_screen.dart';
@@ -14,7 +14,10 @@ import '../../auth/data/profile_repository.dart';
 import 'edit_child_screen.dart';
 
 /// Provider für Live-Child-Daten (Stream für Echtzeit-Updates)
-final liveChildProvider = StreamProvider.family<ChildModel?, String>((ref, childId) {
+final liveChildProvider = StreamProvider.family<ChildModel?, String>((
+  ref,
+  childId,
+) {
   final user = ref.watch(authStateChangesProvider).value;
   if (user == null) return Stream.value(null);
 
@@ -25,9 +28,9 @@ final liveChildProvider = StreamProvider.family<ChildModel?, String>((ref, child
       .doc(childId)
       .snapshots()
       .map((snapshot) {
-    if (!snapshot.exists) return null;
-    return ChildModel.fromFirestore(snapshot.data()!, snapshot.id);
-  });
+        if (!snapshot.exists) return null;
+        return ChildModel.fromFirestore(snapshot.data()!, snapshot.id);
+      });
 });
 
 /// Provider der prüft ob ein Kind gerade aktiv lernt.
@@ -35,7 +38,10 @@ final liveChildProvider = StreamProvider.family<ChildModel?, String>((ref, child
 /// "Live" = das Feld `lastActiveAt` in Firestore liegt weniger als 5 Minuten
 /// zurück. Der [LearningTimeTracker] schreibt dieses Feld beim Start einer
 /// Lernsession und dann alle 30 Sekunden als Heartbeat.
-final childOnlineStatusProvider = StreamProvider.family<bool, String>((ref, childId) {
+final childOnlineStatusProvider = StreamProvider.family<bool, String>((
+  ref,
+  childId,
+) {
   final user = ref.watch(authStateChangesProvider).value;
   if (user == null) return Stream.value(false);
 
@@ -46,18 +52,18 @@ final childOnlineStatusProvider = StreamProvider.family<bool, String>((ref, chil
       .doc(childId)
       .snapshots()
       .map((snapshot) {
-    if (!snapshot.exists) return false;
+        if (!snapshot.exists) return false;
 
-    final data = snapshot.data();
-    if (data == null) return false;
+        final data = snapshot.data();
+        if (data == null) return false;
 
-    final lastActiveAt = (data['lastActiveAt'] as Timestamp?)?.toDate();
-    if (lastActiveAt == null) return false;
+        final lastActiveAt = (data['lastActiveAt'] as Timestamp?)?.toDate();
+        if (lastActiveAt == null) return false;
 
-    // Live = letzter Heartbeat vor weniger als 5 Minuten
-    final diff = DateTime.now().difference(lastActiveAt);
-    return diff.inMinutes < 5;
-  });
+        // Live = letzter Heartbeat vor weniger als 5 Minuten
+        final diff = DateTime.now().difference(lastActiveAt);
+        return diff.inMinutes < 5;
+      });
 });
 
 // =============================================================================
@@ -68,10 +74,7 @@ final childOnlineStatusProvider = StreamProvider.family<bool, String>((ref, chil
 class LiveChildStatCard extends ConsumerWidget {
   final String childId;
 
-  const LiveChildStatCard({
-    super.key,
-    required this.childId,
-  });
+  const LiveChildStatCard({super.key, required this.childId});
 
   // =========================================================================
   // DELETE DIALOG
@@ -119,9 +122,7 @@ class LiveChildStatCard extends ConsumerWidget {
             onPressed: () async {
               Navigator.pop(context);
               try {
-                await ref
-                    .read(profileRepositoryProvider)
-                    .deleteChild(child.id);
+                await ref.read(profileRepositoryProvider).deleteChild(child.id);
 
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -160,7 +161,8 @@ class LiveChildStatCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final childAsync = ref.watch(liveChildProvider(childId));
-    final isOnline = ref.watch(childOnlineStatusProvider(childId)).value ?? false;
+    final isOnline =
+        ref.watch(childOnlineStatusProvider(childId)).value ?? false;
 
     return childAsync.when(
       data: (child) {
@@ -193,13 +195,14 @@ class LiveChildStatCard extends ConsumerWidget {
         return Card(
           margin: const EdgeInsets.only(bottom: 16),
           elevation: 3,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-
                 // ── Header: Avatar + Name + LIVE-Badge (nur wenn aktiv) + Menü ──
                 Row(
                   children: [
@@ -284,7 +287,8 @@ class LiveChildStatCard extends ConsumerWidget {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (_) => ManageRewardsScreen(child: child),
+                                builder: (_) =>
+                                    ManageRewardsScreen(child: child),
                               ),
                             );
                             break;
@@ -292,7 +296,8 @@ class LiveChildStatCard extends ConsumerWidget {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (_) => ImprovedAITaskGeneratorScreen(child: child),
+                                builder: (_) =>
+                                    ImprovedAITaskGeneratorScreen(child: child),
                               ),
                             );
                             break;
@@ -308,7 +313,8 @@ class LiveChildStatCard extends ConsumerWidget {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (_) => TutorHistoryScreen(child: child),
+                                builder: (_) =>
+                                    TutorHistoryScreen(child: child),
                               ),
                             );
                             break;
@@ -316,7 +322,8 @@ class LiveChildStatCard extends ConsumerWidget {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (_) => ChildStatisticsScreen(child: child),
+                                builder: (_) =>
+                                    ChildStatisticsScreen(child: child),
                               ),
                             );
                             break;
@@ -340,7 +347,10 @@ class LiveChildStatCard extends ConsumerWidget {
                             children: [
                               Icon(Icons.delete, size: 18, color: Colors.red),
                               SizedBox(width: 8),
-                              Text('Löschen', style: TextStyle(color: Colors.red)),
+                              Text(
+                                'Löschen',
+                                style: TextStyle(color: Colors.red),
+                              ),
                             ],
                           ),
                         ),
@@ -353,7 +363,11 @@ class LiveChildStatCard extends ConsumerWidget {
                           value: 'rewards',
                           child: Row(
                             children: [
-                              Icon(Icons.card_giftcard, size: 18, color: Colors.amber),
+                              Icon(
+                                Icons.card_giftcard,
+                                size: 18,
+                                color: Colors.amber,
+                              ),
                               SizedBox(width: 8),
                               Text('Belohnungen verwalten'),
                             ],
@@ -365,7 +379,11 @@ class LiveChildStatCard extends ConsumerWidget {
                           value: 'ai_tasks',
                           child: Row(
                             children: [
-                              Icon(Icons.auto_awesome, size: 18, color: Colors.deepPurple),
+                              Icon(
+                                Icons.auto_awesome,
+                                size: 18,
+                                color: Colors.deepPurple,
+                              ),
                               SizedBox(width: 8),
                               Text('KI-Aufgaben generieren'),
                             ],
@@ -380,7 +398,9 @@ class LiveChildStatCard extends ConsumerWidget {
                               Icon(
                                 Icons.task_alt,
                                 size: 18,
-                                color: pendingCount > 0 ? Colors.orange : Colors.green,
+                                color: pendingCount > 0
+                                    ? Colors.orange
+                                    : Colors.green,
                               ),
                               const SizedBox(width: 8),
                               Text(
@@ -397,7 +417,11 @@ class LiveChildStatCard extends ConsumerWidget {
                           value: 'tutor',
                           child: Row(
                             children: [
-                              Icon(Icons.chat, size: 18, color: Colors.deepPurple),
+                              Icon(
+                                Icons.chat,
+                                size: 18,
+                                color: Colors.deepPurple,
+                              ),
                               SizedBox(width: 8),
                               Text('Tutor-Gespräche'),
                             ],
@@ -409,7 +433,11 @@ class LiveChildStatCard extends ConsumerWidget {
                           value: 'statistics',
                           child: Row(
                             children: [
-                              Icon(Icons.bar_chart, size: 18, color: Colors.indigo),
+                              Icon(
+                                Icons.bar_chart,
+                                size: 18,
+                                color: Colors.indigo,
+                              ),
                               SizedBox(width: 8),
                               Text('Statistiken'),
                             ],

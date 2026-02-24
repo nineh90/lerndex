@@ -4,7 +4,6 @@ import '../data/generated_task_models.dart';
 import '../data/generated_task_repository.dart';
 import '../../auth/data/auth_repository.dart';
 
-
 /// 🔍 FREIGABE-SCREEN FÜR GENERIERTE AUFGABEN
 ///
 /// Eltern können hier:
@@ -23,9 +22,7 @@ class TaskApprovalScreen extends ConsumerWidget {
     final userId = authRepo.currentUser?.uid;
 
     if (userId == null) {
-      return const Scaffold(
-        body: Center(child: Text('Nicht angemeldet')),
-      );
+      return const Scaffold(body: Center(child: Text('Nicht angemeldet')));
     }
 
     final batchesAsync = ref.watch(generatedBatchesProvider(userId));
@@ -73,9 +70,7 @@ class TaskApprovalScreen extends ConsumerWidget {
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, stack) => Center(
-          child: Text('Fehler: $error'),
-        ),
+        error: (error, stack) => Center(child: Text('Fehler: $error')),
       ),
     );
   }
@@ -102,10 +97,7 @@ class TaskApprovalScreen extends ConsumerWidget {
           const SizedBox(height: 8),
           Text(
             'Generiere KI-Aufgaben für deine Kinder',
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey.shade500,
-            ),
+            style: TextStyle(fontSize: 14, color: Colors.grey.shade500),
           ),
         ],
       ),
@@ -177,16 +169,12 @@ class _BatchCard extends ConsumerWidget {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: InkWell(
         onTap: () {
           Navigator.push(
             context,
-            MaterialPageRoute(
-              builder: (_) => BatchDetailScreen(batch: batch),
-            ),
+            MaterialPageRoute(builder: (_) => BatchDetailScreen(batch: batch)),
           );
         },
         borderRadius: BorderRadius.circular(16),
@@ -247,10 +235,7 @@ class _BatchCard extends ConsumerWidget {
                       ],
                     ),
                   ),
-                  Icon(
-                    Icons.chevron_right,
-                    color: Colors.grey.shade400,
-                  ),
+                  Icon(Icons.chevron_right, color: Colors.grey.shade400),
                 ],
               ),
 
@@ -320,14 +305,15 @@ class _BatchCard extends ConsumerWidget {
               const SizedBox(height: 12),
               Row(
                 children: [
-                  Icon(Icons.access_time, size: 14, color: Colors.grey.shade500),
+                  Icon(
+                    Icons.access_time,
+                    size: 14,
+                    color: Colors.grey.shade500,
+                  ),
                   const SizedBox(width: 4),
                   Text(
                     _formatDate(batch.createdAt),
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey.shade500,
-                    ),
+                    style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
                   ),
                 ],
               ),
@@ -347,7 +333,15 @@ class _BatchCard extends ConsumerWidget {
       case Subject.englisch:
         return Icons.language;
       case Subject.sachkunde:
+        return Icons.park;
+      case Subject.biologie:
+        return Icons.biotech;
+      case Subject.chemie:
         return Icons.science;
+      case Subject.physik:
+        return Icons.bolt;
+      case Subject.geschichte:
+        return Icons.history_edu;
     }
   }
 
@@ -518,10 +512,7 @@ class _BatchDetailScreenState extends ConsumerState<BatchDetailScreen> {
             // Aufgaben-Liste
             Text(
               'Aufgaben (${widget.batch.totalTasks})',
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
 
@@ -548,7 +539,15 @@ class _BatchDetailScreenState extends ConsumerState<BatchDetailScreen> {
       case Subject.englisch:
         return Icons.language;
       case Subject.sachkunde:
+        return Icons.park;
+      case Subject.biologie:
+        return Icons.biotech;
+      case Subject.chemie:
         return Icons.science;
+      case Subject.physik:
+        return Icons.bolt;
+      case Subject.geschichte:
+        return Icons.history_edu;
     }
   }
 
@@ -584,10 +583,7 @@ class _BatchDetailScreenState extends ConsumerState<BatchDetailScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Fehler: $e'),
-            backgroundColor: Colors.red,
-          ),
+          SnackBar(content: Text('Fehler: $e'), backgroundColor: Colors.red),
         );
       }
     } finally {
@@ -602,7 +598,7 @@ class _BatchDetailScreenState extends ConsumerState<BatchDetailScreen> {
         title: const Text('Batch löschen?'),
         content: const Text(
           'Möchtest du diesen Batch wirklich löschen? '
-              'Alle Aufgaben werden entfernt.',
+          'Alle Aufgaben werden entfernt.',
         ),
         actions: [
           TextButton(
@@ -633,10 +629,7 @@ class _BatchDetailScreenState extends ConsumerState<BatchDetailScreen> {
 
       if (userId == null) throw Exception('Nicht angemeldet');
 
-      await repository.deleteBatch(
-        userId: userId,
-        batchId: widget.batch.id,
-      );
+      await repository.deleteBatch(userId: userId, batchId: widget.batch.id);
 
       if (mounted) {
         Navigator.pop(context);
@@ -650,10 +643,7 @@ class _BatchDetailScreenState extends ConsumerState<BatchDetailScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Fehler: $e'),
-            backgroundColor: Colors.red,
-          ),
+          SnackBar(content: Text('Fehler: $e'), backgroundColor: Colors.red),
         );
       }
     } finally {
@@ -681,19 +671,13 @@ class _InfoRow extends StatelessWidget {
         const SizedBox(width: 12),
         Text(
           '$label:',
-          style: TextStyle(
-            fontSize: 14,
-            color: Colors.grey.shade600,
-          ),
+          style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
         ),
         const SizedBox(width: 8),
         Expanded(
           child: Text(
             value,
-            style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
-            ),
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
             textAlign: TextAlign.right,
           ),
         ),
@@ -775,7 +759,10 @@ class _QuestionCardState extends ConsumerState<_QuestionCard> {
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: statusColor.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(6),
@@ -826,13 +813,19 @@ class _QuestionCardState extends ConsumerState<_QuestionCard> {
                   color: isCorrect ? Colors.green.shade50 : Colors.grey.shade50,
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
-                    color: isCorrect ? Colors.green.shade300 : Colors.grey.shade200,
+                    color: isCorrect
+                        ? Colors.green.shade300
+                        : Colors.grey.shade200,
                   ),
                 ),
                 child: Row(
                   children: [
                     if (isCorrect)
-                      Icon(Icons.check_circle, color: Colors.green.shade700, size: 20),
+                      Icon(
+                        Icons.check_circle,
+                        color: Colors.green.shade700,
+                        size: 20,
+                      ),
                     if (isCorrect) const SizedBox(width: 8),
                     Expanded(child: Text(entry.value)),
                   ],
@@ -846,9 +839,14 @@ class _QuestionCardState extends ConsumerState<_QuestionCard> {
               InkWell(
                 onTap: () => setState(() => _showSolution = !_showSolution),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 8,
+                    horizontal: 12,
+                  ),
                   decoration: BoxDecoration(
-                    color: _showSolution ? Colors.blue.shade50 : Colors.grey.shade100,
+                    color: _showSolution
+                        ? Colors.blue.shade50
+                        : Colors.grey.shade100,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Row(
@@ -856,15 +854,21 @@ class _QuestionCardState extends ConsumerState<_QuestionCard> {
                       Icon(
                         _showSolution ? Icons.visibility_off : Icons.visibility,
                         size: 18,
-                        color: _showSolution ? Colors.blue.shade700 : Colors.grey.shade600,
+                        color: _showSolution
+                            ? Colors.blue.shade700
+                            : Colors.grey.shade600,
                       ),
                       const SizedBox(width: 8),
                       Text(
-                        _showSolution ? 'Erklärung ausblenden' : 'Erklärung anzeigen',
+                        _showSolution
+                            ? 'Erklärung ausblenden'
+                            : 'Erklärung anzeigen',
                         style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
-                          color: _showSolution ? Colors.blue.shade700 : Colors.grey.shade700,
+                          color: _showSolution
+                              ? Colors.blue.shade700
+                              : Colors.grey.shade700,
                         ),
                       ),
                     ],
@@ -980,10 +984,7 @@ class _QuestionCardState extends ConsumerState<_QuestionCard> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Fehler: $e'),
-            backgroundColor: Colors.red,
-          ),
+          SnackBar(content: Text('Fehler: $e'), backgroundColor: Colors.red),
         );
       }
     } finally {
@@ -1021,10 +1022,7 @@ class _QuestionCardState extends ConsumerState<_QuestionCard> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Fehler: $e'),
-            backgroundColor: Colors.red,
-          ),
+          SnackBar(content: Text('Fehler: $e'), backgroundColor: Colors.red),
         );
       }
     } finally {

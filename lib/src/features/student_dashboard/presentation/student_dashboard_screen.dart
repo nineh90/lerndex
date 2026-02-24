@@ -122,6 +122,13 @@ List<SubjectConfig> getSubjectsForChild(ChildModel child) {
         subject: 'Biologie',
       ),
       SubjectConfig(
+        title: 'Chemie',
+        emoji: '🧪',
+        icon: Icons.science_rounded,
+        gradientColors: [Color(0xFFAB47BC), Color(0xFF7B1FA2)],
+        subject: 'Chemie',
+      ),
+      SubjectConfig(
         title: 'Physik',
         emoji: '⚡',
         icon: Icons.bolt_rounded,
