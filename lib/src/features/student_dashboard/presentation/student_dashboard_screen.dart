@@ -228,7 +228,7 @@ class _StudentDashboardScreenState
         child: FloatingActionButton(
           heroTag: 'tutor_fab',
           onPressed: () => _openTutor(context, activeChild),
-          backgroundColor: Colors.deepPurple,
+          backgroundColor: Colors.deepPurple.shade200,
           elevation: 6,
           shape: const CircleBorder(),
           tooltip: 'KI-Tutor öffnen',
@@ -236,8 +236,8 @@ class _StudentDashboardScreenState
           child: ClipOval(
             child: Image.asset(
               'assets/images/lerndex_logo.png',
-              width: 44,
-              height: 44,
+              width: 55,
+              height: 55,
               fit: BoxFit.cover,
               errorBuilder: (_, __, ___) => const Icon(
                 Icons.school,
@@ -1228,7 +1228,7 @@ class _SessionDetailScreen extends StatelessWidget {
               ),
           ],
         ),
-        backgroundColor: Colors.deepPurple.shade100,
+        backgroundColor: Colors.deepPurple,
         foregroundColor: Colors.white,
       ),
       body: StreamBuilder<QuerySnapshot>(

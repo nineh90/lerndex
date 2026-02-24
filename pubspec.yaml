@@ -25,7 +25,7 @@ dependencies:
   firebase_auth: ^5.0.0
   cloud_firestore: ^5.0.0
 
-  # Firebase Vertex AI (ersetzt google_generative_ai)
+  # Firebase Vertex AI
   firebase_vertexai: 1.8.3
 
   # Für Foto-Upload
@@ -41,23 +41,32 @@ dependencies:
   freezed_annotation: ^2.4.4
   json_annotation: ^4.9.0
 
-  # KI-Tutor (NEU HIER!)
-  google_generative_ai: ^0.4.3        # Gemini SDK (AKTUALISIERT!)
-  flutter_dotenv: ^5.1.0               # .env Datei laden
-  flutter_markdown: ^0.6.18            # Markdown anzeigen
-  http: ^1.2.0                         # HTTP Requests
+  # KI-Tutor
+  google_generative_ai: ^0.4.3
+  flutter_dotenv: ^5.1.0
+  flutter_markdown: ^0.6.18
+  http: ^1.2.0
   firebase_ai: ^2.3.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^3.0.0
+  flutter_launcher_icons: ^0.13.1
 
   # Code-Generatoren
   build_runner: ^2.4.8
   riverpod_generator: ^2.4.0
   freezed: ^2.4.7
   json_serializable: ^6.8.0
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/images/lerndex_logo.png"
+  min_sdk_android: 21
+  adaptive_icon_background: "#7B1FA2"
+  adaptive_icon_foreground: "assets/images/lerndex_logo.png"
 
 flutter:
   uses-material-design: true
