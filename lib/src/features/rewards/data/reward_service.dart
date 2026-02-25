@@ -29,10 +29,10 @@ class RewardService {
         type: RewardType.system,
         trigger: trigger,
         requiredLevel: requiredLevel,
-        status: RewardStatus.approved,  // System-Belohnungen sofort approved!
+        status: RewardStatus.approved, // System-Belohnungen sofort approved!
         reward: reward,
         createdAt: DateTime.now(),
-        approvedAt: DateTime.now(),  // Sofort approved
+        approvedAt: DateTime.now(), // Sofort approved
         createdBy: 'system',
       );
 
@@ -96,10 +96,12 @@ class RewardService {
 
           print('✅ Belohnung freigeschaltet: ${reward.title}');
 
-          approvedRewards.add(reward.copyWith(
-            status: RewardStatus.approved,
-            approvedAt: DateTime.now(),
-          ));
+          approvedRewards.add(
+            reward.copyWith(
+              status: RewardStatus.approved,
+              approvedAt: DateTime.now(),
+            ),
+          );
         }
       }
 
@@ -132,7 +134,7 @@ class RewardService {
 
       if (existing.docs.isNotEmpty) {
         print('ℹ️ Level-Up Belohnung existiert bereits');
-        return null;  // Bereits vorhanden
+        return null; // Bereits vorhanden
       }
 
       return await createSystemReward(
@@ -185,14 +187,48 @@ class RewardService {
           .collection('rewards')
           .doc(rewardId)
           .update({
-        'status': 'claimed',
-        'claimedAt': FieldValue.serverTimestamp(),
-      });
+            'status': 'claimed',
+            'claimedAt': FieldValue.serverTimestamp(),
+            'parentSeen': false, // Eltern müssen die Einlösung noch bestätigen
+          });
 
       print('✅ Belohnung eingelöst!');
     } catch (e) {
       print('❌ Fehler beim Einlösen der Belohnung: $e');
       rethrow;
+    }
+  }
+
+  /// Markiert alle eingelösten Belohnungen eines Kindes als von Eltern gesehen
+  Future<void> markClaimedRewardsAsSeen({
+    required String userId,
+    required String childId,
+  }) async {
+    try {
+      // Alle claimed holen, client-seitig filtern (parentSeen fehlt bei älteren Docs)
+      final snapshot = await _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('children')
+          .doc(childId)
+          .collection('rewards')
+          .where('status', isEqualTo: 'claimed')
+          .get();
+
+      final unseen = snapshot.docs.where((doc) {
+        return doc.data()['parentSeen'] != true;
+      }).toList();
+
+      if (unseen.isEmpty) return;
+
+      final batch = _firestore.batch();
+      for (final doc in unseen) {
+        batch.update(doc.reference, {'parentSeen': true});
+      }
+      await batch.commit();
+      print('✅ ${unseen.length} Belohnungen als gesehen markiert');
+    } catch (e) {
+      print('❌ Fehler beim Markieren als gesehen: $e');
     }
   }
 
@@ -211,7 +247,7 @@ class RewardService {
         .orderBy('createdAt', descending: true);
 
     if (status != null) {
-      query = query.where('status', isEqualTo: status.toFirestore()) as Query<Map<String, dynamic>>;
+      query = query.where('status', isEqualTo: status.toFirestore());
     }
 
     return query.snapshots().map((snapshot) {

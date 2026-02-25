@@ -148,6 +148,7 @@ class _ManageRewardsScreenState extends ConsumerState<ManageRewardsScreen>
           onEdit: () => _showEditRewardDialog(context, userId, reward),
           onDelete: () => _deleteReward(context, userId, reward),
           onToggleApproval: () => _toggleApproval(userId, reward),
+          onMarkSeen: () => _markRewardSeen(userId, reward),
         );
       },
     );
@@ -273,6 +274,25 @@ class _ManageRewardsScreenState extends ConsumerState<ManageRewardsScreen>
     }
   }
 
+  Future<void> _markRewardSeen(String userId, RewardModel reward) async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .collection('children')
+          .doc(widget.child.id)
+          .collection('rewards')
+          .doc(reward.id)
+          .update({'parentSeen': true});
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Fehler: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
   Future<void> _toggleApproval(String userId, RewardModel reward) async {
     try {
       final newStatus = reward.status == RewardStatus.pending
@@ -324,6 +344,7 @@ class _RewardManageCard extends StatelessWidget {
   final VoidCallback onEdit;
   final VoidCallback onDelete;
   final VoidCallback onToggleApproval;
+  final VoidCallback onMarkSeen;
 
   const _RewardManageCard({
     required this.reward,
@@ -332,6 +353,7 @@ class _RewardManageCard extends StatelessWidget {
     required this.onEdit,
     required this.onDelete,
     required this.onToggleApproval,
+    required this.onMarkSeen,
   });
 
   @override
@@ -549,17 +571,78 @@ class _RewardManageCard extends StatelessWidget {
                   ),
                 ),
 
-                // Status Info
-                if (isClaimed && reward.claimedAt != null) ...[
-                  const SizedBox(height: 8),
-                  Text(
-                    '✅ Eingelöst am ${_formatDate(reward.claimedAt!)}',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey[600],
-                      fontStyle: FontStyle.italic,
+                // Status Info + Aushändigen-Button
+                if (isClaimed) ...[
+                  const SizedBox(height: 12),
+                  if (!reward.parentSeen)
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.deepPurple.shade50,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.deepPurple.shade200),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.redeem_outlined,
+                                size: 16,
+                                color: Colors.deepPurple.shade600,
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                reward.claimedAt != null
+                                    ? 'Eingelöst am ${_formatDate(reward.claimedAt!)}'
+                                    : 'Vom Kind eingelöst',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.deepPurple.shade700,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 10),
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton.icon(
+                              onPressed: onMarkSeen,
+                              icon: const Icon(Icons.check, size: 18),
+                              label: const Text('Belohnung ausgehändigt'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.deepPurple,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 10,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
+                  if (reward.parentSeen && reward.claimedAt != null)
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.check_circle,
+                          size: 14,
+                          color: Colors.grey[400],
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Ausgehändigt am ${_formatDate(reward.claimedAt!)}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey[500],
+                            fontStyle: FontStyle.italic,
+                          ),
+                        ),
+                      ],
+                    ),
                 ],
 
                 // Freigabe-Button

@@ -18,12 +18,13 @@ class RewardModel {
   final int? requiredQuizCount;
 
   final RewardStatus status;
-  final String reward;  // Was das Kind bekommt
+  final String reward; // Was das Kind bekommt
 
   final DateTime createdAt;
   final DateTime? approvedAt;
   final DateTime? claimedAt;
-  final String createdBy;  // 'system' oder userId
+  final String createdBy; // 'system' oder userId
+  final bool parentSeen;
 
   RewardModel({
     required this.id,
@@ -43,6 +44,7 @@ class RewardModel {
     this.approvedAt,
     this.claimedAt,
     required this.createdBy,
+    this.parentSeen = false,
   });
 
   /// Aus Firestore erstellen
@@ -53,7 +55,9 @@ class RewardModel {
       title: data['title'] ?? '',
       description: data['description'] ?? '',
       type: RewardTypeExtension.fromFirestore(data['type'] ?? 'parent'),
-      trigger: RewardTriggerExtension.fromFirestore(data['trigger'] ?? 'manual'),
+      trigger: RewardTriggerExtension.fromFirestore(
+        data['trigger'] ?? 'manual',
+      ),
       requiredLevel: data['requiredLevel'],
       requiredXP: data['requiredXP'],
       requiredStars: data['requiredStars'],
@@ -65,6 +69,7 @@ class RewardModel {
       approvedAt: (data['approvedAt'] as Timestamp?)?.toDate(),
       claimedAt: (data['claimedAt'] as Timestamp?)?.toDate(),
       createdBy: data['createdBy'] ?? 'system',
+      parentSeen: data['parentSeen'] == true,
     );
   }
 
@@ -109,6 +114,7 @@ class RewardModel {
     DateTime? approvedAt,
     DateTime? claimedAt,
     String? createdBy,
+    bool? parentSeen,
   }) {
     return RewardModel(
       id: id ?? this.id,
@@ -128,6 +134,7 @@ class RewardModel {
       approvedAt: approvedAt ?? this.approvedAt,
       claimedAt: claimedAt ?? this.claimedAt,
       createdBy: createdBy ?? this.createdBy,
+      parentSeen: parentSeen ?? this.parentSeen,
     );
   }
 
@@ -150,7 +157,8 @@ class RewardModel {
       case RewardTrigger.streak:
         return requiredStreak != null && currentStreak >= requiredStreak!;
       case RewardTrigger.quizCount:
-        return requiredQuizCount != null && currentQuizCount >= requiredQuizCount!;
+        return requiredQuizCount != null &&
+            currentQuizCount >= requiredQuizCount!;
       case RewardTrigger.perfectQuiz:
         return isPerfectQuiz;
       case RewardTrigger.manual:

@@ -5,6 +5,7 @@ import 'package:lerndex1/src/features/parent_dashboard/presentation/ai_task_gene
 import '../../auth/domain/child_model.dart';
 import '../../auth/data/auth_repository.dart';
 import '../../rewards/presentation/manage_rewards_screen.dart';
+import '../../rewards/data/reward_service.dart';
 import '../../rewards/data/xp_service.dart';
 import '../../generated_tasks/presentation/task_approval_screen.dart';
 import '../../generated_tasks/data/generated_task_repository.dart';
@@ -31,6 +32,35 @@ final liveChildProvider = StreamProvider.family<ChildModel?, String>((
         if (!snapshot.exists) return null;
         return ChildModel.fromFirestore(snapshot.data()!, snapshot.id);
       });
+});
+
+/// Provider für die Anzahl eingelöster (claimed) Belohnungen eines Kindes.
+/// Eltern sehen damit sofort wenn ein Kind eine Belohnung beansprucht hat.
+final claimedRewardsCountProvider = StreamProvider.family<int, String>((
+  ref,
+  childId,
+) {
+  final user = ref.watch(authStateChangesProvider).value;
+  if (user == null) return Stream.value(0);
+
+  // Alle claimed Belohnungen holen und client-seitig filtern.
+  // .where('parentSeen', isEqualTo: false) würde Dokumente ohne das Feld
+  // (ältere Einlösungen) übersehen — daher manueller Filter.
+  return FirebaseFirestore.instance
+      .collection('users')
+      .doc(user.uid)
+      .collection('children')
+      .doc(childId)
+      .collection('rewards')
+      .where('status', isEqualTo: 'claimed')
+      .snapshots()
+      .map(
+        (snapshot) => snapshot.docs.where((doc) {
+          final data = doc.data();
+          // parentSeen fehlt (altes Dokument) oder ist explizit false → zählen
+          return data['parentSeen'] != true;
+        }).length,
+      );
 });
 
 /// Provider der prüft ob ein Kind gerade aktiv lernt.
@@ -194,362 +224,430 @@ class LiveChildStatCard extends ConsumerWidget {
             : null;
         final pendingCount = pendingCountAsync?.value ?? 0;
 
+        // claimedCount: eingelöste Belohnungen die Eltern noch nicht gesehen haben
+        final claimedCount =
+            ref.watch(claimedRewardsCountProvider(childId)).value ?? 0;
+
         return Card(
           margin: const EdgeInsets.only(bottom: 16),
-          elevation: 3,
+          elevation: claimedCount > 0 ? 5 : 3,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
+            side: claimedCount > 0
+                ? BorderSide(color: Colors.deepPurple.shade300, width: 1.5)
+                : BorderSide.none,
           ),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // ── Header: Avatar + Name + LIVE-Badge (nur wenn aktiv) + Menü ──
-                Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // ── Benachrichtigungs-Banner (nur wenn eingelöste Belohnungen) ──
+              if (claimedCount > 0) _ClaimedRewardsBanner(count: claimedCount),
+
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    CircleAvatar(
-                      radius: 25,
-                      backgroundColor: Colors.deepPurple.shade100,
-                      child: Text(
-                        child.name[0].toUpperCase(),
-                        style: const TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.deepPurple,
+                    // ── Header: Avatar + Name + LIVE-Badge (nur wenn aktiv) + Menü ──
+                    Row(
+                      children: [
+                        Stack(
+                          clipBehavior: Clip.none,
+                          children: [
+                            CircleAvatar(
+                              radius: 25,
+                              backgroundColor: Colors.deepPurple.shade100,
+                              child: Text(
+                                child.name[0].toUpperCase(),
+                                style: const TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.deepPurple,
+                                ),
+                              ),
+                            ),
+                            if (claimedCount > 0)
+                              Positioned(
+                                top: -4,
+                                right: -4,
+                                child: Container(
+                                  width: 20,
+                                  height: 20,
+                                  decoration: BoxDecoration(
+                                    color: Colors.deepPurple.shade600,
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: Colors.white,
+                                      width: 1.5,
+                                    ),
+                                  ),
+                                  child: Center(
+                                    child: Text(
+                                      claimedCount > 9 ? '9+' : '$claimedCount',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                          ],
                         ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            child.name,
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                child.name,
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              Text(
+                                '${child.schoolType} • Klasse ${child.grade}',
+                                style: TextStyle(color: Colors.grey[600]),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        // LIVE-Badge – NUR anzeigen wenn Kind wirklich aktiv ist
+                        if (isOnline) ...[
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.green.shade100,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const _PulsingDot(),
+                                const SizedBox(width: 4),
+                                Text(
+                                  'LIVE',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.green.shade700,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                          Text(
-                            '${child.schoolType} • Klasse ${child.grade}',
-                            style: TextStyle(color: Colors.grey[600]),
-                          ),
+                          const SizedBox(width: 4),
                         ],
-                      ),
-                    ),
 
-                    // LIVE-Badge – NUR anzeigen wenn Kind wirklich aktiv ist
-                    if (isOnline) ...[
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.green.shade100,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const _PulsingDot(),
-                            const SizedBox(width: 4),
-                            Text(
-                              'LIVE',
-                              style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.green.shade700,
+                        // ── Drei-Punkte-Menü (inkl. aller Aktionen) ────────────
+                        PopupMenuButton<String>(
+                          onSelected: (value) {
+                            switch (value) {
+                              case 'edit':
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) =>
+                                        EditChildScreen(child: child),
+                                  ),
+                                );
+                                break;
+                              case 'delete':
+                                _confirmDelete(context, ref, child);
+                                break;
+                              case 'rewards':
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) =>
+                                        ManageRewardsScreen(child: child),
+                                  ),
+                                );
+                                break;
+                              case 'ai_tasks':
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) =>
+                                        ImprovedAITaskGeneratorScreen(
+                                          child: child,
+                                        ),
+                                  ),
+                                );
+                                break;
+                              case 'approve_tasks':
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => const TaskApprovalScreen(),
+                                  ),
+                                );
+                                break;
+                              case 'tutor':
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) =>
+                                        TutorHistoryScreen(child: child),
+                                  ),
+                                );
+                                break;
+                              case 'statistics':
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) =>
+                                        ChildStatisticsScreen(child: child),
+                                  ),
+                                );
+                                break;
+                            }
+                          },
+                          itemBuilder: (context) => [
+                            // ── Bearbeiten & Löschen ──────────────────────────
+                            const PopupMenuItem(
+                              value: 'edit',
+                              child: Row(
+                                children: [
+                                  Icon(Icons.edit, size: 18),
+                                  SizedBox(width: 8),
+                                  Text('Bearbeiten'),
+                                ],
+                              ),
+                            ),
+                            const PopupMenuItem(
+                              value: 'delete',
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.delete,
+                                    size: 18,
+                                    color: Colors.red,
+                                  ),
+                                  SizedBox(width: 8),
+                                  Text(
+                                    'Löschen',
+                                    style: TextStyle(color: Colors.red),
+                                  ),
+                                ],
+                              ),
+                            ),
+
+                            // ── Trennlinie ─────────────────────────────────────
+                            const PopupMenuDivider(),
+
+                            // ── Belohnungen verwalten ──────────────────────────
+                            PopupMenuItem(
+                              value: 'rewards',
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.card_giftcard,
+                                    size: 18,
+                                    color: claimedCount > 0
+                                        ? Colors.orange
+                                        : Colors.amber,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    claimedCount > 0
+                                        ? 'Belohnungen verwalten ($claimedCount eingelöst!)'
+                                        : 'Belohnungen verwalten',
+                                    style: TextStyle(
+                                      color: claimedCount > 0
+                                          ? Colors.orange
+                                          : null,
+                                      fontWeight: claimedCount > 0
+                                          ? FontWeight.bold
+                                          : null,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+
+                            // ── KI-Aufgaben generieren ─────────────────────────
+                            const PopupMenuItem(
+                              value: 'ai_tasks',
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.auto_awesome,
+                                    size: 18,
+                                    color: Colors.deepPurple,
+                                  ),
+                                  SizedBox(width: 8),
+                                  Text('KI-Aufgaben generieren'),
+                                ],
+                              ),
+                            ),
+
+                            // ── Aufgaben freigeben ─────────────────────────────
+                            PopupMenuItem(
+                              value: 'approve_tasks',
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.task_alt,
+                                    size: 18,
+                                    color: pendingCount > 0
+                                        ? Colors.orange
+                                        : Colors.green,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    pendingCount > 0
+                                        ? 'Aufgaben freigeben ($pendingCount)'
+                                        : 'Aufgaben freigeben',
+                                  ),
+                                ],
+                              ),
+                            ),
+
+                            // ── Tutor-Gespräche ────────────────────────────────
+                            const PopupMenuItem(
+                              value: 'tutor',
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.chat,
+                                    size: 18,
+                                    color: Colors.deepPurple,
+                                  ),
+                                  SizedBox(width: 8),
+                                  Text('Tutor-Gespräche'),
+                                ],
+                              ),
+                            ),
+
+                            // ── Statistiken ────────────────────────────────────
+                            const PopupMenuItem(
+                              value: 'statistics',
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.bar_chart,
+                                    size: 18,
+                                    color: Colors.indigo,
+                                  ),
+                                  SizedBox(width: 8),
+                                  Text('Statistiken'),
+                                ],
                               ),
                             ),
                           ],
                         ),
-                      ),
-                      const SizedBox(width: 4),
-                    ],
-
-                    // ── Drei-Punkte-Menü (inkl. aller Aktionen) ────────────
-                    PopupMenuButton<String>(
-                      onSelected: (value) {
-                        switch (value) {
-                          case 'edit':
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => EditChildScreen(child: child),
-                              ),
-                            );
-                            break;
-                          case 'delete':
-                            _confirmDelete(context, ref, child);
-                            break;
-                          case 'rewards':
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) =>
-                                    ManageRewardsScreen(child: child),
-                              ),
-                            );
-                            break;
-                          case 'ai_tasks':
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) =>
-                                    ImprovedAITaskGeneratorScreen(child: child),
-                              ),
-                            );
-                            break;
-                          case 'approve_tasks':
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => const TaskApprovalScreen(),
-                              ),
-                            );
-                            break;
-                          case 'tutor':
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) =>
-                                    TutorHistoryScreen(child: child),
-                              ),
-                            );
-                            break;
-                          case 'statistics':
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) =>
-                                    ChildStatisticsScreen(child: child),
-                              ),
-                            );
-                            break;
-                        }
-                      },
-                      itemBuilder: (context) => [
-                        // ── Bearbeiten & Löschen ──────────────────────────
-                        const PopupMenuItem(
-                          value: 'edit',
-                          child: Row(
-                            children: [
-                              Icon(Icons.edit, size: 18),
-                              SizedBox(width: 8),
-                              Text('Bearbeiten'),
-                            ],
-                          ),
-                        ),
-                        const PopupMenuItem(
-                          value: 'delete',
-                          child: Row(
-                            children: [
-                              Icon(Icons.delete, size: 18, color: Colors.red),
-                              SizedBox(width: 8),
-                              Text(
-                                'Löschen',
-                                style: TextStyle(color: Colors.red),
-                              ),
-                            ],
-                          ),
-                        ),
-
-                        // ── Trennlinie ─────────────────────────────────────
-                        const PopupMenuDivider(),
-
-                        // ── Belohnungen verwalten ──────────────────────────
-                        const PopupMenuItem(
-                          value: 'rewards',
-                          child: Row(
-                            children: [
-                              Icon(
-                                Icons.card_giftcard,
-                                size: 18,
-                                color: Colors.amber,
-                              ),
-                              SizedBox(width: 8),
-                              Text('Belohnungen verwalten'),
-                            ],
-                          ),
-                        ),
-
-                        // ── KI-Aufgaben generieren ─────────────────────────
-                        const PopupMenuItem(
-                          value: 'ai_tasks',
-                          child: Row(
-                            children: [
-                              Icon(
-                                Icons.auto_awesome,
-                                size: 18,
-                                color: Colors.deepPurple,
-                              ),
-                              SizedBox(width: 8),
-                              Text('KI-Aufgaben generieren'),
-                            ],
-                          ),
-                        ),
-
-                        // ── Aufgaben freigeben ─────────────────────────────
-                        PopupMenuItem(
-                          value: 'approve_tasks',
-                          child: Row(
-                            children: [
-                              Icon(
-                                Icons.task_alt,
-                                size: 18,
-                                color: pendingCount > 0
-                                    ? Colors.orange
-                                    : Colors.green,
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                pendingCount > 0
-                                    ? 'Aufgaben freigeben ($pendingCount)'
-                                    : 'Aufgaben freigeben',
-                              ),
-                            ],
-                          ),
-                        ),
-
-                        // ── Tutor-Gespräche ────────────────────────────────
-                        const PopupMenuItem(
-                          value: 'tutor',
-                          child: Row(
-                            children: [
-                              Icon(
-                                Icons.chat,
-                                size: 18,
-                                color: Colors.deepPurple,
-                              ),
-                              SizedBox(width: 8),
-                              Text('Tutor-Gespräche'),
-                            ],
-                          ),
-                        ),
-
-                        // ── Statistiken ────────────────────────────────────
-                        const PopupMenuItem(
-                          value: 'statistics',
-                          child: Row(
-                            children: [
-                              Icon(
-                                Icons.bar_chart,
-                                size: 18,
-                                color: Colors.indigo,
-                              ),
-                              SizedBox(width: 8),
-                              Text('Statistiken'),
-                            ],
-                          ),
-                        ),
                       ],
                     ),
-                  ],
-                ),
 
-                const SizedBox(height: 16),
+                    const SizedBox(height: 16),
 
-                // ── Level + Rang + XP-Balken ──────────────────────────────
-                Row(
-                  children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.center,
+                    // ── Level + Rang + XP-Balken ──────────────────────────────
+                    Row(
                       children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 6,
-                          ),
-                          decoration: BoxDecoration(
-                            color: rank.color,
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Text(
-                            'Lvl ${child.level}',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 13,
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 6,
+                              ),
+                              decoration: BoxDecoration(
+                                color: rank.color,
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Text(
+                                'Lvl ${child.level}',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 13,
+                                ),
+                              ),
                             ),
-                          ),
+                            const SizedBox(height: 4),
+                            Text(
+                              '${rank.emoji} ${rank.title}',
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: rank.color,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          '${rank.emoji} ${rank.title}',
-                          style: TextStyle(
-                            fontSize: 10,
-                            color: rank.color,
-                            fontWeight: FontWeight.w600,
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(4),
+                                child: LinearProgressIndicator(
+                                  value: progress,
+                                  backgroundColor: Colors.grey.shade200,
+                                  color: rank.color,
+                                  minHeight: 8,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              isMaxLevel
+                                  ? Text(
+                                      '🏆 Max Level erreicht! (${child.xp} XP gesamt)',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        color: rank.color,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    )
+                                  : Text(
+                                      '$xpInLevel / $xpForThisLevel XP · noch ${xpForThisLevel - xpInLevel} bis Lvl ${child.level + 1}',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        color: Colors.grey[600],
+                                      ),
+                                    ),
+                            ],
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(4),
-                            child: LinearProgressIndicator(
-                              value: progress,
-                              backgroundColor: Colors.grey.shade200,
-                              color: rank.color,
-                              minHeight: 8,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          isMaxLevel
-                              ? Text(
-                                  '🏆 Max Level erreicht! (${child.xp} XP gesamt)',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    color: rank.color,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                )
-                              : Text(
-                                  '$xpInLevel / $xpForThisLevel XP · noch ${xpForThisLevel - xpInLevel} bis Lvl ${child.level + 1}',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    color: Colors.grey[600],
-                                  ),
-                                ),
-                        ],
-                      ),
+
+                    const SizedBox(height: 16),
+
+                    // ── Statistik-Grid ─────────────────────────────────────────
+                    Row(
+                      children: [
+                        _StatChip(
+                          icon: Icons.star,
+                          color: Colors.amber,
+                          label: '${child.stars} Sterne',
+                        ),
+                        const SizedBox(width: 8),
+                        _StatChip(
+                          icon: Icons.local_fire_department,
+                          color: Colors.orange,
+                          label: '${child.streak ?? 0} Tage',
+                        ),
+                        const SizedBox(width: 8),
+                        _StatChip(
+                          icon: Icons.timer,
+                          color: Colors.blue,
+                          label: child.formattedLearningTime,
+                        ),
+                      ],
                     ),
                   ],
                 ),
-
-                const SizedBox(height: 16),
-
-                // ── Statistik-Grid ─────────────────────────────────────────
-                Row(
-                  children: [
-                    _StatChip(
-                      icon: Icons.star,
-                      color: Colors.amber,
-                      label: '${child.stars} Sterne',
-                    ),
-                    const SizedBox(width: 8),
-                    _StatChip(
-                      icon: Icons.local_fire_department,
-                      color: Colors.orange,
-                      label: '${child.streak ?? 0} Tage',
-                    ),
-                    const SizedBox(width: 8),
-                    _StatChip(
-                      icon: Icons.timer,
-                      color: Colors.blue,
-                      label: child.formattedLearningTime,
-                    ),
-                  ],
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
         );
       },
@@ -569,6 +667,71 @@ class LiveChildStatCard extends ConsumerWidget {
   }
 }
 
+// =============================================================================
+// CLAIMED REWARDS BANNER
+// =============================================================================
+
+/// Dezenter Banner für das Eltern-Dashboard.
+/// Seriöses Design passend zum Rest des Dashboards — kein kindliches Styling.
+class _ClaimedRewardsBanner extends StatelessWidget {
+  final int count;
+  const _ClaimedRewardsBanner({required this.count});
+
+  @override
+  Widget build(BuildContext context) {
+    final label = count == 1
+        ? 'Belohnung eingelöst — bitte aushändigen'
+        : '$count Belohnungen eingelöst — bitte aushändigen';
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.deepPurple.shade50,
+        borderRadius: const BorderRadius.only(
+          topLeft: Radius.circular(16),
+          topRight: Radius.circular(16),
+        ),
+        border: Border(bottom: BorderSide(color: Colors.deepPurple.shade100)),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.redeem_outlined,
+            size: 16,
+            color: Colors.deepPurple.shade600,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: Colors.deepPurple.shade700,
+              ),
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            decoration: BoxDecoration(
+              color: Colors.deepPurple.shade600,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Text(
+              '$count',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
 // =============================================================================
 // HELPER WIDGETS
 // =============================================================================
@@ -591,7 +754,7 @@ class _StatChip extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
         decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.1),
+          color: color.withOpacity(0.1),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Row(
