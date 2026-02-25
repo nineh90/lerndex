@@ -257,14 +257,21 @@ class LiveChildStatCard extends ConsumerWidget {
                             CircleAvatar(
                               radius: 25,
                               backgroundColor: Colors.deepPurple.shade100,
-                              child: Text(
-                                child.name[0].toUpperCase(),
-                                style: const TextStyle(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.deepPurple,
-                                ),
-                              ),
+                              backgroundImage: child.selectedAvatar != null
+                                  ? AssetImage(
+                                      'assets/images/${child.selectedAvatar}.png',
+                                    )
+                                  : null,
+                              child: child.selectedAvatar == null
+                                  ? Text(
+                                      child.name[0].toUpperCase(),
+                                      style: const TextStyle(
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.deepPurple,
+                                      ),
+                                    )
+                                  : null,
                             ),
                             if (claimedCount > 0)
                               Positioned(

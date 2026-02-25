@@ -3,24 +3,27 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 /// Repräsentiert ein Kind in der App
 /// Enthält alle wichtigen Daten: Level, XP, Sterne, Lernzeit
 class ChildModel {
-  final String id;              // Eindeutige ID aus Firestore
-  final String name;            // Name des Kindes
-  final int level;              // Aktuelles Level (startet bei 1)
-  final int grade;              // Schulklasse (1-13)
-  final String schoolType;      // Schulform (Grundschule, Gymnasium, etc.)
-  final int age;                // Alter des Kindes
-  final int stars;              // Gesammelte Sterne
+  final String id; // Eindeutige ID aus Firestore
+  final String name; // Name des Kindes
+  final int level; // Aktuelles Level (startet bei 1)
+  final int grade; // Schulklasse (1-13)
+  final String schoolType; // Schulform (Grundschule, Gymnasium, etc.)
+  final int age; // Alter des Kindes
+  final int stars; // Gesammelte Sterne
   final int totalLearningSeconds; // Gesamte Lernzeit in Sekunden
-  final int xp;                 // Experience Points (für Level-System)
-  final int xpToNextLevel;      // XP benötigt für nächstes Level
+  final int xp; // Experience Points (für Level-System)
+  final int xpToNextLevel; // XP benötigt für nächstes Level
 
   // NEU: Zusätzliche Tracking-Felder
-  final int? streak;            // Lern-Streak (Tage am Stück)
-  final int? totalQuizzes;      // Anzahl abgeschlossener Quizze
-  final int? perfectQuizzes;    // Anzahl perfekter Quizze (10/10)
-  final DateTime? lastLearningDate;  // Letztes Lerndatum
-  final DateTime? lastQuizDate;      // Letztes Quiz-Datum
-  final DateTime? lastXPGain;        // Letzter XP-Gewinn
+  final int? streak; // Lern-Streak (Tage am Stück)
+  final int? totalQuizzes; // Anzahl abgeschlossener Quizze
+  final int? perfectQuizzes; // Anzahl perfekter Quizze (10/10)
+  final DateTime? lastLearningDate; // Letztes Lerndatum
+  final DateTime? lastQuizDate; // Letztes Quiz-Datum
+  final DateTime? lastXPGain; // Letzter XP-Gewinn
+
+  // Avatar
+  final String? selectedAvatar; // z.B. 'avatar-common', 'avatar-rare', etc.
 
   const ChildModel({
     required this.id,
@@ -32,7 +35,7 @@ class ChildModel {
     this.stars = 0,
     this.totalLearningSeconds = 0,
     this.xp = 0,
-    this.xpToNextLevel = 25,    // Standard: 25 XP für Level 2
+    this.xpToNextLevel = 25, // Standard: 25 XP für Level 2
     // NEU: Optional parameters
     this.streak,
     this.totalQuizzes,
@@ -40,6 +43,7 @@ class ChildModel {
     this.lastLearningDate,
     this.lastQuizDate,
     this.lastXPGain,
+    this.selectedAvatar,
   });
 
   /// Berechnet den XP-Fortschritt als Prozentwert (0.0 - 1.0)
@@ -78,6 +82,7 @@ class ChildModel {
       lastLearningDate: (data['lastLearningDate'] as Timestamp?)?.toDate(),
       lastQuizDate: (data['lastQuizDate'] as Timestamp?)?.toDate(),
       lastXPGain: (data['lastXPGain'] as Timestamp?)?.toDate(),
+      selectedAvatar: data['selectedAvatar'],
     );
   }
 
@@ -103,9 +108,12 @@ class ChildModel {
       if (streak != null) 'streak': streak,
       if (totalQuizzes != null) 'totalQuizzes': totalQuizzes,
       if (perfectQuizzes != null) 'perfectQuizzes': perfectQuizzes,
-      if (lastLearningDate != null) 'lastLearningDate': Timestamp.fromDate(lastLearningDate!),
-      if (lastQuizDate != null) 'lastQuizDate': Timestamp.fromDate(lastQuizDate!),
+      if (lastLearningDate != null)
+        'lastLearningDate': Timestamp.fromDate(lastLearningDate!),
+      if (lastQuizDate != null)
+        'lastQuizDate': Timestamp.fromDate(lastQuizDate!),
       if (lastXPGain != null) 'lastXPGain': Timestamp.fromDate(lastXPGain!),
+      if (selectedAvatar != null) 'selectedAvatar': selectedAvatar,
     };
   }
 
@@ -128,6 +136,7 @@ class ChildModel {
     DateTime? lastLearningDate,
     DateTime? lastQuizDate,
     DateTime? lastXPGain,
+    String? selectedAvatar,
   }) {
     return ChildModel(
       id: id ?? this.id,
@@ -147,6 +156,7 @@ class ChildModel {
       lastLearningDate: lastLearningDate ?? this.lastLearningDate,
       lastQuizDate: lastQuizDate ?? this.lastQuizDate,
       lastXPGain: lastXPGain ?? this.lastXPGain,
+      selectedAvatar: selectedAvatar ?? this.selectedAvatar,
     );
   }
 }

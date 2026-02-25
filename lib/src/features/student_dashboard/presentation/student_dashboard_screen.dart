@@ -253,14 +253,21 @@ class _StudentDashboardScreenState
                 child: CircleAvatar(
                   radius: 18,
                   backgroundColor: Colors.white24,
-                  child: Text(
-                    activeChild.name[0].toUpperCase(),
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
+                  backgroundImage: activeChild.selectedAvatar != null
+                      ? AssetImage(
+                          'assets/images/${activeChild.selectedAvatar}.png',
+                        )
+                      : null,
+                  child: activeChild.selectedAvatar == null
+                      ? Text(
+                          activeChild.name[0].toUpperCase(),
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        )
+                      : null,
                 ),
               ),
             ),
@@ -373,6 +380,7 @@ class _StudentDashboardScreenState
   void _showAvatarSettings(BuildContext context, ChildModel child) {
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -1747,85 +1755,360 @@ class _InfoTile extends StatelessWidget {
 }
 
 // ============================================================================
-// AVATAR SETTINGS BOTTOM SHEET – unveränderte Logik
+// AVATAR CONFIG
 // ============================================================================
 
-class _AvatarSettingsSheet extends StatelessWidget {
+class AvatarConfig {
+  final String id; // asset name ohne .png
+  final String label; // Anzeigename
+  final int requiredLevel; // Level zum Freischalten
+  final Color color; // Rarity-Farbe
+  final String rarityLabel;
+  // Für spätere Payment-Integration:
+  // final bool requiresPayment;
+  // final String? productId;
+
+  const AvatarConfig({
+    required this.id,
+    required this.label,
+    required this.requiredLevel,
+    required this.color,
+    required this.rarityLabel,
+  });
+}
+
+const List<AvatarConfig> kAvatars = [
+  AvatarConfig(
+    id: 'avatar-common',
+    label: 'Common',
+    requiredLevel: 1,
+    color: Color(0xFF78909C),
+    rarityLabel: '⬜ Common',
+  ),
+  AvatarConfig(
+    id: 'avatar-common-1',
+    label: 'Common',
+    requiredLevel: 1,
+    color: Color(0xFF78909C),
+    rarityLabel: '⬜ Common',
+  ),
+  AvatarConfig(
+    id: 'avatar-uncommon',
+    label: 'Uncommon',
+    requiredLevel: 5,
+    color: Color(0xFF43A047),
+    rarityLabel: '🟩 Uncommon',
+  ),
+  AvatarConfig(
+    id: 'avatar-uncommon-1',
+    label: 'Uncommon',
+    requiredLevel: 5,
+    color: Color(0xFF43A047),
+    rarityLabel: '🟩 Uncommon',
+  ),
+  AvatarConfig(
+    id: 'avatar-rare',
+    label: 'Rare',
+    requiredLevel: 10,
+    color: Color(0xFF1E88E5),
+    rarityLabel: '🟦 Rare',
+  ),
+  AvatarConfig(
+    id: 'avatar-epic',
+    label: 'Epic',
+    requiredLevel: 25,
+    color: Color(0xFF8E24AA),
+    rarityLabel: '🟪 Epic',
+  ),
+  AvatarConfig(
+    id: 'avatar-legendary',
+    label: 'Legendary',
+    requiredLevel: 50,
+    color: Color(0xFFFF8F00),
+    rarityLabel: '🟨 Legendary',
+  ),
+];
+
+// ============================================================================
+// AVATAR SETTINGS BOTTOM SHEET
+// ============================================================================
+
+class _AvatarSettingsSheet extends ConsumerStatefulWidget {
   final ChildModel child;
 
   const _AvatarSettingsSheet({required this.child});
 
   @override
+  ConsumerState<_AvatarSettingsSheet> createState() =>
+      _AvatarSettingsSheetState();
+}
+
+class _AvatarSettingsSheetState extends ConsumerState<_AvatarSettingsSheet> {
+  bool _saving = false;
+
+  Future<void> _selectAvatar(AvatarConfig avatar) async {
+    if (_saving) return;
+    final user = ref.read(authStateChangesProvider).value;
+    if (user == null) return;
+
+    // Wenn derselbe Avatar nochmal getippt wird → abwählen (null)
+    final currentAvatar = ref.read(activeChildProvider)?.selectedAvatar;
+    final newValue = currentAvatar == avatar.id ? null : avatar.id;
+
+    setState(() => _saving = true);
+    try {
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('children')
+          .doc(widget.child.id)
+          .update({'selectedAvatar': newValue});
+
+      ref.read(activeChildProvider.notifier).updateAvatar(newValue);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Fehler beim Speichern')));
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 40,
-            height: 4,
-            margin: const EdgeInsets.only(bottom: 20),
-            decoration: BoxDecoration(
-              color: Colors.grey[300],
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
-          CircleAvatar(
-            radius: 36,
-            backgroundColor: Colors.deepPurple.shade100,
-            child: Text(
-              child.name[0].toUpperCase(),
-              style: const TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                color: Colors.deepPurple,
+    // Aktuellen Avatar-Stand live aus dem Provider lesen → Checkmark springt sofort
+    final currentAvatar = ref.watch(activeChildProvider)?.selectedAvatar;
+    final child = widget.child;
+    final screenHeight = MediaQuery.of(context).size.height;
+
+    return ConstrainedBox(
+      constraints: BoxConstraints(maxHeight: screenHeight * 0.85),
+      child: Padding(
+        padding: EdgeInsets.only(
+          left: 24,
+          right: 24,
+          top: 24,
+          bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Handle
+            Container(
+              width: 40,
+              height: 4,
+              margin: const EdgeInsets.only(bottom: 20),
+              decoration: BoxDecoration(
+                color: Colors.grey[300],
+                borderRadius: BorderRadius.circular(2),
               ),
             ),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            child.name,
-            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-          ),
-          Text(
-            'Level ${child.level} · ${child.stars} ⭐',
-            style: TextStyle(color: Colors.grey[600]),
-          ),
-          const SizedBox(height: 24),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.deepPurple.shade50,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.deepPurple.shade100),
+            // Aktueller Avatar
+            CircleAvatar(
+              radius: 40,
+              backgroundColor: Colors.deepPurple.shade100,
+              backgroundImage: currentAvatar != null
+                  ? AssetImage('assets/images/$currentAvatar.png')
+                  : null,
+              child: currentAvatar == null
+                  ? Text(
+                      child.name[0].toUpperCase(),
+                      style: const TextStyle(
+                        fontSize: 32,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.deepPurple,
+                      ),
+                    )
+                  : null,
             ),
-            child: Row(
-              children: [
-                const Icon(Icons.brush_outlined, color: Colors.deepPurple),
-                const SizedBox(width: 12),
-                const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Avatar anpassen',
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      Text(
-                        'Folgt in Kürze',
-                        style: TextStyle(fontSize: 12, color: Colors.grey),
-                      ),
-                    ],
-                  ),
+            const SizedBox(height: 12),
+            Text(
+              child.name,
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+            Text(
+              'Level ${child.level} · ${child.stars} ⭐',
+              style: TextStyle(color: Colors.grey[600]),
+            ),
+            const SizedBox(height: 20),
+            const Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                'Avatar wählen',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+            ),
+            const SizedBox(height: 12),
+            // Avatar Grid
+            Flexible(
+              child: GridView.builder(
+                shrinkWrap: true,
+                itemCount: kAvatars.length,
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 3,
+                  mainAxisSpacing: 12,
+                  crossAxisSpacing: 12,
+                  childAspectRatio: 0.82,
                 ),
-                Icon(Icons.lock_outline, color: Colors.grey[400], size: 18),
-              ],
+                itemBuilder: (context, index) {
+                  final avatar = kAvatars[index];
+                  final isUnlocked = child.level >= avatar.requiredLevel;
+                  final isSelected = currentAvatar == avatar.id;
+
+                  return GestureDetector(
+                    onTap: isUnlocked ? () => _selectAvatar(avatar) : null,
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: isSelected
+                              ? avatar.color
+                              : isUnlocked
+                              ? avatar.color.withOpacity(0.4)
+                              : Colors.grey.shade300,
+                          width: isSelected ? 3 : 1.5,
+                        ),
+                        color: isSelected
+                            ? avatar.color.withOpacity(0.1)
+                            : Colors.grey.shade50,
+                      ),
+                      child: Stack(
+                        children: [
+                          Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Expanded(
+                                child: Padding(
+                                  padding: const EdgeInsets.fromLTRB(
+                                    8,
+                                    10,
+                                    8,
+                                    4,
+                                  ),
+                                  child: ColorFiltered(
+                                    colorFilter: isUnlocked
+                                        ? const ColorFilter.mode(
+                                            Colors.transparent,
+                                            BlendMode.multiply,
+                                          )
+                                        : const ColorFilter.matrix([
+                                            0.2126,
+                                            0.7152,
+                                            0.0722,
+                                            0,
+                                            0,
+                                            0.2126,
+                                            0.7152,
+                                            0.0722,
+                                            0,
+                                            0,
+                                            0.2126,
+                                            0.7152,
+                                            0.0722,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            1,
+                                            0,
+                                          ]),
+                                    child: Image.asset(
+                                      'assets/images/${avatar.id}.png',
+                                      fit: BoxFit.contain,
+                                      errorBuilder: (_, __, ___) => Icon(
+                                        Icons.face,
+                                        size: 48,
+                                        color: avatar.color.withOpacity(
+                                          isUnlocked ? 1.0 : 0.3,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.only(bottom: 6),
+                                child: Text(
+                                  avatar.rarityLabel,
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w600,
+                                    color: isUnlocked
+                                        ? avatar.color
+                                        : Colors.grey[400],
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
+                            ],
+                          ),
+                          // Lock overlay
+                          if (!isUnlocked)
+                            Positioned.fill(
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(14),
+                                  color: Colors.white.withOpacity(0.5),
+                                ),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.lock_rounded,
+                                      color: Colors.grey[500],
+                                      size: 22,
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      'Lvl ${avatar.requiredLevel}',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.grey[600],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          // Ausgewählt-Checkmark
+                          if (isSelected)
+                            Positioned(
+                              top: 6,
+                              right: 6,
+                              child: Container(
+                                width: 20,
+                                height: 20,
+                                decoration: BoxDecoration(
+                                  color: avatar.color,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.check,
+                                  color: Colors.white,
+                                  size: 13,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
             ),
-          ),
-          const SizedBox(height: 12),
-        ],
+            const SizedBox(height: 8),
+            if (_saving)
+              const Padding(
+                padding: EdgeInsets.only(top: 8),
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+          ],
+        ),
       ),
     );
   }

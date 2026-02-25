@@ -98,14 +98,21 @@ class FamilyDashboardScreen extends ConsumerWidget {
                   leading: CircleAvatar(
                     backgroundColor: const Color(0xFF6B21A8),
                     radius: 24,
-                    child: Text(
-                      child.name[0].toUpperCase(),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+                    backgroundImage: child.selectedAvatar != null
+                        ? AssetImage(
+                            'assets/images/${child.selectedAvatar}.png',
+                          )
+                        : null,
+                    child: child.selectedAvatar == null
+                        ? Text(
+                            child.name[0].toUpperCase(),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          )
+                        : null,
                   ),
                   title: Text(
                     child.name,

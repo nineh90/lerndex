@@ -20,9 +20,34 @@ class ActiveChildNotifier extends StateNotifier<ChildModel?> {
   void update(ChildModel child) {
     state = child;
   }
+
+  /// Avatar des aktiven Kindes aktualisieren (null = abwählen)
+  void updateAvatar(String? avatarId) {
+    if (state == null) return;
+    state = ChildModel(
+      id: state!.id,
+      name: state!.name,
+      level: state!.level,
+      grade: state!.grade,
+      schoolType: state!.schoolType,
+      age: state!.age,
+      stars: state!.stars,
+      totalLearningSeconds: state!.totalLearningSeconds,
+      xp: state!.xp,
+      xpToNextLevel: state!.xpToNextLevel,
+      streak: state!.streak,
+      totalQuizzes: state!.totalQuizzes,
+      perfectQuizzes: state!.perfectQuizzes,
+      lastLearningDate: state!.lastLearningDate,
+      lastQuizDate: state!.lastQuizDate,
+      lastXPGain: state!.lastXPGain,
+      selectedAvatar: avatarId, // explizit null erlaubt
+    );
+  }
 }
 
 /// Provider für das aktive Kind
-final activeChildProvider = StateNotifierProvider<ActiveChildNotifier, ChildModel?>((ref) {
-  return ActiveChildNotifier();
-});
+final activeChildProvider =
+    StateNotifierProvider<ActiveChildNotifier, ChildModel?>((ref) {
+      return ActiveChildNotifier();
+    });
