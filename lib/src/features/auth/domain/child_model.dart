@@ -24,6 +24,8 @@ class ChildModel {
 
   // Avatar
   final String? selectedAvatar; // z.B. 'avatar-common', 'avatar-rare', etc.
+  final List<String>
+  unlockedAvatars; // Über Belohnungen freigeschaltete Avatare
 
   const ChildModel({
     required this.id,
@@ -44,6 +46,7 @@ class ChildModel {
     this.lastQuizDate,
     this.lastXPGain,
     this.selectedAvatar,
+    this.unlockedAvatars = const [],
   });
 
   /// Berechnet den XP-Fortschritt als Prozentwert (0.0 - 1.0)
@@ -83,6 +86,7 @@ class ChildModel {
       lastQuizDate: (data['lastQuizDate'] as Timestamp?)?.toDate(),
       lastXPGain: (data['lastXPGain'] as Timestamp?)?.toDate(),
       selectedAvatar: data['selectedAvatar'],
+      unlockedAvatars: List<String>.from(data['unlockedAvatars'] ?? []),
     );
   }
 
@@ -114,6 +118,7 @@ class ChildModel {
         'lastQuizDate': Timestamp.fromDate(lastQuizDate!),
       if (lastXPGain != null) 'lastXPGain': Timestamp.fromDate(lastXPGain!),
       if (selectedAvatar != null) 'selectedAvatar': selectedAvatar,
+      if (unlockedAvatars.isNotEmpty) 'unlockedAvatars': unlockedAvatars,
     };
   }
 
@@ -137,6 +142,7 @@ class ChildModel {
     DateTime? lastQuizDate,
     DateTime? lastXPGain,
     String? selectedAvatar,
+    List<String>? unlockedAvatars,
   }) {
     return ChildModel(
       id: id ?? this.id,
@@ -157,6 +163,7 @@ class ChildModel {
       lastQuizDate: lastQuizDate ?? this.lastQuizDate,
       lastXPGain: lastXPGain ?? this.lastXPGain,
       selectedAvatar: selectedAvatar ?? this.selectedAvatar,
+      unlockedAvatars: unlockedAvatars ?? this.unlockedAvatars,
     );
   }
 }

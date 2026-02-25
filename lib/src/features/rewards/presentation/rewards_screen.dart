@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../auth/presentation/active_child_provider.dart';
 import '../../auth/data/auth_repository.dart';
 import '../data/reward_service.dart';
@@ -24,10 +25,9 @@ class RewardsScreen extends ConsumerWidget {
       );
     }
 
-    final rewardsStream = ref.watch(rewardServiceProvider).getRewardsStream(
-      userId: user.uid,
-      childId: activeChild.id,
-    );
+    final rewardsStream = ref
+        .watch(rewardServiceProvider)
+        .getRewardsStream(userId: user.uid, childId: activeChild.id);
 
     return Scaffold(
       appBar: AppBar(
@@ -113,14 +113,8 @@ class RewardsScreen extends ConsumerWidget {
                     unselectedLabelColor: Colors.grey,
                     indicatorColor: Colors.amber,
                     tabs: [
-                      Tab(
-                        icon: Icon(Icons.card_giftcard),
-                        text: 'Verfügbar',
-                      ),
-                      Tab(
-                        icon: Icon(Icons.history),
-                        text: 'Eingelöst',
-                      ),
+                      Tab(icon: Icon(Icons.card_giftcard), text: 'Verfügbar'),
+                      Tab(icon: Icon(Icons.history), text: 'Eingelöst'),
                     ],
                   ),
                 ),
@@ -164,11 +158,7 @@ class RewardsScreen extends ConsumerWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            Icons.card_giftcard,
-            size: 100,
-            color: Colors.grey.shade300,
-          ),
+          Icon(Icons.card_giftcard, size: 100, color: Colors.grey.shade300),
           const SizedBox(height: 24),
           Text(
             'Noch keine Belohnungen',
@@ -182,10 +172,7 @@ class RewardsScreen extends ConsumerWidget {
           Text(
             'Mach Quizze und erreiche Level-Ups\num Belohnungen zu verdienen!',
             textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 16,
-              color: Colors.grey.shade500,
-            ),
+            style: TextStyle(fontSize: 16, color: Colors.grey.shade500),
           ),
           const SizedBox(height: 32),
           ElevatedButton.icon(
@@ -203,13 +190,13 @@ class RewardsScreen extends ConsumerWidget {
   }
 
   Widget _buildRewardList(
-      BuildContext context,
-      WidgetRef ref,
-      List<RewardModel> rewards,
-      String userId,
-      String childId, {
-        required bool isAvailable,
-      }) {
+    BuildContext context,
+    WidgetRef ref,
+    List<RewardModel> rewards,
+    String userId,
+    String childId, {
+    required bool isAvailable,
+  }) {
     if (rewards.isEmpty) {
       return Center(
         child: Column(
@@ -225,10 +212,7 @@ class RewardsScreen extends ConsumerWidget {
               isAvailable
                   ? 'Keine verfügbaren Belohnungen'
                   : 'Noch keine Belohnungen eingelöst',
-              style: TextStyle(
-                fontSize: 18,
-                color: Colors.grey.shade600,
-              ),
+              style: TextStyle(fontSize: 18, color: Colors.grey.shade600),
             ),
           ],
         ),
@@ -244,8 +228,8 @@ class RewardsScreen extends ConsumerWidget {
           reward: reward,
           onClaim: isAvailable
               ? () async {
-            await _claimReward(context, ref, userId, childId, reward);
-          }
+                  await _claimReward(context, ref, userId, childId, reward);
+                }
               : null,
         );
       },
@@ -253,12 +237,12 @@ class RewardsScreen extends ConsumerWidget {
   }
 
   Future<void> _claimReward(
-      BuildContext context,
-      WidgetRef ref,
-      String userId,
-      String childId,
-      RewardModel reward,
-      ) async {
+    BuildContext context,
+    WidgetRef ref,
+    String userId,
+    String childId,
+    RewardModel reward,
+  ) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -269,10 +253,7 @@ class RewardsScreen extends ConsumerWidget {
           children: [
             Text(
               reward.title,
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
             Container(
@@ -320,16 +301,44 @@ class RewardsScreen extends ConsumerWidget {
 
     if (confirmed == true) {
       try {
-        await ref.read(rewardServiceProvider).claimReward(
-          userId: userId,
-          childId: childId,
-          rewardId: reward.id,
-        );
+        await ref
+            .read(rewardServiceProvider)
+            .claimReward(userId: userId, childId: childId, rewardId: reward.id);
+
+        // Avatar freischalten falls avatarUnlockId gesetzt ist
+        if (reward.avatarUnlockId != null) {
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(userId)
+              .collection('children')
+              .doc(childId)
+              .update({
+                'unlockedAvatars': FieldValue.arrayUnion([
+                  reward.avatarUnlockId,
+                ]),
+              });
+
+          // Auch den lokalen Provider sofort aktualisieren
+          if (context.mounted) {
+            final current = ref.read(activeChildProvider);
+            if (current != null) {
+              final updated = List<String>.from(current.unlockedAvatars)
+                ..add(reward.avatarUnlockId!);
+              ref
+                  .read(activeChildProvider.notifier)
+                  .update(current.copyWith(unlockedAvatars: updated));
+            }
+          }
+        }
 
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('🎉 ${reward.title} eingelöst!'),
+              content: Text(
+                reward.avatarUnlockId != null
+                    ? '🎭 Avatar freigeschaltet!'
+                    : '🎉 ${reward.title} eingelöst!',
+              ),
               backgroundColor: Colors.green,
               behavior: SnackBarBehavior.floating,
             ),
@@ -338,10 +347,7 @@ class RewardsScreen extends ConsumerWidget {
       } catch (e) {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Fehler: $e'),
-              backgroundColor: Colors.red,
-            ),
+            SnackBar(content: Text('Fehler: $e'), backgroundColor: Colors.red),
           );
         }
       }
@@ -383,10 +389,7 @@ class _StatChip extends StatelessWidget {
             color: color,
           ),
         ),
-        Text(
-          label,
-          style: const TextStyle(fontSize: 12, color: Colors.grey),
-        ),
+        Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
       ],
     );
   }
@@ -396,10 +399,7 @@ class _RewardCard extends StatelessWidget {
   final RewardModel reward;
   final VoidCallback? onClaim;
 
-  const _RewardCard({
-    required this.reward,
-    this.onClaim,
-  });
+  const _RewardCard({required this.reward, this.onClaim});
 
   @override
   Widget build(BuildContext context) {
@@ -422,10 +422,7 @@ class _RewardCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                Text(
-                  reward.statusEmoji,
-                  style: const TextStyle(fontSize: 32),
-                ),
+                Text(reward.statusEmoji, style: const TextStyle(fontSize: 32)),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
@@ -458,9 +455,7 @@ class _RewardCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: isClaimed
-                    ? Colors.grey.shade100
-                    : Colors.amber.shade50,
+                color: isClaimed ? Colors.grey.shade100 : Colors.amber.shade50,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Row(

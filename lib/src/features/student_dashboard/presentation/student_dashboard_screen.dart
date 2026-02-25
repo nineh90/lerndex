@@ -12,6 +12,7 @@ import '../../rewards/domain/reward_enums.dart';
 import '../../rewards/data/xp_service.dart';
 import '../../tutor/presentation/tutor_screen.dart';
 import '../../tutor/presentation/tutor_provider.dart';
+import '../domain/avatar_config.dart';
 
 // Provider: Anzahl der einlösbaren Belohnungen für das aktive Kind
 final _availableRewardsCountProvider = StreamProvider<int>((ref) {
@@ -1755,79 +1756,8 @@ class _InfoTile extends StatelessWidget {
 }
 
 // ============================================================================
-// AVATAR CONFIG
+// AVATAR CONFIG → ausgelagert in avatar_config.dart
 // ============================================================================
-
-class AvatarConfig {
-  final String id; // asset name ohne .png
-  final String label; // Anzeigename
-  final int requiredLevel; // Level zum Freischalten
-  final Color color; // Rarity-Farbe
-  final String rarityLabel;
-  // Für spätere Payment-Integration:
-  // final bool requiresPayment;
-  // final String? productId;
-
-  const AvatarConfig({
-    required this.id,
-    required this.label,
-    required this.requiredLevel,
-    required this.color,
-    required this.rarityLabel,
-  });
-}
-
-const List<AvatarConfig> kAvatars = [
-  AvatarConfig(
-    id: 'avatar-common',
-    label: 'Common',
-    requiredLevel: 1,
-    color: Color(0xFF78909C),
-    rarityLabel: '⬜ Common',
-  ),
-  AvatarConfig(
-    id: 'avatar-common-1',
-    label: 'Common',
-    requiredLevel: 1,
-    color: Color(0xFF78909C),
-    rarityLabel: '⬜ Common',
-  ),
-  AvatarConfig(
-    id: 'avatar-uncommon',
-    label: 'Uncommon',
-    requiredLevel: 5,
-    color: Color(0xFF43A047),
-    rarityLabel: '🟩 Uncommon',
-  ),
-  AvatarConfig(
-    id: 'avatar-uncommon-1',
-    label: 'Uncommon',
-    requiredLevel: 5,
-    color: Color(0xFF43A047),
-    rarityLabel: '🟩 Uncommon',
-  ),
-  AvatarConfig(
-    id: 'avatar-rare',
-    label: 'Rare',
-    requiredLevel: 10,
-    color: Color(0xFF1E88E5),
-    rarityLabel: '🟦 Rare',
-  ),
-  AvatarConfig(
-    id: 'avatar-epic',
-    label: 'Epic',
-    requiredLevel: 25,
-    color: Color(0xFF8E24AA),
-    rarityLabel: '🟪 Epic',
-  ),
-  AvatarConfig(
-    id: 'avatar-legendary',
-    label: 'Legendary',
-    requiredLevel: 50,
-    color: Color(0xFFFF8F00),
-    rarityLabel: '🟨 Legendary',
-  ),
-];
 
 // ============================================================================
 // AVATAR SETTINGS BOTTOM SHEET
@@ -1954,7 +1884,9 @@ class _AvatarSettingsSheetState extends ConsumerState<_AvatarSettingsSheet> {
                 ),
                 itemBuilder: (context, index) {
                   final avatar = kAvatars[index];
-                  final isUnlocked = child.level >= avatar.requiredLevel;
+                  final isUnlocked = avatar.isRewardUnlock
+                      ? child.unlockedAvatars.contains(avatar.id)
+                      : child.level >= avatar.requiredLevel;
                   final isSelected = currentAvatar == avatar.id;
 
                   return GestureDetector(
@@ -2064,7 +1996,9 @@ class _AvatarSettingsSheetState extends ConsumerState<_AvatarSettingsSheet> {
                                     ),
                                     const SizedBox(height: 2),
                                     Text(
-                                      'Lvl ${avatar.requiredLevel}',
+                                      avatar.isRewardUnlock
+                                          ? '🎁 Geschenk'
+                                          : 'Lvl ${avatar.requiredLevel}',
                                       style: TextStyle(
                                         fontSize: 11,
                                         fontWeight: FontWeight.bold,

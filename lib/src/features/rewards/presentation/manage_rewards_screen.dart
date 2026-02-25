@@ -7,6 +7,7 @@ import '../../auth/data/auth_repository.dart';
 import '../data/reward_service.dart';
 import '../domain/reward_model.dart';
 import '../domain/reward_enums.dart';
+import '../../student_dashboard/domain/avatar_config.dart';
 
 /// VOLLSTÄNDIGER MANAGE REWARDS SCREEN FÜR ELTERN
 /// Ermöglicht das Erstellen, Bearbeiten und Verwalten von Belohnungen
@@ -701,6 +702,8 @@ class _CreateRewardDialogState extends ConsumerState<_CreateRewardDialog> {
 
   RewardTrigger _selectedTrigger = RewardTrigger.level;
   int? _triggerValue;
+  bool _isAvatarReward = false; // Toggle: Text-Belohnung vs. Avatar-Belohnung
+  String? _selectedAvatarId;
   bool _isCreating = false;
 
   @override
@@ -760,22 +763,269 @@ class _CreateRewardDialogState extends ConsumerState<_CreateRewardDialog> {
                 ),
                 const SizedBox(height: 12),
 
-                // Belohnung
-                TextFormField(
-                  controller: _rewardController,
-                  decoration: const InputDecoration(
-                    labelText: 'Belohnung *',
-                    hintText: 'z.B. 30 Min extra Tablet-Zeit',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.card_giftcard),
-                  ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Bitte Belohnung eingeben';
-                    }
-                    return null;
-                  },
+                // Belohnungs-Typ Toggle
+                const Text(
+                  'Art der Belohnung',
+                  style: TextStyle(fontWeight: FontWeight.bold),
                 ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () => setState(() {
+                          _isAvatarReward = false;
+                          _selectedAvatarId = null;
+                        }),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 12,
+                            horizontal: 8,
+                          ),
+                          decoration: BoxDecoration(
+                            color: !_isAvatarReward
+                                ? Colors.amber.shade50
+                                : Colors.grey.shade100,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: !_isAvatarReward
+                                  ? Colors.amber
+                                  : Colors.grey.shade300,
+                              width: !_isAvatarReward ? 2 : 1,
+                            ),
+                          ),
+                          child: Column(
+                            children: [
+                              Icon(
+                                Icons.card_giftcard,
+                                color: !_isAvatarReward
+                                    ? Colors.amber.shade700
+                                    : Colors.grey,
+                                size: 24,
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Eigene\nBelohnung',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: !_isAvatarReward
+                                      ? FontWeight.bold
+                                      : FontWeight.normal,
+                                  color: !_isAvatarReward
+                                      ? Colors.amber.shade700
+                                      : Colors.grey,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () => setState(() => _isAvatarReward = true),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 12,
+                            horizontal: 8,
+                          ),
+                          decoration: BoxDecoration(
+                            color: _isAvatarReward
+                                ? Colors.deepPurple.shade50
+                                : Colors.grey.shade100,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: _isAvatarReward
+                                  ? Colors.deepPurple
+                                  : Colors.grey.shade300,
+                              width: _isAvatarReward ? 2 : 1,
+                            ),
+                          ),
+                          child: Column(
+                            children: [
+                              Icon(
+                                Icons.face,
+                                color: _isAvatarReward
+                                    ? Colors.deepPurple
+                                    : Colors.grey,
+                                size: 24,
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Avatar\nfreischalten',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: _isAvatarReward
+                                      ? FontWeight.bold
+                                      : FontWeight.normal,
+                                  color: _isAvatarReward
+                                      ? Colors.deepPurple
+                                      : Colors.grey,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+
+                // Belohnungs-Inhalt: Text oder Avatar-Picker
+                if (!_isAvatarReward)
+                  TextFormField(
+                    controller: _rewardController,
+                    decoration: const InputDecoration(
+                      labelText: 'Belohnung *',
+                      hintText: 'z.B. 30 Min extra Tablet-Zeit',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.card_giftcard),
+                    ),
+                    validator: (value) {
+                      if (!_isAvatarReward &&
+                          (value == null || value.isEmpty)) {
+                        return 'Bitte Belohnung eingeben';
+                      }
+                      return null;
+                    },
+                  )
+                else ...[
+                  // Avatar-Picker Grid
+                  FormField<String>(
+                    validator: (_) =>
+                        _isAvatarReward && _selectedAvatarId == null
+                        ? 'Bitte Avatar auswählen'
+                        : null,
+                    builder: (state) => Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Avatar auswählen *',
+                          style: TextStyle(fontSize: 13, color: Colors.grey),
+                        ),
+                        const SizedBox(height: 8),
+                        GridView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: kAvatars
+                              .where((a) => a.isRewardUnlock)
+                              .length,
+                          gridDelegate:
+                              const SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: 3,
+                                mainAxisSpacing: 10,
+                                crossAxisSpacing: 10,
+                                childAspectRatio: 0.82,
+                              ),
+                          itemBuilder: (context, index) {
+                            final avatar = kAvatars
+                                .where((a) => a.isRewardUnlock)
+                                .toList()[index];
+                            final isSelected = _selectedAvatarId == avatar.id;
+                            return GestureDetector(
+                              onTap: () =>
+                                  setState(() => _selectedAvatarId = avatar.id),
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 200),
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: isSelected
+                                        ? avatar.color
+                                        : avatar.color.withOpacity(0.3),
+                                    width: isSelected ? 3 : 1.5,
+                                  ),
+                                  color: isSelected
+                                      ? avatar.color.withOpacity(0.1)
+                                      : Colors.grey.shade50,
+                                ),
+                                child: Stack(
+                                  children: [
+                                    Column(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Expanded(
+                                          child: Padding(
+                                            padding: const EdgeInsets.fromLTRB(
+                                              8,
+                                              10,
+                                              8,
+                                              4,
+                                            ),
+                                            child: Image.asset(
+                                              'assets/images/${avatar.id}.png',
+                                              fit: BoxFit.contain,
+                                              errorBuilder: (_, __, ___) =>
+                                                  Icon(
+                                                    Icons.face,
+                                                    size: 40,
+                                                    color: avatar.color,
+                                                  ),
+                                            ),
+                                          ),
+                                        ),
+                                        Padding(
+                                          padding: const EdgeInsets.only(
+                                            bottom: 6,
+                                          ),
+                                          child: Text(
+                                            avatar.rarityLabel,
+                                            style: TextStyle(
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.w600,
+                                              color: avatar.color,
+                                            ),
+                                            textAlign: TextAlign.center,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    if (isSelected)
+                                      Positioned(
+                                        top: 5,
+                                        right: 5,
+                                        child: Container(
+                                          width: 18,
+                                          height: 18,
+                                          decoration: BoxDecoration(
+                                            color: avatar.color,
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: const Icon(
+                                            Icons.check,
+                                            color: Colors.white,
+                                            size: 12,
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                        if (state.hasError)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 6, left: 12),
+                            child: Text(
+                              state.errorText!,
+                              style: TextStyle(
+                                color: Theme.of(context).colorScheme.error,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 12),
 
                 // Trigger Auswahl
@@ -790,12 +1040,15 @@ class _CreateRewardDialogState extends ConsumerState<_CreateRewardDialog> {
                     border: OutlineInputBorder(),
                     prefixIcon: Icon(Icons.flag),
                   ),
-                  items: RewardTrigger.values.map((trigger) {
-                    return DropdownMenuItem(
-                      value: trigger,
-                      child: Text(trigger.displayName),
-                    );
-                  }).toList(),
+                  items: RewardTrigger.values
+                      .where((t) => t != RewardTrigger.avatarUnlock)
+                      .map((trigger) {
+                        return DropdownMenuItem(
+                          value: trigger,
+                          child: Text(trigger.displayName),
+                        );
+                      })
+                      .toList(),
                   onChanged: (value) {
                     setState(() {
                       _selectedTrigger = value!;
@@ -894,7 +1147,8 @@ class _CreateRewardDialogState extends ConsumerState<_CreateRewardDialog> {
 
   bool _needsTriggerValue(RewardTrigger trigger) {
     return trigger != RewardTrigger.manual &&
-        trigger != RewardTrigger.perfectQuiz;
+        trigger != RewardTrigger.perfectQuiz &&
+        trigger != RewardTrigger.avatarUnlock;
   }
 
   String _getTriggerValueLabel(RewardTrigger trigger) {
@@ -943,12 +1197,16 @@ class _CreateRewardDialogState extends ConsumerState<_CreateRewardDialog> {
         'description': _descriptionController.text.trim(),
         'type': 'parent',
         'trigger': _selectedTrigger.toFirestore(),
-        'reward': _rewardController.text.trim(),
+        'reward': _isAvatarReward
+            ? '🎭 Avatar-Freischaltung'
+            : _rewardController.text.trim(),
         'status': _selectedTrigger == RewardTrigger.manual
             ? 'approved'
             : 'pending',
         'createdAt': FieldValue.serverTimestamp(),
         'createdBy': widget.userId,
+        if (_isAvatarReward && _selectedAvatarId != null)
+          'avatarUnlockId': _selectedAvatarId,
         if (_selectedTrigger == RewardTrigger.level)
           'requiredLevel': _triggerValue,
         if (_selectedTrigger == RewardTrigger.xp) 'requiredXP': _triggerValue,
@@ -1187,12 +1445,15 @@ class _EditRewardDialogState extends ConsumerState<_EditRewardDialog> {
                     border: OutlineInputBorder(),
                     prefixIcon: Icon(Icons.flag),
                   ),
-                  items: RewardTrigger.values.map((trigger) {
-                    return DropdownMenuItem(
-                      value: trigger,
-                      child: Text(trigger.displayName),
-                    );
-                  }).toList(),
+                  items: RewardTrigger.values
+                      .where((t) => t != RewardTrigger.avatarUnlock)
+                      .map((trigger) {
+                        return DropdownMenuItem(
+                          value: trigger,
+                          child: Text(trigger.displayName),
+                        );
+                      })
+                      .toList(),
                   onChanged: (value) {
                     setState(() {
                       _selectedTrigger = value!;

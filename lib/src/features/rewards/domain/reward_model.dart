@@ -16,6 +16,7 @@ class RewardModel {
   final int? requiredStars;
   final int? requiredStreak;
   final int? requiredQuizCount;
+  final String? avatarUnlockId; // Welcher Avatar freigeschaltet wird
 
   final RewardStatus status;
   final String reward; // Was das Kind bekommt
@@ -38,6 +39,7 @@ class RewardModel {
     this.requiredStars,
     this.requiredStreak,
     this.requiredQuizCount,
+    this.avatarUnlockId,
     required this.status,
     required this.reward,
     required this.createdAt,
@@ -63,6 +65,7 @@ class RewardModel {
       requiredStars: data['requiredStars'],
       requiredStreak: data['requiredStreak'],
       requiredQuizCount: data['requiredQuizCount'],
+      avatarUnlockId: data['avatarUnlockId'],
       status: RewardStatusExtension.fromFirestore(data['status'] ?? 'pending'),
       reward: data['reward'] ?? '',
       createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
@@ -86,6 +89,7 @@ class RewardModel {
       'requiredStars': requiredStars,
       'requiredStreak': requiredStreak,
       'requiredQuizCount': requiredQuizCount,
+      if (avatarUnlockId != null) 'avatarUnlockId': avatarUnlockId,
       'status': status.toFirestore(),
       'reward': reward,
       'createdAt': Timestamp.fromDate(createdAt),
@@ -108,6 +112,7 @@ class RewardModel {
     int? requiredStars,
     int? requiredStreak,
     int? requiredQuizCount,
+    String? avatarUnlockId,
     RewardStatus? status,
     String? reward,
     DateTime? createdAt,
@@ -128,6 +133,7 @@ class RewardModel {
       requiredStars: requiredStars ?? this.requiredStars,
       requiredStreak: requiredStreak ?? this.requiredStreak,
       requiredQuizCount: requiredQuizCount ?? this.requiredQuizCount,
+      avatarUnlockId: avatarUnlockId ?? this.avatarUnlockId,
       status: status ?? this.status,
       reward: reward ?? this.reward,
       createdAt: createdAt ?? this.createdAt,
@@ -163,6 +169,8 @@ class RewardModel {
         return isPerfectQuiz;
       case RewardTrigger.manual:
         return false;
+      case RewardTrigger.avatarUnlock:
+        return false; // Wird manuell von Eltern vergeben
     }
   }
 
@@ -183,6 +191,8 @@ class RewardModel {
         return 'Perfektes Quiz (10/10)';
       case RewardTrigger.manual:
         return 'Von Eltern freigegeben';
+      case RewardTrigger.avatarUnlock:
+        return '🎭 Avatar-Freischaltung';
     }
   }
 

@@ -1,25 +1,26 @@
 /// Belohnungs-Status
 enum RewardStatus {
-  pending,   // Wartet auf Trigger
-  approved,  // Freigeschaltet, kann eingelöst werden
-  claimed,   // Bereits eingelöst
+  pending, // Wartet auf Trigger
+  approved, // Freigeschaltet, kann eingelöst werden
+  claimed, // Bereits eingelöst
 }
 
 /// Belohnungs-Typ
 enum RewardType {
-  system,  // Automatische System-Belohnung
-  parent,  // Von Eltern erstellt
+  system, // Automatische System-Belohnung
+  parent, // Von Eltern erstellt
 }
 
 /// Belohnungs-Trigger (Auslöser)
 enum RewardTrigger {
-  level,        // Bei bestimmtem Level
-  xp,           // Bei bestimmten XP
-  stars,        // Bei bestimmten Sternen
-  streak,       // Bei Streak-Tagen
-  perfectQuiz,  // Bei perfektem Quiz (10/10)
-  quizCount,    // Bei X abgeschlossenen Quizzen
-  manual,       // Manuell von Eltern (kein Auto-Trigger)
+  level, // Bei bestimmtem Level
+  xp, // Bei bestimmten XP
+  stars, // Bei bestimmten Sternen
+  streak, // Bei Streak-Tagen
+  perfectQuiz, // Bei perfektem Quiz (10/10)
+  quizCount, // Bei X abgeschlossenen Quizzen
+  manual, // Manuell von Eltern (kein Auto-Trigger)
+  avatarUnlock, // Avatar freischalten
 }
 
 /// Extension für String-Konvertierung
@@ -88,6 +89,8 @@ extension RewardTriggerExtension on RewardTrigger {
         return 'quiz_count';
       case RewardTrigger.manual:
         return 'manual';
+      case RewardTrigger.avatarUnlock:
+        return 'avatar_unlock';
     }
   }
 
@@ -107,6 +110,8 @@ extension RewardTriggerExtension on RewardTrigger {
         return RewardTrigger.quizCount;
       case 'manual':
         return RewardTrigger.manual;
+      case 'avatar_unlock':
+        return RewardTrigger.avatarUnlock;
       default:
         return RewardTrigger.manual;
     }
@@ -128,6 +133,8 @@ extension RewardTriggerExtension on RewardTrigger {
         return 'Anzahl Quizze';
       case RewardTrigger.manual:
         return 'Manuell';
+      case RewardTrigger.avatarUnlock:
+        return '🎭 Avatar freischalten';
     }
   }
 }
