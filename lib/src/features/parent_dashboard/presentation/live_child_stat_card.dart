@@ -175,15 +175,17 @@ class LiveChildStatCard extends ConsumerWidget {
           );
         }
 
-        // Berechne XP-Fortschritt
-        final xpForNextLevel = XPService.calculateXPForLevel(child.level);
-        int currentLevelXP = child.xp;
-
-        for (int i = 1; i < child.level; i++) {
-          currentLevelXP -= XPService.calculateXPForLevel(i);
-        }
-
-        final progress = currentLevelXP / xpForNextLevel;
+        // Berechne XP-Fortschritt (korrekt: XP im aktuellen Level / XP für dieses Level)
+        final xpForThisLevel = XPService.calculateXPForLevel(child.level);
+        final xpInLevel = XPService.calculateXPInCurrentLevel(
+          child.xp,
+          child.level,
+        );
+        final isMaxLevel = child.level >= XPService.maxLevel;
+        final progress = isMaxLevel
+            ? 1.0
+            : (xpInLevel / xpForThisLevel).clamp(0.0, 1.0);
+        final rank = XPService.getRankForLevel(child.level);
 
         // pendingCount für das Menü-Label
         final user = ref.watch(authStateChangesProvider).value;
@@ -450,26 +452,40 @@ class LiveChildStatCard extends ConsumerWidget {
 
                 const SizedBox(height: 16),
 
-                // ── Level + XP-Balken ──────────────────────────────────────
+                // ── Level + Rang + XP-Balken ──────────────────────────────
                 Row(
                   children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.deepPurple,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Text(
-                        'Level ${child.level}',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 13,
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: rank.color,
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            'Lvl ${child.level}',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                            ),
+                          ),
                         ),
-                      ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '${rank.emoji} ${rank.title}',
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: rank.color,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
                     ),
                     const SizedBox(width: 12),
                     Expanded(
@@ -479,20 +495,29 @@ class LiveChildStatCard extends ConsumerWidget {
                           ClipRRect(
                             borderRadius: BorderRadius.circular(4),
                             child: LinearProgressIndicator(
-                              value: progress.clamp(0.0, 1.0),
+                              value: progress,
                               backgroundColor: Colors.grey.shade200,
-                              color: Colors.deepPurple,
+                              color: rank.color,
                               minHeight: 8,
                             ),
                           ),
                           const SizedBox(height: 4),
-                          Text(
-                            '${child.xp} / $xpForNextLevel XP',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: Colors.grey[600],
-                            ),
-                          ),
+                          isMaxLevel
+                              ? Text(
+                                  '🏆 Max Level erreicht! (${child.xp} XP gesamt)',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: rank.color,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                )
+                              : Text(
+                                  '$xpInLevel / $xpForThisLevel XP · noch ${xpForThisLevel - xpInLevel} bis Lvl ${child.level + 1}',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: Colors.grey[600],
+                                  ),
+                                ),
                         ],
                       ),
                     ),
@@ -566,7 +591,7 @@ class _StatChip extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
+          color: color.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Row(

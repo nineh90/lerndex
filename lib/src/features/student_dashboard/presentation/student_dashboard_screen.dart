@@ -9,6 +9,7 @@ import '../../quiz/presentation/quiz_screen.dart';
 import '../../rewards/presentation/rewards_screen.dart';
 import '../../rewards/data/reward_service.dart';
 import '../../rewards/domain/reward_enums.dart';
+import '../../rewards/data/xp_service.dart';
 import '../../tutor/presentation/tutor_screen.dart';
 import '../../tutor/presentation/tutor_provider.dart';
 
@@ -630,15 +631,23 @@ class _HeroHeader extends ConsumerWidget {
   }
 
   Widget _buildContent(int level, int stars, int xp, int xpToNextLevel) {
-    final progress = xpToNextLevel > 0
-        ? (xp / xpToNextLevel).clamp(0.0, 1.0)
-        : 0.0;
+    // Korrekte XP-Berechnung: Nur XP im aktuellen Level (nicht kumulativ)
+    final xpForThisLevel = XPService.calculateXPForLevel(level);
+    final xpInLevel = XPService.calculateXPInCurrentLevel(xp, level);
+    final isMaxLevel = level >= XPService.maxLevel;
+    final progress = isMaxLevel
+        ? 1.0
+        : (xpInLevel / xpForThisLevel).clamp(0.0, 1.0);
+    final rank = XPService.getRankForLevel(level);
+    final xpRemaining = isMaxLevel ? 0 : (xpForThisLevel - xpInLevel);
+
     return Column(
       children: [
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             _HeaderBadge(emoji: '🏆', label: 'Level $level'),
+            _HeaderBadge(emoji: rank.emoji, label: rank.title),
             _HeaderBadge(emoji: '⭐', label: '$stars Sterne'),
           ],
         ),
@@ -650,7 +659,7 @@ class _HeroHeader extends ConsumerWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  '$xp XP',
+                  '$xpInLevel / $xpForThisLevel XP',
                   style: const TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
@@ -658,7 +667,9 @@ class _HeroHeader extends ConsumerWidget {
                   ),
                 ),
                 Text(
-                  'Bis Level ${level + 1}: $xpToNextLevel XP',
+                  isMaxLevel
+                      ? '🏆 Max Level!'
+                      : 'Noch $xpRemaining bis Lvl ${level + 1}',
                   style: const TextStyle(color: Colors.white70, fontSize: 12),
                 ),
               ],

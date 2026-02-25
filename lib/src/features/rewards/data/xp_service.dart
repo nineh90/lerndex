@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../auth/domain/child_model.dart';
 import '../domain/xp_result.dart';
@@ -11,40 +12,75 @@ class XPService {
 
   // =========================================================================
   // LEVEL & XP BERECHNUNG
+  // 50 Level mit progressiver Kurve und Rang-Titeln:
+  //   Level  1–10 → Lernling  📚  (je ~50–100 XP)
+  //   Level 11–20 → Entdecker 🔍  (je ~110–200 XP)
+  //   Level 21–30 → Forscher  🔬  (je ~220–350 XP)
+  //   Level 31–40 → Experte   🎓  (je ~380–550 XP)
+  //   Level 41–50 → Meister   🏆  (je ~590–800 XP)
   // =========================================================================
 
-  /// Berechnet benötigte XP für ein Level
-  /// Formel: 25 + (level * 25) bis Level 10, dann 250
+  /// Maximales Level
+  static const int maxLevel = 50;
+
+  /// Berechnet benötigte XP um ein bestimmtes Level zu erreichen.
+  /// Progressive Kurve — frühe Level schnell, spätere Level dauern länger.
+  /// Level  1 →   30 XP   Level 10 →  110 XP   (Gesamt ~525 XP)
+  /// Level 20 →  310 XP   Level 30 →  630 XP   (Gesamt ~6.855 XP)
+  /// Level 40 → 1070 XP   Level 50 → 1630 XP   (Gesamt ~28.155 XP)
+  /// Bei ~100 XP/Tag erreichbar in ca. 280 Lerntagen.
   static int calculateXPForLevel(int level) {
     if (level <= 0) return 0;
-    if (level >= 10) return 250;
-    return 25 + (level * 25);
+    if (level > maxLevel) return calculateXPForLevel(maxLevel);
+    // Formel: 30 + 2*level + 0.6*level²  (gerundet auf 5er-Schritte)
+    final raw = 30 + (2 * level) + (level * level * 0.6).toInt();
+    return (raw / 5).round() * 5;
   }
 
-  /// Berechnet Level basierend auf XP
+  /// Rang-Titel und Emoji für ein gegebenes Level
+  static ({String title, String emoji, Color color}) getRankForLevel(
+    int level,
+  ) {
+    if (level <= 10)
+      return (title: 'Lernling', emoji: '📚', color: const Color(0xFF78909C));
+    if (level <= 20)
+      return (title: 'Entdecker', emoji: '🔍', color: const Color(0xFF29B6F6));
+    if (level <= 30)
+      return (title: 'Forscher', emoji: '🔬', color: const Color(0xFF66BB6A));
+    if (level <= 40)
+      return (title: 'Experte', emoji: '🎓', color: const Color(0xFFFFA726));
+    return (title: 'Meister', emoji: '🏆', color: const Color(0xFFEF5350));
+  }
+
+  /// Berechnet Level basierend auf Gesamt-XP (1–50)
   static int calculateLevelFromXP(int totalXP) {
     int level = 1;
-    int xpForNextLevel = calculateXPForLevel(level);
     int accumulatedXP = 0;
 
-    while (totalXP >= accumulatedXP + xpForNextLevel) {
-      accumulatedXP += xpForNextLevel;
+    while (level < maxLevel) {
+      final xpForThisLevel = calculateXPForLevel(level);
+      if (totalXP < accumulatedXP + xpForThisLevel) break;
+      accumulatedXP += xpForThisLevel;
       level++;
-      xpForNextLevel = calculateXPForLevel(level);
     }
 
     return level;
   }
 
+  /// Berechnet XP die der Spieler im aktuellen Level bereits gesammelt hat
+  static int calculateXPInCurrentLevel(int totalXP, int currentLevel) {
+    int accumulatedXP = 0;
+    for (int i = 1; i < currentLevel; i++) {
+      accumulatedXP += calculateXPForLevel(i);
+    }
+    return totalXP - accumulatedXP;
+  }
+
   /// Berechnet verbleibende XP zum nächsten Level
   static int calculateXPToNextLevel(int totalXP, int currentLevel) {
-    int xpForCurrentLevel = 0;
-    for (int i = 1; i < currentLevel; i++) {
-      xpForCurrentLevel += calculateXPForLevel(i);
-    }
-    int xpInCurrentLevel = totalXP - xpForCurrentLevel;
-    int xpNeededForNextLevel = calculateXPForLevel(currentLevel);
-    return xpNeededForNextLevel - xpInCurrentLevel;
+    if (currentLevel >= maxLevel) return 0; // Max-Level erreicht
+    final xpInLevel = calculateXPInCurrentLevel(totalXP, currentLevel);
+    return calculateXPForLevel(currentLevel) - xpInLevel;
   }
 
   // =========================================================================
