@@ -17,7 +17,8 @@ class ManageRewardsScreen extends ConsumerStatefulWidget {
   const ManageRewardsScreen({super.key, required this.child});
 
   @override
-  ConsumerState<ManageRewardsScreen> createState() => _ManageRewardsScreenState();
+  ConsumerState<ManageRewardsScreen> createState() =>
+      _ManageRewardsScreenState();
 }
 
 class _ManageRewardsScreenState extends ConsumerState<ManageRewardsScreen>
@@ -63,10 +64,9 @@ class _ManageRewardsScreenState extends ConsumerState<ManageRewardsScreen>
         ),
       ),
       body: StreamBuilder<List<RewardModel>>(
-        stream: ref.watch(rewardServiceProvider).getRewardsStream(
-          userId: user.uid,
-          childId: widget.child.id,
-        ),
+        stream: ref
+            .watch(rewardServiceProvider)
+            .getRewardsStream(userId: user.uid, childId: widget.child.id),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
@@ -78,7 +78,11 @@ class _ManageRewardsScreenState extends ConsumerState<ManageRewardsScreen>
 
           final allRewards = snapshot.data ?? [];
           final activeRewards = allRewards
-              .where((r) => r.status == RewardStatus.pending || r.status == RewardStatus.approved)
+              .where(
+                (r) =>
+                    r.status == RewardStatus.pending ||
+                    r.status == RewardStatus.approved,
+              )
               .toList();
           final claimedRewards = allRewards
               .where((r) => r.status == RewardStatus.claimed)
@@ -88,8 +92,16 @@ class _ManageRewardsScreenState extends ConsumerState<ManageRewardsScreen>
             controller: _tabController,
             children: [
               _buildRewardsList(allRewards, user.uid, 'Keine Belohnungen'),
-              _buildRewardsList(activeRewards, user.uid, 'Keine aktiven Belohnungen'),
-              _buildRewardsList(claimedRewards, user.uid, 'Noch keine Belohnungen eingelöst'),
+              _buildRewardsList(
+                activeRewards,
+                user.uid,
+                'Keine aktiven Belohnungen',
+              ),
+              _buildRewardsList(
+                claimedRewards,
+                user.uid,
+                'Noch keine Belohnungen eingelöst',
+              ),
             ],
           );
         },
@@ -103,7 +115,11 @@ class _ManageRewardsScreenState extends ConsumerState<ManageRewardsScreen>
     );
   }
 
-  Widget _buildRewardsList(List<RewardModel> rewards, String userId, String emptyMessage) {
+  Widget _buildRewardsList(
+    List<RewardModel> rewards,
+    String userId,
+    String emptyMessage,
+  ) {
     if (rewards.isEmpty) {
       return Center(
         child: Column(
@@ -137,17 +153,22 @@ class _ManageRewardsScreenState extends ConsumerState<ManageRewardsScreen>
     );
   }
 
-  Future<void> _showCreateRewardDialog(BuildContext context, String userId) async {
+  Future<void> _showCreateRewardDialog(
+    BuildContext context,
+    String userId,
+  ) async {
     await showDialog(
       context: context,
-      builder: (context) => _CreateRewardDialog(
-        child: widget.child,
-        userId: userId,
-      ),
+      builder: (context) =>
+          _CreateRewardDialog(child: widget.child, userId: userId),
     );
   }
 
-  Future<void> _showEditRewardDialog(BuildContext context, String userId, RewardModel reward) async {
+  Future<void> _showEditRewardDialog(
+    BuildContext context,
+    String userId,
+    RewardModel reward,
+  ) async {
     await showDialog(
       context: context,
       builder: (context) => _EditRewardDialog(
@@ -158,20 +179,68 @@ class _ManageRewardsScreenState extends ConsumerState<ManageRewardsScreen>
     );
   }
 
-  Future<void> _deleteReward(BuildContext context, String userId, RewardModel reward) async {
+  Future<void> _deleteReward(
+    BuildContext context,
+    String userId,
+    RewardModel reward,
+  ) async {
+    final isSystem = reward.type == RewardType.system;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Belohnung löschen?'),
-        content: Text('Möchten Sie "${reward.title}" wirklich löschen?'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Icon(Icons.delete_outline, color: Colors.red.shade400),
+            const SizedBox(width: 8),
+            const Text('Belohnung löschen?'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('"${reward.title}" wird dauerhaft gelöscht.'),
+            if (isSystem) ...[
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.orange.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.orange.shade200),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.info_outline,
+                      size: 16,
+                      color: Colors.orange.shade700,
+                    ),
+                    const SizedBox(width: 8),
+                    const Expanded(
+                      child: Text(
+                        'Dies ist eine System-Belohnung. Nach dem Löschen wird sie nicht automatisch wiederhergestellt.',
+                        style: TextStyle(fontSize: 12),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ],
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
             child: const Text('Abbrechen'),
           ),
-          TextButton(
+          ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
             child: const Text('Löschen'),
           ),
         ],
@@ -190,9 +259,9 @@ class _ManageRewardsScreenState extends ConsumerState<ManageRewardsScreen>
             .delete();
 
         if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Belohnung gelöscht')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('Belohnung gelöscht')));
         }
       } catch (e) {
         if (context.mounted) {
@@ -218,10 +287,10 @@ class _ManageRewardsScreenState extends ConsumerState<ManageRewardsScreen>
           .collection('rewards')
           .doc(reward.id)
           .update({
-        'status': newStatus.toFirestore(),
-        if (newStatus == RewardStatus.approved)
-          'approvedAt': FieldValue.serverTimestamp(),
-      });
+            'status': newStatus.toFirestore(),
+            if (newStatus == RewardStatus.approved)
+              'approvedAt': FieldValue.serverTimestamp(),
+          });
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -313,10 +382,7 @@ class _RewardManageCard extends StatelessWidget {
             ),
             child: Row(
               children: [
-                Text(
-                  reward.statusEmoji,
-                  style: const TextStyle(fontSize: 24),
-                ),
+                Text(reward.statusEmoji, style: const TextStyle(fontSize: 24)),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Column(
@@ -370,32 +436,36 @@ class _RewardManageCard extends StatelessWidget {
                     ],
                   ),
                 ),
-                if (!isSystemReward && !isClaimed)
-                  PopupMenuButton(
-                    icon: const Icon(Icons.more_vert),
-                    itemBuilder: (context) => [
+                PopupMenuButton(
+                  icon: const Icon(Icons.more_vert),
+                  itemBuilder: (context) => [
+                    if (!isClaimed)
                       PopupMenuItem(
                         onTap: onEdit,
                         child: const Row(
                           children: [
-                            Icon(Icons.edit, size: 20),
+                            Icon(
+                              Icons.edit,
+                              size: 20,
+                              color: Colors.deepPurple,
+                            ),
                             SizedBox(width: 8),
                             Text('Bearbeiten'),
                           ],
                         ),
                       ),
-                      PopupMenuItem(
-                        onTap: onDelete,
-                        child: const Row(
-                          children: [
-                            Icon(Icons.delete, size: 20, color: Colors.red),
-                            SizedBox(width: 8),
-                            Text('Löschen', style: TextStyle(color: Colors.red)),
-                          ],
-                        ),
+                    PopupMenuItem(
+                      onTap: onDelete,
+                      child: const Row(
+                        children: [
+                          Icon(Icons.delete, size: 20, color: Colors.red),
+                          SizedBox(width: 8),
+                          Text('Löschen', style: TextStyle(color: Colors.red)),
+                        ],
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
+                ),
               ],
             ),
           ),
@@ -504,7 +574,9 @@ class _RewardManageCard extends StatelessWidget {
                       icon: Icon(isPending ? Icons.check : Icons.pause),
                       label: Text(isPending ? 'Freigeben' : 'Zurückziehen'),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: isPending ? Colors.green : Colors.orange,
+                        backgroundColor: isPending
+                            ? Colors.green
+                            : Colors.orange,
                         foregroundColor: Colors.white,
                       ),
                     ),
@@ -531,13 +603,11 @@ class _CreateRewardDialog extends ConsumerStatefulWidget {
   final ChildModel child;
   final String userId;
 
-  const _CreateRewardDialog({
-    required this.child,
-    required this.userId,
-  });
+  const _CreateRewardDialog({required this.child, required this.userId});
 
   @override
-  ConsumerState<_CreateRewardDialog> createState() => _CreateRewardDialogState();
+  ConsumerState<_CreateRewardDialog> createState() =>
+      _CreateRewardDialogState();
 }
 
 class _CreateRewardDialogState extends ConsumerState<_CreateRewardDialog> {
@@ -673,13 +743,23 @@ class _CreateRewardDialogState extends ConsumerState<_CreateRewardDialog> {
                       }
 
                       // Validierung
-                      final validation = ref.read(rewardServiceProvider).validateParentReward(
-                        child: widget.child,
-                        trigger: _selectedTrigger,
-                        requiredLevel: _selectedTrigger == RewardTrigger.level ? intValue : null,
-                        requiredXP: _selectedTrigger == RewardTrigger.xp ? intValue : null,
-                        requiredStars: _selectedTrigger == RewardTrigger.stars ? intValue : null,
-                      );
+                      final validation = ref
+                          .read(rewardServiceProvider)
+                          .validateParentReward(
+                            child: widget.child,
+                            trigger: _selectedTrigger,
+                            requiredLevel:
+                                _selectedTrigger == RewardTrigger.level
+                                ? intValue
+                                : null,
+                            requiredXP: _selectedTrigger == RewardTrigger.xp
+                                ? intValue
+                                : null,
+                            requiredStars:
+                                _selectedTrigger == RewardTrigger.stars
+                                ? intValue
+                                : null,
+                          );
 
                       if (!validation.isValid) {
                         return validation.message;
@@ -700,7 +780,9 @@ class _CreateRewardDialogState extends ConsumerState<_CreateRewardDialog> {
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
                     TextButton(
-                      onPressed: _isCreating ? null : () => Navigator.pop(context),
+                      onPressed: _isCreating
+                          ? null
+                          : () => Navigator.pop(context),
                       child: const Text('Abbrechen'),
                     ),
                     const SizedBox(width: 8),
@@ -711,10 +793,10 @@ class _CreateRewardDialogState extends ConsumerState<_CreateRewardDialog> {
                       ),
                       child: _isCreating
                           ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
                           : const Text('Erstellen'),
                     ),
                   ],
@@ -728,7 +810,8 @@ class _CreateRewardDialogState extends ConsumerState<_CreateRewardDialog> {
   }
 
   bool _needsTriggerValue(RewardTrigger trigger) {
-    return trigger != RewardTrigger.manual && trigger != RewardTrigger.perfectQuiz;
+    return trigger != RewardTrigger.manual &&
+        trigger != RewardTrigger.perfectQuiz;
   }
 
   String _getTriggerValueLabel(RewardTrigger trigger) {
@@ -778,15 +861,22 @@ class _CreateRewardDialogState extends ConsumerState<_CreateRewardDialog> {
         'type': 'parent',
         'trigger': _selectedTrigger.toFirestore(),
         'reward': _rewardController.text.trim(),
-        'status': _selectedTrigger == RewardTrigger.manual ? 'approved' : 'pending',
+        'status': _selectedTrigger == RewardTrigger.manual
+            ? 'approved'
+            : 'pending',
         'createdAt': FieldValue.serverTimestamp(),
         'createdBy': widget.userId,
-        if (_selectedTrigger == RewardTrigger.level) 'requiredLevel': _triggerValue,
+        if (_selectedTrigger == RewardTrigger.level)
+          'requiredLevel': _triggerValue,
         if (_selectedTrigger == RewardTrigger.xp) 'requiredXP': _triggerValue,
-        if (_selectedTrigger == RewardTrigger.stars) 'requiredStars': _triggerValue,
-        if (_selectedTrigger == RewardTrigger.streak) 'requiredStreak': _triggerValue,
-        if (_selectedTrigger == RewardTrigger.quizCount) 'requiredQuizCount': _triggerValue,
-        if (_selectedTrigger == RewardTrigger.manual) 'approvedAt': FieldValue.serverTimestamp(),
+        if (_selectedTrigger == RewardTrigger.stars)
+          'requiredStars': _triggerValue,
+        if (_selectedTrigger == RewardTrigger.streak)
+          'requiredStreak': _triggerValue,
+        if (_selectedTrigger == RewardTrigger.quizCount)
+          'requiredQuizCount': _triggerValue,
+        if (_selectedTrigger == RewardTrigger.manual)
+          'approvedAt': FieldValue.serverTimestamp(),
       };
 
       await FirebaseFirestore.instance
@@ -809,10 +899,7 @@ class _CreateRewardDialogState extends ConsumerState<_CreateRewardDialog> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Fehler: $e'),
-            backgroundColor: Colors.red,
-          ),
+          SnackBar(content: Text('Fehler: $e'), backgroundColor: Colors.red),
         );
       }
     } finally {
@@ -824,7 +911,7 @@ class _CreateRewardDialogState extends ConsumerState<_CreateRewardDialog> {
 }
 
 // ============================================================================
-// EDIT REWARD DIALOG
+// EDIT REWARD DIALOG — Vollständig mit Trigger-Auswahl
 // ============================================================================
 
 class _EditRewardDialog extends ConsumerStatefulWidget {
@@ -847,15 +934,33 @@ class _EditRewardDialogState extends ConsumerState<_EditRewardDialog> {
   late TextEditingController _titleController;
   late TextEditingController _descriptionController;
   late TextEditingController _rewardController;
+  late TextEditingController _triggerValueController;
 
+  late RewardTrigger _selectedTrigger;
+  int? _triggerValue;
   bool _isUpdating = false;
 
   @override
   void initState() {
     super.initState();
     _titleController = TextEditingController(text: widget.reward.title);
-    _descriptionController = TextEditingController(text: widget.reward.description);
+    _descriptionController = TextEditingController(
+      text: widget.reward.description,
+    );
     _rewardController = TextEditingController(text: widget.reward.reward);
+    _selectedTrigger = widget.reward.trigger;
+
+    // Aktuellen Trigger-Wert aus dem Reward ermitteln
+    final currentValue =
+        widget.reward.requiredLevel ??
+        widget.reward.requiredXP ??
+        widget.reward.requiredStars ??
+        widget.reward.requiredStreak ??
+        widget.reward.requiredQuizCount;
+    _triggerValue = currentValue;
+    _triggerValueController = TextEditingController(
+      text: currentValue != null ? currentValue.toString() : '',
+    );
   }
 
   @override
@@ -863,12 +968,53 @@ class _EditRewardDialogState extends ConsumerState<_EditRewardDialog> {
     _titleController.dispose();
     _descriptionController.dispose();
     _rewardController.dispose();
+    _triggerValueController.dispose();
     super.dispose();
+  }
+
+  bool _needsTriggerValue(RewardTrigger trigger) {
+    return trigger != RewardTrigger.manual &&
+        trigger != RewardTrigger.perfectQuiz;
+  }
+
+  String _getTriggerValueLabel(RewardTrigger trigger) {
+    switch (trigger) {
+      case RewardTrigger.level:
+        return 'Erforderliches Level';
+      case RewardTrigger.xp:
+        return 'Erforderliche XP';
+      case RewardTrigger.stars:
+        return 'Erforderliche Sterne';
+      case RewardTrigger.streak:
+        return 'Erforderliche Streak-Tage';
+      case RewardTrigger.quizCount:
+        return 'Erforderliche Quiz-Anzahl';
+      default:
+        return 'Wert';
+    }
+  }
+
+  String _getTriggerHelperText() {
+    switch (_selectedTrigger) {
+      case RewardTrigger.level:
+        return 'Aktuell: Level ${widget.child.level}';
+      case RewardTrigger.xp:
+        return 'Aktuell: ${widget.child.xp} XP';
+      case RewardTrigger.stars:
+        return 'Aktuell: ${widget.child.stars} Sterne';
+      case RewardTrigger.streak:
+        return 'Aktuell: ${widget.child.streak ?? 0} Tage';
+      case RewardTrigger.quizCount:
+        return 'Aktuell: ${widget.child.totalQuizzes ?? 0} Quizze';
+      default:
+        return '';
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.all(20),
@@ -878,62 +1024,160 @@ class _EditRewardDialogState extends ConsumerState<_EditRewardDialog> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  '✏️ Belohnung bearbeiten',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                // Header
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.amber.shade100,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(
+                        Icons.edit,
+                        color: Colors.amber,
+                        size: 20,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    const Text(
+                      'Belohnung bearbeiten',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 20),
 
+                // Titel
                 TextFormField(
                   controller: _titleController,
                   decoration: const InputDecoration(
-                    labelText: 'Titel',
+                    labelText: 'Titel *',
+                    hintText: 'z.B. Extra Spielzeit',
                     border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.title),
                   ),
                   validator: (value) =>
-                  value?.isEmpty ?? true ? 'Bitte Titel eingeben' : null,
+                      value?.isEmpty ?? true ? 'Bitte Titel eingeben' : null,
                 ),
                 const SizedBox(height: 12),
 
+                // Beschreibung
                 TextFormField(
                   controller: _descriptionController,
                   decoration: const InputDecoration(
-                    labelText: 'Beschreibung',
+                    labelText: 'Beschreibung (optional)',
                     border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.description),
                   ),
                   maxLines: 2,
                 ),
                 const SizedBox(height: 12),
 
+                // Belohnungstext
                 TextFormField(
                   controller: _rewardController,
                   decoration: const InputDecoration(
-                    labelText: 'Belohnung',
+                    labelText: 'Belohnung *',
+                    hintText: 'z.B. 30 Min extra Tablet-Zeit',
                     border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.card_giftcard),
                   ),
-                  validator: (value) =>
-                  value?.isEmpty ?? true ? 'Bitte Belohnung eingeben' : null,
+                  validator: (value) => value?.isEmpty ?? true
+                      ? 'Bitte Belohnung eingeben'
+                      : null,
                 ),
+                const SizedBox(height: 12),
+
+                // Trigger-Bedingung
+                const Text(
+                  'Freigabe-Bedingung',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                DropdownButtonFormField<RewardTrigger>(
+                  value: _selectedTrigger,
+                  decoration: const InputDecoration(
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.flag),
+                  ),
+                  items: RewardTrigger.values.map((trigger) {
+                    return DropdownMenuItem(
+                      value: trigger,
+                      child: Text(trigger.displayName),
+                    );
+                  }).toList(),
+                  onChanged: (value) {
+                    setState(() {
+                      _selectedTrigger = value!;
+                      _triggerValue = null;
+                      _triggerValueController.clear();
+                    });
+                  },
+                ),
+                const SizedBox(height: 12),
+
+                // Trigger-Wert
+                if (_needsTriggerValue(_selectedTrigger)) ...[
+                  TextFormField(
+                    controller: _triggerValueController,
+                    decoration: InputDecoration(
+                      labelText: _getTriggerValueLabel(_selectedTrigger),
+                      border: const OutlineInputBorder(),
+                      prefixIcon: const Icon(Icons.numbers),
+                      helperText: _getTriggerHelperText(),
+                    ),
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Bitte Wert eingeben';
+                      }
+                      final intValue = int.tryParse(value);
+                      if (intValue == null || intValue <= 0) {
+                        return 'Ungültiger Wert';
+                      }
+                      return null;
+                    },
+                    onChanged: (value) {
+                      _triggerValue = int.tryParse(value);
+                    },
+                  ),
+                ],
+
                 const SizedBox(height: 20),
 
+                // Buttons
                 Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
                     TextButton(
-                      onPressed: _isUpdating ? null : () => Navigator.pop(context),
+                      onPressed: _isUpdating
+                          ? null
+                          : () => Navigator.pop(context),
                       child: const Text('Abbrechen'),
                     ),
                     const SizedBox(width: 8),
-                    ElevatedButton(
+                    ElevatedButton.icon(
                       onPressed: _isUpdating ? null : _updateReward,
-                      style: ElevatedButton.styleFrom(backgroundColor: Colors.amber),
-                      child: _isUpdating
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.amber,
+                        foregroundColor: Colors.white,
+                      ),
+                      icon: _isUpdating
                           ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                          : const Text('Speichern'),
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Icon(Icons.save, size: 18),
+                      label: const Text('Speichern'),
                     ),
                   ],
                 ),
@@ -951,6 +1195,50 @@ class _EditRewardDialogState extends ConsumerState<_EditRewardDialog> {
     setState(() => _isUpdating = true);
 
     try {
+      // Trigger-Wert-Felder aufbauen
+      final updateData = <String, dynamic>{
+        'title': _titleController.text.trim(),
+        'description': _descriptionController.text.trim(),
+        'reward': _rewardController.text.trim(),
+        'trigger': _selectedTrigger.toFirestore(),
+        // System-Belohnungen werden nach Bearbeitung zu eigenen Belohnungen
+        'type': 'parent',
+        // Status auf pending zurücksetzen wenn Trigger geändert und nicht manual
+        if (_selectedTrigger != RewardTrigger.manual) 'status': 'pending',
+        if (_selectedTrigger == RewardTrigger.manual) 'status': 'approved',
+        if (_selectedTrigger == RewardTrigger.manual)
+          'approvedAt': FieldValue.serverTimestamp(),
+        // Alle trigger-spezifischen Felder löschen/setzen
+        'requiredLevel': FieldValue.delete(),
+        'requiredXP': FieldValue.delete(),
+        'requiredStars': FieldValue.delete(),
+        'requiredStreak': FieldValue.delete(),
+        'requiredQuizCount': FieldValue.delete(),
+      };
+
+      // Aktiven Trigger-Wert setzen
+      if (_triggerValue != null) {
+        switch (_selectedTrigger) {
+          case RewardTrigger.level:
+            updateData['requiredLevel'] = _triggerValue;
+            break;
+          case RewardTrigger.xp:
+            updateData['requiredXP'] = _triggerValue;
+            break;
+          case RewardTrigger.stars:
+            updateData['requiredStars'] = _triggerValue;
+            break;
+          case RewardTrigger.streak:
+            updateData['requiredStreak'] = _triggerValue;
+            break;
+          case RewardTrigger.quizCount:
+            updateData['requiredQuizCount'] = _triggerValue;
+            break;
+          default:
+            break;
+        }
+      }
+
       await FirebaseFirestore.instance
           .collection('users')
           .doc(widget.userId)
@@ -958,25 +1246,21 @@ class _EditRewardDialogState extends ConsumerState<_EditRewardDialog> {
           .doc(widget.child.id)
           .collection('rewards')
           .doc(widget.reward.id)
-          .update({
-        'title': _titleController.text.trim(),
-        'description': _descriptionController.text.trim(),
-        'reward': _rewardController.text.trim(),
-      });
+          .update(updateData);
 
       if (mounted) {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('✅ Belohnung aktualisiert')),
+          const SnackBar(
+            content: Text('✅ Belohnung aktualisiert'),
+            backgroundColor: Colors.green,
+          ),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Fehler: $e'),
-            backgroundColor: Colors.red,
-          ),
+          SnackBar(content: Text('Fehler: $e'), backgroundColor: Colors.red),
         );
       }
     } finally {
