@@ -83,34 +83,60 @@ class SystemRewardsInitializer {
       'requiredXP': 1000,
     },
 
-    // ========== STREAK-BASIERTE BELOHNUNGEN ==========
+    // ========== STREAK-BASIERTE BELOHNUNGEN (rein digital, kein Eltern-OK nötig) ==========
+    // Alle 7 Tage gibt es Bonus-XP; bei 14, 28 und 42 Tagen zusätzlich ein Avatar
     {
-      'title': '🔥 3 Tage Streak!',
-      'description': '3 Tage am Stück gelernt!',
-      'reward': 'Sticker-Set',
-      'trigger': 'streak',
-      'requiredStreak': 3,
-    },
-    {
-      'title': '⚡ 7 Tage Streak!',
-      'description': 'Eine ganze Woche durchgehalten!',
-      'reward': 'Extra Taschengeld',
+      'title': '🔥 7 Tage Streak!',
+      'description': 'Eine ganze Woche am Stück gelernt – mega!',
+      'reward': '+50 Bonus-XP',
       'trigger': 'streak',
       'requiredStreak': 7,
+      'bonusXP': 50,
     },
     {
-      'title': '🌟 14 Tage Streak!',
-      'description': 'Zwei Wochen Durchhaltevermögen!',
-      'reward': 'Neues Buch oder Comic',
+      'title': '⚡ 14 Tage Streak!',
+      'description':
+          'Zwei Wochen Durchhaltevermögen! Du bist ein Streak-Profi!',
+      'reward': '+100 Bonus-XP + exklusiver Streak-Avatar freigeschaltet!',
       'trigger': 'streak',
       'requiredStreak': 14,
+      'bonusXP': 100,
+      'avatarUnlockId': 'avatar-streak-uncommon',
     },
     {
-      'title': '👑 30 Tage Streak!',
-      'description': 'Ein ganzer Monat! Unglaublich!',
-      'reward': 'Größeres Geschenk nach Wahl',
+      'title': '🌟 21 Tage Streak!',
+      'description': 'Drei Wochen! Unglaublich konsequent!',
+      'reward': '+200 Bonus-XP',
       'trigger': 'streak',
-      'requiredStreak': 30,
+      'requiredStreak': 21,
+      'bonusXP': 200,
+    },
+    {
+      'title': '👑 28 Tage Streak!',
+      'description': 'Vier Wochen am Stück – du bist ein echter Champion!',
+      'reward': '+300 Bonus-XP + epischer Streak-Avatar freigeschaltet!',
+      'trigger': 'streak',
+      'requiredStreak': 28,
+      'bonusXP': 300,
+      'avatarUnlockId': 'avatar-streak-epic',
+    },
+    {
+      'title': '💎 35 Tage Streak!',
+      'description': 'Fünf Wochen! Du bist eine Lernmaschine!',
+      'reward': '+500 Bonus-XP',
+      'trigger': 'streak',
+      'requiredStreak': 35,
+      'bonusXP': 500,
+    },
+    {
+      'title': '🏆 42 Tage Streak!',
+      'description':
+          'Sechs Wochen! Legendär! Der mächtigste Avatar gehört dir!',
+      'reward': '+750 Bonus-XP + legendärer Streak-Avatar freigeschaltet!',
+      'trigger': 'streak',
+      'requiredStreak': 42,
+      'bonusXP': 750,
+      'avatarUnlockId': 'avatar-streak-legendary',
     },
 
     // ========== QUIZ-COUNT BELOHNUNGEN ==========
@@ -200,6 +226,12 @@ class SystemRewardsInitializer {
         if (rewardData.containsKey('requiredQuizCount')) {
           data['requiredQuizCount'] = rewardData['requiredQuizCount'];
         }
+        if (rewardData.containsKey('bonusXP')) {
+          data['bonusXP'] = rewardData['bonusXP'];
+        }
+        if (rewardData.containsKey('avatarUnlockId')) {
+          data['avatarUnlockId'] = rewardData['avatarUnlockId'];
+        }
 
         batch.set(docRef, data);
         count++;
@@ -207,7 +239,6 @@ class SystemRewardsInitializer {
 
       await batch.commit();
       print('✅ $count System-Belohnungen erstellt');
-
     } catch (e, stackTrace) {
       print('❌ Fehler beim Initialisieren der System-Belohnungen: $e');
       print('Stack: $stackTrace');
@@ -306,13 +337,18 @@ class SystemRewardsInitializer {
         if (rewardData.containsKey('requiredQuizCount')) {
           data['requiredQuizCount'] = rewardData['requiredQuizCount'];
         }
+        if (rewardData.containsKey('bonusXP')) {
+          data['bonusXP'] = rewardData['bonusXP'];
+        }
+        if (rewardData.containsKey('avatarUnlockId')) {
+          data['avatarUnlockId'] = rewardData['avatarUnlockId'];
+        }
 
         batch.set(docRef, data);
       }
 
       await batch.commit();
       print('✅ ${missingRewards.length} Belohnungen hinzugefügt');
-
     } catch (e, stackTrace) {
       print('❌ Fehler beim Hinzufügen fehlender Belohnungen: $e');
       print('Stack: $stackTrace');

@@ -17,6 +17,7 @@ class RewardModel {
   final int? requiredStreak;
   final int? requiredQuizCount;
   final String? avatarUnlockId; // Welcher Avatar freigeschaltet wird
+  final int? bonusXP; // Bonus-XP die automatisch vergeben werden
 
   final RewardStatus status;
   final String reward; // Was das Kind bekommt
@@ -40,6 +41,7 @@ class RewardModel {
     this.requiredStreak,
     this.requiredQuizCount,
     this.avatarUnlockId,
+    this.bonusXP,
     required this.status,
     required this.reward,
     required this.createdAt,
@@ -66,6 +68,7 @@ class RewardModel {
       requiredStreak: data['requiredStreak'],
       requiredQuizCount: data['requiredQuizCount'],
       avatarUnlockId: data['avatarUnlockId'],
+      bonusXP: data['bonusXP'],
       status: RewardStatusExtension.fromFirestore(data['status'] ?? 'pending'),
       reward: data['reward'] ?? '',
       createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
@@ -90,6 +93,7 @@ class RewardModel {
       'requiredStreak': requiredStreak,
       'requiredQuizCount': requiredQuizCount,
       if (avatarUnlockId != null) 'avatarUnlockId': avatarUnlockId,
+      if (bonusXP != null) 'bonusXP': bonusXP,
       'status': status.toFirestore(),
       'reward': reward,
       'createdAt': Timestamp.fromDate(createdAt),
@@ -113,6 +117,7 @@ class RewardModel {
     int? requiredStreak,
     int? requiredQuizCount,
     String? avatarUnlockId,
+    int? bonusXP,
     RewardStatus? status,
     String? reward,
     DateTime? createdAt,
@@ -134,6 +139,7 @@ class RewardModel {
       requiredStreak: requiredStreak ?? this.requiredStreak,
       requiredQuizCount: requiredQuizCount ?? this.requiredQuizCount,
       avatarUnlockId: avatarUnlockId ?? this.avatarUnlockId,
+      bonusXP: bonusXP ?? this.bonusXP,
       status: status ?? this.status,
       reward: reward ?? this.reward,
       createdAt: createdAt ?? this.createdAt,

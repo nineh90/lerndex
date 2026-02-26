@@ -73,11 +73,45 @@ const List<AvatarConfig> kAvatars = [
     rarityLabel: '🟨 Legendary',
   ),
   AvatarConfig(
+    id: 'avatar-legendary-1',
+    label: 'Gift',
+    requiredLevel: 0,
+    color: Color(0xFFFF8F00),
+    rarityLabel: '🟨 Legendary',
+    isRewardUnlock: true,
+  ),
+  AvatarConfig(
     id: 'avatar-gift',
     label: 'Gift',
     requiredLevel: 0,
     color: Color(0xFFE53935),
     rarityLabel: '🎁 Geschenk',
+    isRewardUnlock: true,
+  ),
+
+  // ── STREAK-EXKLUSIVE AVATARE (nur durch Streak-Meilensteine freischaltbar) ──
+  AvatarConfig(
+    id: 'avatar-streak-uncommon',
+    label: 'Streak 14',
+    requiredLevel: 0,
+    color: Color(0xFF00BCD4),
+    rarityLabel: '🔥 Streak-Rare',
+    isRewardUnlock: true,
+  ),
+  AvatarConfig(
+    id: 'avatar-streak-epic',
+    label: 'Streak 28',
+    requiredLevel: 0,
+    color: Color(0xFF7C4DFF),
+    rarityLabel: '⚡ Streak-Epic',
+    isRewardUnlock: true,
+  ),
+  AvatarConfig(
+    id: 'avatar-streak-legendary',
+    label: 'Streak 42',
+    requiredLevel: 0,
+    color: Color(0xFFFF6D00),
+    rarityLabel: '👑 Streak-Legend',
     isRewardUnlock: true,
   ),
 ];

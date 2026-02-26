@@ -882,16 +882,273 @@ class _PlayfulSubjectTileState extends State<_PlayfulSubjectTile>
 }
 
 // ============================================================================
-// LIVE LERNZEIT CARD (Home Tab) – kompaktes Layout mit Streak
+// STREAK ROADMAP CONTENT – Inhalt der ausklappbaren Streak-Belohnungen
+// (wird innerhalb der _LiveLearningTimeCard eingebettet)
 // ============================================================================
 
-class _LiveLearningTimeCard extends ConsumerWidget {
+class _StreakRoadmapContent extends StatelessWidget {
+  final int streak;
+
+  const _StreakRoadmapContent({required this.streak});
+
+  // Definition der Streak-Meilensteine (gespiegelt aus system_rewards_initializer)
+  static const List<_StreakMilestone> _milestones = [
+    _StreakMilestone(
+      days: 7,
+      emoji: '🔥',
+      xp: 50,
+      avatarId: null,
+      label: '+50 XP',
+    ),
+    _StreakMilestone(
+      days: 14,
+      emoji: '⚡',
+      xp: 100,
+      avatarId: 'avatar-streak-uncommon',
+      label: '+100 XP + Avatar 🎭',
+    ),
+    _StreakMilestone(
+      days: 21,
+      emoji: '🌟',
+      xp: 200,
+      avatarId: null,
+      label: '+200 XP',
+    ),
+    _StreakMilestone(
+      days: 28,
+      emoji: '👑',
+      xp: 300,
+      avatarId: 'avatar-streak-epic',
+      label: '+300 XP + Avatar 🎭',
+    ),
+    _StreakMilestone(
+      days: 35,
+      emoji: '💎',
+      xp: 500,
+      avatarId: null,
+      label: '+500 XP',
+    ),
+    _StreakMilestone(
+      days: 42,
+      emoji: '🏆',
+      xp: 750,
+      avatarId: 'avatar-streak-legendary',
+      label: '+750 XP + Avatar 🎭',
+    ),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final nextMilestone = _milestones.firstWhere(
+      (m) => m.days > streak,
+      orElse: () => _milestones.last,
+    );
+    final daysLeft = (nextMilestone.days - streak).clamp(0, 999);
+    final alreadyAtMax = streak >= _milestones.last.days;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Trennlinie
+        Divider(color: Colors.grey.shade200, height: 1),
+        const SizedBox(height: 12),
+
+        // Header
+        Row(
+          children: [
+            Text(
+              'Streak-Belohnungen',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
+                color: Colors.orange.shade800,
+              ),
+            ),
+            const Spacer(),
+            if (!alreadyAtMax)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: Colors.orange.shade100,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  'Noch $daysLeft ${daysLeft == 1 ? 'Tag' : 'Tage'}',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.orange.shade800,
+                  ),
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 10),
+
+        // Meilenstein-Liste
+        ...(_milestones.map((m) {
+          final isDone = streak >= m.days;
+          final isNext = !alreadyAtMax && m.days == nextMilestone.days;
+          final hasAvatar = m.avatarId != null;
+
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 7),
+            child: Row(
+              children: [
+                // Icon-Kreis
+                Container(
+                  width: 34,
+                  height: 34,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: isDone
+                        ? Colors.orange.shade400
+                        : isNext
+                        ? Colors.orange.shade50
+                        : Colors.grey.shade100,
+                    border: Border.all(
+                      color: isDone
+                          ? Colors.orange.shade600
+                          : isNext
+                          ? Colors.orange.shade300
+                          : Colors.grey.shade300,
+                      width: isNext ? 2 : 1,
+                    ),
+                  ),
+                  child: Center(
+                    child: isDone
+                        ? const Icon(
+                            Icons.check_rounded,
+                            color: Colors.white,
+                            size: 17,
+                          )
+                        : Text(m.emoji, style: const TextStyle(fontSize: 16)),
+                  ),
+                ),
+                const SizedBox(width: 10),
+
+                // Label
+                Expanded(
+                  child: Row(
+                    children: [
+                      Text(
+                        '${m.days} Tage',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: isNext
+                              ? FontWeight.bold
+                              : FontWeight.w500,
+                          color: isDone
+                              ? Colors.grey[400]
+                              : isNext
+                              ? Colors.orange.shade800
+                              : Colors.grey.shade600,
+                          decoration: isDone
+                              ? TextDecoration.lineThrough
+                              : null,
+                        ),
+                      ),
+                      if (hasAvatar && !isDone) ...[
+                        const SizedBox(width: 5),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 5,
+                            vertical: 1,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.purple.shade50,
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(color: Colors.purple.shade200),
+                          ),
+                          child: const Text(
+                            '🎭',
+                            style: TextStyle(fontSize: 10),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+
+                // XP Badge
+                if (!isDone)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 7,
+                      vertical: 3,
+                    ),
+                    decoration: BoxDecoration(
+                      color: isNext
+                          ? Colors.orange.shade400
+                          : Colors.grey.shade200,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      m.label,
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        color: isNext ? Colors.white : Colors.grey.shade600,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          );
+        }).toList()),
+
+        if (alreadyAtMax)
+          Center(
+            child: Text(
+              '🏆 Alle Streak-Belohnungen erreicht!',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: Colors.orange.shade700,
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+/// Daten-Klasse für einen Streak-Meilenstein
+class _StreakMilestone {
+  final int days;
+  final String emoji;
+  final int xp;
+  final String? avatarId;
+  final String label;
+
+  const _StreakMilestone({
+    required this.days,
+    required this.emoji,
+    required this.xp,
+    required this.avatarId,
+    required this.label,
+  });
+}
+
+// ============================================================================
+// LIVE LERNZEIT CARD (Home Tab) – kompaktes Layout mit Streak + Info-Icon
+// ============================================================================
+
+class _LiveLearningTimeCard extends ConsumerStatefulWidget {
   final String childId;
 
   const _LiveLearningTimeCard({required this.childId});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_LiveLearningTimeCard> createState() =>
+      _LiveLearningTimeCardState();
+}
+
+class _LiveLearningTimeCardState extends ConsumerState<_LiveLearningTimeCard> {
+  bool _showRoadmap = false;
+
+  @override
+  Widget build(BuildContext context) {
     final user = ref.watch(authStateChangesProvider).value;
     if (user == null) return const SizedBox.shrink();
 
@@ -900,7 +1157,7 @@ class _LiveLearningTimeCard extends ConsumerWidget {
           .collection('users')
           .doc(user.uid)
           .collection('children')
-          .doc(childId)
+          .doc(widget.childId)
           .snapshots(),
       builder: (context, snapshot) {
         final data = snapshot.data?.data() as Map<String, dynamic>?;
@@ -926,126 +1183,171 @@ class _LiveLearningTimeCard extends ConsumerWidget {
               ),
             ],
           ),
-          child: Row(
+          child: Column(
             children: [
-              // Lernzeit
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.timer_outlined,
-                          size: 14,
-                          color: Colors.deepPurple.shade400,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          'Lernzeit gesamt',
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: Colors.grey[600],
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        if (isActive) ...[
-                          const SizedBox(width: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 6,
-                              vertical: 2,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.green.shade50,
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: Colors.green.shade300),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Container(
-                                  width: 5,
-                                  height: 5,
-                                  decoration: const BoxDecoration(
-                                    color: Colors.green,
-                                    shape: BoxShape.circle,
-                                  ),
-                                ),
-                                const SizedBox(width: 3),
-                                Text(
-                                  'Live',
-                                  style: TextStyle(
-                                    fontSize: 9,
-                                    color: Colors.green.shade700,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        if (hours > 0) ...[
-                          _TimeBlock(value: hours, label: 'Std'),
-                          _TimeSep(),
-                        ],
-                        _TimeBlock(value: minutes, label: 'Min'),
-                        _TimeSep(),
-                        _TimeBlock(value: secs, label: 'Sek', small: true),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-
-              // Trennlinie
-              Container(
-                width: 1,
-                height: 52,
-                color: Colors.grey.shade200,
-                margin: const EdgeInsets.symmetric(horizontal: 16),
-              ),
-
-              // Streak
-              Column(
+              // ── Hauptzeile: Lernzeit + Streak ────────────────────────────
+              Row(
                 children: [
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.local_fire_department,
-                        size: 14,
-                        color: Colors.orange,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        'Streak',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: Colors.grey[600],
-                          fontWeight: FontWeight.w500,
+                  // Lernzeit
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.timer_outlined,
+                              size: 14,
+                              color: Colors.deepPurple.shade400,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Lernzeit gesamt',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.grey[600],
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            if (isActive) ...[
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.green.shade50,
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                    color: Colors.green.shade300,
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Container(
+                                      width: 5,
+                                      height: 5,
+                                      decoration: const BoxDecoration(
+                                        color: Colors.green,
+                                        shape: BoxShape.circle,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 3),
+                                    Text(
+                                      'Live',
+                                      style: TextStyle(
+                                        fontSize: 9,
+                                        color: Colors.green.shade700,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ],
                         ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            if (hours > 0) ...[
+                              _TimeBlock(value: hours, label: 'Std'),
+                              _TimeSep(),
+                            ],
+                            _TimeBlock(value: minutes, label: 'Min'),
+                            _TimeSep(),
+                            _TimeBlock(value: secs, label: 'Sek', small: true),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // Trennlinie
+                  Container(
+                    width: 1,
+                    height: 52,
+                    color: Colors.grey.shade200,
+                    margin: const EdgeInsets.symmetric(horizontal: 16),
+                  ),
+
+                  // Streak + Info-Icon
+                  Column(
+                    children: [
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.local_fire_department,
+                            size: 14,
+                            color: Colors.orange,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Streak',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: Colors.grey[600],
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          // ── Info-Icon ──────────────────────────────────
+                          GestureDetector(
+                            onTap: () =>
+                                setState(() => _showRoadmap = !_showRoadmap),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              padding: const EdgeInsets.all(2),
+                              decoration: BoxDecoration(
+                                color: _showRoadmap
+                                    ? Colors.orange.shade100
+                                    : Colors.transparent,
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                _showRoadmap
+                                    ? Icons.info_rounded
+                                    : Icons.info_outline_rounded,
+                                size: 15,
+                                color: _showRoadmap
+                                    ? Colors.orange.shade600
+                                    : Colors.grey[400],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '$streak',
+                        style: TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
+                          color: streak > 0 ? Colors.orange : Colors.grey,
+                        ),
+                      ),
+                      Text(
+                        streak == 1 ? 'Tag' : 'Tage',
+                        style: TextStyle(fontSize: 10, color: Colors.grey[500]),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '$streak',
-                    style: TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
-                      color: streak > 0 ? Colors.orange : Colors.grey,
-                    ),
-                  ),
-                  Text(
-                    streak == 1 ? 'Tag' : 'Tage',
-                    style: TextStyle(fontSize: 10, color: Colors.grey[500]),
-                  ),
                 ],
+              ),
+
+              // ── Ausklappbare Streak-Roadmap ───────────────────────────────
+              AnimatedSize(
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeInOut,
+                child: _showRoadmap
+                    ? Padding(
+                        padding: const EdgeInsets.only(top: 16),
+                        child: _StreakRoadmapContent(streak: streak),
+                      )
+                    : const SizedBox.shrink(),
               ),
             ],
           ),
@@ -1910,15 +2212,50 @@ class _AvatarSettingsSheetState extends ConsumerState<_AvatarSettingsSheet> {
                       child: Stack(
                         children: [
                           Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
                             children: [
+                              // ── Obere Badge-Zeile (Unlock-Bedingung oder Rarity) ──
+                              Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: isUnlocked
+                                      ? avatar.color.withOpacity(0.12)
+                                      : Colors.grey.shade200,
+                                  borderRadius: const BorderRadius.only(
+                                    topLeft: Radius.circular(14),
+                                    topRight: Radius.circular(14),
+                                  ),
+                                ),
+                                child: Text(
+                                  isUnlocked
+                                      ? avatar.rarityLabel
+                                      : avatar.isRewardUnlock
+                                      ? '🎁 Belohnung'
+                                      : '🔒 Lvl ${avatar.requiredLevel}',
+                                  style: TextStyle(
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.bold,
+                                    color: isUnlocked
+                                        ? avatar.color
+                                        : Colors.grey.shade600,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+
+                              // ── Avatar-Bild (zentriert, füllt Rest) ──
                               Expanded(
                                 child: Padding(
                                   padding: const EdgeInsets.fromLTRB(
                                     8,
-                                    10,
+                                    6,
                                     8,
-                                    4,
+                                    8,
                                   ),
                                   child: ColorFiltered(
                                     colorFilter: isUnlocked
@@ -1953,7 +2290,7 @@ class _AvatarSettingsSheetState extends ConsumerState<_AvatarSettingsSheet> {
                                       fit: BoxFit.contain,
                                       errorBuilder: (_, __, ___) => Icon(
                                         Icons.face,
-                                        size: 48,
+                                        size: 42,
                                         color: avatar.color.withOpacity(
                                           isUnlocked ? 1.0 : 0.3,
                                         ),
@@ -1962,57 +2299,13 @@ class _AvatarSettingsSheetState extends ConsumerState<_AvatarSettingsSheet> {
                                   ),
                                 ),
                               ),
-                              Padding(
-                                padding: const EdgeInsets.only(bottom: 6),
-                                child: Text(
-                                  avatar.rarityLabel,
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w600,
-                                    color: isUnlocked
-                                        ? avatar.color
-                                        : Colors.grey[400],
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
-                              ),
                             ],
                           ),
-                          // Lock overlay
-                          if (!isUnlocked)
-                            Positioned.fill(
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(14),
-                                  color: Colors.white.withOpacity(0.5),
-                                ),
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(
-                                      Icons.lock_rounded,
-                                      color: Colors.grey[500],
-                                      size: 22,
-                                    ),
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      avatar.isRewardUnlock
-                                          ? '🎁 Geschenk'
-                                          : 'Lvl ${avatar.requiredLevel}',
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.grey[600],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
+
                           // Ausgewählt-Checkmark
                           if (isSelected)
                             Positioned(
-                              top: 6,
+                              top: 30,
                               right: 6,
                               child: Container(
                                 width: 20,

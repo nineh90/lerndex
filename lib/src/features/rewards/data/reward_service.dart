@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../auth/domain/child_model.dart';
 import '../domain/reward_model.dart';
 import '../domain/reward_enums.dart';
+import 'xp_service.dart';
 
 /// Service für Belohnungs-Verwaltung mit Auto-Triggern
 class RewardService {
@@ -95,6 +96,44 @@ class RewardService {
           });
 
           print('✅ Belohnung freigeschaltet: ${reward.title}');
+
+          // 🎁 Bonus-XP automatisch vergeben (kein Eltern-OK nötig!)
+          if (reward.bonusXP != null && reward.bonusXP! > 0) {
+            try {
+              final xpService = XPService(_firestore);
+              await xpService.addXP(
+                userId: userId,
+                childId: child.id,
+                xpToAdd: reward.bonusXP!,
+              );
+              print(
+                '⚡ Bonus-XP vergeben: +${reward.bonusXP} XP für Streak-Belohnung',
+              );
+            } catch (e) {
+              print('❌ Fehler beim Vergeben von Bonus-XP: $e');
+            }
+          }
+
+          // 🎭 Avatar automatisch freischalten
+          if (reward.avatarUnlockId != null) {
+            try {
+              await _firestore
+                  .collection('users')
+                  .doc(userId)
+                  .collection('children')
+                  .doc(child.id)
+                  .update({
+                    'unlockedAvatars': FieldValue.arrayUnion([
+                      reward.avatarUnlockId!,
+                    ]),
+                  });
+              print(
+                '🎭 Avatar automatisch freigeschaltet: ${reward.avatarUnlockId}',
+              );
+            } catch (e) {
+              print('❌ Fehler beim Freischalten des Avatars: $e');
+            }
+          }
 
           approvedRewards.add(
             reward.copyWith(
