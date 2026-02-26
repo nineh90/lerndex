@@ -5,8 +5,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:lerndex1/src/features/auth/presentation/family_dashboard_screen.dart';
 import '../data/auth_repository.dart';
 import '../../parent_dashboard/data/pin_repository.dart';
-import '../../parent_dashboard/presentation/pin_input_dialog.dart';
-import '../../parent_dashboard/presentation/parent_dashboard_screen.dart';
 
 /// Onboarding-Screen — gilt für ALLE neuen Nutzer (E-Mail + Google)
 ///

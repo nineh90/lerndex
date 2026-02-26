@@ -3,8 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../domain/question_model.dart';
 import '../../auth/domain/child_model.dart';
-import '../../auth/data/auth_repository.dart';
 import 'ai_question_cache_repository.dart';
+import 'combined_quiz_params.dart';
 
 /// 📚 ERWEITERTER QUIZ REPOSITORY
 ///
@@ -100,40 +100,6 @@ class ExtendedQuizRepository {
 final extendedQuizRepositoryProvider = Provider<ExtendedQuizRepository>((ref) {
   return ExtendedQuizRepository(ref.watch(aiQuestionCacheRepositoryProvider));
 });
-
-/// Parameter-Klasse für den kombinierten Quiz-Session-Provider
-class CombinedQuizParams {
-  final String userId;
-  final String childId;
-  final ChildModel child;
-  final String subject;
-  final int questionCount;
-
-  CombinedQuizParams({
-    required this.userId,
-    required this.childId,
-    required this.child,
-    required this.subject,
-    this.questionCount = 5,
-  });
-
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is CombinedQuizParams &&
-          runtimeType == other.runtimeType &&
-          userId == other.userId &&
-          childId == other.childId &&
-          subject == other.subject &&
-          questionCount == other.questionCount;
-
-  @override
-  int get hashCode =>
-      userId.hashCode ^
-      childId.hashCode ^
-      subject.hashCode ^
-      questionCount.hashCode;
-}
 
 /// Provider zum Laden einer kombinierten Quiz-Session
 final combinedQuizSessionProvider =

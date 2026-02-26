@@ -5,6 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../../auth/data/auth_repository.dart';
 import '../../auth/data/profile_repository.dart';
 import '../../../../main.dart';
+import '../../auth/presentation/account_deleted_screen.dart';
 import '../data/pin_repository.dart';
 
 /// Einstellungsbereich im Elterndashboard

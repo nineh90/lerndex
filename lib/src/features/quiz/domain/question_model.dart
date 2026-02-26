@@ -1,10 +1,12 @@
+export 'quiz_data.dart';
+
 /// Repräsentiert eine Quiz-Frage
 class Question {
-  final int grade;              // Klassenstufe (1-13)
-  final String question;        // Die Frage
-  final List<String> options;   // Antwortmöglichkeiten (4 Stück)
-  final String answer;          // Richtige Antwort
-  final String difficulty;      // Schwierigkeitsgrad: easy, medium, hard
+  final int grade; // Klassenstufe (1-13)
+  final String question; // Die Frage
+  final List<String> options; // Antwortmöglichkeiten (4 Stück)
+  final String answer; // Richtige Antwort
+  final String difficulty; // Schwierigkeitsgrad: easy, medium, hard
 
   Question({
     required this.grade,
@@ -33,13 +35,10 @@ class Question {
 
 /// Repräsentiert ein komplettes Quiz mit mehreren Fragen
 class QuizData {
-  final String subject;           // Fach (Mathe, Deutsch, etc.)
+  final String subject; // Fach (Mathe, Deutsch, etc.)
   final List<Question> questions; // Alle Fragen
 
-  QuizData({
-    required this.subject,
-    required this.questions,
-  });
+  QuizData({required this.subject, required this.questions});
 
   /// Erstellt QuizData aus JSON
   factory QuizData.fromJson(Map<String, dynamic> json) {

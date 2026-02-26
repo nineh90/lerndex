@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'generated_task_models.dart';
+import 'approved_questions_params.dart';
 
 /// 🗄️ REPOSITORY FÜR GENERIERTE AUFGABEN
 /// Verwaltet das Speichern, Laden und Freigeben von KI-generierten Aufgaben
@@ -47,7 +48,9 @@ class GeneratedTaskRepository {
       }
 
       await batch.commit();
-      print('✅ Batch gespeichert: ${batchDoc.id} mit ${questions.length} Aufgaben');
+      print(
+        '✅ Batch gespeichert: ${batchDoc.id} mit ${questions.length} Aufgaben',
+      );
 
       return batchDoc.id;
     } catch (e) {
@@ -69,20 +72,22 @@ class GeneratedTaskRepository {
         .orderBy('createdAt', descending: true)
         .snapshots()
         .asyncMap((snapshot) async {
-      final batches = <GeneratedTaskBatch>[];
+          final batches = <GeneratedTaskBatch>[];
 
-      for (var doc in snapshot.docs) {
-        // Lade alle Fragen für diesen Batch
-        final questionsSnapshot = await doc.reference.collection('questions').get();
-        final questions = questionsSnapshot.docs
-            .map((qDoc) => GeneratedQuestion.fromFirestore(qDoc))
-            .toList();
+          for (var doc in snapshot.docs) {
+            // Lade alle Fragen für diesen Batch
+            final questionsSnapshot = await doc.reference
+                .collection('questions')
+                .get();
+            final questions = questionsSnapshot.docs
+                .map((qDoc) => GeneratedQuestion.fromFirestore(qDoc))
+                .toList();
 
-        batches.add(GeneratedTaskBatch.fromFirestore(doc, questions));
-      }
+            batches.add(GeneratedTaskBatch.fromFirestore(doc, questions));
+          }
 
-      return batches;
-    });
+          return batches;
+        });
   }
 
   /// Lädt alle ausstehenden Batches (mit pending-Aufgaben)
@@ -104,7 +109,9 @@ class GeneratedTaskRepository {
 
       if (!doc.exists) return null;
 
-      final questionsSnapshot = await doc.reference.collection('questions').get();
+      final questionsSnapshot = await doc.reference
+          .collection('questions')
+          .get();
       final questions = questionsSnapshot.docs
           .map((qDoc) => GeneratedQuestion.fromFirestore(qDoc))
           .toList();
@@ -146,7 +153,9 @@ class GeneratedTaskRepository {
         );
       }
 
-      print('✅ ${approvedQuestions.length} freigegebene Aufgaben geladen für ${subject.displayName}');
+      print(
+        '✅ ${approvedQuestions.length} freigegebene Aufgaben geladen für ${subject.displayName}',
+      );
       return approvedQuestions;
     } catch (e) {
       print('❌ Fehler beim Laden freigegebener Aufgaben: $e');
@@ -174,10 +183,10 @@ class GeneratedTaskRepository {
           .collection('questions')
           .doc(questionId)
           .update({
-        'status': 'approved',
-        'approvedAt': FieldValue.serverTimestamp(),
-        'approvedBy': approvedByUserId,
-      });
+            'status': 'approved',
+            'approvedAt': FieldValue.serverTimestamp(),
+            'approvedBy': approvedByUserId,
+          });
 
       print('✅ Aufgabe freigegeben: $questionId');
     } catch (e) {
@@ -202,10 +211,10 @@ class GeneratedTaskRepository {
           .collection('questions')
           .doc(questionId)
           .update({
-        'status': 'rejected',
-        'rejectionReason': reason,
-        'approvedAt': FieldValue.serverTimestamp(),
-      });
+            'status': 'rejected',
+            'rejectionReason': reason,
+            'approvedAt': FieldValue.serverTimestamp(),
+          });
 
       print('✅ Aufgabe abgelehnt: $questionId');
     } catch (e) {
@@ -323,67 +332,45 @@ class GeneratedTaskRepository {
 // ========================================================================
 
 /// Provider für GeneratedTaskRepository
-final generatedTaskRepositoryProvider = Provider<GeneratedTaskRepository>((ref) {
+final generatedTaskRepositoryProvider = Provider<GeneratedTaskRepository>((
+  ref,
+) {
   return GeneratedTaskRepository();
 });
 
 /// Provider für alle Batches eines Users
-final generatedBatchesProvider = StreamProvider.family<List<GeneratedTaskBatch>, String>(
-      (ref, userId) {
-    final repository = ref.watch(generatedTaskRepositoryProvider);
-    return repository.watchBatchesForUser(userId);
-  },
-);
+final generatedBatchesProvider =
+    StreamProvider.family<List<GeneratedTaskBatch>, String>((ref, userId) {
+      final repository = ref.watch(generatedTaskRepositoryProvider);
+      return repository.watchBatchesForUser(userId);
+    });
 
 /// Provider für ausstehende Batches
-final pendingBatchesProvider = StreamProvider.family<List<GeneratedTaskBatch>, String>(
-      (ref, userId) {
-    final repository = ref.watch(generatedTaskRepositoryProvider);
-    return repository.watchPendingBatches(userId);
-  },
-);
+final pendingBatchesProvider =
+    StreamProvider.family<List<GeneratedTaskBatch>, String>((ref, userId) {
+      final repository = ref.watch(generatedTaskRepositoryProvider);
+      return repository.watchPendingBatches(userId);
+    });
 
 /// Provider für Anzahl ausstehender Aufgaben
-final pendingTaskCountProvider = StreamProvider.family<int, String>(
-      (ref, userId) {
-    final repository = ref.watch(generatedTaskRepositoryProvider);
-    return repository.watchPendingTaskCount(userId);
-  },
-);
+final pendingTaskCountProvider = StreamProvider.family<int, String>((
+  ref,
+  userId,
+) {
+  final repository = ref.watch(generatedTaskRepositoryProvider);
+  return repository.watchPendingTaskCount(userId);
+});
 
 /// Provider für freigegebene Aufgaben eines Kindes in einem Fach
-final approvedQuestionsProvider = FutureProvider.family<List<GeneratedQuestion>, ApprovedQuestionsParams>(
-      (ref, params) async {
-    final repository = ref.watch(generatedTaskRepositoryProvider);
-    return repository.getApprovedQuestionsForChild(
-      userId: params.userId,
-      childId: params.childId,
-      subject: params.subject,
-    );
-  },
-);
-
-/// Parameter für approvedQuestionsProvider
-class ApprovedQuestionsParams {
-  final String userId;
-  final String childId;
-  final Subject subject;
-
-  ApprovedQuestionsParams({
-    required this.userId,
-    required this.childId,
-    required this.subject,
-  });
-
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-          other is ApprovedQuestionsParams &&
-              runtimeType == other.runtimeType &&
-              userId == other.userId &&
-              childId == other.childId &&
-              subject == other.subject;
-
-  @override
-  int get hashCode => userId.hashCode ^ childId.hashCode ^ subject.hashCode;
-}
+final approvedQuestionsProvider =
+    FutureProvider.family<List<GeneratedQuestion>, ApprovedQuestionsParams>((
+      ref,
+      params,
+    ) async {
+      final repository = ref.watch(generatedTaskRepositoryProvider);
+      return repository.getApprovedQuestionsForChild(
+        userId: params.userId,
+        childId: params.childId,
+        subject: params.subject,
+      );
+    });

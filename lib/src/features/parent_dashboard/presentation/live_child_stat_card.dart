@@ -5,7 +5,6 @@ import 'package:lerndex1/src/features/parent_dashboard/presentation/ai_task_gene
 import '../../auth/domain/child_model.dart';
 import '../../auth/data/auth_repository.dart';
 import '../../rewards/presentation/manage_rewards_screen.dart';
-import '../../rewards/data/reward_service.dart';
 import '../../rewards/data/xp_service.dart';
 import '../../generated_tasks/presentation/task_approval_screen.dart';
 import '../../generated_tasks/data/generated_task_repository.dart';
@@ -13,6 +12,9 @@ import 'child_statistics_screen.dart';
 import 'tutor_history_screen.dart';
 import '../../auth/data/profile_repository.dart';
 import 'edit_child_screen.dart';
+import 'widgets/claimed_rewards_banner.dart';
+import 'widgets/stat_chip.dart';
+import 'widgets/pulsing_dot.dart';
 
 /// Provider für Live-Child-Daten (Stream für Echtzeit-Updates)
 final liveChildProvider = StreamProvider.family<ChildModel?, String>((
@@ -241,7 +243,7 @@ class LiveChildStatCard extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // ── Benachrichtigungs-Banner (nur wenn eingelöste Belohnungen) ──
-              if (claimedCount > 0) _ClaimedRewardsBanner(count: claimedCount),
+              if (claimedCount > 0) ClaimedRewardsBanner(count: claimedCount),
 
               Padding(
                 padding: const EdgeInsets.all(16),
@@ -336,7 +338,7 @@ class LiveChildStatCard extends ConsumerWidget {
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                const _PulsingDot(),
+                                const PulsingDot(),
                                 const SizedBox(width: 4),
                                 Text(
                                   'LIVE',
@@ -632,19 +634,19 @@ class LiveChildStatCard extends ConsumerWidget {
                     // ── Statistik-Grid ─────────────────────────────────────────
                     Row(
                       children: [
-                        _StatChip(
+                        StatChip(
                           icon: Icons.star,
                           color: Colors.amber,
                           label: '${child.stars} Sterne',
                         ),
                         const SizedBox(width: 8),
-                        _StatChip(
+                        StatChip(
                           icon: Icons.local_fire_department,
                           color: Colors.orange,
                           label: '${child.streak ?? 0} Tage',
                         ),
                         const SizedBox(width: 8),
-                        _StatChip(
+                        StatChip(
                           icon: Icons.timer,
                           color: Colors.blue,
                           label: child.formattedLearningTime,
@@ -668,165 +670,6 @@ class LiveChildStatCard extends ConsumerWidget {
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Text('Fehler: $e'),
-        ),
-      ),
-    );
-  }
-}
-
-// =============================================================================
-// CLAIMED REWARDS BANNER
-// =============================================================================
-
-/// Dezenter Banner für das Eltern-Dashboard.
-/// Seriöses Design passend zum Rest des Dashboards — kein kindliches Styling.
-class _ClaimedRewardsBanner extends StatelessWidget {
-  final int count;
-  const _ClaimedRewardsBanner({required this.count});
-
-  @override
-  Widget build(BuildContext context) {
-    final label = count == 1
-        ? 'Belohnung eingelöst — bitte aushändigen'
-        : '$count Belohnungen eingelöst — bitte aushändigen';
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      decoration: BoxDecoration(
-        color: Colors.deepPurple.shade50,
-        borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(16),
-          topRight: Radius.circular(16),
-        ),
-        border: Border(bottom: BorderSide(color: Colors.deepPurple.shade100)),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            Icons.redeem_outlined,
-            size: 16,
-            color: Colors.deepPurple.shade600,
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: Colors.deepPurple.shade700,
-              ),
-            ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-            decoration: BoxDecoration(
-              color: Colors.deepPurple.shade600,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Text(
-              '$count',
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 11,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-// =============================================================================
-// HELPER WIDGETS
-// =============================================================================
-
-/// Kleines Statistik-Chip
-class _StatChip extends StatelessWidget {
-  final IconData icon;
-  final Color color;
-  final String label;
-
-  const _StatChip({
-    required this.icon,
-    required this.color,
-    required this.label,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-        decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 14, color: color),
-            const SizedBox(width: 4),
-            Flexible(
-              child: Text(
-                label,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: color,
-                  fontWeight: FontWeight.w600,
-                ),
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// Animierter pulsierender Punkt für den Live-Indikator.
-/// Blinkt sanft um anzuzeigen dass das Kind gerade aktiv ist.
-class _PulsingDot extends StatefulWidget {
-  const _PulsingDot();
-
-  @override
-  State<_PulsingDot> createState() => _PulsingDotState();
-}
-
-class _PulsingDotState extends State<_PulsingDot>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _animation;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 900),
-    )..repeat(reverse: true);
-    _animation = Tween<double>(begin: 0.4, end: 1.0).animate(_controller);
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return FadeTransition(
-      opacity: _animation,
-      child: Container(
-        width: 8,
-        height: 8,
-        decoration: const BoxDecoration(
-          color: Colors.green,
-          shape: BoxShape.circle,
         ),
       ),
     );

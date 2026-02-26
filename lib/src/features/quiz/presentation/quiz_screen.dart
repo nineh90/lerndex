@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../domain/question_model.dart';
-import '../data/quiz_repository.dart';
 import '../../auth/presentation/active_child_provider.dart';
 import '../../auth/data/profile_repository.dart';
 import '../../rewards/data/xp_service.dart';
 import '../../rewards/data/reward_service.dart';
 import '../../rewards/presentation/reward_unlocked_dialog.dart';
-import '../../rewards/domain/reward_model.dart';
 import '../../auth/domain/child_model.dart';
 import '../../auth/data/auth_repository.dart';
 import '../../learning_time/learning_time_tracker.dart';
 import '../data/extended_quiz_repository.dart';
+import 'widgets/answer_button.dart';
+import 'widgets/reward_row.dart';
 
 class QuizScreen extends ConsumerStatefulWidget {
   final String subject;
@@ -556,7 +556,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
     return question.options.map((option) {
       return Padding(
         padding: const EdgeInsets.only(bottom: 16),
-        child: _AnswerButton(
+        child: AnswerButton(
           text: option,
           onPressed: _showingFeedback ? null : () => _checkAnswer(option),
           color: _getSubjectColor(),
@@ -658,13 +658,13 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
                         ),
                       ),
                       const Divider(height: 40),
-                      _RewardRow(
+                      RewardRow(
                         icon: Icons.star,
                         text: '+$earnedStars Sterne',
                         color: Colors.amber,
                       ),
                       const SizedBox(height: 12),
-                      _RewardRow(
+                      RewardRow(
                         icon: Icons.flash_on,
                         text: '+$earnedXP XP',
                         color: Colors.orange,
@@ -712,77 +712,5 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
       default:
         return Colors.deepPurple;
     }
-  }
-}
-
-class _AnswerButton extends StatelessWidget {
-  final String text;
-  final VoidCallback? onPressed;
-  final Color color;
-
-  const _AnswerButton({
-    required this.text,
-    this.onPressed,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton(
-        onPressed: onPressed,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.white,
-          foregroundColor: Colors.black87,
-          padding: const EdgeInsets.all(20),
-          elevation: 2,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(15),
-            side: BorderSide(
-              color: onPressed == null
-                  ? Colors.grey.shade300
-                  : color.withOpacity(0.3),
-              width: 2,
-            ),
-          ),
-        ),
-        child: Text(
-          text,
-          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
-        ),
-      ),
-    );
-  }
-}
-
-class _RewardRow extends StatelessWidget {
-  final IconData icon;
-  final String text;
-  final Color color;
-
-  const _RewardRow({
-    required this.icon,
-    required this.text,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Icon(icon, color: color, size: 28),
-        const SizedBox(width: 12),
-        Text(
-          text,
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: color,
-          ),
-        ),
-      ],
-    );
   }
 }

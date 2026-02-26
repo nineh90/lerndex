@@ -1,5 +1,4 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../domain/reward_enums.dart';
 
 /// 🎁 SYSTEM-BELOHNUNGEN INITIALIZER
 /// Erstellt automatisch System-Belohnungen für neue Kinder

@@ -6,6 +6,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import '../features/auth/domain/child_model.dart';
 import '../features/tutor/domain/chat_message.dart';
+import 'generated_task.dart';
+import 'generated_task_result.dart';
 
 /// 🤖 FIREBASE AI SERVICE
 /// Verwendet Vertex AI über Firebase
@@ -41,10 +43,26 @@ class FirebaseAIService {
           topK: 40,
         ),
         safetySettings: [
-          SafetySetting(HarmCategory.harassment, HarmBlockThreshold.high, HarmBlockMethod.severity),
-          SafetySetting(HarmCategory.hateSpeech, HarmBlockThreshold.high, HarmBlockMethod.severity),
-          SafetySetting(HarmCategory.sexuallyExplicit, HarmBlockThreshold.high, HarmBlockMethod.severity),
-          SafetySetting(HarmCategory.dangerousContent, HarmBlockThreshold.high, HarmBlockMethod.severity),
+          SafetySetting(
+            HarmCategory.harassment,
+            HarmBlockThreshold.high,
+            HarmBlockMethod.severity,
+          ),
+          SafetySetting(
+            HarmCategory.hateSpeech,
+            HarmBlockThreshold.high,
+            HarmBlockMethod.severity,
+          ),
+          SafetySetting(
+            HarmCategory.sexuallyExplicit,
+            HarmBlockThreshold.high,
+            HarmBlockMethod.severity,
+          ),
+          SafetySetting(
+            HarmCategory.dangerousContent,
+            HarmBlockThreshold.high,
+            HarmBlockMethod.severity,
+          ),
         ],
       );
 
@@ -109,10 +127,9 @@ class FirebaseAIService {
       for (var message in recentMessages) {
         if (message.isLoading) continue;
 
-        history.add(Content(
-          message.isUser ? 'user' : 'model',
-          [TextPart(message.text)],
-        ));
+        history.add(
+          Content(message.isUser ? 'user' : 'model', [TextPart(message.text)]),
+        );
       }
 
       // Chat starten und Nachricht senden
@@ -126,7 +143,6 @@ class FirebaseAIService {
       }
 
       return text;
-
     } catch (e) {
       print('❌ Tutor-Fehler: $e');
       return 'Ups, da ist etwas schiefgelaufen. Versuch es nochmal! 😅';
@@ -220,7 +236,8 @@ WICHTIG: Deine EINZIGE Aufgabe ist es, bei SCHULFÄCHERN zu helfen. Alle anderen
       final systemPrompt = _getTaskGeneratorSystemPrompt(child);
 
       // 4. Vision API: Bild + Prompt
-      final prompt = '''
+      final prompt =
+          '''
 $systemPrompt
 
 AUFGABE:
@@ -263,7 +280,7 @@ WICHTIG: Antworte NUR mit dem JSON-Array, ohne Markdown-Formatierung oder Text d
         Content.multi([
           TextPart(prompt),
           InlineDataPart('image/jpeg', imageBytes),
-        ])
+        ]),
       ]);
 
       final text = response.text;
@@ -296,7 +313,6 @@ WICHTIG: Antworte NUR mit dem JSON-Array, ohne Markdown-Formatierung oder Text d
         tasks: tasks,
         imageUrl: imageUrl,
       );
-
     } catch (e, stackTrace) {
       print('❌ Fehler beim Generieren: $e');
       print('Stack: $stackTrace');
@@ -336,7 +352,11 @@ WICHTIG:
   }
 
   /// Lädt Bild zu Firebase Storage hoch
-  Future<String> _uploadImage(File imageFile, String userId, String childId) async {
+  Future<String> _uploadImage(
+    File imageFile,
+    String userId,
+    String childId,
+  ) async {
     final timestamp = DateTime.now().millisecondsSinceEpoch;
     final path = 'task_images/$userId/$childId/$timestamp.jpg';
 
@@ -370,7 +390,6 @@ WICHTIG:
       final List<dynamic> jsonList = jsonDecode(cleaned);
 
       return jsonList.map((json) => GeneratedTask.fromJson(json)).toList();
-
     } catch (e) {
       print('❌ JSON Parse Fehler: $e');
       print('Text war: $jsonText');
@@ -407,10 +426,7 @@ WICHTIG:
     // Einzelne Aufgaben als Sub-Collection
     for (var i = 0; i < tasks.length; i++) {
       final taskDoc = batchDoc.collection('tasks').doc();
-      batch.set(taskDoc, {
-        ...tasks[i].toFirestore(),
-        'index': i,
-      });
+      batch.set(taskDoc, {...tasks[i].toFirestore(), 'index': i});
     }
 
     await batch.commit();
@@ -426,8 +442,14 @@ WICHTIG:
 
     // Gefährliche/unangemessene Inhalte
     final inappropriate = [
-      'gewalt', 'waffe', 'sex', 'drogen',
-      'schlagen', 'töten', 'selbstmord', 'blut',
+      'gewalt',
+      'waffe',
+      'sex',
+      'drogen',
+      'schlagen',
+      'töten',
+      'selbstmord',
+      'blut',
     ];
 
     // Prüfe auf unangemessene Inhalte
@@ -475,13 +497,24 @@ WICHTIG:
 
     // Zusätzliche Heuristik: Fragen nach praktischen Tätigkeiten
     if (lower.contains('wie') &&
-        (lower.contains('mache') || lower.contains('koche') ||
-            lower.contains('baue') || lower.contains('bastle'))) {
+        (lower.contains('mache') ||
+            lower.contains('koche') ||
+            lower.contains('baue') ||
+            lower.contains('bastle'))) {
       // Aber: Schulbezogene "Wie mache ich"-Fragen erlauben
       final schoolRelated = [
-        'hausaufgabe', 'aufgabe', 'rechnen', 'lösen',
-        'berechnen', 'schreiben', 'lernen', 'verstehen',
-        'erklären', 'mathe', 'deutsch', 'englisch',
+        'hausaufgabe',
+        'aufgabe',
+        'rechnen',
+        'lösen',
+        'berechnen',
+        'schreiben',
+        'lernen',
+        'verstehen',
+        'erklären',
+        'mathe',
+        'deutsch',
+        'englisch',
       ];
 
       bool isSchoolRelated = schoolRelated.any((word) => lower.contains(word));
@@ -501,58 +534,5 @@ WICHTIG:
   /// Nachricht bei Nicht-Schul-Frage
   String _getNonSchoolQuestionMessage(String childName) {
     return 'Das ist eine interessante Frage, $childName! Aber ich bin Lerndex, dein Lernbegleiter, und helfe dir nur bei Schulfächern. 📚 Hast du vielleicht eine Frage zu Mathe, Deutsch, Englisch oder einem anderen Schulfach? 🎓';
-  }
-}
-
-// ============================================================================
-// DATENMODELLE
-// ============================================================================
-
-/// Ergebnis der Aufgabengenerierung
-class GeneratedTaskResult {
-  final bool success;
-  final List<GeneratedTask> tasks;
-  final String? imageUrl;
-  final String? errorMessage;
-
-  GeneratedTaskResult({
-    required this.success,
-    required this.tasks,
-    this.imageUrl,
-    this.errorMessage,
-  });
-}
-
-/// Einzelne generierte Aufgabe
-class GeneratedTask {
-  final String question;
-  final String solution;
-  final String difficulty; // easy, medium, hard
-  final String topic;
-
-  GeneratedTask({
-    required this.question,
-    required this.solution,
-    required this.difficulty,
-    required this.topic,
-  });
-
-  factory GeneratedTask.fromJson(Map<String, dynamic> json) {
-    return GeneratedTask(
-      question: json['question'] ?? '',
-      solution: json['solution'] ?? '',
-      difficulty: json['difficulty'] ?? 'medium',
-      topic: json['topic'] ?? '',
-    );
-  }
-
-  Map<String, dynamic> toFirestore() {
-    return {
-      'question': question,
-      'solution': solution,
-      'difficulty': difficulty,
-      'topic': topic,
-      'createdAt': FieldValue.serverTimestamp(),
-    };
   }
 }

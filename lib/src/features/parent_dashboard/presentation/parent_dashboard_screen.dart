@@ -1,12 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../auth/data/profile_repository.dart';
-import '../../auth/domain/child_model.dart';
-import '../../rewards/presentation/manage_rewards_screen.dart';
 import 'live_child_stat_card.dart';
-import '../../generated_tasks/presentation/improved_ai_task_generator_screen.dart';
-import '../../generated_tasks/presentation/task_approval_screen.dart';
-import '../../generated_tasks/data/generated_task_repository.dart';
 import '../../auth/data/auth_repository.dart';
 import 'settings_screen.dart';
 import '../../auth/presentation/login_screen.dart';
@@ -68,10 +63,7 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
               children: [
                 const Text(
                   'Fortschritte & Verwaltung',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 8),
                 Text(
@@ -79,7 +71,9 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
                   style: TextStyle(color: Colors.grey[600]),
                 ),
                 const SizedBox(height: 24),
-                ...children.map((child) => LiveChildStatCard(childId: child.id)),
+                ...children.map(
+                  (child) => LiveChildStatCard(childId: child.id),
+                ),
               ],
             ),
           );
@@ -101,9 +95,7 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
             case 2:
               Navigator.push(
                 context,
-                MaterialPageRoute(
-                  builder: (_) => const SettingsScreen(),
-                ),
+                MaterialPageRoute(builder: (_) => const SettingsScreen()),
               );
               break;
             case 3:
@@ -119,18 +111,12 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
             icon: Icon(Icons.person_add),
             label: 'Kind hinzufügen',
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.star_outline),
-            label: 'Abo',
-          ),
+          BottomNavigationBarItem(icon: Icon(Icons.star_outline), label: 'Abo'),
           BottomNavigationBarItem(
             icon: Icon(Icons.settings_outlined),
             label: 'Einstellungen',
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.logout),
-            label: 'Abmelden',
-          ),
+          BottomNavigationBarItem(icon: Icon(Icons.logout), label: 'Abmelden'),
         ],
       ),
     );
@@ -168,10 +154,12 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
                   value: selectedGrade,
                   decoration: const InputDecoration(labelText: 'Klasse'),
                   items: List.generate(13, (i) => i + 1)
-                      .map((g) => DropdownMenuItem(
-                    value: g,
-                    child: Text('Klasse $g'),
-                  ))
+                      .map(
+                        (g) => DropdownMenuItem(
+                          value: g,
+                          child: Text('Klasse $g'),
+                        ),
+                      )
                       .toList(),
                   onChanged: (val) => setState(() => selectedGrade = val!),
                 ),
@@ -179,20 +167,19 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
                 DropdownButtonFormField<String>(
                   value: selectedSchoolType,
                   decoration: const InputDecoration(labelText: 'Schulform'),
-                  items: [
-                    'Grundschule',
-                    'Gymnasium',
-                    'Realschule',
-                    'Hauptschule',
-                    'Gesamtschule',
-                  ]
-                      .map((s) => DropdownMenuItem(
-                    value: s,
-                    child: Text(s),
-                  ))
-                      .toList(),
-                  onChanged: (val) =>
-                      setState(() => selectedSchoolType = val!),
+                  items:
+                      [
+                            'Grundschule',
+                            'Gymnasium',
+                            'Realschule',
+                            'Hauptschule',
+                            'Gesamtschule',
+                          ]
+                          .map(
+                            (s) => DropdownMenuItem(value: s, child: Text(s)),
+                          )
+                          .toList(),
+                  onChanged: (val) => setState(() => selectedSchoolType = val!),
                 ),
               ],
             ),
@@ -209,15 +196,17 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
                     context: context,
                     barrierDismissible: false,
                     builder: (context) =>
-                    const Center(child: CircularProgressIndicator()),
+                        const Center(child: CircularProgressIndicator()),
                   );
                   try {
-                    await ref.read(profileRepositoryProvider).createChild(
-                      name: nameController.text,
-                      age: int.tryParse(ageController.text) ?? 6,
-                      grade: selectedGrade,
-                      schoolType: selectedSchoolType,
-                    );
+                    await ref
+                        .read(profileRepositoryProvider)
+                        .createChild(
+                          name: nameController.text,
+                          age: int.tryParse(ageController.text) ?? 6,
+                          grade: selectedGrade,
+                          schoolType: selectedSchoolType,
+                        );
                     if (context.mounted) {
                       Navigator.pop(context); // Loading
                       Navigator.pop(context); // Dialog
@@ -315,7 +304,7 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
               if (context.mounted) {
                 Navigator.of(context).pushAndRemoveUntil(
                   MaterialPageRoute(builder: (_) => const LoginScreen()),
-                      (route) => false,
+                  (route) => false,
                 );
               }
             },

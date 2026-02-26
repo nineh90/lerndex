@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:firebase_vertexai/firebase_vertexai.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../auth/domain/child_model.dart';
+import '../domain/generated_task_result.dart';
 import 'generated_task_models.dart';
 
 /// 🤖 FIREBASE AI SERVICE
@@ -282,24 +283,6 @@ Antworte NUR mit diesem JSON-Objekt (kein Array, kein Text davor/danach):
         return 'FACH: GESCHICHTE – Themen: Antike, Mittelalter, Neuzeit, Weltkriege je nach Klasse.';
     }
   }
-}
-
-// ========================================================================
-// ERGEBNIS-MODELL
-// ========================================================================
-
-class GeneratedTaskResult {
-  final bool success;
-  final List<GeneratedQuestion> questions;
-  final String? imageUrl;
-  final String? errorMessage;
-
-  GeneratedTaskResult({
-    required this.success,
-    required this.questions,
-    this.imageUrl,
-    this.errorMessage,
-  });
 }
 
 // ========================================================================

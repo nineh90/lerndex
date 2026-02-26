@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:confetti/confetti.dart';
 import '../domain/reward_model.dart';
+import 'widgets/reward_item.dart';
 
 /// 🎉 SPEKTAKULÄRER LEVEL-UP DIALOG
 /// - Vollbild-Animation
@@ -62,13 +63,10 @@ class _RewardUnlockedDialogState extends State<RewardUnlockedDialog>
       duration: const Duration(milliseconds: 800),
       vsync: this,
     );
-    _slideAnimation = Tween<Offset>(
-      begin: const Offset(0, 0.3),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _slideController,
-      curve: Curves.easeOutCubic,
-    ));
+    _slideAnimation =
+        Tween<Offset>(begin: const Offset(0, 0.3), end: Offset.zero).animate(
+          CurvedAnimation(parent: _slideController, curve: Curves.easeOutCubic),
+        );
 
     // Confetti für Level-Up
     _confettiController = ConfettiController(
@@ -134,14 +132,11 @@ class _RewardUnlockedDialogState extends State<RewardUnlockedDialog>
                 end: Alignment.bottomRight,
                 colors: widget.isLevelUp
                     ? [
-                  Colors.amber.shade400,
-                  Colors.orange.shade500,
-                  Colors.deepOrange.shade600,
-                ]
-                    : [
-                  Colors.deepPurple.shade400,
-                  Colors.purple.shade600,
-                ],
+                        Colors.amber.shade400,
+                        Colors.orange.shade500,
+                        Colors.deepOrange.shade600,
+                      ]
+                    : [Colors.deepPurple.shade400, Colors.purple.shade600],
               ),
               borderRadius: BorderRadius.circular(30),
               boxShadow: [
@@ -206,8 +201,8 @@ class _RewardUnlockedDialogState extends State<RewardUnlockedDialog>
                                 ),
                               ),
                               const SizedBox(height: 16),
-                              ...widget.rewards.map((reward) =>
-                                  _RewardItem(reward: reward)
+                              ...widget.rewards.map(
+                                (reward) => RewardItem(reward: reward),
                               ),
                             ],
                           ),
@@ -376,118 +371,10 @@ class _RewardUnlockedDialogState extends State<RewardUnlockedDialog>
           children: [
             Text(
               widget.isLevelUp ? 'Super! 🎉' : 'Okay! 👍',
-              style: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-/// Einzelne Belohnungs-Karte (verbessert)
-class _RewardItem extends StatelessWidget {
-  final RewardModel reward;
-
-  const _RewardItem({required this.reward});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.25),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: Colors.white.withOpacity(0.4),
-          width: 2,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Titel mit Emoji
-          Row(
-            children: [
-              Text(
-                reward.statusEmoji,
-                style: const TextStyle(fontSize: 32),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  reward.title,
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-            ],
-          ),
-
-          // Beschreibung
-          if (reward.description.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            Text(
-              reward.description,
-              style: TextStyle(
-                fontSize: 15,
-                color: Colors.white.withOpacity(0.95),
-                height: 1.4,
-              ),
-            ),
-          ],
-
-          // Belohnung (hervorgehoben)
-          const SizedBox(height: 16),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.9),
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
-                  blurRadius: 4,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Row(
-              children: [
-                const Text(
-                  '🎁',
-                  style: TextStyle(fontSize: 24),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    reward.reward,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.deepOrange,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
       ),
     );
   }

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/auth_repository.dart';
 import 'register_screen.dart';
-import 'email_verification_screen.dart';
 import 'onboarding_screen.dart';
 import 'family_dashboard_screen.dart';
 
@@ -41,13 +40,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     setState(() => _isLoading = true);
 
     try {
-      await ref.read(authRepositoryProvider).signInWithEmailAndPassword(
-          email, password);
+      await ref
+          .read(authRepositoryProvider)
+          .signInWithEmailAndPassword(email, password);
 
       if (!mounted) return;
 
-      final onboardingDone =
-      await ref.read(authRepositoryProvider).isOnboardingComplete();
+      final onboardingDone = await ref
+          .read(authRepositoryProvider)
+          .isOnboardingComplete();
       if (!mounted) return;
 
       if (!onboardingDone) {
@@ -83,8 +84,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       }
 
       // Bestehender User: Onboarding abgeschlossen?
-      final onboardingDone =
-      await ref.read(authRepositoryProvider).isOnboardingComplete();
+      final onboardingDone = await ref
+          .read(authRepositoryProvider)
+          .isOnboardingComplete();
       if (!mounted) return;
 
       if (!onboardingDone) {
@@ -168,7 +170,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   // Login-Card
                   Card(
                     shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(20)),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
                     elevation: 8,
                     child: Padding(
                       padding: const EdgeInsets.all(24),
@@ -181,7 +184,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               labelText: 'E-Mail',
                               prefixIcon: const Icon(Icons.email_outlined),
                               border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12)),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
                             ),
                             keyboardType: TextInputType.emailAddress,
                             textInputAction: TextInputAction.next,
@@ -195,13 +199,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               labelText: 'Passwort',
                               prefixIcon: const Icon(Icons.lock_outline),
                               border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12)),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
                               suffixIcon: IconButton(
-                                icon: Icon(_obscurePassword
-                                    ? Icons.visibility_outlined
-                                    : Icons.visibility_off_outlined),
+                                icon: Icon(
+                                  _obscurePassword
+                                      ? Icons.visibility_outlined
+                                      : Icons.visibility_off_outlined,
+                                ),
                                 onPressed: () => setState(
-                                        () => _obscurePassword = !_obscurePassword),
+                                  () => _obscurePassword = !_obscurePassword,
+                                ),
                               ),
                             ),
                             obscureText: _obscurePassword,
@@ -214,8 +222,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             alignment: Alignment.centerRight,
                             child: TextButton(
                               onPressed: _forgotPassword,
-                              child: const Text('Passwort vergessen?',
-                                  style: TextStyle(color: Color(0xFF6B21A8))),
+                              child: const Text(
+                                'Passwort vergessen?',
+                                style: TextStyle(color: Color(0xFF6B21A8)),
+                              ),
                             ),
                           ),
 
@@ -230,18 +240,25 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: const Color(0xFF6B21A8),
                                 shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12)),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
                               ),
                               child: _isLoading
                                   ? const SizedBox(
-                                height: 20,
-                                width: 20,
-                                child: CircularProgressIndicator(
-                                    color: Colors.white, strokeWidth: 2),
-                              )
-                                  : const Text('Anmelden',
-                                  style: TextStyle(
-                                      fontSize: 16, color: Colors.white)),
+                                      height: 20,
+                                      width: 20,
+                                      child: CircularProgressIndicator(
+                                        color: Colors.white,
+                                        strokeWidth: 2,
+                                      ),
+                                    )
+                                  : const Text(
+                                      'Anmelden',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        color: Colors.white,
+                                      ),
+                                    ),
                             ),
                           ),
                           const SizedBox(height: 16),
@@ -251,11 +268,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             children: [
                               const Expanded(child: Divider()),
                               Padding(
-                                padding:
-                                const EdgeInsets.symmetric(horizontal: 12),
-                                child: Text('oder',
-                                    style: TextStyle(
-                                        color: Colors.grey.shade500)),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                ),
+                                child: Text(
+                                  'oder',
+                                  style: TextStyle(color: Colors.grey.shade500),
+                                ),
                               ),
                               const Expanded(child: Divider()),
                             ],
@@ -267,33 +286,41 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             width: double.infinity,
                             height: 50,
                             child: OutlinedButton.icon(
-                              onPressed:
-                              _isGoogleLoading ? null : _googleLogin,
+                              onPressed: _isGoogleLoading ? null : _googleLogin,
                               style: OutlinedButton.styleFrom(
                                 shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12)),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
                                 side: BorderSide(
-                                    color: Colors.grey.shade300, width: 1.5),
+                                  color: Colors.grey.shade300,
+                                  width: 1.5,
+                                ),
                               ),
                               icon: _isGoogleLoading
                                   ? const SizedBox(
-                                height: 18,
-                                width: 18,
-                                child: CircularProgressIndicator(
-                                    strokeWidth: 2),
-                              )
+                                      height: 18,
+                                      width: 18,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                      ),
+                                    )
                                   : Image.asset(
-                                'assets/images/google_logo.png',
-                                height: 22,
-                                width: 22,
-                                errorBuilder: (_, __, ___) => const Icon(
-                                    Icons.g_mobiledata,
-                                    size: 24,
-                                    color: Colors.red),
+                                      'assets/images/google_logo.png',
+                                      height: 22,
+                                      width: 22,
+                                      errorBuilder: (_, __, ___) => const Icon(
+                                        Icons.g_mobiledata,
+                                        size: 24,
+                                        color: Colors.red,
+                                      ),
+                                    ),
+                              label: const Text(
+                                'Mit Google anmelden',
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  color: Colors.black87,
+                                ),
                               ),
-                              label: const Text('Mit Google anmelden',
-                                  style: TextStyle(
-                                      fontSize: 15, color: Colors.black87)),
                             ),
                           ),
                           const SizedBox(height: 20),
@@ -302,20 +329,25 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              const Text('Noch kein Konto?',
-                                  style: TextStyle(color: Colors.grey)),
+                              const Text(
+                                'Noch kein Konto?',
+                                style: TextStyle(color: Colors.grey),
+                              ),
                               TextButton(
                                 onPressed: () {
                                   Navigator.of(context).push(
                                     MaterialPageRoute(
-                                        builder: (_) =>
-                                        const RegisterScreen()),
+                                      builder: (_) => const RegisterScreen(),
+                                    ),
                                   );
                                 },
-                                child: const Text('Jetzt registrieren',
-                                    style: TextStyle(
-                                        color: Color(0xFF6B21A8),
-                                        fontWeight: FontWeight.bold)),
+                                child: const Text(
+                                  'Jetzt registrieren',
+                                  style: TextStyle(
+                                    color: Color(0xFF6B21A8),
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
                               ),
                             ],
                           ),

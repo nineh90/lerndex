@@ -4,6 +4,7 @@ import '../../auth/domain/child_model.dart';
 import '../domain/reward_model.dart';
 import '../domain/reward_enums.dart';
 import 'xp_service.dart';
+import 'validation_result.dart';
 
 /// Service für Belohnungs-Verwaltung mit Auto-Triggern
 class RewardService {
@@ -354,14 +355,6 @@ class RewardService {
     if (level <= 10) return 'Kleines Geschenk';
     return 'Besonderes Erlebnis';
   }
-}
-
-/// Validierungs-Ergebnis
-class ValidationResult {
-  final bool isValid;
-  final String message;
-
-  ValidationResult(this.isValid, this.message);
 }
 
 /// Provider für Reward Service
