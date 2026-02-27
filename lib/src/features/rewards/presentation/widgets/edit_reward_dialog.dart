@@ -196,7 +196,7 @@ class _EditRewardDialogState extends ConsumerState<EditRewardDialog> {
                 ),
                 const SizedBox(height: 8),
                 DropdownButtonFormField<RewardTrigger>(
-                  value: _selectedTrigger,
+                  initialValue: _selectedTrigger,
                   decoration: const InputDecoration(
                     border: OutlineInputBorder(),
                     prefixIcon: Icon(Icons.flag),

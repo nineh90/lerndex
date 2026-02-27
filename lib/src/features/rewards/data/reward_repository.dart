@@ -26,6 +26,9 @@ final rewardRepositoryProvider = Provider<RewardRepository>((ref) {
 });
 
 /// Stub Provider
-final childRewardsProvider = StreamProvider.family<List<RewardModel>, String>((ref, childId) {
+final childRewardsProvider = StreamProvider.family<List<RewardModel>, String>((
+  ref,
+  childId,
+) {
   return Stream.value([]);
 });

@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../domain/chat_message.dart';
-import '../data/tutor_session_model.dart'; // ✅ NEU: für TutorSession.detectContentFlag()
+import '../data/tutor_session_model.dart';
 import '../../auth/presentation/active_child_provider.dart';
 import '../../auth/data/auth_repository.dart';
 import '../../../ai/firebase_ai_service.dart';

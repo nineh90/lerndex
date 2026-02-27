@@ -459,11 +459,11 @@ class ChildStatisticsScreen extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
+            const Row(
               children: [
-                const Icon(Icons.quiz, color: Colors.blue, size: 24),
-                const SizedBox(width: 8),
-                const Text(
+                Icon(Icons.quiz, color: Colors.blue, size: 24),
+                SizedBox(width: 8),
+                Text(
                   'Quiz-Statistiken',
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
@@ -559,15 +559,15 @@ class ChildStatisticsScreen extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
+            const Row(
               children: [
-                const Icon(
+                Icon(
                   Icons.local_fire_department,
                   color: Colors.orange,
                   size: 24,
                 ),
-                const SizedBox(width: 8),
-                const Text(
+                SizedBox(width: 8),
+                Text(
                   'Aktivität & Streak',
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
@@ -656,11 +656,11 @@ class ChildStatisticsScreen extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
+            const Row(
               children: [
-                const Icon(Icons.card_giftcard, color: Colors.amber, size: 24),
-                const SizedBox(width: 8),
-                const Text(
+                Icon(Icons.card_giftcard, color: Colors.amber, size: 24),
+                SizedBox(width: 8),
+                Text(
                   'Belohnungen',
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),

@@ -7,10 +7,7 @@ import '../../auth/data/profile_repository.dart';
 class EditChildScreen extends ConsumerStatefulWidget {
   final ChildModel child;
 
-  const EditChildScreen({
-    super.key,
-    required this.child,
-  });
+  const EditChildScreen({super.key, required this.child});
 
   @override
   ConsumerState<EditChildScreen> createState() => _EditChildScreenState();
@@ -53,13 +50,15 @@ class _EditChildScreenState extends ConsumerState<EditChildScreen> {
     setState(() => _isSaving = true);
 
     try {
-      await ref.read(profileRepositoryProvider).updateChild(
-        childId: widget.child.id,
-        name: _nameController.text.trim(),
-        age: int.tryParse(_ageController.text.trim()) ?? widget.child.age,
-        schoolType: _selectedSchoolType,
-        grade: _selectedGrade,
-      );
+      await ref
+          .read(profileRepositoryProvider)
+          .updateChild(
+            childId: widget.child.id,
+            name: _nameController.text.trim(),
+            age: int.tryParse(_ageController.text.trim()) ?? widget.child.age,
+            schoolType: _selectedSchoolType,
+            grade: _selectedGrade,
+          );
 
       if (mounted) {
         Navigator.pop(context, true);
@@ -112,7 +111,10 @@ class _EditChildScreenState extends ConsumerState<EditChildScreen> {
               onPressed: _save,
               child: const Text(
                 'Speichern',
-                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
         ],
@@ -141,17 +143,25 @@ class _EditChildScreenState extends ConsumerState<EditChildScreen> {
               ),
               const SizedBox(height: 32),
 
-              _SectionHeader(icon: Icons.person, title: 'Persönliche Daten'),
+              const _SectionHeader(
+                icon: Icons.person,
+                title: 'Persönliche Daten',
+              ),
               const SizedBox(height: 12),
 
               TextFormField(
                 controller: _nameController,
                 decoration: _inputDecoration(
-                    label: 'Name', hint: 'z.B. Max', icon: Icons.badge_outlined),
+                  label: 'Name',
+                  hint: 'z.B. Max',
+                  icon: Icons.badge_outlined,
+                ),
                 textCapitalization: TextCapitalization.words,
                 validator: (value) {
-                  if (value == null || value.trim().isEmpty) return 'Bitte gib einen Namen ein';
-                  if (value.trim().length < 2) return 'Name muss mindestens 2 Zeichen haben';
+                  if (value == null || value.trim().isEmpty)
+                    return 'Bitte gib einen Namen ein';
+                  if (value.trim().length < 2)
+                    return 'Name muss mindestens 2 Zeichen haben';
                   return null;
                 },
               ),
@@ -160,39 +170,60 @@ class _EditChildScreenState extends ConsumerState<EditChildScreen> {
               TextFormField(
                 controller: _ageController,
                 decoration: _inputDecoration(
-                    label: 'Alter', hint: 'z.B. 10', icon: Icons.cake_outlined),
+                  label: 'Alter',
+                  hint: 'z.B. 10',
+                  icon: Icons.cake_outlined,
+                ),
                 keyboardType: TextInputType.number,
                 validator: (value) {
-                  if (value == null || value.trim().isEmpty) return 'Bitte gib das Alter ein';
+                  if (value == null || value.trim().isEmpty)
+                    return 'Bitte gib das Alter ein';
                   final age = int.tryParse(value.trim());
-                  if (age == null || age < 5 || age > 20) return 'Alter zwischen 5 und 20';
+                  if (age == null || age < 5 || age > 20)
+                    return 'Alter zwischen 5 und 20';
                   return null;
                 },
               ),
               const SizedBox(height: 28),
 
-              _SectionHeader(icon: Icons.school, title: 'Schulinformationen'),
+              const _SectionHeader(
+                icon: Icons.school,
+                title: 'Schulinformationen',
+              ),
               const SizedBox(height: 12),
 
               DropdownButtonFormField<String>(
-                value: _selectedSchoolType,
+                initialValue: _selectedSchoolType,
                 decoration: _inputDecoration(
-                    label: 'Schulform', hint: '', icon: Icons.account_balance_outlined),
+                  label: 'Schulform',
+                  hint: '',
+                  icon: Icons.account_balance_outlined,
+                ),
                 items: _schoolTypes
-                    .map((type) => DropdownMenuItem(value: type, child: Text(type)))
+                    .map(
+                      (type) =>
+                          DropdownMenuItem(value: type, child: Text(type)),
+                    )
                     .toList(),
                 onChanged: (value) {
-                  if (value != null) setState(() => _selectedSchoolType = value);
+                  if (value != null)
+                    setState(() => _selectedSchoolType = value);
                 },
               ),
               const SizedBox(height: 16),
 
               DropdownButtonFormField<int>(
-                value: _selectedGrade,
+                initialValue: _selectedGrade,
                 decoration: _inputDecoration(
-                    label: 'Klasse', hint: '', icon: Icons.class_outlined),
+                  label: 'Klasse',
+                  hint: '',
+                  icon: Icons.class_outlined,
+                ),
                 items: List.generate(13, (i) => i + 1)
-                    .map((g) => DropdownMenuItem(value: g, child: Text('Klasse $g')))
+                    .map(
+                      (g) =>
+                          DropdownMenuItem(value: g, child: Text('Klasse $g')),
+                    )
                     .toList(),
                 onChanged: (value) {
                   if (value != null) setState(() => _selectedGrade = value);
@@ -206,16 +237,28 @@ class _EditChildScreenState extends ConsumerState<EditChildScreen> {
                   onPressed: _isSaving ? null : _save,
                   icon: _isSaving
                       ? const SizedBox(
-                      width: 18, height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
                       : const Icon(Icons.save),
-                  label: Text(_isSaving ? 'Wird gespeichert...' : 'Änderungen speichern'),
+                  label: Text(
+                    _isSaving ? 'Wird gespeichert...' : 'Änderungen speichern',
+                  ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.deepPurple,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    textStyle: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ),
@@ -223,8 +266,11 @@ class _EditChildScreenState extends ConsumerState<EditChildScreen> {
               Center(
                 child: Text(
                   'Lernfortschritte (XP, Sterne, Level) bleiben erhalten.',
-                  style: TextStyle(fontSize: 12, color: Colors.grey[500],
-                      fontStyle: FontStyle.italic),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey[500],
+                    fontStyle: FontStyle.italic,
+                  ),
                   textAlign: TextAlign.center,
                 ),
               ),
@@ -235,8 +281,11 @@ class _EditChildScreenState extends ConsumerState<EditChildScreen> {
     );
   }
 
-  InputDecoration _inputDecoration(
-      {required String label, required String hint, required IconData icon}) {
+  InputDecoration _inputDecoration({
+    required String label,
+    required String hint,
+    required IconData icon,
+  }) {
     return InputDecoration(
       labelText: label,
       hintText: hint,
@@ -263,10 +312,18 @@ class _SectionHeader extends StatelessWidget {
       children: [
         Icon(icon, color: Colors.deepPurple, size: 20),
         const SizedBox(width: 8),
-        Text(title, style: const TextStyle(
-            fontSize: 16, fontWeight: FontWeight.bold, color: Colors.deepPurple)),
+        Text(
+          title,
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: Colors.deepPurple,
+          ),
+        ),
         const SizedBox(width: 8),
-        Expanded(child: Divider(color: Colors.deepPurple.shade100, thickness: 1)),
+        Expanded(
+          child: Divider(color: Colors.deepPurple.shade100, thickness: 1),
+        ),
       ],
     );
   }

@@ -3,8 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../auth/domain/child_model.dart';
 import '../subject_config.dart';
 import 'hero_header.dart';
-// import 'live_learning_time_card.dart'; // TODO
-// import 'playful_subject_tile.dart'; // TODO
+import 'live_learning_time_card.dart';
+import 'playful_subject_tile.dart';
+import '../../../quiz/presentation/quiz_screen.dart';
 
 // ============================================================================
 // TAB 0: HOME – NEU GESTALTET (ohne Statistiken)
@@ -29,7 +30,7 @@ class HomeTab extends ConsumerWidget {
           // ── Live Lernzeit + Streak ────────────────────────────────────────
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-            // child: LiveLearningTimeCard(childId: child.id),
+            child: LiveLearningTimeCard(childId: child.id),
           ),
 
           // ── Fächer-Titel ─────────────────────────────────────────────────
@@ -73,9 +74,8 @@ class HomeTab extends ConsumerWidget {
               ),
               itemCount: subjects.length,
               itemBuilder: (context, index) {
-                // final s = subjects[index];
-                return const SizedBox();
-                /* return PlayfulSubjectTile(
+                final s = subjects[index];
+                return PlayfulSubjectTile(
                   config: s,
                   onTap: () => Navigator.push(
                     context,
@@ -83,7 +83,7 @@ class HomeTab extends ConsumerWidget {
                       builder: (_) => QuizScreen(subject: s.subject),
                     ),
                   ),
-                ); */
+                );
               },
             ),
           ),

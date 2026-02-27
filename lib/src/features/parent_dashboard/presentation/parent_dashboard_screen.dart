@@ -151,7 +151,7 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
                 ),
                 const SizedBox(height: 16),
                 DropdownButtonFormField<int>(
-                  value: selectedGrade,
+                  initialValue: selectedGrade,
                   decoration: const InputDecoration(labelText: 'Klasse'),
                   items: List.generate(13, (i) => i + 1)
                       .map(
@@ -165,7 +165,7 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
                 ),
                 const SizedBox(height: 16),
                 DropdownButtonFormField<String>(
-                  value: selectedSchoolType,
+                  initialValue: selectedSchoolType,
                   decoration: const InputDecoration(labelText: 'Schulform'),
                   items:
                       [

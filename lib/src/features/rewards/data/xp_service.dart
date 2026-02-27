@@ -41,14 +41,18 @@ class XPService {
   static ({String title, String emoji, Color color}) getRankForLevel(
     int level,
   ) {
-    if (level <= 10)
+    if (level <= 10) {
       return (title: 'Lernling', emoji: '📚', color: const Color(0xFF78909C));
-    if (level <= 20)
+    }
+    if (level <= 20) {
       return (title: 'Entdecker', emoji: '🔍', color: const Color(0xFF29B6F6));
-    if (level <= 30)
+    }
+    if (level <= 30) {
       return (title: 'Forscher', emoji: '🔬', color: const Color(0xFF66BB6A));
-    if (level <= 40)
+    }
+    if (level <= 40) {
       return (title: 'Experte', emoji: '🎓', color: const Color(0xFFFFA726));
+    }
     return (title: 'Meister', emoji: '🏆', color: const Color(0xFFEF5350));
   }
 
