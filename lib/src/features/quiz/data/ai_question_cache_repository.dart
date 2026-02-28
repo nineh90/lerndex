@@ -1,7 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:lerndex1/src/features/auth/domain/child_model.dart';
-import 'package:lerndex1/src/features/quiz/domain/question_model.dart';
+import 'package:lerndex/src/features/auth/domain/child_model.dart';
+import 'package:lerndex/src/features/quiz/domain/question_model.dart';
 import 'ai_quiz_generator_service.dart';
 
 /// 🗄️ AI QUESTION CACHE REPOSITORY

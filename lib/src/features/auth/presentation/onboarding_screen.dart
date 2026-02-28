@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:lerndex1/src/features/auth/presentation/family_dashboard_screen.dart';
+import 'package:lerndex/src/features/auth/presentation/family_dashboard_screen.dart';
 import '../data/auth_repository.dart';
 import '../../parent_dashboard/data/pin_repository.dart';
 

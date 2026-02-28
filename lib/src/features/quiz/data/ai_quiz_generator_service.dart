@@ -1,8 +1,8 @@
 import 'dart:convert';
 import 'package:firebase_vertexai/firebase_vertexai.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:lerndex1/src/features/auth/domain/child_model.dart';
-import 'package:lerndex1/src/features/quiz/domain/question_model.dart';
+import 'package:lerndex/src/features/auth/domain/child_model.dart';
+import 'package:lerndex/src/features/quiz/domain/question_model.dart';
 
 /// 🤖 AI QUIZ GENERATOR SERVICE
 ///

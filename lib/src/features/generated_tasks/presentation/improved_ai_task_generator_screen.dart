@@ -4,7 +4,7 @@ import 'dart:convert';
 import 'package:firebase_vertexai/firebase_vertexai.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:lerndex1/src/features/generated_tasks/data/generated_task_models.dart';
+import 'package:lerndex/src/features/generated_tasks/data/generated_task_models.dart';
 import '../domain/generated_task_result.dart';
 import '../../auth/domain/child_model.dart';
 
