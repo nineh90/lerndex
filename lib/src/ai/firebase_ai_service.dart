@@ -14,6 +14,16 @@ import 'generated_task_result.dart';
 /// - KI-Tutor für Kinder
 /// - Aufgabengenerator aus Fotos für Eltern
 
+/// Antwort des KI-Tutors mit extrahiertem Schulfach.
+class TutorResponse {
+  final String text; // Bereinigte Antwort ohne [FACH:...]-Tag
+  final String subject; // z.B. 'Mathematik', 'Biologie', 'kein_schulfach'
+
+  const TutorResponse({required this.text, required this.subject});
+
+  bool get isSchoolSubject => subject != 'kein_schulfach';
+}
+
 class FirebaseAIService {
   GenerativeModel? _tutorModel;
   GenerativeModel? _taskGeneratorModel;
@@ -89,29 +99,43 @@ class FirebaseAIService {
   // ========================================================================
 
   /// Sendet Nachricht an KI-Tutor und bekommt Antwort
-  Future<String> sendTutorMessage({
+  Future<TutorResponse> sendTutorMessage({
     required ChildModel child,
     required String userMessage,
     required List<ChatMessage> conversationHistory,
+    bool subjectAlreadyDetermined = false,
   }) async {
     try {
       // Sicherheitscheck
       if (!_isAppropriateQuestion(userMessage)) {
-        return _getInappropriateQuestionMessage();
+        return TutorResponse(
+          text: _getInappropriateQuestionMessage(),
+          subject: 'kein_schulfach',
+        );
       }
 
       // ✅ NEUER CHECK: Nicht-Schul-Themen erkennen und SOFORT ablehnen
       if (_isNonSchoolQuestion(userMessage)) {
-        return _getNonSchoolQuestionMessage(child.name);
+        return TutorResponse(
+          text: _getNonSchoolQuestionMessage(child.name),
+          subject: 'kein_schulfach',
+        );
       }
 
       // Längencheck
       if (userMessage.length > 500) {
-        return 'Deine Frage ist etwas zu lang. Kannst du sie kürzer formulieren? 😊';
+        return TutorResponse(
+          text:
+              'Deine Frage ist etwas zu lang. Kannst du sie kürzer formulieren? 😊',
+          subject: 'kein_schulfach',
+        );
       }
 
       // System-Prompt für das Kind
-      final systemPrompt = _getTutorSystemPrompt(child);
+      final systemPrompt = _getTutorSystemPrompt(
+        child,
+        subjectAlreadyDetermined: subjectAlreadyDetermined,
+      );
 
       // Chat-History aufbauen
       final history = <Content>[];
@@ -139,18 +163,31 @@ class FirebaseAIService {
       final text = response.text;
 
       if (text == null || text.isEmpty) {
-        return 'Hmm, ich bin mir bei dieser Frage nicht sicher. Kannst du sie anders formulieren? 🤔';
+        return TutorResponse(
+          text:
+              'Hmm, ich bin mir bei dieser Frage nicht sicher. Kannst du sie anders formulieren? 🤔',
+          subject: 'kein_schulfach',
+        );
       }
 
-      return text;
+      // Fach-Tag extrahieren und aus Antwort entfernen (Schüler sieht es nicht)
+      final subject = _extractSubjectTag(text);
+      final cleanText = _stripSubjectTag(text);
+      return TutorResponse(text: cleanText, subject: subject);
     } catch (e) {
       print('❌ Tutor-Fehler: $e');
-      return 'Ups, da ist etwas schiefgelaufen. Versuch es nochmal! 😅';
+      return TutorResponse(
+        text: 'Ups, da ist etwas schiefgelaufen. Versuch es nochmal! 😅',
+        subject: 'kein_schulfach',
+      );
     }
   }
 
   /// System-Prompt für KI-Tutor (kindgerecht) - VERSTÄRKT
-  String _getTutorSystemPrompt(ChildModel child) {
+  String _getTutorSystemPrompt(
+    ChildModel child, {
+    bool subjectAlreadyDetermined = false,
+  }) {
     return '''
 Du bist Lerndex, der persönliche Lernbegleiter für ${child.name}.
 
@@ -204,6 +241,14 @@ Du bist Lerndex, der persönliche Lernbegleiter für ${child.name}.
 - Selbstständiges Denken fördern
 
 WICHTIG: Deine EINZIGE Aufgabe ist es, bei SCHULFÄCHERN zu helfen. Alle anderen Themen lehnst du freundlich ab!
+
+${subjectAlreadyDetermined ? '' : '''
+PFLICHT NUR BEI DIESER ERSTEN ANTWORT:
+Füge als ALLERLETZTE Zeile deine Antwort exakt dieses Tag an (wird automatisch entfernt, der Schüler sieht es nie):
+- Erkanntes Schulfach: [FACH:Mathematik] oder [FACH:Deutsch] oder [FACH:Englisch] oder [FACH:Biologie] oder [FACH:Chemie] oder [FACH:Physik] oder [FACH:Geschichte] oder [FACH:Geographie] oder [FACH:Sachkunde] oder [FACH:Informatik] oder [FACH:Latein] oder [FACH:Französisch] oder [FACH:Spanisch] oder [FACH:Ethik] oder [FACH:Philosophie] oder [FACH:Musik] oder [FACH:Kunst] oder [FACH:Sport] oder [FACH:Politik]
+- Kein Schulfach / unklar / Smalltalk / kurze Test-Eingabe: [FACH:kein_schulfach]
+Beispiele: "Was ist ein Schwertwal?" → Antwort... [FACH:Biologie] | "Test" → Antwort... [FACH:kein_schulfach]
+'''}
 ''';
   }
 
@@ -525,6 +570,18 @@ WICHTIG:
     }
 
     return false;
+  }
+
+  /// Extrahiert das Schulfach aus dem [FACH:...]-Tag der KI-Antwort.
+  static String _extractSubjectTag(String response) {
+    final match = RegExp(r'\[FACH:([^\]]+)\]').firstMatch(response);
+    if (match == null) return 'kein_schulfach';
+    return match.group(1)?.trim() ?? 'kein_schulfach';
+  }
+
+  /// Entfernt den [FACH:...]-Tag aus der Antwort (Schüler soll ihn nicht sehen).
+  static String _stripSubjectTag(String response) {
+    return response.replaceAll(RegExp(r'\s*\[FACH:[^\]]+\]'), '').trim();
   }
 
   String _getInappropriateQuestionMessage() {

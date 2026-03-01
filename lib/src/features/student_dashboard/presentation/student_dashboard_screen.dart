@@ -228,31 +228,14 @@ class _StudentDashboardScreenState
   }
 
   Future<void> _openTutor(BuildContext context, ChildModel child) async {
+    // Vor dem Öffnen: frischen Chat erzwingen und Provider neu erstellen
+    // → verhindert dass alte aktive Sessions geladen werden
+    ref.read(tutorFreshChatProvider.notifier).state = true;
+    ref.invalidate(tutorProviderFamily(child.id));
+
     await Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => const TutorScreen()),
     );
-    if (mounted) {
-      final provider = ref.read(tutorProvider);
-      if (provider != null) {
-        ref.read(provider.notifier).clearChat();
-      }
-    }
   }
 }
-
-// ============================================================================
-// TAB 0: HOME – NEU GESTALTET (ohne Statistiken)
-// ============================================================================
-
-// ============================================================================
-// HERO HEADER – nahtlos an AppBar, enthält Level/Sterne/XP
-// ============================================================================
-
-// ============================================================================
-// TAB 3: STATISTIK – eigene Seite, vollständig erhalten
-// ============================================================================
-
-// ============================================================================
-// AVATAR CONFIG → ausgelagert in avatar_config.dart
-// ============================================================================

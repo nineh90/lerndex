@@ -21,6 +21,7 @@ class TutorNotifier extends StateNotifier<List<ChatMessage>> {
   bool _isLoadingHistory = false;
   String? _currentSessionId;
   bool _hasUserSentMessage = false;
+  bool _subjectDetermined = false; // true sobald KI das Fach bestätigt hat
 
   static const int maxXpPerSession = 20;
   static const int maxXpPerDay = 50;
@@ -63,6 +64,8 @@ class TutorNotifier extends StateNotifier<List<ChatMessage>> {
 
         _currentSessionId = resumeId;
         _hasUserSentMessage = true;
+        _subjectDetermined =
+            true; // Fach bereits in vorheriger Session bestimmt
 
         // Nachrichten laden
         final messagesSnapshot = await _firestore
@@ -91,6 +94,16 @@ class TutorNotifier extends StateNotifier<List<ChatMessage>> {
         if (messages.isNotEmpty) {
           state = messages;
         }
+        return;
+      }
+
+      // Frischer Chat: keine aktive Session laden, alte aktive Sessions bereinigen
+      final isFreshChat = _ref.read(tutorFreshChatProvider);
+      if (isFreshChat) {
+        Future.microtask(() {
+          _ref.read(tutorFreshChatProvider.notifier).state = false;
+        });
+        await _closeAllActiveSessions();
         return;
       }
 
@@ -231,20 +244,27 @@ class TutorNotifier extends StateNotifier<List<ChatMessage>> {
     state = [...state, ChatMessage.loading()];
 
     try {
-      final response = await _aiService.sendTutorMessage(
+      final tutorResponse = await _aiService.sendTutorMessage(
         child: child,
         userMessage: text,
         conversationHistory: state.where((m) => !m.isLoading).toList(),
+        subjectAlreadyDetermined: _subjectDetermined,
       );
 
-      final tutorMessage = ChatMessage.tutor(response);
+      final tutorMessage = ChatMessage.tutor(tutorResponse.text);
 
       state = [...state.where((m) => !m.isLoading), tutorMessage];
 
       _saveChatMessage(tutorMessage);
 
-      // ✅ XP vergeben – nicht bei Ablehnungsantworten (kein Schulthema)
-      if (!_isRejectionResponse(response)) {
+      // ✅ Fach aus [FACH:...]-Tag – die KI entscheidet selbst was das Thema ist.
+      // Nur bei der ersten Antwort: Topic in Firestore setzen.
+      // Folgenachrichten: nur XP, kein Topic-Update mehr.
+      if (!_subjectDetermined && tutorResponse.isSchoolSubject) {
+        _subjectDetermined = true;
+        await _setSessionTopic(tutorResponse.subject);
+        await _awardTutorXP();
+      } else if (_subjectDetermined && tutorResponse.isSchoolSubject) {
         await _awardTutorXP();
       }
     } catch (e) {
@@ -305,17 +325,17 @@ class TutorNotifier extends StateNotifier<List<ChatMessage>> {
         final hasFirstQuestion = sessionData?['firstQuestion'] != null;
 
         if (!hasFirstQuestion) {
-          final topic = detectTopic(message.text);
+          // firstQuestion speichern; detectedTopic wird separat via _setSessionTopic gesetzt
           final contentFlag = TutorSession.detectContentFlag(message.text);
 
           final updates = <String, dynamic>{
             'firstQuestion': message.text,
-            'detectedTopic': topic,
+            'detectedTopic':
+                'Allgemein', // Platzhalter – wird nach KI-Antwort überschrieben
           };
 
           if (contentFlag != null) {
             updates['contentFlag'] = contentFlag;
-            // 🚩 Content-Flag erkannt: $contentFlag (aus: "${message.text}")',
           }
 
           await _firestore
@@ -326,39 +346,40 @@ class TutorNotifier extends StateNotifier<List<ChatMessage>> {
               .collection('tutor_sessions')
               .doc(sessionId)
               .update(updates);
-
-          // 🎯 Thema erkannt: $topic (aus: "${message.text}")');
-        } else {
-          // Wenn bisheriges Topic "Allgemein" war, nochmal versuchen mit neuer Nachricht
-          final currentTopic =
-              sessionData?['detectedTopic'] as String? ?? 'Allgemein';
-          if (currentTopic == 'Allgemein') {
-            final newTopic = detectTopic(message.text);
-            if (newTopic != 'Allgemein') {
-              await _firestore
-                  .collection('users')
-                  .doc(_userId)
-                  .collection('children')
-                  .doc(_childId)
-                  .collection('tutor_sessions')
-                  .doc(sessionId)
-                  .update({'detectedTopic': newTopic});
-              //🎯 Thema nachträglich erkannt: $newTopic (aus: "${message.text}")',
-            }
-          }
         }
+        // Kein else: Topic-Update erfolgt einmalig über _setSessionTopic nach KI-Antwort
       }
     } catch (e) {
       // ⚠️ Fehler beim Speichern: $e
     }
   }
 
-  /// Erkennt Ablehnungsantworten des Tutors (→ keine XP für Nicht-Schulthemen)
-  bool _isRejectionResponse(String response) {
-    final lower = response.toLowerCase();
-    return (lower.contains('lernbegleiter') && lower.contains('schulfach')) ||
-        lower.contains('nur bei schulfächern') ||
-        lower.contains('helfe dir nur');
+  /// Prüft ob ein erkanntes Topic ein echtes Schulfach ist.
+  /// XP darf nur bei echten Schulfächern vergeben werden – NIEMALS bei 'Allgemein'.
+  static bool isSchoolSubject(String topic) {
+    const schoolSubjects = {
+      'Mathematik',
+      'Deutsch',
+      'Englisch',
+      'Biologie',
+      'Chemie',
+      'Physik',
+      'Geschichte',
+      'Sachkunde',
+      'Geographie',
+      'Informatik',
+      'Latein',
+      'Französisch',
+      'Spanisch',
+      'Ethik',
+      'Philosophie',
+      'Musik',
+      'Kunst',
+      'Sport',
+      'Wirtschaft',
+      'Politik',
+    };
+    return schoolSubjects.contains(topic);
   }
 
   /// Vergib XP via XPService und updated den reaktiven SessionXP-Provider
@@ -400,6 +421,40 @@ class TutorNotifier extends StateNotifier<List<ChatMessage>> {
     // MATHEMATIK
     // ════════════════════════════════════════════════════════════════════════
     if (q.contains('mathe') || q.contains('mathematik')) return 'Mathematik';
+    // Mathematische Konzeptfragen (warum, wie, was ist ...)
+    if (q.contains('durch 0') ||
+        q.contains('durch null') ||
+        q.contains('division durch') ||
+        q.contains('dividieren durch')) {
+      return 'Mathematik';
+    }
+    if (q.contains('unendlich') &&
+        (q.contains('zahl') ||
+            q.contains('rechnen') ||
+            q.contains('teilen') ||
+            q.contains('teilt'))) {
+      return 'Mathematik';
+    }
+    if ((q.contains('warum') || q.contains('wieso') || q.contains('weshalb')) &&
+        (q.contains('teilen') ||
+            q.contains('rechnen') ||
+            q.contains('zahl') ||
+            q.contains('bruch') ||
+            q.contains('gleichung') ||
+            q.contains('minus') ||
+            q.contains('plus') ||
+            q.contains('addieren') ||
+            q.contains('subtrahieren') ||
+            q.contains('multiplizieren') ||
+            q.contains('dividieren') ||
+            q.contains('potenz') ||
+            q.contains('wurzel') ||
+            q.contains('prozent') ||
+            q.contains('vektor') ||
+            q.contains('integral') ||
+            q.contains('ableitung'))) {
+      return 'Mathematik';
+    }
     // Rechenoperationen mit Zahlen
     if (RegExp(r'\d+\s*[\+\-\*\/×÷]\s*\d+').hasMatch(q)) return 'Mathematik';
     if (RegExp(r'\d+\s*(mal|durch|plus|minus|geteilt)\s*\d+').hasMatch(q)) {
@@ -1807,6 +1862,51 @@ class TutorNotifier extends StateNotifier<List<ChatMessage>> {
     return 'Allgemein';
   }
 
+  /// Setzt das Session-Topic einmalig auf das von der KI erkannte Schulfach.
+  Future<void> _setSessionTopic(String subject) async {
+    if (_currentSessionId == null) return;
+    try {
+      await _firestore
+          .collection('users')
+          .doc(_userId)
+          .collection('children')
+          .doc(_childId)
+          .collection('tutor_sessions')
+          .doc(_currentSessionId)
+          .update({'detectedTopic': subject});
+    } catch (e) {
+      // ⚠️ Fehler beim Topic-Setzen: $e
+    }
+  }
+
+  /// Schließt alle noch offenen aktiven Sessions (Bereinigung bei frischem Chat-Start).
+  Future<void> _closeAllActiveSessions() async {
+    try {
+      final snapshot = await _firestore
+          .collection('users')
+          .doc(_userId)
+          .collection('children')
+          .doc(_childId)
+          .collection('tutor_sessions')
+          .where('status', isEqualTo: 'active')
+          .get();
+
+      for (final doc in snapshot.docs) {
+        final msgCount = (doc.data()['messageCount'] as int?) ?? 0;
+        if (msgCount <= 1) {
+          await doc.reference.delete();
+        } else {
+          await doc.reference.update({
+            'status': 'completed',
+            'endedAt': Timestamp.fromDate(DateTime.now()),
+          });
+        }
+      }
+    } catch (e) {
+      // ⚠️ Fehler beim Bereinigen: $e
+    }
+  }
+
   Future<void> completeCurrentSession() async {
     if (_currentSessionId == null) return;
 
@@ -1930,6 +2030,10 @@ final tutorXpGainProvider = StateProvider.family<int, String>(
 /// Session-ID die beim nächsten TutorScreen-Öffnen reaktiviert werden soll
 /// Wird von TutorHistoryTab gesetzt, von TutorNotifier einmalig konsumiert
 final tutorResumeSessionIdProvider = StateProvider<String?>((ref) => null);
+
+/// Flag: nächster TutorScreen-Aufruf soll frischen Chat starten (keine aktive Session laden)
+/// Wird von StudentDashboard gesetzt, von TutorNotifier einmalig konsumiert
+final tutorFreshChatProvider = StateProvider<bool>((ref) => false);
 
 // ============================================================================
 // PROVIDER
