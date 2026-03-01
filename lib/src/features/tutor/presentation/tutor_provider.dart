@@ -44,6 +44,57 @@ class TutorNotifier extends StateNotifier<List<ChatMessage>> {
     _isLoadingHistory = true;
 
     try {
+      // Prüfen ob eine Session reaktiviert werden soll
+      final resumeId = _ref.read(tutorResumeSessionIdProvider);
+      if (resumeId != null) {
+        Future.microtask(() {
+          _ref.read(tutorResumeSessionIdProvider.notifier).state = null;
+        });
+
+        // Session in Firestore auf 'active' setzen
+        await _firestore
+            .collection('users')
+            .doc(_userId)
+            .collection('children')
+            .doc(_childId)
+            .collection('tutor_sessions')
+            .doc(resumeId)
+            .update({'status': 'active', 'endedAt': FieldValue.delete()});
+
+        _currentSessionId = resumeId;
+        _hasUserSentMessage = true;
+
+        // Nachrichten laden
+        final messagesSnapshot = await _firestore
+            .collection('users')
+            .doc(_userId)
+            .collection('children')
+            .doc(_childId)
+            .collection('tutor_sessions')
+            .doc(resumeId)
+            .collection('messages')
+            .orderBy('timestamp', descending: false)
+            .limit(50)
+            .get();
+
+        final messages = messagesSnapshot.docs.map((doc) {
+          final data = doc.data();
+          return ChatMessage(
+            id: doc.id,
+            text: data['text'] ?? '',
+            isUser: data['isUser'] ?? false,
+            timestamp:
+                (data['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now(),
+          );
+        }).toList();
+
+        if (messages.isNotEmpty) {
+          state = messages;
+        }
+        return;
+      }
+
+      // Normaler Pfad: aktive Session suchen
       final sessionSnapshot = await _firestore
           .collection('users')
           .doc(_userId)
@@ -1809,6 +1860,57 @@ class TutorNotifier extends StateNotifier<List<ChatMessage>> {
       // ❌ Fehler beim Session-Reset: $e');
     }
   }
+
+  /// Reaktiviert eine abgeschlossene Session aus dem Verlauf
+  Future<void> resumeSession(String sessionId) async {
+    try {
+      // Aktuelle Session abschließen (falls vorhanden)
+      await completeCurrentSession();
+
+      // Session in Firestore auf 'active' zurücksetzen
+      await _firestore
+          .collection('users')
+          .doc(_userId)
+          .collection('children')
+          .doc(_childId)
+          .collection('tutor_sessions')
+          .doc(sessionId)
+          .update({'status': 'active', 'endedAt': FieldValue.delete()});
+
+      _currentSessionId = sessionId;
+      _hasUserSentMessage = true;
+
+      // Nachrichten laden
+      final messagesSnapshot = await _firestore
+          .collection('users')
+          .doc(_userId)
+          .collection('children')
+          .doc(_childId)
+          .collection('tutor_sessions')
+          .doc(sessionId)
+          .collection('messages')
+          .orderBy('timestamp', descending: false)
+          .limit(50)
+          .get();
+
+      final messages = messagesSnapshot.docs.map((doc) {
+        final data = doc.data();
+        return ChatMessage(
+          id: doc.id,
+          text: data['text'] ?? '',
+          isUser: data['isUser'] ?? false,
+          timestamp:
+              (data['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now(),
+        );
+      }).toList();
+
+      if (messages.isNotEmpty) {
+        state = messages;
+      }
+    } catch (e) {
+      // ❌ Fehler beim Reaktivieren der Session: $e
+    }
+  }
 }
 
 // ============================================================================
@@ -1824,6 +1926,10 @@ final tutorSessionXpProvider = StateProvider.family<int, String>(
 final tutorXpGainProvider = StateProvider.family<int, String>(
   (ref, childId) => 0,
 );
+
+/// Session-ID die beim nächsten TutorScreen-Öffnen reaktiviert werden soll
+/// Wird von TutorHistoryTab gesetzt, von TutorNotifier einmalig konsumiert
+final tutorResumeSessionIdProvider = StateProvider<String?>((ref) => null);
 
 // ============================================================================
 // PROVIDER

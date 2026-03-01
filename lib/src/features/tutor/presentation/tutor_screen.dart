@@ -26,6 +26,13 @@ class _TutorScreenState extends ConsumerState<TutorScreen> {
   LearningTimeTracker? _timeTracker;
   OverlayEntry? _xpOverlay;
 
+  // Werden in initState gespeichert – kein ref in dispose nötig
+  XPService? _xpService;
+  RewardService? _rewardService;
+  TutorNotifier? _tutorNotifier;
+  ChildModel? _child;
+  String? _userId;
+
   @override
   void initState() {
     super.initState();
@@ -34,13 +41,34 @@ class _TutorScreenState extends ConsumerState<TutorScreen> {
     final user = ref.read(authStateChangesProvider).value;
 
     if (child != null && user != null) {
+      _child = child;
+      _userId = user.uid;
+      _xpService = ref.read(xpServiceProvider);
+      _rewardService = ref.read(rewardServiceProvider);
+
+      final providerInstance = ref.read(tutorProvider);
+      if (providerInstance != null) {
+        _tutorNotifier = ref.read(providerInstance.notifier);
+      }
+
       _timeTracker = LearningTimeTracker(userId: user.uid, childId: child.id);
       _timeTracker!.startTracking();
       print('⏱️ Tutor: Zeit-Tracking gestartet');
     }
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Notifier aktuell halten – wird bei Provider-Invalidierung neu gesetzt
+    final providerInstance = ref.read(tutorProvider);
+    if (providerInstance != null) {
+      _tutorNotifier = ref.read(providerInstance.notifier);
+    }
+  }
+
   void _showXpAnimation(int xpGained) {
+    if (!mounted) return;
     _xpOverlay?.remove();
     _xpOverlay = OverlayEntry(
       builder: (context) => XpGainOverlay(
@@ -55,59 +83,63 @@ class _TutorScreenState extends ConsumerState<TutorScreen> {
   }
 
   @override
-  void dispose() async {
+  void dispose() {
     _xpOverlay?.remove();
-    if (_timeTracker != null) {
-      _timeTracker!.stopTracking();
-      print(
-        '⏹️ Tutor: Stoppe Zeit-Tracking bei ${_timeTracker!.trackedSeconds} Sekunden',
-      );
-
-      try {
-        await _timeTracker!.saveTime();
-        print('✅ Tutor: Lernzeit gespeichert');
-
-        final child = ref.read(activeChildProvider);
-        final user = ref.read(authStateChangesProvider).value;
-
-        if (child != null && user != null) {
-          final xpService = ref.read(xpServiceProvider);
-
-          final newStreak = await xpService.updateStreak(
-            userId: user.uid,
-            childId: child.id,
-          );
-          print('✅ Tutor: Streak aktualisiert → $newStreak Tage');
-
-          final rewardService = ref.read(rewardServiceProvider);
-          ChildModel? updatedChild = await xpService.getChild(
-            userId: user.uid,
-            childId: child.id,
-          );
-
-          if (updatedChild != null) {
-            updatedChild = updatedChild.copyWith(streak: newStreak);
-
-            final unlockedRewards = await rewardService.checkAndApproveRewards(
-              userId: user.uid,
-              child: updatedChild,
-            );
-
-            if (unlockedRewards.isNotEmpty) {
-              print(
-                '🎁 Tutor: ${unlockedRewards.length} Belohnungen freigeschaltet!',
-              );
-            }
-          }
-        }
-      } catch (e) {
-        print('❌ Fehler beim Speichern der Tutor-Lernzeit: $e');
-      }
-      _timeTracker!.dispose();
-    }
-
     _messageController.dispose();
     _scrollController.dispose();
+
+    // Alle gespeicherten Referenzen verwenden – kein ref nötig
+    final child = _child;
+    final userId = _userId;
+    final xpService = _xpService;
+    final rewardService = _rewardService;
+    final notifier = _tutorNotifier;
+    final tracker = _timeTracker;
+
+    if (tracker != null) {
+      tracker.stopTracking();
+
+      Future(() async {
+        try {
+          await tracker.saveTime();
+          print('✅ Tutor: Lernzeit gespeichert');
+
+          if (child != null &&
+              userId != null &&
+              xpService != null &&
+              rewardService != null) {
+            final newStreak = await xpService.updateStreak(
+              userId: userId,
+              childId: child.id,
+            );
+            print('✅ Tutor: Streak aktualisiert → $newStreak Tage');
+
+            ChildModel? updatedChild = await xpService.getChild(
+              userId: userId,
+              childId: child.id,
+            );
+
+            if (updatedChild != null) {
+              updatedChild = updatedChild.copyWith(streak: newStreak);
+              final unlockedRewards = await rewardService
+                  .checkAndApproveRewards(userId: userId, child: updatedChild);
+              if (unlockedRewards.isNotEmpty) {
+                print(
+                  '🎁 Tutor: ${unlockedRewards.length} Belohnungen freigeschaltet!',
+                );
+              }
+            }
+          }
+        } catch (e) {
+          print('❌ Fehler beim Speichern der Tutor-Lernzeit: $e');
+        }
+        tracker.dispose();
+        notifier?.completeCurrentSession();
+      });
+    } else {
+      notifier?.completeCurrentSession();
+    }
+
     super.dispose();
   }
 
@@ -146,11 +178,13 @@ class _TutorScreenState extends ConsumerState<TutorScreen> {
 
     // ✅ XP-Gain Listener → Animation triggern
     ref.listen(tutorXpGainProvider(child.id), (previous, gained) {
-      if (gained > 0) {
+      if (gained > 0 && mounted) {
         _showXpAnimation(gained);
         // Reset damit nächstes Event wieder feuert
         Future.microtask(() {
-          ref.read(tutorXpGainProvider(child.id).notifier).state = 0;
+          if (mounted) {
+            ref.read(tutorXpGainProvider(child.id).notifier).state = 0;
+          }
         });
       }
     });
@@ -160,39 +194,7 @@ class _TutorScreenState extends ConsumerState<TutorScreen> {
         title: const Text('🎓 Lerndex Tutor'),
         backgroundColor: Colors.deepPurple,
         foregroundColor: Colors.white,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () {
-              showDialog(
-                context: context,
-                builder: (context) => AlertDialog(
-                  title: const Text('Chat löschen?'),
-                  content: const Text(
-                    'Möchtest du den Chat wirklich löschen und neu starten?',
-                  ),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: const Text('Abbrechen'),
-                    ),
-                    ElevatedButton(
-                      onPressed: () {
-                        final providerInstance = ref.read(tutorProvider);
-                        if (providerInstance != null) {
-                          ref.read(providerInstance.notifier).clearChat();
-                        }
-                        Navigator.pop(context);
-                      },
-                      child: const Text('Löschen'),
-                    ),
-                  ],
-                ),
-              );
-            },
-            tooltip: 'Chat neu starten',
-          ),
-        ],
+        actions: const [],
       ),
       body: Column(
         children: [
@@ -237,6 +239,7 @@ class _TutorScreenState extends ConsumerState<TutorScreen> {
                       return MessageBubble(
                         message: message,
                         childName: child.name,
+                        childSelectedAvatar: child.selectedAvatar,
                       );
                     },
                   ),

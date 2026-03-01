@@ -9,11 +9,13 @@ import '../../domain/chat_message.dart';
 class MessageBubble extends StatelessWidget {
   final ChatMessage message;
   final String childName;
+  final String? childSelectedAvatar;
 
   const MessageBubble({
     super.key,
     required this.message,
     required this.childName,
+    this.childSelectedAvatar,
   });
 
   @override
@@ -151,6 +153,15 @@ class MessageBubble extends StatelessWidget {
 
   Widget _buildChildAvatar() {
     final initial = childName.isNotEmpty ? childName[0].toUpperCase() : '?';
+    if (childSelectedAvatar != null) {
+      return CircleAvatar(
+        radius: 18,
+        backgroundColor: Colors.deepPurple.shade100,
+        backgroundImage: AssetImage('assets/images/$childSelectedAvatar.png'),
+        onBackgroundImageError: (_, __) {},
+        child: null,
+      );
+    }
     return CircleAvatar(
       radius: 18,
       backgroundColor: Colors.deepPurple,

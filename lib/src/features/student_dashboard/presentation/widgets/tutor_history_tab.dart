@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:lerndex/src/features/tutor/presentation/tutor_provider.dart';
+import 'package:lerndex/src/features/tutor/presentation/tutor_screen.dart';
 import '../../../auth/data/auth_repository.dart';
 import '../../../auth/domain/child_model.dart';
+import '../../../auth/presentation/active_child_provider.dart';
 import 'session_detail_screen.dart';
 
 // ============================================================================
@@ -76,7 +79,6 @@ class TutorHistoryTab extends ConsumerWidget {
             final startedAt = (session['startedAt'] as Timestamp?)?.toDate();
             final topic = session['detectedTopic'] as String? ?? 'Allgemein';
             final msgCount = session['messageCount'] as int? ?? 0;
-            final status = session['status'] as String? ?? 'active';
 
             return Card(
               margin: const EdgeInsets.only(bottom: 12),
@@ -150,25 +152,60 @@ class TutorHistoryTab extends ConsumerWidget {
                               color: Colors.grey[600],
                             ),
                           ),
-                          const SizedBox(height: 4),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 3,
-                            ),
-                            decoration: BoxDecoration(
-                              color: status == 'completed'
-                                  ? Colors.green.shade50
-                                  : Colors.orange.shade50,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              status == 'completed' ? 'Abgeschlossen' : 'Aktiv',
-                              style: TextStyle(
-                                fontSize: 10,
-                                color: status == 'completed'
-                                    ? Colors.green.shade700
-                                    : Colors.orange.shade700,
+                          const SizedBox(height: 6),
+                          GestureDetector(
+                            onTap: () async {
+                              // 1. Resume-ID setzen BEVOR der Provider sich neu initialisiert
+                              ref
+                                  .read(tutorResumeSessionIdProvider.notifier)
+                                  .state = doc
+                                  .id;
+
+                              // 2. Provider invalidieren → TutorNotifier wird neu erstellt
+                              //    und liest beim Init die Resume-ID
+                              final activeChild = ref.read(activeChildProvider);
+                              if (activeChild != null) {
+                                ref.invalidate(
+                                  tutorProviderFamily(activeChild.id),
+                                );
+                              }
+
+                              if (context.mounted) {
+                                await Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => const TutorScreen(),
+                                  ),
+                                );
+                              }
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.deepPurple,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.play_arrow_rounded,
+                                    color: Colors.white,
+                                    size: 13,
+                                  ),
+                                  SizedBox(width: 3),
+                                  Text(
+                                    'Fortsetzen',
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ),
