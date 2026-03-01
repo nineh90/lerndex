@@ -73,98 +73,84 @@ class FamilyDashboardScreen extends ConsumerWidget {
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
                 ),
-                child: ListTile(
-                  contentPadding: const EdgeInsets.all(16),
-                  leading: CircleAvatar(
-                    backgroundColor: const Color(0xFF6B21A8),
-                    radius: 24,
-                    backgroundImage: child.selectedAvatar != null
-                        ? AssetImage(
-                            'assets/images/${child.selectedAvatar}.png',
-                          )
-                        : null,
-                    child: child.selectedAvatar == null
-                        ? Text(
-                            child.name[0].toUpperCase(),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          )
-                        : null,
-                  ),
-                  title: Text(
-                    child.name,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
-                  ),
-                  subtitle: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const SizedBox(height: 4),
-                      Text('${child.schoolType} • Klasse ${child.grade}'),
-                      const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          const Icon(
-                            Icons.stars,
-                            size: 16,
-                            color: Colors.amber,
-                          ),
-                          const SizedBox(width: 4),
-                          Text('${child.stars}'),
-                          const SizedBox(width: 16),
-                          const Icon(
-                            Icons.emoji_events,
-                            size: 16,
-                            color: Colors.orange,
-                          ),
-                          const SizedBox(width: 4),
-                          Text('Level ${child.level}'),
-                        ],
-                      ),
-                    ],
-                  ),
-                  trailing: SizedBox(
-                    width: 110,
-                    child: ElevatedButton(
-                      onPressed: () async {
-                        // 1. Kind im Provider setzen
-                        ref.read(activeChildProvider.notifier).select(child);
-                        // 2. Per normalem push navigieren → Stack: Family → Student
-                        //    Zurück-Button im StudentDashboard popt korrekt zurück
-                        if (context.mounted) {
-                          await Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) => const StudentDashboardScreen(),
-                            ),
-                          );
-                          // Wenn der User zurückkommt: Kind wieder deselektieren
-                          if (context.mounted) {
-                            ref.read(activeChildProvider.notifier).deselect();
-                          }
-                        }
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 4,
+                clipBehavior: Clip.antiAlias,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(16),
+                  onTap: () async {
+                    // 1. Kind im Provider setzen
+                    ref.read(activeChildProvider.notifier).select(child);
+                    // 2. Per normalem push navigieren → Stack: Family → Student
+                    //    Zurück-Button im StudentDashboard popt korrekt zurück
+                    if (context.mounted) {
+                      await Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const StudentDashboardScreen(),
                         ),
-                        minimumSize: const Size(0, 32),
+                      );
+                      // Wenn der User zurückkommt: Kind wieder deselektieren
+                      if (context.mounted) {
+                        ref.read(activeChildProvider.notifier).deselect();
+                      }
+                    }
+                  },
+                  child: ListTile(
+                    contentPadding: const EdgeInsets.all(16),
+                    leading: CircleAvatar(
+                      backgroundColor: const Color(0xFF6B21A8),
+                      radius: 24,
+                      backgroundImage: child.selectedAvatar != null
+                          ? AssetImage(
+                              'assets/images/${child.selectedAvatar}.png',
+                            )
+                          : null,
+                      child: child.selectedAvatar == null
+                          ? Text(
+                              child.name[0].toUpperCase(),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            )
+                          : null,
+                    ),
+                    title: Text(
+                      child.name,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
                       ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.play_arrow, size: 14),
-                          SizedBox(width: 3),
-                          Text('Lernen', style: TextStyle(fontSize: 11)),
-                        ],
-                      ),
+                    ),
+                    subtitle: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 4),
+                        Text('${child.schoolType} • Klasse ${child.grade}'),
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            const Icon(
+                              Icons.stars,
+                              size: 16,
+                              color: Colors.amber,
+                            ),
+                            const SizedBox(width: 4),
+                            Text('${child.stars}'),
+                            const SizedBox(width: 16),
+                            const Icon(
+                              Icons.emoji_events,
+                              size: 16,
+                              color: Colors.orange,
+                            ),
+                            const SizedBox(width: 4),
+                            Text('Level ${child.level}'),
+                          ],
+                        ),
+                      ],
+                    ),
+                    trailing: const Icon(
+                      Icons.chevron_right,
+                      color: Color(0xFF6B21A8),
                     ),
                   ),
                 ),
