@@ -4,40 +4,85 @@ import 'package:lerndex/src/features/auth/domain/child_model.dart';
 import 'package:lerndex/src/features/quiz/domain/question_model.dart';
 import 'ai_quiz_generator_service.dart';
 
-/// 🗄️ AI QUESTION CACHE REPOSITORY
-///
-/// Verwaltet den Firestore-Cache für KI-generierte Fragen.
+/// AI QUESTION CACHE REPOSITORY v3
 ///
 /// Strategie:
-///   - Beim Quiz-Start wird geprüft ob genügend ungespielte Fragen im Cache sind
-///   - Wenn < [_refillThreshold] Fragen übrig → neuen Batch generieren (im Hintergrund)
-///   - Wenn 0 Fragen übrig → blockierend generieren + sofort zurückgeben
+///   - prefillIfEmpty(): Generiert 10 Fragen NUR wenn Cache leer ist (fuer Pre-Fetch)
+///   - getQuestions(): Liefert Fragen aus Cache, generiert Schnell-Batch wenn leer
+///   - Hintergrund-Refill: Wenn Vorrat knapp wird, wird nachgeladen
 ///
-/// Firestore-Pfad:
-///   users/{userId}/children/{childId}/ai_quiz_cache/{subject}/questions/{questionId}
+/// Pre-Fetch Flow (bei Kind-Erstellung):
+///   1. prefillIfEmpty("Mathe") -> Generiert 10 Fragen, cached in Firestore
+///   2. prefillIfEmpty("Deutsch") -> Generiert 10 Fragen
+///   3. ... weitere Faecher
+///   -> Kind hat beim ersten Login sofort Fragen
 ///
-/// Felder pro Frage:
-///   question, options[], answer, difficulty, grade, played (bool), createdAt
+/// Quiz Flow (Kind spielt):
+///   1. getQuestions() -> Liest aus Cache (sofort!)
+///   2. Wenig uebrig? -> Hintergrund-Refill, Kind merkt nichts
+///   3. Cache leer (sollte nicht passieren)? -> Schnell-Batch von 2 Fragen
 class AiQuestionCacheRepository {
   final FirebaseFirestore _firestore;
   final AiQuizGeneratorService _generator;
 
-  /// Wenn weniger als [_refillThreshold] Fragen unbeantwortet sind,
-  /// wird still im Hintergrund ein neuer Batch generiert.
   static const int _refillThreshold = 5;
-
-  /// Anzahl Fragen die pro Batch generiert werden.
-  static const int _batchSize = 10;
+  static const int _fullBatchSize = 10;
+  static const int _quickBatchSize = 2;
+  static const int _maxPlayedToKeep = 100;
 
   AiQuestionCacheRepository(this._firestore, this._generator);
 
-  // ── Öffentliche API ───────────────────────────────────────────────────────
+  // ================================================================
+  // OEFFENTLICHE API
+  // ================================================================
 
-  /// Gibt [count] ungespielte Fragen für das Kind zurück.
+  /// Fuellt den Cache fuer ein Fach, WENN er leer ist.
+  /// Blockiert bis die Generierung fertig ist.
+  /// Wird beim Pre-Fetch (Kind-Erstellung) aufgerufen.
   ///
-  /// - Wenn genug im Cache: sofort aus Firestore
-  /// - Wenn zu wenig: erst generieren, dann zurückgeben
-  /// - Hintergrund-Refill wenn knapp
+  /// Unterschied zu getQuestions():
+  /// - Gibt keine Fragen zurueck (nur Caching)
+  /// - Markiert keine Fragen als gespielt
+  /// - Generiert immer einen vollen Batch (_fullBatchSize)
+  /// - Ueberspringt wenn schon genug im Cache sind
+  Future<void> prefillIfEmpty({
+    required String userId,
+    required String childId,
+    required ChildModel child,
+    required String subject,
+  }) async {
+    try {
+      // Pruefen ob schon genug da sind
+      final unplayed = await _loadUnplayed(userId, childId, subject);
+      if (unplayed.length >= _refillThreshold) {
+        print('✅ Pre-Fill: $subject hat schon ${unplayed.length} Fragen');
+        return;
+      }
+
+      print('🔮 Pre-Fill: Generiere $_fullBatchSize Fragen fuer $subject...');
+      final recentTopics = await _loadRecentTopics(userId, childId, subject);
+
+      final questions = await _generator.generateQuestions(
+        child: child,
+        subject: subject,
+        count: _fullBatchSize,
+        recentTopics: recentTopics,
+      );
+
+      if (questions.isNotEmpty) {
+        await _writeToCache(userId, childId, child, subject, questions);
+        print('✅ Pre-Fill: ${questions.length} Fragen fuer $subject bereit');
+      } else {
+        print('⚠️ Pre-Fill: Keine Fragen fuer $subject generiert');
+      }
+    } catch (e) {
+      print('⚠️ Pre-Fill Fehler fuer $subject: $e');
+    }
+  }
+
+  /// Gibt [count] ungespielte Fragen zurueck.
+  /// Wenn Cache voll: Sofort aus Firestore (0 Wartezeit).
+  /// Wenn Cache leer: Schnell-Batch (2 Fragen, ~1-2s).
   Future<List<Question>> getQuestions({
     required String userId,
     required String childId,
@@ -45,37 +90,49 @@ class AiQuestionCacheRepository {
     required String subject,
     int count = 5,
   }) async {
+    await _checkAndInvalidateOnLevelChange(userId, childId, child, subject);
+
     final unplayed = await _loadUnplayed(userId, childId, subject);
 
-    // Zu wenig im Cache → erst generieren
-    if (unplayed.length < count) {
-      print('🔄 Cache leer für $subject – generiere neue Fragen...');
-      await _generateAndCache(
-        userId: userId,
-        childId: childId,
-        child: child,
-        subject: subject,
-      );
-      final fresh = await _loadUnplayed(userId, childId, subject);
-      final result = _pickAndMark(fresh, count, userId, childId, subject);
-      return result;
+    // Genuegend vorhanden -> sofort liefern
+    if (unplayed.length >= count) {
+      if (unplayed.length - count < _refillThreshold) {
+        _backgroundRefill(userId, childId, child, subject);
+      }
+      return _pickAndMark(unplayed, count, userId, childId, subject);
     }
 
-    // Hintergrund-Refill wenn knapp
-    if (unplayed.length < _refillThreshold) {
-      print('🔄 Cache knapp für $subject – generiere im Hintergrund...');
-      _generateAndCache(
-        userId: userId,
-        childId: childId,
-        child: child,
-        subject: subject,
-      ); // kein await → feuert im Hintergrund
+    // Nicht genug: Schnell-Batch generieren
+    print(
+      '🚀 Schnell-Batch: Generiere $_quickBatchSize Fragen fuer $subject...',
+    );
+    final recentTopics = await _loadRecentTopics(userId, childId, subject);
+
+    final quickQuestions = await _generator.generateQuestions(
+      child: child,
+      subject: subject,
+      count: _quickBatchSize,
+      recentTopics: recentTopics,
+    );
+
+    if (quickQuestions.isNotEmpty) {
+      await _writeToCache(userId, childId, child, subject, quickQuestions);
     }
 
-    return _pickAndMark(unplayed, count, userId, childId, subject);
+    // Rest im Hintergrund nachladen
+    _generateInBackground(
+      userId: userId,
+      childId: childId,
+      child: child,
+      subject: subject,
+      count: _fullBatchSize,
+    );
+
+    final allAvailable = await _loadUnplayed(userId, childId, subject);
+    if (allAvailable.isEmpty) return [];
+    return _pickAndMark(allAvailable, count, userId, childId, subject);
   }
 
-  /// Markiert eine Frage als gespielt (nach dem Quiz)
   Future<void> markAsPlayed({
     required String userId,
     required String childId,
@@ -92,7 +149,6 @@ class AiQuestionCacheRepository {
     }
   }
 
-  /// Löscht alle gecachten Fragen für ein Kind/Fach (z.B. beim Reset)
   Future<void> clearCache({
     required String userId,
     required String childId,
@@ -105,30 +161,84 @@ class AiQuestionCacheRepository {
         batch.delete(doc.reference);
       }
       await batch.commit();
-      print('🗑️ Cache gelöscht für $subject');
+      try {
+        await _cacheMetaRef(userId, childId, subject).delete();
+      } catch (_) {}
+      print('🗑️ Cache geloescht fuer $subject');
     } catch (e) {
       print('⚠️ clearCache Fehler: $e');
     }
   }
 
-  // ── Interne Helfer ────────────────────────────────────────────────────────
+  // ================================================================
+  // INTERNE HELFER
+  // ================================================================
 
   CollectionReference<Map<String, dynamic>> _questionsRef(
     String userId,
     String childId,
     String subject,
-  ) {
-    return _firestore
-        .collection('users')
-        .doc(userId)
-        .collection('children')
-        .doc(childId)
-        .collection('ai_quiz_cache')
-        .doc(subject.toLowerCase())
-        .collection('questions');
+  ) => _firestore
+      .collection('users')
+      .doc(userId)
+      .collection('children')
+      .doc(childId)
+      .collection('ai_quiz_cache')
+      .doc(subject.toLowerCase())
+      .collection('questions');
+
+  DocumentReference<Map<String, dynamic>> _cacheMetaRef(
+    String userId,
+    String childId,
+    String subject,
+  ) => _firestore
+      .collection('users')
+      .doc(userId)
+      .collection('children')
+      .doc(childId)
+      .collection('ai_quiz_cache')
+      .doc(subject.toLowerCase());
+
+  // -- Level-Change Detection --
+
+  Future<void> _checkAndInvalidateOnLevelChange(
+    String userId,
+    String childId,
+    ChildModel child,
+    String subject,
+  ) async {
+    try {
+      final metaDoc = await _cacheMetaRef(userId, childId, subject).get();
+      if (metaDoc.exists) {
+        final cachedLevel = metaDoc.data()?['generatedForLevel'] as int?;
+        if (cachedLevel != null && cachedLevel != child.level) {
+          print(
+            '🔄 Level geaendert ($cachedLevel -> ${child.level}) - Cache invalidiert',
+          );
+          await clearCache(userId: userId, childId: childId, subject: subject);
+        }
+      }
+    } catch (e) {
+      print('⚠️ Level-Check Fehler: $e');
+    }
   }
 
-  /// Lädt alle ungespielte Fragen aus dem Cache, älteste zuerst.
+  Future<void> _updateCacheMeta(
+    String userId,
+    String childId,
+    String subject,
+    int level,
+  ) async {
+    try {
+      await _cacheMetaRef(userId, childId, subject).set({
+        'generatedForLevel': level,
+        'lastRefill': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+    } catch (_) {}
+  }
+
+  // -- Laden --
+
   Future<List<_CachedQuestion>> _loadUnplayed(
     String userId,
     String childId,
@@ -151,6 +261,7 @@ class AiQuestionCacheRepository {
             options: List<String>.from(data['options'] ?? []),
             answer: data['answer'] as String? ?? '',
             difficulty: data['difficulty'] as String? ?? 'medium',
+            topic: data['topic'] as String? ?? '',
           ),
         );
       }).toList();
@@ -160,7 +271,33 @@ class AiQuestionCacheRepository {
     }
   }
 
-  /// Holt [count] Fragen aus der Liste und markiert sie als gespielt.
+  Future<List<String>> _loadRecentTopics(
+    String userId,
+    String childId,
+    String subject,
+  ) async {
+    try {
+      final snapshot = await _questionsRef(
+        userId,
+        childId,
+        subject,
+      ).orderBy('createdAt', descending: true).limit(30).get();
+
+      final topics = <String>{};
+      for (final doc in snapshot.docs) {
+        final topic = doc.data()['topic'] as String?;
+        if (topic != null && topic.isNotEmpty) {
+          topics.add(topic);
+        }
+      }
+      return topics.toList();
+    } catch (e) {
+      return [];
+    }
+  }
+
+  // -- Pick & Mark --
+
   List<Question> _pickAndMark(
     List<_CachedQuestion> available,
     int count,
@@ -171,7 +308,6 @@ class AiQuestionCacheRepository {
     available.shuffle();
     final picked = available.take(count).toList();
 
-    // Alle als gespielt markieren (fire-and-forget)
     for (final cq in picked) {
       markAsPlayed(
         userId: userId,
@@ -184,55 +320,124 @@ class AiQuestionCacheRepository {
     return picked.map((cq) => cq.question).toList();
   }
 
-  /// Generiert einen neuen Batch via KI und schreibt ihn in den Cache.
-  Future<void> _generateAndCache({
+  // -- Hintergrund-Generierung --
+
+  void _backgroundRefill(
+    String userId,
+    String childId,
+    ChildModel child,
+    String subject,
+  ) {
+    _generateInBackground(
+      userId: userId,
+      childId: childId,
+      child: child,
+      subject: subject,
+      count: _fullBatchSize,
+    );
+  }
+
+  Future<void> _generateInBackground({
     required String userId,
     required String childId,
     required ChildModel child,
     required String subject,
+    required int count,
   }) async {
-    final questions = await _generator.generateQuestions(
-      child: child,
-      subject: subject,
-      count: _batchSize,
-    );
+    try {
+      final recentTopics = await _loadRecentTopics(userId, childId, subject);
 
-    if (questions.isEmpty) {
-      print('⚠️ KI hat keine Fragen zurückgegeben für $subject');
-      return;
+      final questions = await _generator.generateQuestions(
+        child: child,
+        subject: subject,
+        count: count,
+        recentTopics: recentTopics,
+      );
+
+      if (questions.isEmpty) return;
+
+      // Duplikat-Pruefung gegen ungespielte im Cache
+      final existing = await _loadUnplayed(userId, childId, subject);
+      final existingTexts = existing
+          .map((cq) => cq.question.question.toLowerCase().trim())
+          .toSet();
+
+      final unique = questions
+          .where(
+            (q) => !existingTexts.contains(q.question.toLowerCase().trim()),
+          )
+          .toList();
+
+      if (unique.isNotEmpty) {
+        await _writeToCache(userId, childId, child, subject, unique);
+      }
+
+      await _cleanupOldPlayed(userId, childId, subject);
+    } catch (e) {
+      print('⚠️ Hintergrund-Generierung Fehler: $e');
     }
+  }
 
-    // Batch-Write in Firestore
+  Future<void> _writeToCache(
+    String userId,
+    String childId,
+    ChildModel child,
+    String subject,
+    List<Question> questions,
+  ) async {
     final batch = _firestore.batch();
     final ref = _questionsRef(userId, childId, subject);
 
     for (final q in questions) {
-      final doc = ref.doc();
-      batch.set(doc, {
+      batch.set(ref.doc(), {
         'grade': q.grade,
         'question': q.question,
         'options': q.options,
         'answer': q.answer,
         'difficulty': q.difficulty,
+        'topic': q.topic,
         'played': false,
         'createdAt': FieldValue.serverTimestamp(),
+        'generatedForLevel': child.level,
       });
     }
 
     await batch.commit();
-    print('✅ ${questions.length} Fragen für $subject gecacht');
+    await _updateCacheMeta(userId, childId, subject, child.level);
+    print(
+      '✅ ${questions.length} Fragen fuer $subject gecacht (Level ${child.level})',
+    );
+  }
+
+  Future<void> _cleanupOldPlayed(
+    String userId,
+    String childId,
+    String subject,
+  ) async {
+    try {
+      final snapshot = await _questionsRef(userId, childId, subject)
+          .where('played', isEqualTo: true)
+          .orderBy('playedAt', descending: true)
+          .get();
+
+      if (snapshot.docs.length <= _maxPlayedToKeep) return;
+
+      final toDelete = snapshot.docs.sublist(_maxPlayedToKeep);
+      final batch = _firestore.batch();
+      for (final doc in toDelete) {
+        batch.delete(doc.reference);
+      }
+      await batch.commit();
+      print('🧹 ${toDelete.length} alte Fragen aufgeraeumt');
+    } catch (_) {}
   }
 }
-
-// ── Internes Daten-Hilfsklasse ────────────────────────────────────────────────
 
 class _CachedQuestion {
   final String id;
   final Question question;
   _CachedQuestion({required this.id, required this.question});
 }
-
-// ── Provider ─────────────────────────────────────────────────────────────────
 
 final aiQuestionCacheRepositoryProvider = Provider<AiQuestionCacheRepository>((
   ref,

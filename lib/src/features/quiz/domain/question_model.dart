@@ -7,6 +7,7 @@ class Question {
   final List<String> options; // Antwortmöglichkeiten (4 Stück)
   final String answer; // Richtige Antwort
   final String difficulty; // Schwierigkeitsgrad: easy, medium, hard
+  final String topic; // Themengebiet (z.B. "Prozentrechnung", "Satzglieder")
 
   Question({
     required this.grade,
@@ -14,6 +15,7 @@ class Question {
     required this.options,
     required this.answer,
     required this.difficulty,
+    this.topic = '',
   });
 
   /// Erstellt eine Question aus JSON
@@ -24,6 +26,7 @@ class Question {
       options: List<String>.from(json['options']),
       answer: json['answer'] as String,
       difficulty: json['difficulty'] as String,
+      topic: json['topic'] as String? ?? '',
     );
   }
 

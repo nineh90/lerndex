@@ -1,20 +1,23 @@
 import 'dart:io';
 import 'dart:typed_data';
 import 'dart:convert';
-import 'package:firebase_vertexai/firebase_vertexai.dart';
+import 'package:firebase_ai/firebase_ai.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lerndex/src/features/generated_tasks/data/generated_task_models.dart';
+import 'package:lerndex/src/features/quiz/data/curriculum_data.dart';
 import '../domain/generated_task_result.dart';
 import '../../auth/domain/child_model.dart';
 
-/// 🤖 VERBESSERTER FIREBASE AI SERVICE
+/// 🤖 VERBESSERTER FIREBASE AI SERVICE v2
 ///
-/// Generiert Multiple-Choice-Aufgaben aus hochgeladenen Fotos
-/// - 4 Antwortmöglichkeiten pro Frage
-/// - Genau 1 richtige Antwort
-/// - Optional: Ausführliche Lösungserklärung
-/// - Fach-spezifische Prompts
+/// Generiert Multiple-Choice-Aufgaben aus hochgeladenen Fotos.
+///
+/// Verbesserungen v2:
+///   ✅ Gemini 3 Flash Preview für bessere Bilderkennung + Reasoning
+///   ✅ Curriculum-verankerte Prompts mit Lehrplaninhalten
+///   ✅ Schulform-Differenzierung in den fachspezifischen Kontexten
+///   ✅ IQB-Kompetenzstufenmapping für Level-abhängige Schwierigkeit
 
 class ImprovedFirebaseAIService {
   GenerativeModel? _taskGeneratorModel;
@@ -29,15 +32,16 @@ class ImprovedFirebaseAIService {
       return;
     }
 
-    print('🚀 Firebase AI wird initialisiert...');
+    print('🚀 Firebase AI wird initialisiert (Gemini 3 Flash)...');
 
     try {
-      _taskGeneratorModel = FirebaseVertexAI.instance.generativeModel(
-        model: 'gemini-2.5-flash',
+      _taskGeneratorModel = FirebaseAI.googleAI().generativeModel(
+        model: 'gemini-3-flash-preview',
         generationConfig: GenerationConfig(
-          temperature: 0.8,
-          maxOutputTokens: 3000,
+          temperature: 0.7,
+          maxOutputTokens: 4096,
           topP: 0.95,
+          responseMimeType: 'application/json',
         ),
       );
 
@@ -65,10 +69,12 @@ class ImprovedFirebaseAIService {
       if (!_isInitialized) await initialize();
 
       print(
-        '📸 Analysiere Schulaufgabe für ${child.name} (${subject.displayName})...',
+        '📸 Analysiere Schulaufgabe für ${child.name} '
+        '(${child.schoolType}, Kl. ${child.grade}, Lv. ${child.level}, '
+        '${subject.displayName})...',
       );
 
-      // 1. Bild hochladen zu Firebase Storage (optional – Fehler blockiert nicht die KI-Generierung)
+      // 1. Bild hochladen zu Firebase Storage (optional)
       String? imageUrl;
       try {
         imageUrl = await _uploadImage(imageFile, userId, child.id, subject);
@@ -79,7 +85,7 @@ class ImprovedFirebaseAIService {
       // 2. Bild als Bytes lesen
       final Uint8List imageBytes = await imageFile.readAsBytes();
 
-      // 3. System-Prompt für Fach
+      // 3. Curriculum-verankerter Prompt
       final systemPrompt = _getTaskGeneratorPrompt(
         child: child,
         subject: subject,
@@ -94,7 +100,7 @@ class ImprovedFirebaseAIService {
         ]),
       ];
 
-      print('🤖 Sende Anfrage an Gemini...');
+      print('🤖 Sende Anfrage an Gemini 3 Flash...');
       final response = await _taskGeneratorModel!.generateContent(content);
       final text = response.text;
 
@@ -129,203 +135,151 @@ class ImprovedFirebaseAIService {
   }
 
   // ========================================================================
-  // HILFSMETHODEN
+  // PROMPT MIT CURRICULUM-KONTEXT
   // ========================================================================
 
-  /// System-Prompt für Aufgabengenerierung (fachspezifisch)
+  /// System-Prompt für Aufgabengenerierung (fachspezifisch + curriculum-verankert)
   String _getTaskGeneratorPrompt({
     required ChildModel child,
     required Subject subject,
     required int numberOfTasks,
   }) {
-    final subjectContext = _getSubjectContext(subject);
+    // Curriculum-Kontext aus der neuen Datenbank
+    final curriculumContext = CurriculumData.buildCurriculumContext(
+      schoolType: child.schoolType,
+      grade: child.grade,
+      subject: subject.value,
+      level: child.level,
+    );
+
+    // Schwierigkeitsprofil
+    final profile = CurriculumData.getDifficultyProfile(
+      schoolType: child.schoolType,
+      level: child.level,
+    );
+
+    // Fach-spezifischer Zusatzkontext
+    final subjectContext = _getSubjectContext(subject, child);
 
     return '''
 Du bist ein pädagogischer Experte, der personalisierte Übungsaufgaben für Schüler erstellt.
+Deine Aufgaben orientieren sich an den offiziellen KMK-Bildungsstandards und Landeslehrplänen.
 
-SCHÜLER-INFORMATIONEN:
+═══════════════════════════════════════════════════
+SCHÜLER-PROFIL
+═══════════════════════════════════════════════════
 - Name: ${child.name}
 - Alter: ${child.age} Jahre
 - Klassenstufe: ${child.grade}
 - Schulform: ${child.schoolType}
+- Level: ${child.level}
 - Fach: ${subject.displayName}
+
+═══════════════════════════════════════════════════
+LEHRPLAN-KONTEXT
+═══════════════════════════════════════════════════
+$curriculumContext
 
 $subjectContext
 
-AUFGABE:
-Analysiere das hochgeladene Foto einer Schulaufgabe und erstelle $numberOfTasks ähnliche Multiple-Choice-Übungsaufgaben.
+═══════════════════════════════════════════════════
+AUFGABE
+═══════════════════════════════════════════════════
+Analysiere das hochgeladene Foto einer Schulaufgabe und erstelle $numberOfTasks ähnliche 
+Multiple-Choice-Übungsaufgaben.
+
+SCHWIERIGKEITSVERTEILUNG (basierend auf Kompetenzstufe):
+- ca. ${(profile.easyRatio * numberOfTasks).round()}× leicht (AFB I: Reproduzieren)
+- ca. ${(profile.mediumRatio * numberOfTasks).round()}× mittel (AFB II: Transfer)
+- ca. ${(profile.hardRatio * numberOfTasks).round()}× schwer (AFB III: Reflexion)
 
 ANFORDERUNGEN:
 1. Analysiere Thema, Schwierigkeitsniveau und Stil der Vorlage
 2. Erstelle $numberOfTasks neue, ähnliche Aufgaben (NICHT identisch!)
 3. Jede Aufgabe muss EXAKT 4 Antwortmöglichkeiten haben
 4. GENAU 1 Antwort muss korrekt sein, 3 müssen plausible Ablenkungen sein
-5. Schwierigkeit muss für Klasse ${child.grade} passend sein
-6. Gib bei jeder Aufgabe eine ausführliche Lösungserklärung an
+5. Die Schwierigkeit MUSS dem Niveau ${child.schoolType} Klasse ${child.grade} entsprechen
+6. Gib bei jeder Aufgabe eine kurze Lösungserklärung an
 
-WICHTIG - MULTIPLE-CHOICE-REGELN:
-- Die Antwortmöglichkeiten müssen sich deutlich unterscheiden
-- Falsche Antworten müssen plausibel klingen (keine offensichtlichen Ablenkungen)
+${child.schoolType == 'Hauptschule' || (child.schoolType == 'Gesamtschule' && child.level <= 4) ? '''
+⚠️ WICHTIG — HAUPTSCHULE/G-KURS-NIVEAU:
+- Aufgaben mit Alltagsbezug, keine Abstraktion
+- Einfache, klare Formulierungen
+- Keine formalen Beweise oder komplexe Fachsprache
+''' : ''}
+
+MULTIPLE-CHOICE-REGELN:
+- Falsche Antworten müssen plausibel klingen (typische Schülerfehler!)
 - Alle 4 Optionen sollten ähnlich lang sein
 - Vermeide "alle oben genannten" oder "keine der oben genannten"
+- Die richtige Antwort darf NICHT immer an Position 1 stehen
 
-FORMAT:
-Gib deine Antwort als JSON-Array zurück:
-
+FORMAT — reines JSON-Array:
 [
   {
-    "question": "Die Aufgabenstellung als klare Frage",
-    "options": [
-      "Antwortmöglichkeit 1",
-      "Antwortmöglichkeit 2",
-      "Antwortmöglichkeit 3",
-      "Antwortmöglichkeit 4"
-    ],
-    "correctAnswer": "Die exakte richtige Antwort (muss identisch mit einer Option sein)",
-    "solution": "Ausführliche Erklärung, warum diese Antwort richtig ist und wie man zur Lösung kommt",
+    "question": "Klare Aufgabenstellung",
+    "options": ["Option A", "Option B", "Option C", "Option D"],
+    "correctAnswer": "Exakt wie eine der Optionen",
+    "solution": "Kurze Erklärung in 1-2 Sätzen",
     "difficulty": "easy|medium|hard",
-    "topic": "Spezifisches Thema (z.B. 'Bruchrechnung', 'Wortarten', 'Simple Past')"
+    "topic": "Spezifisches Thema"
   }
 ]
-
-BEISPIELE FÜR GUTE MULTIPLE-CHOICE-AUFGABEN:
-
-Mathematik Klasse 5:
-{
-  "question": "Was ist 3/4 + 1/4?",
-  "options": ["1/2", "4/8", "1", "4/4"],
-  "correctAnswer": "1",
-  "solution": "Wenn beide Brüche den gleichen Nenner haben, addiert man nur die Zähler: 3/4 + 1/4 = (3+1)/4 = 4/4 = 1",
-  "difficulty": "easy",
-  "topic": "Bruchrechnung - Addition"
-}
-
-Deutsch Klasse 4:
-{
-  "question": "Welches Wort ist ein Adjektiv?",
-  "options": ["laufen", "schnell", "Haus", "gestern"],
-  "correctAnswer": "schnell",
-  "solution": "Ein Adjektiv beschreibt, wie etwas ist (Wie-Wort). 'Schnell' beschreibt eine Eigenschaft und ist daher ein Adjektiv. 'Laufen' ist ein Verb, 'Haus' ein Nomen und 'gestern' ein Adverb.",
-  "difficulty": "medium",
-  "topic": "Wortarten"
-}
-
-QUALITÄTSKRITERIEN:
-✓ Aufgaben sind ähnlich zur Vorlage, aber NICHT identisch
-✓ Zahlen, Wörter oder Kontext wurden variiert
-✓ Schwierigkeit ist altersgerecht
-✓ Alle Aufgaben sind lösbar und sinnvoll
-✓ Lösungserklärungen sind verständlich und lehrreich
-✓ Jede Frage hat EXAKT 4 Optionen und 1 korrekte Antwort
-
-Gib NUR das JSON-Array zurück, ohne zusätzlichen Text!
 ''';
   }
 
-  /// Fach-spezifischer Kontext
-  String _getSubjectContext(Subject subject) {
+  /// Fach-spezifischer Kontext — jetzt mit schulformspezifischen Themen
+  String _getSubjectContext(Subject subject, ChildModel child) {
+    final topics = CurriculumData.getTopics(
+      schoolType: child.schoolType,
+      grade: child.grade,
+      subject: subject.value,
+      level: child.level,
+    );
+
+    if (topics.isEmpty) return _getLegacySubjectContext(subject);
+
+    final buffer = StringBuffer();
+    buffer.writeln('LEHRPLAN-THEMEN für ${subject.displayName}:');
+    for (final topic in topics) {
+      buffer.writeln('  📌 ${topic.competencyArea}: ${topic.topic}');
+      for (final goal in topic.learningGoals) {
+        buffer.writeln('     - $goal');
+      }
+      if (topic.notExpected.isNotEmpty) {
+        buffer.writeln(
+          '     ⚠️ ZU SCHWER / NICHT VERWENDEN: ${topic.notExpected.join(", ")}',
+        );
+      }
+    }
+    return buffer.toString();
+  }
+
+  /// Fallback für Fächer ohne spezifische Curriculum-Daten (aus v1 übernommen)
+  String _getLegacySubjectContext(Subject subject) {
     switch (subject) {
       case Subject.mathe:
-        return '''
-FACH: MATHEMATIK
-Typische Themen je Klassenstufe:
-- Klasse 1-2: Grundrechenarten, Zahlenraum bis 100
-- Klasse 3-4: Multiplikation, Division, Textaufgaben, Geometrie
-- Klasse 5-6: Bruchrechnung, Dezimalzahlen, Prozentrechnung
-- Klasse 7-8: Algebra, Gleichungen, Geometrie
-- Klasse 9-10: Funktionen, Trigonometrie, Stochastik
-
-Achte auf mathematische Korrektheit und eindeutige Lösungswege!
-''';
-
+        return 'FACH: MATHEMATIK — Achte auf mathematische Korrektheit und eindeutige Lösungswege!';
       case Subject.deutsch:
-        return '''
-FACH: DEUTSCH
-Typische Themen je Klassenstufe:
-- Klasse 1-2: Buchstaben, Silben, einfache Wörter
-- Klasse 3-4: Rechtschreibung, Wortarten, Satzglieder, Aufsätze
-- Klasse 5-6: Grammatik, Zeitformen, direkte/indirekte Rede
-- Klasse 7-8: Textanalyse, Argumentation, Stilmittel
-- Klasse 9-10: Interpretation, Erörterung, Literaturanalyse
-
-Achte auf sprachliche Korrektheit und altersgerechte Formulierungen!
-''';
-
+        return 'FACH: DEUTSCH — Achte auf sprachliche Korrektheit und altersgerechte Formulierungen!';
       case Subject.englisch:
-        return '''
-FACH: ENGLISCH
-Typische Themen je Klassenstufe:
-- Klasse 3-4: Grundwortschatz, einfache Sätze, Zahlen, Farben
-- Klasse 5-6: Simple Present/Past, Vokabeln, Dialoge
-- Klasse 7-8: Zeitformen, if-clauses, Textverständnis
-- Klasse 9-10: Reported Speech, Passive Voice, Textanalyse
-
-Achte auf grammatikalische Korrektheit und authentisches Englisch!
-Verwende britisches oder amerikanisches Englisch konsistent!
-''';
-
+        return 'FACH: ENGLISCH — Achte auf grammatikalische Korrektheit! Verwende konsistent British English!';
       case Subject.sachkunde:
-        return '''
-FACH: SACHKUNDE / NATURWISSENSCHAFTEN
-Typische Themen je Klassenstufe:
-- Klasse 1-2: Jahreszeiten, Tiere, Pflanzen, Verkehr
-- Klasse 3-4: Wasser, Strom, Magnetismus, Körper, Umwelt
-- Klasse 5-6: Biologie (Zellen, Ökosysteme), Physik (Kräfte), Chemie (Stoffe)
-- Klasse 7-8: Evolution, Elektrizität, chemische Reaktionen
-- Klasse 9-10: Genetik, Energie, Periodensystem
-
-Achte auf wissenschaftliche Korrektheit und altersgerechte Erklärungen!
-''';
-
+        return 'FACH: SACHKUNDE — Achte auf wissenschaftliche Korrektheit und altersgerechte Erklärungen!';
       case Subject.biologie:
-        return '''
-FACH: BIOLOGIE
-Typische Themen je Klassenstufe:
-- Klasse 5-6: Zellen, Pflanzen, Tiere, Ökosysteme
-- Klasse 7-8: Genetik, Evolution, menschlicher Körper
-- Klasse 9-10: Fortpflanzung, Neurobiologie, Ökologie
-- Klasse 11-13: Molekularbiologie, Genetik, Biochemie
-
-Achte auf biologische Fachbegriffe und wissenschaftliche Korrektheit!
-''';
-
+        return 'FACH: BIOLOGIE — Achte auf biologische Fachbegriffe und wissenschaftliche Korrektheit!';
       case Subject.chemie:
-        return '''
-FACH: CHEMIE
-Typische Themen je Klassenstufe:
-- Klasse 5-6: Stoffe und ihre Eigenschaften, Trennverfahren
-- Klasse 7-8: Atombau, chemische Bindungen, Reaktionen
-- Klasse 9-10: Säuren, Basen, Salze, Oxidation
-- Klasse 11-13: Organische Chemie, Elektrochemie, Reaktionskinetik
-
-Achte auf chemische Fachbegriffe und korrekte Formeln!
-''';
-
+        return 'FACH: CHEMIE — Achte auf chemische Fachbegriffe und korrekte Formeln!';
       case Subject.physik:
-        return '''
-FACH: PHYSIK
-Typische Themen je Klassenstufe:
-- Klasse 5-6: Mechanik, Kräfte, einfache Maschinen
-- Klasse 7-8: Elektrizität, Magnetismus, Optik
-- Klasse 9-10: Wellen, Energie, Wärmelehre
-- Klasse 11-13: Quantenphysik, Relativitätstheorie, Atomphysik
-
-Achte auf physikalische Einheiten und Formeln!
-''';
-
+        return 'FACH: PHYSIK — Achte auf physikalische Einheiten und Formeln!';
       case Subject.geschichte:
-        return '''
-FACH: GESCHICHTE
-Typische Themen je Klassenstufe:
-- Klasse 5-6: Antike, Ägypten, Griechen, Römer
-- Klasse 7-8: Mittelalter, Neuzeit, Reformation
-- Klasse 9-10: Industrialisierung, Weltkriege, Weimarer Republik
-- Klasse 11-13: NS-Zeit, Kalter Krieg, Zeitgeschichte
-
-Achte auf historische Fakten und zeitliche Einordnung!
-''';
+        return 'FACH: GESCHICHTE — Achte auf historische Fakten und zeitliche Einordnung!';
     }
   }
+
+  // ========================================================================
+  // HILFSMETHODEN (unverändert)
+  // ========================================================================
 
   /// Lädt Bild zu Firebase Storage hoch
   Future<String> _uploadImage(
@@ -348,7 +302,6 @@ Achte auf historische Fakten und zeitliche Einordnung!
   /// Parst generierte Aufgaben aus AI-Response
   List<GeneratedQuestion> _parseGeneratedQuestions(String jsonText) {
     try {
-      // Entferne Markdown-Formatierung
       String cleaned = jsonText.trim();
 
       if (cleaned.startsWith('```json')) {
@@ -363,14 +316,12 @@ Achte auf historische Fakten und zeitliche Einordnung!
 
       cleaned = cleaned.trim();
 
-      // Parse JSON
       final List<dynamic> jsonList = jsonDecode(cleaned);
 
       final questions = <GeneratedQuestion>[];
 
       for (var json in jsonList) {
         try {
-          // Validierung
           if (json['question'] == null || json['question'].toString().isEmpty) {
             print('⚠️ Überspringe Aufgabe ohne Frage');
             continue;
@@ -385,7 +336,6 @@ Achte auf historische Fakten und zeitliche Einordnung!
           final options = List<String>.from(json['options']);
           final correctAnswer = json['correctAnswer']?.toString() ?? '';
 
-          // Prüfe ob correctAnswer in options vorhanden ist
           if (!options.contains(correctAnswer)) {
             print('⚠️ Überspringe Aufgabe: Richtige Antwort nicht in Optionen');
             continue;
@@ -393,7 +343,7 @@ Achte auf historische Fakten und zeitliche Einordnung!
 
           questions.add(
             GeneratedQuestion(
-              id: '', // Wird beim Speichern gesetzt
+              id: '',
               question: json['question'].toString(),
               options: options,
               correctAnswer: correctAnswer,

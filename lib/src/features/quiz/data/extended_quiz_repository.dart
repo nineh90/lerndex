@@ -6,28 +6,30 @@ import '../../auth/domain/child_model.dart';
 import 'ai_question_cache_repository.dart';
 import 'combined_quiz_params.dart';
 
-/// 📚 ERWEITERTER QUIZ REPOSITORY
+/// 📚 ERWEITERTER QUIZ REPOSITORY v2
 ///
-/// Kombiniert zwei Quellen von Fragen:
-///   1. Statische Fragen aus JSON-Dateien (assets/questions/)
-///   2. KI-generierte Fragen aus dem Firestore-Cache (kein Approval nötig)
+/// Laedt Quiz-Fragen mit klarer Prioritaet:
+///   1. KI-generierte Fragen aus dem Cache (personalisiert, schulformgerecht)
+///   2. Statische JSON-Fragen NUR als Notfall-Fallback wenn KI komplett versagt
 ///
-/// Strategie:
-///   - Zuerst statische Fragen laden (schnell, immer verfügbar)
-///   - Ergänzt/ersetzt durch KI-Fragen aus dem Cache
-///   - Falls KI-Cache leer → KI generiert on-the-fly (2-3s Ladezeit)
-///   - Falls KI komplett nicht erreichbar → nur statische Fragen
+/// Aenderungen gegenueber v1:
+///   - Statische Fragen werden NICHT mehr beigemischt (waren Duplikat-Quelle!)
+///   - KI-Fragen haben volle Prioritaet (sind personalisiert)
+///   - Statische Fragen nur noch wenn KI 0 Fragen liefert
+///   - Deduplizierung basierend auf normalisiertem Fragetext
 class ExtendedQuizRepository {
   final AiQuestionCacheRepository _cache;
 
   ExtendedQuizRepository(this._cache);
 
-  // ── Öffentliche API ───────────────────────────────────────────────────────
+  // == Oeffentliche API ==
 
-  /// Lädt eine gemischte Quiz-Session aus statischen + KI-Fragen.
+  /// Laedt eine Quiz-Session.
   ///
-  /// Verhältnis: 2 statische + 3 KI-generierte (bei 5 Fragen).
-  /// Bei weniger verfügbaren KI-Fragen wird der Rest statisch aufgefüllt.
+  /// Strategie:
+  /// 1. Versuche KI-Fragen aus dem Cache zu laden (personalisiert!)
+  /// 2. NUR wenn KI komplett versagt -> statische Fragen als Fallback
+  /// 3. Mischen und Deduplizierung
   Future<List<Question>> loadQuizForChild({
     required String userId,
     required String childId,
@@ -35,13 +37,7 @@ class ExtendedQuizRepository {
     required String subject,
     int questionCount = 5,
   }) async {
-    final allQuestions = <Question>[];
-
-    // 1. Statische Fragen laden (immer als Fallback)
-    final staticQuestions = await _loadStaticQuestions(subject, child.grade);
-    allQuestions.addAll(staticQuestions);
-
-    // 2. KI-Fragen aus Cache holen
+    // 1. KI-Fragen aus Cache (personalisiert, schulformgerecht, level-abhaengig)
     try {
       final aiQuestions = await _cache.getQuestions(
         userId: userId,
@@ -50,26 +46,63 @@ class ExtendedQuizRepository {
         subject: subject,
         count: questionCount,
       );
-      // KI-Fragen vorne einmischen (höhere Priorität)
-      allQuestions.insertAll(0, aiQuestions);
-      print(
-        '✅ ${aiQuestions.length} KI-Fragen + ${staticQuestions.length} statische Fragen geladen',
-      );
+
+      if (aiQuestions.isNotEmpty) {
+        print(
+          '✅ ${aiQuestions.length} KI-Fragen geladen '
+          '(${child.schoolType}, Kl. ${child.grade}, Lv. ${child.level})',
+        );
+
+        // Deduplizieren (sollte nicht noetig sein, aber sicherheitshalber)
+        final deduped = _deduplicate(aiQuestions);
+        deduped.shuffle();
+
+        // Wenn genug KI-Fragen: fertig
+        if (deduped.length >= questionCount) {
+          return deduped.take(questionCount).toList();
+        }
+
+        // Wenn zu wenig KI-Fragen: mit statischen auffuellen
+        print(
+          '⚠️ Nur ${deduped.length} KI-Fragen, fuelle mit statischen auf...',
+        );
+        final staticQuestions = await _loadStaticQuestions(
+          subject,
+          child.grade,
+        );
+        final existingTexts = deduped
+            .map((q) => q.question.toLowerCase().trim())
+            .toSet();
+        final extraStatic = staticQuestions
+            .where(
+              (q) => !existingTexts.contains(q.question.toLowerCase().trim()),
+            )
+            .toList();
+        extraStatic.shuffle();
+
+        deduped.addAll(extraStatic.take(questionCount - deduped.length));
+        return deduped.take(questionCount).toList();
+      }
     } catch (e) {
-      print('⚠️ KI-Cache nicht verfügbar, nur statische Fragen: $e');
+      print('⚠️ KI-Cache nicht verfuegbar: $e');
     }
 
-    if (allQuestions.isEmpty) return [];
+    // 2. Komplett-Fallback: Nur statische Fragen
+    print('⚠️ Keine KI-Fragen verfuegbar, nutze statische Fragen als Fallback');
+    final staticQuestions = await _loadStaticQuestions(subject, child.grade);
 
-    // Mischen und gewünschte Anzahl zurückgeben
-    // Duplikate entfernen (gleicher Fragetext)
-    final seen = <String>{};
-    final deduped = allQuestions.where((q) => seen.add(q.question)).toList();
-    deduped.shuffle();
-    return deduped.take(questionCount).toList();
+    if (staticQuestions.isEmpty) {
+      print(
+        '❌ Auch keine statischen Fragen fuer $subject Klasse ${child.grade}',
+      );
+      return [];
+    }
+
+    staticQuestions.shuffle();
+    return staticQuestions.take(questionCount).toList();
   }
 
-  /// Lädt statische JSON-Fragen für ein Fach (Fallback).
+  /// Laedt statische JSON-Fragen fuer ein Fach (Fallback).
   Future<QuizData> loadStaticQuizData(String subject) async {
     try {
       final jsonString = await rootBundle.loadString(
@@ -77,25 +110,33 @@ class ExtendedQuizRepository {
       );
       return QuizData.fromJson(json.decode(jsonString));
     } catch (e) {
-      print('⚠️ Fehler beim Laden der statischen Fragen für $subject: $e');
+      print('⚠️ Fehler beim Laden der statischen Fragen fuer $subject: $e');
       return QuizData(subject: subject, questions: []);
     }
   }
 
-  // ── Interne Helfer ────────────────────────────────────────────────────────
+  // == Interne Helfer ==
 
   Future<List<Question>> _loadStaticQuestions(String subject, int grade) async {
     try {
       final quizData = await loadStaticQuizData(subject);
-      // Etwas mehr laden als nötig damit wir beim Mischen genug haben
       return quizData.getQuestionsForGrade(grade, count: 10);
     } catch (e) {
       return [];
     }
   }
+
+  /// Entfernt Duplikate basierend auf dem normalisierten Fragetext
+  List<Question> _deduplicate(List<Question> questions) {
+    final seen = <String>{};
+    return questions.where((q) {
+      final normalized = q.question.toLowerCase().trim();
+      return seen.add(normalized);
+    }).toList();
+  }
 }
 
-// ── Riverpod Providers ────────────────────────────────────────────────────────
+// == Riverpod Providers ==
 
 final extendedQuizRepositoryProvider = Provider<ExtendedQuizRepository>((ref) {
   return ExtendedQuizRepository(ref.watch(aiQuestionCacheRepositoryProvider));

@@ -9,6 +9,8 @@ import '../../rewards/data/reward_service.dart';
 import '../../rewards/domain/reward_enums.dart';
 import '../../tutor/presentation/tutor_screen.dart';
 import '../../tutor/presentation/tutor_provider.dart';
+import '../../quiz/data/ai_question_cache_repository.dart';
+import '../../quiz/data/quiz_prefetch_service.dart';
 import 'widgets/nav_item.dart';
 import 'widgets/home_tab.dart';
 import 'widgets/tutor_history_tab.dart';
@@ -49,6 +51,33 @@ class _StudentDashboardScreenState
   int _currentTab = 0; // 0=Home, 1=Belohnungen, 2=Verlauf, 3=Statistik
 
   @override
+  void initState() {
+    super.initState();
+
+    // Sicherheitsnetz: Falls Kind schon existiert aber Cache leer ist
+    // (z.B. existierende Kinder vor dem Pre-Fetch-Update)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _ensureCacheReady();
+    });
+  }
+
+  /// Stellt sicher dass Fragen im Cache sind.
+  /// Bei neuen Kindern (nach dem Update) ist der Cache schon voll.
+  /// Bei alten Kindern wird hier nachgeneriert.
+  void _ensureCacheReady() {
+    final child = ref.read(activeChildProvider);
+    final user = ref.read(authStateChangesProvider).value;
+
+    if (child != null && user != null) {
+      QuizPrefetchService.prefetchAllSubjects(
+        userId: user.uid,
+        child: child,
+        cache: ref.read(aiQuestionCacheRepositoryProvider),
+      );
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final activeChild = ref.watch(activeChildProvider);
     if (activeChild == null) return const SizedBox.shrink();
@@ -75,10 +104,8 @@ class _StudentDashboardScreenState
             icon: const Icon(Icons.arrow_back),
             onPressed: () {
               if (_currentTab != 0) {
-                // In einem Tab → zurück zu Tab 0 (Home)
                 setState(() => _currentTab = 0);
               } else {
-                // Auf Tab 0 → wirklich raus aus dem StudentDashboard
                 Navigator.of(context).pop();
               }
             },
@@ -123,7 +150,6 @@ class _StudentDashboardScreenState
             elevation: 6,
             shape: const CircleBorder(),
             tooltip: 'KI-Tutor öffnen',
-            // ── GEÄNDERT: lerndex_logo.png statt Icons.smart_toy ──────────
             child: ClipOval(
               child: Image.asset(
                 'assets/images/lerndex_logo.png',
@@ -134,7 +160,6 @@ class _StudentDashboardScreenState
                     const Icon(Icons.school, color: Colors.white, size: 32),
               ),
             ),
-            // ─────────────────────────────────────────────────────────────
           ),
         ),
         floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
@@ -228,8 +253,6 @@ class _StudentDashboardScreenState
   }
 
   Future<void> _openTutor(BuildContext context, ChildModel child) async {
-    // Vor dem Öffnen: frischen Chat erzwingen und Provider neu erstellen
-    // → verhindert dass alte aktive Sessions geladen werden
     ref.read(tutorFreshChatProvider.notifier).state = true;
     ref.invalidate(tutorProviderFamily(child.id));
 

@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../domain/child_model.dart';
 import '../../rewards/data/system_rewards_initializer.dart';
+import '../../quiz/data/quiz_prefetch_service.dart';
 import 'auth_repository.dart';
 
 part 'profile_repository.g.dart';
@@ -20,7 +21,6 @@ class ProfileRepository {
   /// Stream aller Kinder des eingeloggten Eltern-Accounts
   /// Aktualisiert sich automatisch bei Änderungen in Firestore
   Stream<List<ChildModel>> watchChildren() {
-
     print('🔍 currentUser: ${_auth.currentUser?.uid}');
     print('🔍 _uid getter: $_uid');
 
@@ -29,12 +29,15 @@ class ProfileRepository {
         .doc(_uid)
         .collection('children')
         .snapshots()
-        .map((snapshot) => snapshot.docs
-        .map((doc) => ChildModel.fromMap(doc.data(), doc.id))
-        .toList());
+        .map(
+          (snapshot) => snapshot.docs
+              .map((doc) => ChildModel.fromMap(doc.data(), doc.id))
+              .toList(),
+        );
   }
 
   /// Erstellt ein neues Kind mit System-Belohnungen
+  /// und generiert sofort Quiz-Fragen im Hintergrund
   Future<String> createChild({
     required String name,
     required int age,
@@ -64,6 +67,7 @@ class ProfileRepository {
         .collection('children')
         .add(childData);
 
+    // System-Belohnungen erstellen
     try {
       final rewardsInitializer = SystemRewardsInitializer();
       await rewardsInitializer.initializeSystemRewards(
@@ -81,7 +85,54 @@ class ProfileRepository {
       print('⚠️ Fehler beim Erstellen der System-Belohnungen: $e');
     }
 
+    // Quiz-Fragen im Hintergrund vorgenerieren (fire-and-forget)
+    // Das Kind hat beim ersten Login sofort Fragen bereit!
+    _prefetchQuestionsForNewChild(
+      userId: user.uid,
+      childId: docRef.id,
+      name: name,
+      age: age,
+      schoolType: schoolType,
+      grade: grade,
+    );
+
     return docRef.id;
+  }
+
+  /// Generiert Quiz-Fragen fuer ein neu erstelltes Kind.
+  /// Laeuft komplett im Hintergrund (fire-and-forget).
+  /// Fehler werden still verschluckt — beim ersten Quiz wuerde
+  /// der Cache-Mechanismus einfach on-the-fly generieren.
+  void _prefetchQuestionsForNewChild({
+    required String userId,
+    required String childId,
+    required String name,
+    required int age,
+    required String schoolType,
+    required int grade,
+  }) {
+    // ChildModel fuer den Prefetch zusammenbauen
+    final child = ChildModel(
+      id: childId,
+      name: name,
+      age: age,
+      schoolType: schoolType,
+      grade: grade,
+      xp: 0,
+      level: 1,
+      stars: 0,
+      streak: 0,
+      totalLearningSeconds: 0,
+      xpToNextLevel: 25,
+    );
+
+    print(
+      '🔮 Starte Quiz-Pre-Fetch fuer neues Kind: $name '
+      '($schoolType, Klasse $grade)...',
+    );
+
+    // Fire-and-forget: Blockiert createChild() NICHT
+    QuizPrefetchService.prefetchAllSubjects(userId: userId, child: child);
   }
 
   /// Migriert existierende Kinder (fügt System-Belohnungen hinzu)
@@ -132,7 +183,11 @@ class ProfileRepository {
   }
 
   /// Aktualisiert die Sterne eines Kindes
-  Future<void> updateStars(String childId, int stars, {bool increment = true}) async {
+  Future<void> updateStars(
+    String childId,
+    int stars, {
+    bool increment = true,
+  }) async {
     final update = increment
         ? {'stars': FieldValue.increment(stars)}
         : {'stars': stars};
@@ -193,10 +248,10 @@ class ProfileRepository {
 
   /// Vergibt Belohnungen nach einer Mission
   Future<bool> awardMissionReward(
-      String childId, {
-        required int correctAnswers,
-        required int totalQuestions,
-      }) async {
+    String childId, {
+    required int correctAnswers,
+    required int totalQuestions,
+  }) async {
     final stars = correctAnswers * 2;
     final xp = correctAnswers;
 
@@ -221,12 +276,12 @@ class ProfileRepository {
         .collection('children')
         .doc(childId)
         .update({
-      'name': name,
-      'age': age,
-      'schoolType': schoolType,
-      'grade': grade,
-      'updatedAt': FieldValue.serverTimestamp(),
-    });
+          'name': name,
+          'age': age,
+          'schoolType': schoolType,
+          'grade': grade,
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
   }
 
   /// Löscht ein Kind
@@ -284,16 +339,12 @@ class ProfileRepository {
     // Haupt-User-Dokument löschen (enthält PIN, etc.)
     await _firestore.collection('users').doc(uid).delete();
   }
-
-} // ← Ende ProfileRepository
+} // Ende ProfileRepository
 
 /// Provider für ProfileRepository
 @riverpod
 ProfileRepository profileRepository(ProfileRepositoryRef ref) {
-  return ProfileRepository(
-    FirebaseFirestore.instance,
-    FirebaseAuth.instance,
-  );
+  return ProfileRepository(FirebaseFirestore.instance, FirebaseAuth.instance);
 }
 
 @riverpod

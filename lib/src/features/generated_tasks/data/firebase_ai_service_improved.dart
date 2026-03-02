@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'dart:typed_data';
 import 'dart:convert';
-import 'package:firebase_vertexai/firebase_vertexai.dart';
+import 'package:firebase_ai/firebase_ai.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../auth/domain/child_model.dart';
 import '../domain/generated_task_result.dart';
@@ -20,7 +20,7 @@ class ImprovedFirebaseAIService {
     if (_isInitialized) return;
     print('🚀 Firebase AI wird initialisiert...');
     try {
-      _taskGeneratorModel = FirebaseVertexAI.instance.generativeModel(
+      _taskGeneratorModel = FirebaseAI.googleAI().generativeModel(
         model: 'gemini-2.5-flash',
         generationConfig: GenerationConfig(
           temperature: 0.8,

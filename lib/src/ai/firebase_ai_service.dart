@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'dart:typed_data';
 import 'dart:convert';
-import 'package:firebase_vertexai/firebase_vertexai.dart';
+import 'package:firebase_ai/firebase_ai.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import '../features/auth/domain/child_model.dart';
@@ -44,8 +44,8 @@ class FirebaseAIService {
 
     try {
       // Tutor-Modell (für Kinder)
-      _tutorModel = FirebaseVertexAI.instance.generativeModel(
-        model: 'gemini-2.5-flash',
+      _tutorModel = FirebaseAI.googleAI().generativeModel(
+        model: 'gemini-3-flash-preview',
         generationConfig: GenerationConfig(
           temperature: 0.7,
           maxOutputTokens: 2048,
@@ -77,7 +77,7 @@ class FirebaseAIService {
       );
 
       // Task-Generator-Modell (für Eltern - Vision API)
-      _taskGeneratorModel = FirebaseVertexAI.instance.generativeModel(
+      _taskGeneratorModel = FirebaseAI.googleAI().generativeModel(
         model: 'gemini-2.5-flash',
         generationConfig: GenerationConfig(
           temperature: 0.8,
