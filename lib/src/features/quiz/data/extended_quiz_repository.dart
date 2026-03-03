@@ -3,33 +3,35 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../domain/question_model.dart';
 import '../../auth/domain/child_model.dart';
+import '../../generated_tasks/data/generated_task_repository.dart';
+import '../../generated_tasks/data/generated_task_models.dart';
 import 'ai_question_cache_repository.dart';
 import 'combined_quiz_params.dart';
 
-/// 📚 ERWEITERTER QUIZ REPOSITORY v2
+/// 📚 ERWEITERTER QUIZ REPOSITORY v3
 ///
 /// Laedt Quiz-Fragen mit klarer Prioritaet:
-///   1. KI-generierte Fragen aus dem Cache (personalisiert, schulformgerecht)
-///   2. Statische JSON-Fragen NUR als Notfall-Fallback wenn KI komplett versagt
+///   1. Von Eltern gepflegte & freigegebene Aufgaben (noch nicht korrekt beantwortet)
+///   2. KI-generierte Fragen aus dem Cache (personalisiert, schulformgerecht)
+///   3. Statische JSON-Fragen NUR als Notfall-Fallback
 ///
-/// Aenderungen gegenueber v1:
-///   - Statische Fragen werden NICHT mehr beigemischt (waren Duplikat-Quelle!)
-///   - KI-Fragen haben volle Prioritaet (sind personalisiert)
-///   - Statische Fragen nur noch wenn KI 0 Fragen liefert
-///   - Deduplizierung basierend auf normalisiertem Fragetext
+/// Logik: Solange noch unbeantwortete Eltern-Aufgaben vorhanden sind,
+/// werden ausschließlich diese gezeigt. KI-Fragen kommen erst wenn
+/// alle Eltern-Aufgaben korrekt beantwortet wurden.
 class ExtendedQuizRepository {
   final AiQuestionCacheRepository _cache;
+  final GeneratedTaskRepository _taskRepo;
 
-  ExtendedQuizRepository(this._cache);
+  ExtendedQuizRepository(this._cache, this._taskRepo);
 
   // == Oeffentliche API ==
 
-  /// Laedt eine Quiz-Session.
+  /// Laedt eine Quiz-Session mit Prioritaet fuer Eltern-Aufgaben.
   ///
   /// Strategie:
-  /// 1. Versuche KI-Fragen aus dem Cache zu laden (personalisiert!)
-  /// 2. NUR wenn KI komplett versagt -> statische Fragen als Fallback
-  /// 3. Mischen und Deduplizierung
+  /// 1. Eltern-Aufgaben (approved, noch nicht korrekt beantwortet) → hoechste Prioritaet
+  /// 2. Wenn keine Eltern-Aufgaben mehr: KI-Cache-Fragen
+  /// 3. Wenn KI-Cache leer: statische JSON-Fragen als Fallback
   Future<List<Question>> loadQuizForChild({
     required String userId,
     required String childId,
@@ -37,7 +39,59 @@ class ExtendedQuizRepository {
     required String subject,
     int questionCount = 5,
   }) async {
-    // 1. KI-Fragen aus Cache (personalisiert, schulformgerecht, level-abhaengig)
+    // -----------------------------------------------------------------------
+    // 1. Eltern-gepflegte Aufgaben mit hoechster Prioritaet
+    // -----------------------------------------------------------------------
+    try {
+      final subjectEnum = SubjectExtension.fromString(subject);
+      final parentQuestions = await _taskRepo.getUnansweredApprovedQuestions(
+        userId: userId,
+        childId: childId,
+        subject: subjectEnum,
+      );
+
+      if (parentQuestions.isNotEmpty) {
+        print(
+          '👨‍👩‍👧 ${parentQuestions.length} Eltern-Aufgaben vorhanden – '
+          'KI-Fragen werden nicht genutzt bis alle beantwortet sind.',
+        );
+
+        // In Question-Objekte umwandeln mit parentTaskRef für Tracking
+        final questions = parentQuestions.map((gq) {
+          // Batch-ID aus dem approvedBy-Feld ist nicht verfügbar hier,
+          // daher suchen wir den batchId über den parentTaskRef-Mechanismus.
+          // Die batchId wird beim Laden mitgegeben über das id-Feld des Batch.
+          // Wir codieren: "batchId/questionId" als parentTaskRef
+          // Das batchId muss aus den Batches kommen – wir holen es über
+          // eine erweiterte Version der Methode.
+          return Question(
+            grade: child.grade,
+            question: gq.question,
+            options: gq.options,
+            answer: gq.correctAnswer,
+            difficulty: gq.difficulty,
+            topic: gq.topic,
+            parentTaskRef: gq.batchId != null ? '${gq.batchId}/${gq.id}' : null,
+          );
+        }).toList();
+
+        questions.shuffle();
+        final result = questions.take(questionCount).toList();
+
+        print('✅ ${result.length} Eltern-Aufgaben als Quiz geladen');
+        return result;
+      }
+
+      print('ℹ️ Keine offenen Eltern-Aufgaben – lade KI-Fragen');
+    } catch (e) {
+      print(
+        '⚠️ Eltern-Aufgaben nicht verfuegbar: $e – falle auf KI-Fragen zurueck',
+      );
+    }
+
+    // -----------------------------------------------------------------------
+    // 2. KI-Fragen aus Cache
+    // -----------------------------------------------------------------------
     try {
       final aiQuestions = await _cache.getQuestions(
         userId: userId,
@@ -53,16 +107,14 @@ class ExtendedQuizRepository {
           '(${child.schoolType}, Kl. ${child.grade}, Lv. ${child.level})',
         );
 
-        // Deduplizieren (sollte nicht noetig sein, aber sicherheitshalber)
         final deduped = _deduplicate(aiQuestions);
         deduped.shuffle();
 
-        // Wenn genug KI-Fragen: fertig
         if (deduped.length >= questionCount) {
           return deduped.take(questionCount).toList();
         }
 
-        // Wenn zu wenig KI-Fragen: mit statischen auffuellen
+        // Zu wenig KI-Fragen: mit statischen auffuellen
         print(
           '⚠️ Nur ${deduped.length} KI-Fragen, fuelle mit statischen auf...',
         );
@@ -87,7 +139,9 @@ class ExtendedQuizRepository {
       print('⚠️ KI-Cache nicht verfuegbar: $e');
     }
 
-    // 2. Komplett-Fallback: Nur statische Fragen
+    // -----------------------------------------------------------------------
+    // 3. Komplett-Fallback: Nur statische Fragen
+    // -----------------------------------------------------------------------
     print('⚠️ Keine KI-Fragen verfuegbar, nutze statische Fragen als Fallback');
     final staticQuestions = await _loadStaticQuestions(subject, child.grade);
 
@@ -126,7 +180,6 @@ class ExtendedQuizRepository {
     }
   }
 
-  /// Entfernt Duplikate basierend auf dem normalisierten Fragetext
   List<Question> _deduplicate(List<Question> questions) {
     final seen = <String>{};
     return questions.where((q) {
@@ -139,7 +192,10 @@ class ExtendedQuizRepository {
 // == Riverpod Providers ==
 
 final extendedQuizRepositoryProvider = Provider<ExtendedQuizRepository>((ref) {
-  return ExtendedQuizRepository(ref.watch(aiQuestionCacheRepositoryProvider));
+  return ExtendedQuizRepository(
+    ref.watch(aiQuestionCacheRepositoryProvider),
+    ref.watch(generatedTaskRepositoryProvider),
+  );
 });
 
 /// Provider zum Laden einer kombinierten Quiz-Session

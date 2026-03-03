@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-import 'package:lerndex/src/features/student_dashboard/presentation/student_dashboard_screen.dart';
+import 'package:lerndex1/src/features/student_dashboard/presentation/student_dashboard_screen.dart';
 import '../data/auth_repository.dart';
 import '../data/profile_repository.dart';
 import 'active_child_provider.dart';

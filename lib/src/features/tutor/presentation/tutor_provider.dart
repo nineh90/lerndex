@@ -1,10 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:lerndex1/src/ai/vertex_ai_service.dart';
 import '../domain/chat_message.dart';
 import '../data/tutor_session_model.dart';
 import '../../auth/presentation/active_child_provider.dart';
 import '../../auth/data/auth_repository.dart';
-import '../../../ai/firebase_ai_service.dart';
 import '../../rewards/data/xp_service.dart';
 
 class TutorNotifier extends StateNotifier<List<ChatMessage>> {
@@ -13,7 +13,7 @@ class TutorNotifier extends StateNotifier<List<ChatMessage>> {
     _initializeWithWelcome();
   }
 
-  final FirebaseAIService _aiService;
+  final VertexAIService _aiService;
   final Ref _ref;
   final String _childId;
   final String _userId;
@@ -2039,18 +2039,13 @@ final tutorFreshChatProvider = StateProvider<bool>((ref) => false);
 // PROVIDER
 // ============================================================================
 
-/// Provider für den Firebase AI Service (Singleton)
-final firebaseAIServiceProvider = Provider<FirebaseAIService>((ref) {
-  return FirebaseAIService();
-});
-
 /// 🎯 FAMILY PROVIDER - Ein Chat pro Kind!
 final tutorProviderFamily =
     StateNotifierProvider.family<TutorNotifier, List<ChatMessage>, String>((
       ref,
       childId,
     ) {
-      final service = ref.watch(firebaseAIServiceProvider);
+      final service = ref.watch(vertexAIServiceProvider);
       final user = ref.watch(authStateChangesProvider).value;
 
       if (user == null) {

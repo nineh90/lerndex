@@ -1,8 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:lerndex/src/features/auth/domain/child_model.dart';
-import 'package:lerndex/src/features/quiz/domain/question_model.dart';
-import 'ai_quiz_generator_service.dart';
+import 'package:lerndex1/src/ai/vertex_ai_service.dart';
+import 'package:lerndex1/src/features/auth/domain/child_model.dart';
+import 'package:lerndex1/src/features/quiz/domain/question_model.dart';
 
 /// AI QUESTION CACHE REPOSITORY v3
 ///
@@ -23,7 +23,7 @@ import 'ai_quiz_generator_service.dart';
 ///   3. Cache leer (sollte nicht passieren)? -> Schnell-Batch von 2 Fragen
 class AiQuestionCacheRepository {
   final FirebaseFirestore _firestore;
-  final AiQuizGeneratorService _generator;
+  final VertexAIService _generator;
 
   static const int _refillThreshold = 5;
   static const int _fullBatchSize = 10;
@@ -62,7 +62,7 @@ class AiQuestionCacheRepository {
       print('🔮 Pre-Fill: Generiere $_fullBatchSize Fragen fuer $subject...');
       final recentTopics = await _loadRecentTopics(userId, childId, subject);
 
-      final questions = await _generator.generateQuestions(
+      final questions = await _generator.generateQuizQuestions(
         child: child,
         subject: subject,
         count: _fullBatchSize,
@@ -108,7 +108,7 @@ class AiQuestionCacheRepository {
     );
     final recentTopics = await _loadRecentTopics(userId, childId, subject);
 
-    final quickQuestions = await _generator.generateQuestions(
+    final quickQuestions = await _generator.generateQuizQuestions(
       child: child,
       subject: subject,
       count: _quickBatchSize,
@@ -347,7 +347,7 @@ class AiQuestionCacheRepository {
     try {
       final recentTopics = await _loadRecentTopics(userId, childId, subject);
 
-      final questions = await _generator.generateQuestions(
+      final questions = await _generator.generateQuizQuestions(
         child: child,
         subject: subject,
         count: count,
@@ -444,6 +444,6 @@ final aiQuestionCacheRepositoryProvider = Provider<AiQuestionCacheRepository>((
 ) {
   return AiQuestionCacheRepository(
     FirebaseFirestore.instance,
-    ref.watch(aiQuizGeneratorServiceProvider),
+    ref.watch(vertexAIServiceProvider),
   );
 });

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lerndex1/src/features/generated_tasks/data/generated_task_repository.dart';
 import '../domain/question_model.dart';
 import '../../auth/presentation/active_child_provider.dart';
 import '../../auth/data/profile_repository.dart';
@@ -112,6 +113,22 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
       final xpService = ref.read(xpServiceProvider);
       final activeChild = ref.read(activeChildProvider);
       final user = ref.read(authStateChangesProvider).value;
+
+      final currentQuestion = _questions[_currentIndex];
+      if (currentQuestion.isParentTask) {
+        final user = ref.read(authStateChangesProvider).value;
+        if (user != null) {
+          ref
+              .read(generatedTaskRepositoryProvider)
+              .markQuestionAnsweredCorrectly(
+                userId: user.uid,
+                parentTaskRef: currentQuestion.parentTaskRef!,
+              );
+          print(
+            '✅ Eltern-Aufgabe als beantwortet markiert: ${currentQuestion.parentTaskRef}',
+          );
+        }
+      }
 
       if (activeChild != null && user != null) {
         try {

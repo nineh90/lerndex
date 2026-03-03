@@ -325,6 +325,98 @@ class GeneratedTaskRepository {
       return batches.fold<int>(0, (sum, batch) => sum + batch.pendingTasks);
     });
   }
+
+  // ========================================================================
+  // ELTERN-AUFGABEN: FORTSCHRITTS-TRACKING
+  // ========================================================================
+
+  /// Markiert eine Eltern-Aufgabe als vom Kind korrekt beantwortet.
+  /// [parentTaskRef] Format: "batchId/questionId"
+  Future<void> markQuestionAnsweredCorrectly({
+    required String userId,
+    required String parentTaskRef,
+  }) async {
+    try {
+      final parts = parentTaskRef.split('/');
+      if (parts.length != 2) {
+        print('⚠️ Ungültiger parentTaskRef: $parentTaskRef');
+        return;
+      }
+      final batchId = parts[0];
+      final questionId = parts[1];
+
+      await _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('generated_batches')
+          .doc(batchId)
+          .collection('questions')
+          .doc(questionId)
+          .update({
+            'answeredCorrectlyAt': FieldValue.serverTimestamp(),
+            'answeredCorrectly': true,
+          });
+
+      print('✅ Eltern-Aufgabe als beantwortet markiert: $questionId');
+    } catch (e) {
+      print('❌ Fehler beim Markieren als beantwortet: $e');
+    }
+  }
+
+  /// Lädt alle freigegebenen Eltern-Aufgaben, die das Kind noch NICHT
+  /// korrekt beantwortet hat, für ein bestimmtes Fach.
+  Future<List<GeneratedQuestion>> getUnansweredApprovedQuestions({
+    required String userId,
+    required String childId,
+    required Subject subject,
+  }) async {
+    try {
+      final batchesSnapshot = await _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('generated_batches')
+          .where('childId', isEqualTo: childId)
+          .where('subject', isEqualTo: subject.value)
+          .get();
+
+      if (batchesSnapshot.docs.isEmpty) {
+        print('ℹ️ Keine Batches für $childId / ${subject.value}');
+        return [];
+      }
+
+      final unansweredQuestions = <GeneratedQuestion>[];
+
+      for (var batchDoc in batchesSnapshot.docs) {
+        // Alle approved Fragen laden (kein Filter auf answeredCorrectly in Firestore!)
+        final questionsSnapshot = await batchDoc.reference
+            .collection('questions')
+            .where('status', isEqualTo: 'approved')
+            .get();
+
+        for (var qDoc in questionsSnapshot.docs) {
+          final data = qDoc.data() as Map<String, dynamic>;
+          // Clientseitig filtern: Feld fehlt (Altdaten) → noch nicht beantwortet
+          // Feld ist false → noch nicht beantwortet
+          // Feld ist true → bereits korrekt beantwortet, überspringen
+          final answeredCorrectly = data['answeredCorrectly'] as bool? ?? false;
+          if (!answeredCorrectly) {
+            final question = GeneratedQuestion.fromFirestore(qDoc);
+            // batchId für parentTaskRef mitgeben
+            unansweredQuestions.add(question.copyWith(batchId: batchDoc.id));
+          }
+        }
+      }
+
+      print(
+        '✅ ${unansweredQuestions.length} unbeantwortete Eltern-Aufgaben '
+        'für ${subject.displayName} geladen',
+      );
+      return unansweredQuestions;
+    } catch (e) {
+      print('❌ Fehler beim Laden unbeantworteter Eltern-Aufgaben: $e');
+      return [];
+    }
+  }
 }
 
 // ========================================================================

@@ -1,9 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:lerndex/src/features/auth/domain/child_model.dart';
-import 'package:lerndex/src/features/quiz/data/ai_question_cache_repository.dart';
-import 'package:lerndex/src/features/quiz/data/ai_quiz_generator_service.dart';
-import 'package:lerndex/src/features/student_dashboard/presentation/subject_config.dart';
+import 'package:lerndex1/src/ai/vertex_ai_service.dart';
+import 'package:lerndex1/src/features/auth/domain/child_model.dart';
+import 'package:lerndex1/src/features/quiz/data/ai_question_cache_repository.dart';
+import 'package:lerndex1/src/features/student_dashboard/presentation/subject_config.dart';
 
 /// Pre-Fetch Service fuer Quiz-Fragen.
 ///
@@ -44,7 +44,7 @@ class QuizPrefetchService {
           cache ??
           AiQuestionCacheRepository(
             FirebaseFirestore.instance,
-            AiQuizGeneratorService(),
+            VertexAIService(),
           );
 
       final subjects = _prioritized(getSubjectsForChild(child));

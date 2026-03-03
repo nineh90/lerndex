@@ -2,34 +2,33 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:lerndex1/src/features/generated_tasks/presentation/widgets/info_row.dart';
+import 'package:lerndex1/src/features/generated_tasks/presentation/widgets/question_card.dart';
 import '../../auth/domain/child_model.dart';
 import '../../auth/data/auth_repository.dart';
 import '../../generated_tasks/data/generated_task_models.dart';
 import '../../generated_tasks/data/generated_task_repository.dart';
-import '../../generated_tasks/data/firebase_ai_service_improved.dart';
+import '../../../ai/vertex_ai_service.dart';
 import '../../student_dashboard/presentation/subject_config.dart'
     show getSubjectsForChild;
-import 'widgets/info_row.dart';
-import 'widgets/question_card.dart';
 
 /// 📸 KI-AUFGABENGENERATOR FÜR ELTERN
 ///
-/// - Dynamische Fächer basierend auf Kind (Klasse + Schulform)
-/// - Foto von Schulaufgabe → KI generiert Multiple-Choice-Übungen
-/// - Auto-Save direkt nach Generierung → sofort in "Freigeben" sichtbar
-
-class ImprovedAITaskGeneratorScreen extends ConsumerStatefulWidget {
+/// Foto von Schulaufgabe → Vertex AI generiert Multiple-Choice-Übungen
+/// Auto-Save direkt nach Generierung → sofort in "Freigeben" sichtbar
+///
+/// Ersetzt: ai_task_generator_screen.dart + improved_ai_task_generator_screen.dart
+class TaskGeneratorScreen extends ConsumerStatefulWidget {
   final ChildModel child;
 
-  const ImprovedAITaskGeneratorScreen({super.key, required this.child});
+  const TaskGeneratorScreen({super.key, required this.child});
 
   @override
-  ConsumerState<ImprovedAITaskGeneratorScreen> createState() =>
-      _ImprovedAITaskGeneratorScreenState();
+  ConsumerState<TaskGeneratorScreen> createState() =>
+      _TaskGeneratorScreenState();
 }
 
-class _ImprovedAITaskGeneratorScreenState
-    extends ConsumerState<ImprovedAITaskGeneratorScreen> {
+class _TaskGeneratorScreenState extends ConsumerState<TaskGeneratorScreen> {
   Subject? _selectedSubject;
   File? _selectedImage;
   bool _isGenerating = false;
@@ -40,7 +39,7 @@ class _ImprovedAITaskGeneratorScreenState
   final ImagePicker _picker = ImagePicker();
 
   // ---------------------------------------------------------------------------
-  // Dynamische Fächerliste – identisch zu getSubjectsForChild im Schüler-Dashboard
+  // FÄCHERLISTE — dynamisch passend zum Kind
   // ---------------------------------------------------------------------------
 
   List<Subject> _getAvailableSubjects() {
@@ -68,7 +67,7 @@ class _ImprovedAITaskGeneratorScreenState
       }
     }
 
-    // Fallback: nach Klasse filtern wenn Mapping leer
+    // Fallback: nach Klasse filtern
     return result.isEmpty
         ? Subject.values
               .where((s) => s.isAvailableForGrade(widget.child.grade))
@@ -94,37 +93,29 @@ class _ImprovedAITaskGeneratorScreenState
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Info-Card
             _buildInfoCard(),
             const SizedBox(height: 24),
-
-            // Schritt 1: Fach auswählen (dynamisch)
             _buildSubjectSelector(),
             const SizedBox(height: 24),
 
-            // Schritt 2: Bild (nur wenn Fach gewählt)
             if (_selectedSubject != null) ...[
-              if (_selectedImage == null) ...[
-                _buildImagePicker(),
-              ] else ...[
+              if (_selectedImage == null)
+                _buildImagePicker()
+              else ...[
                 _buildImagePreview(),
                 const SizedBox(height: 16),
                 _buildTaskCountSelector(),
                 const SizedBox(height: 24),
                 _buildGenerateButton(),
               ],
-            ],
-
-            // Ergebnis
-            if (_generatedQuestions != null) ...[
-              const SizedBox(height: 32),
-              _buildResults(),
-            ],
-
-            // Fehler
-            if (_errorMessage != null) ...[
-              const SizedBox(height: 16),
-              _buildErrorCard(),
+              if (_generatedQuestions != null) ...[
+                const SizedBox(height: 32),
+                _buildResults(),
+              ],
+              if (_errorMessage != null) ...[
+                const SizedBox(height: 16),
+                _buildErrorCard(),
+              ],
             ],
           ],
         ),
@@ -167,20 +158,19 @@ class _ImprovedAITaskGeneratorScreenState
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    Text(
                       'KI-Aufgabengenerator',
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
-                        color: Colors.black87,
+                        color: Colors.deepPurple.shade800,
                       ),
                     ),
-                    const SizedBox(height: 4),
                     Text(
-                      'Klasse ${widget.child.grade} · ${widget.child.schoolType}',
-                      style: const TextStyle(
+                      'Für ${widget.child.name} · ${widget.child.schoolType} · Klasse ${widget.child.grade}',
+                      style: TextStyle(
                         fontSize: 13,
-                        color: Colors.black54,
+                        color: Colors.deepPurple.shade600,
                       ),
                     ),
                   ],
@@ -189,18 +179,14 @@ class _ImprovedAITaskGeneratorScreenState
             ],
           ),
           const SizedBox(height: 16),
-          const Divider(),
-          const SizedBox(height: 12),
-          const InfoRow(icon: Icons.subject, text: 'Passendes Fach auswählen'),
-          const SizedBox(height: 8),
           const InfoRow(
-            icon: Icons.photo_camera,
-            text: 'Foto von Hausaufgaben/Arbeitsblättern machen',
+            icon: Icons.camera_alt,
+            text: 'Fotografiere eine Schulaufgabe',
           ),
           const SizedBox(height: 8),
           const InfoRow(
             icon: Icons.psychology,
-            text: 'KI erstellt ähnliche Multiple-Choice-Übungen',
+            text: 'KI analysiert das Foto und erstellt ähnliche Übungen',
           ),
           const SizedBox(height: 8),
           const InfoRow(
@@ -213,7 +199,7 @@ class _ImprovedAITaskGeneratorScreenState
   }
 
   // ---------------------------------------------------------------------------
-  // FACH-SELEKTOR (dynamisch, passend zum Kind)
+  // FACH-SELEKTOR
   // ---------------------------------------------------------------------------
 
   Widget _buildSubjectSelector() {
@@ -233,14 +219,12 @@ class _ImprovedAITaskGeneratorScreenState
           children: availableSubjects.map((subject) {
             final isSelected = _selectedSubject == subject;
             return GestureDetector(
-              onTap: () {
-                setState(() {
-                  _selectedSubject = subject;
-                  _selectedImage = null;
-                  _generatedQuestions = null;
-                  _errorMessage = null;
-                });
-              },
+              onTap: () => setState(() {
+                _selectedSubject = subject;
+                _selectedImage = null;
+                _generatedQuestions = null;
+                _errorMessage = null;
+              }),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 180),
                 padding: const EdgeInsets.symmetric(
@@ -301,8 +285,6 @@ class _ImprovedAITaskGeneratorScreenState
     return Column(
       children: [
         const SizedBox(height: 8),
-
-        // Kamera-Button
         SizedBox(
           width: double.infinity,
           height: 180,
@@ -313,11 +295,7 @@ class _ImprovedAITaskGeneratorScreenState
               decoration: BoxDecoration(
                 color: Colors.deepPurple.shade50,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: Colors.deepPurple.shade200,
-                  width: 2,
-                  style: BorderStyle.solid,
-                ),
+                border: Border.all(color: Colors.deepPurple.shade200, width: 2),
               ),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -349,10 +327,7 @@ class _ImprovedAITaskGeneratorScreenState
             ),
           ),
         ),
-
         const SizedBox(height: 16),
-
-        // Galerie-Button
         SizedBox(
           width: double.infinity,
           height: 120,
@@ -494,7 +469,7 @@ class _ImprovedAITaskGeneratorScreenState
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 4),
           Text(
             'Empfohlen: 5 Aufgaben',
             style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
@@ -547,11 +522,9 @@ class _ImprovedAITaskGeneratorScreenState
 
   Widget _buildResults() {
     final questions = _generatedQuestions!;
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Erfolgs-Header
         Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
@@ -586,22 +559,16 @@ class _ImprovedAITaskGeneratorScreenState
             ],
           ),
         ),
-
         const SizedBox(height: 24),
-
         const Text(
           'Generierte Aufgaben (Vorschau)',
           style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 12),
-
         ...questions.asMap().entries.map(
           (entry) => QuestionCard(question: entry.value, index: entry.key + 1),
         ),
-
         const SizedBox(height: 24),
-
-        // Aktions-Buttons
         Row(
           children: [
             Expanded(
@@ -681,7 +648,7 @@ class _ImprovedAITaskGeneratorScreenState
 
   Future<void> _pickImage(ImageSource source) async {
     try {
-      final XFile? image = await _picker.pickImage(
+      final image = await _picker.pickImage(
         source: source,
         maxWidth: 1920,
         maxHeight: 1080,
@@ -691,6 +658,7 @@ class _ImprovedAITaskGeneratorScreenState
         setState(() {
           _selectedImage = File(image.path);
           _errorMessage = null;
+          _generatedQuestions = null;
         });
       }
     } catch (e) {
@@ -705,23 +673,21 @@ class _ImprovedAITaskGeneratorScreenState
     }
   }
 
-  /// Generiert Aufgaben mit KI und speichert sie DIREKT in Firestore.
-  /// Ein Schritt – kein separater Speichern-Button nötig.
   Future<void> _generateAndSave() async {
     if (_selectedImage == null || _selectedSubject == null) return;
 
     setState(() {
       _isGenerating = true;
       _errorMessage = null;
+      _generatedQuestions = null;
     });
 
     try {
-      final authRepo = ref.read(authRepositoryProvider);
-      final userId = authRepo.currentUser?.uid;
+      final userId = ref.read(authRepositoryProvider).currentUser?.uid;
       if (userId == null) throw Exception('Nicht angemeldet');
 
-      // 1. KI generiert Multiple-Choice-Aufgaben
-      final aiService = ref.read(improvedFirebaseAIServiceProvider);
+      // Vertex AI generiert die Aufgaben (DSGVO-konform)
+      final aiService = ref.read(vertexAIServiceProvider);
       final result = await aiService.generateTasksFromImage(
         imageFile: _selectedImage!,
         child: widget.child,
@@ -736,7 +702,7 @@ class _ImprovedAITaskGeneratorScreenState
         );
       }
 
-      // 2. Direkt in Firestore speichern → sofort in Freigabe-Liste
+      // Direkt in Firestore speichern → sofort in Freigabe-Liste
       final repository = ref.read(generatedTaskRepositoryProvider);
       await repository.saveGeneratedBatch(
         userId: userId,
@@ -797,7 +763,3 @@ class _ImprovedAITaskGeneratorScreenState
     }
   }
 }
-
-// =============================================================================
-// WIDGETS
-// =============================================================================

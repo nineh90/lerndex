@@ -129,6 +129,7 @@ class GeneratedQuestion {
   final DateTime? approvedAt;
   final String? approvedBy; // Eltern-User-ID
   final String? rejectionReason;
+  final String? batchId;
 
   GeneratedQuestion({
     required this.id,
@@ -143,12 +144,14 @@ class GeneratedQuestion {
     this.approvedAt,
     this.approvedBy,
     this.rejectionReason,
+    this.batchId,
   });
 
   factory GeneratedQuestion.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
     return GeneratedQuestion(
       id: doc.id,
+      batchId: null,
       question: data['question'] ?? '',
       options: List<String>.from(data['options'] ?? []),
       correctAnswer: data['correctAnswer'] ?? '',
@@ -183,6 +186,7 @@ class GeneratedQuestion {
 
   /// Kopie mit geändertem Status erstellen
   GeneratedQuestion copyWith({
+    String? batchId,
     TaskApprovalStatus? status,
     DateTime? approvedAt,
     String? approvedBy,
@@ -190,6 +194,7 @@ class GeneratedQuestion {
   }) {
     return GeneratedQuestion(
       id: id,
+      batchId: batchId ?? this.batchId,
       question: question,
       options: options,
       correctAnswer: correctAnswer,

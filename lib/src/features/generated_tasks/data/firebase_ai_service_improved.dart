@@ -21,11 +21,12 @@ class ImprovedFirebaseAIService {
     print('🚀 Firebase AI wird initialisiert...');
     try {
       _taskGeneratorModel = FirebaseAI.googleAI().generativeModel(
-        model: 'gemini-2.5-flash',
+        model: 'gemini-3-flash-preview',
         generationConfig: GenerationConfig(
           temperature: 0.8,
-          maxOutputTokens: 1024,
+          maxOutputTokens: 2048,
           topP: 0.95,
+          responseMimeType: 'application/json',
         ),
       );
       _isInitialized = true;
@@ -179,32 +180,35 @@ Antworte NUR mit diesem JSON-Objekt (kein Array, kein Text davor/danach):
   GeneratedQuestion? _parseSingleQuestion(String text) {
     try {
       String cleaned = text.trim();
-
-      // Markdown-Fences entfernen
-      if (cleaned.startsWith('```json')) {
+      if (cleaned.startsWith('```json'))
         cleaned = cleaned.substring(7);
-      } else if (cleaned.startsWith('```'))
+      else if (cleaned.startsWith('```'))
         cleaned = cleaned.substring(3);
-      if (cleaned.endsWith('```')) {
+      if (cleaned.endsWith('```'))
         cleaned = cleaned.substring(0, cleaned.length - 3);
-      }
       cleaned = cleaned.trim();
 
-      // Echte Newlines in Strings fixen
+      // JSON-Objekt extrahieren (alles zwischen erstem { und letztem })
+      final start = cleaned.indexOf('{');
+      final end = cleaned.lastIndexOf('}');
+      if (start == -1 || end == -1 || end <= start) {
+        print(
+          '⚠️ Kein JSON-Objekt gefunden in: ${cleaned.substring(0, cleaned.length.clamp(0, 100))}',
+        );
+        return null;
+      }
+      cleaned = cleaned.substring(start, end + 1);
       cleaned = _fixJsonNewlines(cleaned);
 
       final json = jsonDecode(cleaned) as Map<String, dynamic>;
 
-      if (json['question'] == null || json['question'].toString().isEmpty) {
+      if (json['question'] == null || json['question'].toString().isEmpty)
         return null;
-      }
-      if (json['options'] == null || (json['options'] as List).length != 4) {
+      if (json['options'] == null || (json['options'] as List).length != 4)
         return null;
-      }
 
       final options = List<String>.from(json['options']);
       final correctAnswer = json['correctAnswer']?.toString() ?? '';
-
       if (!options.contains(correctAnswer)) {
         print('⚠️ Richtige Antwort nicht in Optionen: "$correctAnswer"');
         return null;
