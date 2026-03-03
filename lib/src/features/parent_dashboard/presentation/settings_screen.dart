@@ -7,6 +7,7 @@ import '../../auth/data/profile_repository.dart';
 import '../../../../main.dart';
 import '../../auth/presentation/account_deleted_screen.dart';
 import '../data/pin_repository.dart';
+import '../../auth/presentation/onboarding_screen.dart';
 
 /// Einstellungsbereich im Elterndashboard
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -82,6 +83,27 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ),
 
           const Divider(),
+
+          // ── Abschnitt: Hilfe ────────────────────────────────────────
+          const _SectionHeader(title: 'Hilfe'),
+
+          ListTile(
+            leading: const Icon(Icons.tour_outlined, color: Colors.deepPurple),
+            title: const Text('App-Tour wiederholen'),
+            subtitle: const Text(
+              'Überblick über alle Funktionen von Lerndex',
+              style: TextStyle(fontSize: 12),
+            ),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const OnboardingScreen(isReplay: true),
+              ),
+            ),
+          ),
+
+          const Divider(indent: 16, endIndent: 16),
         ],
       ),
     );

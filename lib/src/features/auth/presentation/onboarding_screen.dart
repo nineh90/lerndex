@@ -15,13 +15,17 @@ import '../../parent_dashboard/data/pin_repository.dart';
 /// Setzt am Ende onboardingCompleted = true in Firestore
 /// Navigation ins Dashboard übernimmt danach main.dart via authStateChanges
 class OnboardingScreen extends ConsumerStatefulWidget {
-  const OnboardingScreen({super.key});
+  final bool isReplay;
+
+  const OnboardingScreen({super.key, this.isReplay = false});
 
   @override
   ConsumerState<OnboardingScreen> createState() => _OnboardingScreenState();
 }
 
 class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
+  bool get _isReplay => widget.isReplay;
+
   final PageController _pageController = PageController();
   int _currentStep = 0;
 
@@ -57,7 +61,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   }
 
   void _nextStep() {
-    if (_currentStep == 0) {
+    if (!_isReplay && _currentStep == 0) {
       if (!_nameFormKey.currentState!.validate()) return;
     }
     setState(() => _currentStep++);
@@ -135,10 +139,12 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                   vertical: 16,
                 ),
                 child: Row(
-                  children: List.generate(3, (i) {
+                  children: List.generate(_isReplay ? 4 : 3, (i) {
                     return Expanded(
                       child: Container(
-                        margin: EdgeInsets.only(right: i < 2 ? 8 : 0),
+                        margin: EdgeInsets.only(
+                          right: i < (_isReplay ? 3 : 2) ? 8 : 0,
+                        ),
                         height: 4,
                         decoration: BoxDecoration(
                           color: i <= _currentStep
@@ -157,11 +163,14 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                 child: PageView(
                   controller: _pageController,
                   physics: const NeverScrollableScrollPhysics(),
-                  children: [
-                    _buildNameStep(),
-                    _buildPinStep(),
-                    _buildDoneStep(),
-                  ],
+                  children: _isReplay
+                      ? [
+                          _buildReplayWelcomeStep(),
+                          _buildReplayFeaturesStep(),
+                          _buildReplayDashboardStep(),
+                          _buildReplayDoneStep(),
+                        ]
+                      : [_buildNameStep(), _buildPinStep(), _buildDoneStep()],
                 ),
               ),
             ],
@@ -178,9 +187,14 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   Future<void> _openDashboard() async {
     if (!mounted) return;
 
+    if (_isReplay) {
+      // Im Replay-Modus einfach zurück
+      Navigator.of(context).pop();
+      return;
+    }
+
     // Zurück zur Root-Navigation → main.dart zeigt jetzt FamilyDashboardScreen
     // (weil onboardingCompleted = true)
-    // Von dort aus wird das ParentDashboardScreen normal gepusht
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(builder: (_) => const FamilyDashboardScreen()),
       (route) => false,
@@ -524,6 +538,271 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  // =========================================================================
+  // REPLAY-MODUS: FEATURE-TOUR (4 Schritte, kein Setup)
+  // =========================================================================
+
+  Widget _buildReplayWelcomeStep() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        children: [
+          const SizedBox(height: 32),
+          Container(
+            width: 100,
+            height: 100,
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.2),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.school, size: 56, color: Colors.white),
+          ),
+          const SizedBox(height: 24),
+          const Text(
+            'Willkommen zurück! 👋',
+            style: TextStyle(
+              fontSize: 28,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 12),
+          const Text(
+            'Hier findest du eine kurze Übersicht über alle Funktionen von Lerndex.',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 15, color: Colors.white70),
+          ),
+          const SizedBox(height: 48),
+          _buildReplayNavButton('Los geht\'s →', _nextStep),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildReplayFeaturesStep() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(height: 24),
+          const Text(
+            'Für deine Kinder 🎓',
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(height: 16),
+          _buildFeatureCard(
+            icon: Icons.quiz_outlined,
+            title: 'Quiz',
+            description:
+                'Fragen passend zur Klasse und Schulform – in Mathe, Deutsch, Englisch und mehr. Jede richtige Antwort bringt XP und Sterne.',
+          ),
+          const SizedBox(height: 12),
+          _buildFeatureCard(
+            icon: Icons.smart_toy_outlined,
+            title: 'KI-Tutor',
+            description:
+                'Dein Kind kann dem Tutor Fragen zu Schulthemen stellen und bekommt altersgerechte Erklärungen.',
+          ),
+          const SizedBox(height: 12),
+          _buildFeatureCard(
+            icon: Icons.local_fire_department_outlined,
+            title: 'Streak & Level',
+            description:
+                'Täglich lernen hält den Streak am Leben. Mit XP steigt das Level – von Lernling bis Meister.',
+          ),
+          const SizedBox(height: 32),
+          _buildReplayNavButton('Weiter →', _nextStep),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildReplayDashboardStep() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(height: 24),
+          const Text(
+            'Für dich als Elternteil 👨‍👩‍👧',
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(height: 16),
+          _buildFeatureCard(
+            icon: Icons.bar_chart_outlined,
+            title: 'Statistiken & Verlauf',
+            description:
+                'Sieh in Echtzeit wie lange dein Kind lernt, welche Quizze es gespielt hat und wie sich der Tutor-Chat entwickelt.',
+          ),
+          const SizedBox(height: 12),
+          _buildFeatureCard(
+            icon: Icons.card_giftcard_outlined,
+            title: 'Belohnungen',
+            description:
+                'Erstelle Belohnungen die automatisch bei bestimmten Zielen (Level, Streak, Quizze) freigeschaltet werden. Dein Kind sieht sie sofort.',
+          ),
+          const SizedBox(height: 12),
+          _buildFeatureCard(
+            icon: Icons.task_alt_outlined,
+            title: 'Aufgaben-Generator',
+            description:
+                'Erstelle eigene Aufgaben für dein Kind. Nach Freigabe erscheinen sie im Quiz deines Kindes.',
+          ),
+          const SizedBox(height: 32),
+          _buildReplayNavButton('Weiter →', _nextStep),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildReplayDoneStep() {
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 120,
+            height: 120,
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.2),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.check_circle_outline,
+              size: 64,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(height: 32),
+          const Text(
+            'Das war\'s! 🎉',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 28,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            'Du kennst jetzt alle wichtigen Funktionen.\nViel Spaß beim Lernen mit deinen Kindern!',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 16, color: Colors.white70),
+          ),
+          const SizedBox(height: 48),
+          SizedBox(
+            width: double.infinity,
+            height: 56,
+            child: ElevatedButton(
+              onPressed: _openDashboard,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+              ),
+              child: const Text(
+                'Zurück zu den Einstellungen',
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Color(0xFF6B21A8),
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Helper Widgets ────────────────────────────────────────────────────────
+
+  Widget _buildFeatureCard({
+    required IconData icon,
+    required String title,
+    required String description,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withOpacity(0.25)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, color: Colors.white, size: 24),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  description,
+                  style: const TextStyle(fontSize: 13, color: Colors.white70),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildReplayNavButton(String label, VoidCallback onTap) {
+    return SizedBox(
+      width: double.infinity,
+      height: 52,
+      child: ElevatedButton(
+        onPressed: onTap,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+        ),
+        child: Text(
+          label,
+          style: const TextStyle(
+            fontSize: 16,
+            color: Color(0xFF6B21A8),
+            fontWeight: FontWeight.bold,
+          ),
+        ),
       ),
     );
   }
