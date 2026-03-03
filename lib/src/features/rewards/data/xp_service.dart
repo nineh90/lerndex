@@ -286,53 +286,61 @@ class XPService {
     required String userId,
     required String childId,
   }) async {
-    try {
-      final docRef = _firestore
-          .collection('users')
-          .doc(userId)
-          .collection('children')
-          .doc(childId);
+    // Kein try/catch mehr – Fehler sollen sichtbar nach oben propagieren
+    // damit _finishQuiz() sie im Stack-Trace sieht.
+    final docRef = _firestore
+        .collection('users')
+        .doc(userId)
+        .collection('children')
+        .doc(childId);
 
-      final snapshot = await docRef.get();
-      final data = snapshot.data();
+    print('🔥 updateStreak() gestartet für childId=$childId');
 
-      if (data == null) return 0;
+    final snapshot = await docRef.get();
+    final data = snapshot.data();
 
-      final lastLearning = (data['lastLearningDate'] as Timestamp?)?.toDate();
-      final currentStreak = (data['streak'] as int?) ?? 0;
-      final now = DateTime.now();
-
-      int newStreak;
-
-      if (lastLearning == null) {
-        // Erstes Mal überhaupt gelernt
-        newStreak = 1;
-        print('🔥 Streak: Erster Lerntag → Streak = 1');
-      } else if (_isSameDay(lastLearning, now)) {
-        // Heute bereits gelernt → Streak bleibt unverändert
-        newStreak = currentStreak;
-        print('🔥 Streak: Heute bereits gelernt → bleibt bei $currentStreak');
-      } else if (_isYesterday(lastLearning, now)) {
-        // Gestern gelernt → Streak um 1 erhöhen
-        newStreak = currentStreak + 1;
-        print('🔥 Streak: Gestern gelernt → erhöht auf $newStreak');
-      } else {
-        // Mehr als 1 Tag Pause → Streak zurücksetzen
-        newStreak = 1;
-        print('🔥 Streak: Pause > 1 Tag → zurückgesetzt auf 1');
-      }
-
-      await docRef.update({
-        'streak': newStreak,
-        'lastLearningDate': FieldValue.serverTimestamp(),
-      });
-
-      print('✅ Streak gespeichert: $newStreak Tage');
-      return newStreak;
-    } catch (e) {
-      print('❌ Fehler beim Aktualisieren des Streaks: $e');
+    if (data == null) {
+      print('❌ updateStreak: Kein Dokument gefunden für childId=$childId');
       return 0;
     }
+
+    print(
+      '🔥 Firestore: streak=' +
+          data['streak'].toString() +
+          ', lastLearning=' +
+          data['lastLearningDate'].toString(),
+    );
+
+    final lastLearning = (data['lastLearningDate'] as Timestamp?)?.toDate();
+    final currentStreak = (data['streak'] as int?) ?? 0;
+    final now = DateTime.now();
+
+    int newStreak;
+
+    if (lastLearning == null) {
+      newStreak = 1;
+      print('🔥 Streak: Erster Lerntag → Streak = 1');
+    } else if (_isSameDay(lastLearning, now)) {
+      // Heute bereits gelernt: war streak noch 0 (Bug-Legacy), auf 1 korrigieren
+      newStreak = currentStreak < 1 ? 1 : currentStreak;
+      print(
+        '🔥 Streak: Heute bereits gelernt → $newStreak (war $currentStreak)',
+      );
+    } else if (_isYesterday(lastLearning, now)) {
+      newStreak = currentStreak + 1;
+      print('🔥 Streak: Gestern gelernt → erhöht auf $newStreak');
+    } else {
+      newStreak = 1;
+      print('🔥 Streak: Pause > 1 Tag → zurückgesetzt auf 1');
+    }
+
+    await docRef.update({
+      'streak': newStreak,
+      'lastLearningDate': FieldValue.serverTimestamp(),
+    });
+
+    print('✅ Streak gespeichert: $newStreak Tage');
+    return newStreak;
   }
 
   // =========================================================================

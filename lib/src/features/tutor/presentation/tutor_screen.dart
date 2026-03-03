@@ -30,6 +30,7 @@ class _TutorScreenState extends ConsumerState<TutorScreen> {
   XPService? _xpService;
   RewardService? _rewardService;
   TutorNotifier? _tutorNotifier;
+  ActiveChildNotifier? _activeChildNotifier;
   ChildModel? _child;
   String? _userId;
 
@@ -45,6 +46,7 @@ class _TutorScreenState extends ConsumerState<TutorScreen> {
       _userId = user.uid;
       _xpService = ref.read(xpServiceProvider);
       _rewardService = ref.read(rewardServiceProvider);
+      _activeChildNotifier = ref.read(activeChildProvider.notifier);
 
       final providerInstance = ref.read(tutorProvider);
       if (providerInstance != null) {
@@ -94,6 +96,7 @@ class _TutorScreenState extends ConsumerState<TutorScreen> {
     final xpService = _xpService;
     final rewardService = _rewardService;
     final notifier = _tutorNotifier;
+    final activeChildNotifier = _activeChildNotifier;
     final tracker = _timeTracker;
 
     if (tracker != null) {
@@ -121,6 +124,10 @@ class _TutorScreenState extends ConsumerState<TutorScreen> {
 
             if (updatedChild != null) {
               updatedChild = updatedChild.copyWith(streak: newStreak);
+
+              // ✅ FIX: Provider aktualisieren → Dashboard zeigt sofort neuen Streak
+              activeChildNotifier?.update(updatedChild);
+
               final unlockedRewards = await rewardService
                   .checkAndApproveRewards(userId: userId, child: updatedChild);
               if (unlockedRewards.isNotEmpty) {

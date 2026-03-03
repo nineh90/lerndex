@@ -69,16 +69,17 @@ class LearningTimeTracker {
           .collection('children')
           .doc(childId)
           .update({
-        'totalLearningSeconds': FieldValue.increment(_secondsTracked),
-        'lastLearningDate': FieldValue.serverTimestamp(),
-      });
+            'totalLearningSeconds': FieldValue.increment(_secondsTracked),
+            // lastLearningDate wird von updateStreak() gesetzt – nicht hier!
+            // Würde updateStreak() sonst als 'heute bereits gelernt' erkennen
+            // und den Streak beim ersten Mal nie auf 1 setzen.
+          });
 
       // Tägliche Statistik
       await _saveDailyStats(_secondsTracked);
 
       print('✅ Lernzeit gespeichert: ${_formatTime(_secondsTracked)}');
       _secondsTracked = 0;
-
     } catch (e) {
       print('❌ Fehler beim Speichern: $e');
       rethrow;
@@ -108,9 +109,7 @@ class LearningTimeTracker {
           .doc(userId)
           .collection('children')
           .doc(childId)
-          .update({
-        'lastActiveAt': FieldValue.serverTimestamp(),
-      });
+          .update({'lastActiveAt': FieldValue.serverTimestamp()});
       print('💓 Heartbeat geschrieben');
     } catch (e) {
       // Heartbeat-Fehler sind nicht kritisch – kein rethrow
@@ -121,7 +120,8 @@ class LearningTimeTracker {
   Future<void> _saveDailyStats(int seconds) async {
     try {
       final now = DateTime.now();
-      final dateKey = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+      final dateKey =
+          '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
 
       await _firestore
           .collection('users')
@@ -131,10 +131,9 @@ class LearningTimeTracker {
           .collection('learning_stats')
           .doc(dateKey)
           .set({
-        'date': Timestamp.fromDate(now),
-        'seconds': FieldValue.increment(seconds),
-      }, SetOptions(merge: true));
-
+            'date': Timestamp.fromDate(now),
+            'seconds': FieldValue.increment(seconds),
+          }, SetOptions(merge: true));
     } catch (e) {
       print('⚠️ Tages-Stats Fehler: $e');
     }

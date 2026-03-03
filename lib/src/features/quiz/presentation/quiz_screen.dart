@@ -277,27 +277,29 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
         final xpService = ref.read(xpServiceProvider);
         final isPerfect = _correctAnswers == _questions.length;
 
-        // 1️⃣ Zeit speichern
+        // 1️⃣ Streak aktualisieren — ZUERST, bevor lastLearningDate
+        // durch saveTime() überschrieben wird! Sonst würde der erste
+        // Lerntag nie auf Streak=1 gesetzt werden.
+        final newStreak = await xpService.updateStreak(
+          userId: user.uid,
+          childId: child.id,
+        );
+        print('✅ Streak aktualisiert: $newStreak Tage');
+
+        // 2️⃣ Zeit speichern
         if (_timeTracker != null) {
           _timeTracker!.stopTracking();
           await _timeTracker!.saveTime();
           print('✅ Lernzeit gespeichert: ${_timeTracker!.formattedTime}');
         }
 
-        // 2️⃣ Quiz-Stats aktualisieren
+        // 3️⃣ Quiz-Stats aktualisieren
         await xpService.updateQuizStats(
           userId: user.uid,
           childId: child.id,
           isPerfect: isPerfect,
         );
         print('✅ Quiz-Statistiken aktualisiert (Perfect: $isPerfect)');
-
-        // 3️⃣ Streak aktualisieren — gibt neuen Streak-Wert DIREKT zurück
-        final newStreak = await xpService.updateStreak(
-          userId: user.uid,
-          childId: child.id,
-        );
-        print('✅ Streak aktualisiert: $newStreak Tage');
 
         // 4️⃣ Sterne vergeben
         await ref
