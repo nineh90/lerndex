@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../../services/tutor_chat_cleanup_service.dart';
+import '../../../../shared/widgets/message_bubble.dart';
+import '../../../tutor/domain/chat_message.dart';
 import 'content_flag_banner.dart';
-import 'message_bubble.dart';
 
 // ============================================================================
 // SESSION DETAIL
@@ -95,13 +96,17 @@ class SessionDetailScreen extends StatelessWidget {
                     final msg = docs[i].data() as Map<String, dynamic>;
                     final isUser = msg['isUser'] as bool? ?? false;
                     final text = msg['text'] as String? ?? '';
-                    final timestamp = (msg['timestamp'] as Timestamp?)
-                        ?.toDate();
+                    final timestamp =
+                        (msg['timestamp'] as Timestamp?)?.toDate() ??
+                        DateTime.now();
 
                     return MessageBubble(
-                      isUser: isUser,
-                      text: text,
-                      timestamp: timestamp,
+                      message: ChatMessage(
+                        id: docs[i].id,
+                        text: text,
+                        isUser: isUser,
+                        timestamp: timestamp,
+                      ),
                       childName: childName,
                       topicColor: topicColor,
                     );

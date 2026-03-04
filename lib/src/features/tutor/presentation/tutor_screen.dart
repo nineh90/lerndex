@@ -10,7 +10,7 @@ import '../../rewards/data/xp_service.dart';
 import '../../rewards/data/reward_service.dart';
 import 'widgets/xp_gain_overlay.dart';
 import 'widgets/tutor_xp_banner.dart';
-import 'widgets/message_bubble.dart';
+import '../../../shared/widgets/message_bubble.dart';
 
 /// Chat-Screen mit dem KI-Tutor
 class TutorScreen extends ConsumerStatefulWidget {

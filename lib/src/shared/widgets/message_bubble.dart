@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_math_fork/flutter_math.dart';
-import '../../domain/chat_message.dart';
+import '../../features/tutor/domain/chat_message.dart';
 
 // ============================================================================
-// MATH-AWARE MESSAGE BUBBLE
-// Rendert Text mit eingebetteten LaTeX-Formeln ($...$) korrekt.
-// Brüche, Wurzeln, Potenzen etc. werden als echte Formeln dargestellt.
+// UNIFIED MESSAGE BUBBLE
+//
+// Zwei Darstellungs-Modi:
+//   - topicColor == null → Tutor-Chat-Style (Avatare, LaTeX, Loading-Animation)
+//   - topicColor != null → Parent-Review-Style (Topic-Farbe, Name-Label, Border)
 // ============================================================================
 
 class MessageBubble extends StatelessWidget {
@@ -14,16 +16,34 @@ class MessageBubble extends StatelessWidget {
   final String childName;
   final String? childSelectedAvatar;
 
+  /// Wenn gesetzt: Parent-Review-Style.
+  /// Wenn null: Tutor-Chat-Style.
+  final Color? topicColor;
+
   const MessageBubble({
     super.key,
     required this.message,
     required this.childName,
     this.childSelectedAvatar,
+    this.topicColor,
   });
+
+  bool get _isParentReviewMode => topicColor != null;
 
   @override
   Widget build(BuildContext context) {
-    // Lade-Zustand
+    if (_isParentReviewMode) {
+      return _buildParentReviewBubble(context);
+    }
+    return _buildTutorChatBubble(context);
+  }
+
+  // --------------------------------------------------------------------------
+  // TUTOR-CHAT-STYLE
+  // Avatare, deepPurple für User, grau für Tutor, LaTeX, Loading-Animation
+  // --------------------------------------------------------------------------
+
+  Widget _buildTutorChatBubble(BuildContext context) {
     if (message.isLoading) {
       return Padding(
         padding: const EdgeInsets.only(bottom: 12),
@@ -79,9 +99,8 @@ class MessageBubble extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.end,
-        mainAxisAlignment: isUser
-            ? MainAxisAlignment.end
-            : MainAxisAlignment.start,
+        mainAxisAlignment:
+            isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
         children: [
           if (!isUser) ...[_buildTutorAvatar(), const SizedBox(width: 8)],
           Flexible(
@@ -172,6 +191,82 @@ class MessageBubble extends StatelessWidget {
       ),
     );
   }
+
+  // --------------------------------------------------------------------------
+  // PARENT-REVIEW-STYLE
+  // Topic-Farbe, Name-Label, Border, kein Avatar, Timestamp
+  // --------------------------------------------------------------------------
+
+  Widget _buildParentReviewBubble(BuildContext context) {
+    final color = topicColor!;
+    final isUser = message.isUser;
+
+    return Align(
+      alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        constraints: BoxConstraints(
+          maxWidth: MediaQuery.of(context).size.width * 0.78,
+        ),
+        child: Column(
+          crossAxisAlignment:
+              isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Text(
+                isUser ? childName : 'Lerndex',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  color: isUser ? color : Colors.deepPurple,
+                ),
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: isUser ? color.withOpacity(0.1) : Colors.white,
+                borderRadius: BorderRadius.only(
+                  topLeft: const Radius.circular(16),
+                  topRight: const Radius.circular(16),
+                  bottomLeft: isUser
+                      ? const Radius.circular(16)
+                      : const Radius.circular(4),
+                  bottomRight: isUser
+                      ? const Radius.circular(4)
+                      : const Radius.circular(16),
+                ),
+                border: Border.all(
+                  color: isUser ? color.withOpacity(0.2) : Colors.grey.shade200,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.04),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: _MathAwareContent(
+                text: message.text,
+                textColor: Colors.black87,
+                fontSize: 14,
+              ),
+            ),
+            if (message.timestamp != DateTime(0))
+              Padding(
+                padding: const EdgeInsets.only(top: 3),
+                child: Text(
+                  '${message.timestamp.hour.toString().padLeft(2, '0')}:${message.timestamp.minute.toString().padLeft(2, '0')}',
+                  style: TextStyle(fontSize: 10, color: Colors.grey[400]),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 // ============================================================================
@@ -184,8 +279,13 @@ class MessageBubble extends StatelessWidget {
 class _MathAwareContent extends StatelessWidget {
   final String text;
   final Color textColor;
+  final double fontSize;
 
-  const _MathAwareContent({required this.text, required this.textColor});
+  const _MathAwareContent({
+    required this.text,
+    required this.textColor,
+    this.fontSize = 15,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -196,28 +296,25 @@ class _MathAwareContent extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: segments.map((seg) {
         if (seg.isBlockMath) {
-          // Block-Formel: zentriert, etwas größer
           return Padding(
             padding: const EdgeInsets.symmetric(vertical: 6),
-            child: Center(child: _safeMath(seg.content, fontSize: 18)),
+            child: Center(child: _safeMath(seg.content, fontSize: fontSize + 3)),
           );
         } else if (seg.isInlineMath) {
-          // Inline-Formel: in einer Zeile mit Text
           return Padding(
             padding: const EdgeInsets.symmetric(vertical: 2),
-            child: _safeMath(seg.content, fontSize: 15),
+            child: _safeMath(seg.content, fontSize: fontSize),
           );
         } else {
-          // Normaler Markdown-Text
           if (seg.content.trim().isEmpty) return const SizedBox.shrink();
           return MarkdownBody(
             data: seg.content,
             styleSheet: MarkdownStyleSheet(
-              p: TextStyle(fontSize: 15, color: textColor),
+              p: TextStyle(fontSize: fontSize, color: textColor),
               strong: const TextStyle(fontWeight: FontWeight.bold),
               em: const TextStyle(fontStyle: FontStyle.italic),
               code: TextStyle(
-                fontSize: 13,
+                fontSize: fontSize - 2,
                 fontFamily: 'monospace',
                 backgroundColor: Colors.grey.shade200,
               ),
@@ -228,16 +325,16 @@ class _MathAwareContent extends StatelessWidget {
     );
   }
 
-  /// Rendert LaTeX sicher – zeigt Fehler-Text statt Crash
-  Widget _safeMath(String latex, {double fontSize = 15}) {
+  Widget _safeMath(String latex, {double? fontSize}) {
+    final size = fontSize ?? this.fontSize;
     try {
       return Math.tex(
         latex,
-        textStyle: TextStyle(fontSize: fontSize, color: Colors.black87),
+        textStyle: TextStyle(fontSize: size, color: Colors.black87),
         onErrorFallback: (err) => Text(
           latex,
           style: TextStyle(
-            fontSize: fontSize,
+            fontSize: size,
             color: Colors.red.shade700,
             fontFamily: 'monospace',
           ),
@@ -246,28 +343,23 @@ class _MathAwareContent extends StatelessWidget {
     } catch (_) {
       return Text(
         latex,
-        style: TextStyle(fontSize: fontSize, fontFamily: 'monospace'),
+        style: TextStyle(fontSize: size, fontFamily: 'monospace'),
       );
     }
   }
 
-  /// Parst den Text und trennt Markdown von LaTeX-Formeln.
-  /// Reihenfolge: erst $$ (Block), dann $ (Inline) suchen.
   List<_TextSegment> _parseSegments(String input) {
     final segments = <_TextSegment>[];
     int pos = 0;
 
     while (pos < input.length) {
-      // Block-Formel $$...$$
       final blockStart = input.indexOf(r'$$', pos);
-      // Inline-Formel $...$  (nicht $$)
       final inlineStart = _findInlineDollar(input, pos);
 
       final nextBlock = blockStart == -1 ? input.length + 1 : blockStart;
       final nextInline = inlineStart == -1 ? input.length + 1 : inlineStart;
 
       if (nextBlock == input.length + 1 && nextInline == input.length + 1) {
-        // Kein weiteres $ mehr → Rest als normaler Text
         if (pos < input.length) {
           segments.add(_TextSegment.text(input.substring(pos)));
         }
@@ -275,13 +367,11 @@ class _MathAwareContent extends StatelessWidget {
       }
 
       if (nextBlock <= nextInline) {
-        // Block-Formel zuerst
         if (pos < nextBlock) {
           segments.add(_TextSegment.text(input.substring(pos, nextBlock)));
         }
         final endBlock = input.indexOf(r'$$', nextBlock + 2);
         if (endBlock == -1) {
-          // Kein schließendes $$ → als Text behandeln
           segments.add(_TextSegment.text(input.substring(nextBlock)));
           break;
         }
@@ -289,17 +379,16 @@ class _MathAwareContent extends StatelessWidget {
         segments.add(_TextSegment.blockMath(mathContent));
         pos = endBlock + 2;
       } else {
-        // Inline-Formel zuerst
         if (pos < nextInline) {
           segments.add(_TextSegment.text(input.substring(pos, nextInline)));
         }
         final endInline = _findClosingDollar(input, nextInline + 1);
         if (endInline == -1) {
-          // Kein schließendes $ → als Text behandeln
           segments.add(_TextSegment.text(input.substring(nextInline)));
           break;
         }
-        final mathContent = input.substring(nextInline + 1, endInline).trim();
+        final mathContent =
+            input.substring(nextInline + 1, endInline).trim();
         segments.add(_TextSegment.inlineMath(mathContent));
         pos = endInline + 1;
       }
@@ -308,13 +397,11 @@ class _MathAwareContent extends StatelessWidget {
     return segments;
   }
 
-  /// Findet das nächste einzelne $ (nicht $$) ab [start].
   int _findInlineDollar(String text, int start) {
     for (int i = start; i < text.length; i++) {
       if (text[i] == r'$') {
-        // Sicherstellen dass es kein $$ ist
         if (i + 1 < text.length && text[i + 1] == r'$') {
-          i++; // $$ überspringen
+          i++;
           continue;
         }
         return i;
@@ -323,12 +410,11 @@ class _MathAwareContent extends StatelessWidget {
     return -1;
   }
 
-  /// Findet das schließende einzelne $ ab [start].
   int _findClosingDollar(String text, int start) {
     for (int i = start; i < text.length; i++) {
       if (text[i] == r'$') {
         if (i + 1 < text.length && text[i + 1] == r'$') {
-          return -1; // Unerwartetes $$, Inline-Formel ungültig
+          return -1;
         }
         return i;
       }
