@@ -676,17 +676,41 @@ class ChildStatisticsScreen extends ConsumerWidget {
                   .doc(child.id)
                   .collection('rewards')
                   .where('status', isEqualTo: 'claimed')
-                  .orderBy('claimedAt', descending: true)
-                  .limit(5)
                   .snapshots(),
               builder: (context, snapshot) {
+                if (snapshot.hasError) {
+                  return Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Text(
+                        'Fehler beim Laden der Belohnungen',
+                        style: TextStyle(color: Colors.grey[600]),
+                      ),
+                    ),
+                  );
+                }
                 if (!snapshot.hasData) {
                   return const Center(child: CircularProgressIndicator());
                 }
 
-                final rewards = snapshot.data!.docs;
+                // Client-seitig sortieren und limitieren (kein Firestore-Index nötig)
+                final rewards = snapshot.data!.docs.toList()
+                  ..sort((a, b) {
+                    final aData = a.data() as Map<String, dynamic>;
+                    final bData = b.data() as Map<String, dynamic>;
+                    final aTime =
+                        (aData['claimedAt'] as Timestamp?)
+                            ?.millisecondsSinceEpoch ??
+                        0;
+                    final bTime =
+                        (bData['claimedAt'] as Timestamp?)
+                            ?.millisecondsSinceEpoch ??
+                        0;
+                    return bTime.compareTo(aTime);
+                  });
+                final limited = rewards.take(5).toList();
 
-                if (rewards.isEmpty) {
+                if (limited.isEmpty) {
                   return Center(
                     child: Padding(
                       padding: const EdgeInsets.all(20),
@@ -699,7 +723,7 @@ class ChildStatisticsScreen extends ConsumerWidget {
                 }
 
                 return Column(
-                  children: rewards.map((doc) {
+                  children: limited.map((doc) {
                     final data = doc.data() as Map<String, dynamic>;
                     final claimedAt = (data['claimedAt'] as Timestamp?)
                         ?.toDate();
