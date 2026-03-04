@@ -1,12 +1,15 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lerndex1/src/features/student_dashboard/presentation/widgets/dashboard_mode.dart';
+import 'package:lerndex1/src/features/student_dashboard/presentation/widgets/early_learner_dashboard_screen.dart';
+import 'package:lerndex1/src/features/student_dashboard/presentation/widgets/rewards_count_provider.dart';
+import 'package:lerndex1/src/features/student_dashboard/presentation/widgets/secondary_dashboard_screen.dart';
+import 'package:lerndex1/src/features/student_dashboard/presentation/widgets/secondary_onboarding_screen.dart';
 import '../../auth/presentation/active_child_provider.dart';
 import '../../auth/data/auth_repository.dart';
 import '../../auth/domain/child_model.dart';
 import '../../rewards/presentation/rewards_screen.dart';
-import '../../rewards/data/reward_service.dart';
-import '../../rewards/domain/reward_enums.dart';
 import '../../tutor/presentation/tutor_screen.dart';
 import '../../tutor/presentation/tutor_provider.dart';
 import '../../quiz/data/ai_question_cache_repository.dart';
@@ -16,26 +19,17 @@ import 'widgets/home_tab.dart';
 import 'widgets/tutor_history_tab.dart';
 import 'widgets/statistics_tab.dart';
 import 'widgets/avatar_settings_sheet.dart';
-
-// Provider: Anzahl der einlösbaren Belohnungen für das aktive Kind
-final _availableRewardsCountProvider = StreamProvider<int>((ref) {
-  final activeChild = ref.watch(activeChildProvider);
-  final userAsync = ref.watch(authStateChangesProvider);
-  final user = userAsync.value;
-
-  if (activeChild == null || user == null) return Stream.value(0);
-
-  return ref
-      .read(rewardServiceProvider)
-      .getRewardsStream(userId: user.uid, childId: activeChild.id)
-      .map(
-        (rewards) =>
-            rewards.where((r) => r.status == RewardStatus.approved).length,
-      );
-});
+import 'package:shared_preferences/shared_preferences.dart';
 
 // ============================================================================
-// STUDENT DASHBOARD - MIT BOTTOM APP BAR
+// Dashboard-Varianten – werden je nach Klassenstufe angezeigt.
+// Phase 2 (Klasse 1–2) und Phase 3 (Klasse 5+) sind Placeholder-Screens,
+// die schrittweise mit echtem UI befüllt werden.
+// ============================================================================
+
+// ============================================================================
+// STUDENT DASHBOARD ROUTER
+// Wählt das richtige Dashboard anhand der Klassenstufe des Kindes.
 // ============================================================================
 
 class StudentDashboardScreen extends ConsumerStatefulWidget {
@@ -48,26 +42,23 @@ class StudentDashboardScreen extends ConsumerStatefulWidget {
 
 class _StudentDashboardScreenState
     extends ConsumerState<StudentDashboardScreen> {
-  int _currentTab = 0; // 0=Home, 1=Belohnungen, 2=Verlauf, 3=Statistik
+  bool _showOnboarding = false;
+  bool _onboardingChecked = false;
+  // Letzter bekannter Mode – erkennt Klassenwechsel
+  DashboardMode? _lastMode;
 
   @override
   void initState() {
     super.initState();
-
-    // Sicherheitsnetz: Falls Kind schon existiert aber Cache leer ist
-    // (z.B. existierende Kinder vor dem Pre-Fetch-Update)
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _ensureCacheReady();
+      _checkOnboarding();
     });
   }
 
-  /// Stellt sicher dass Fragen im Cache sind.
-  /// Bei neuen Kindern (nach dem Update) ist der Cache schon voll.
-  /// Bei alten Kindern wird hier nachgeneriert.
   void _ensureCacheReady() {
     final child = ref.read(activeChildProvider);
     final user = ref.read(authStateChangesProvider).value;
-
     if (child != null && user != null) {
       QuizPrefetchService.prefetchAllSubjects(
         userId: user.uid,
@@ -77,16 +68,104 @@ class _StudentDashboardScreenState
     }
   }
 
+  Future<void> _checkOnboarding() async {
+    final child = ref.read(activeChildProvider);
+    if (child == null) return;
+
+    final mode = getDashboardMode(child.grade);
+    if (mode == DashboardMode.secondaryLearner) {
+      final show = await shouldShowSecondaryOnboarding(child.id);
+      if (mounted) {
+        setState(() {
+          _showOnboarding = show;
+          _onboardingChecked = true;
+        });
+      }
+    } else {
+      if (mounted) setState(() => _onboardingChecked = true);
+    }
+  }
+
+  void _handleGradeTransition(ChildModel child, DashboardMode newMode) {
+    // Klassenübergang von Grundschule → weiterführend
+    if (_lastMode != null &&
+        _lastMode != DashboardMode.secondaryLearner &&
+        newMode == DashboardMode.secondaryLearner) {
+      _lastMode = newMode;
+      // Onboarding-Flag zurücksetzen damit neues Dashboard gezeigt wird
+      SharedPreferences.getInstance().then((prefs) {
+        prefs.remove('secondary_onboarding_seen_${child.id}');
+      });
+      setState(() => _showOnboarding = true);
+      return;
+    }
+    _lastMode = newMode;
+  }
+
   @override
   Widget build(BuildContext context) {
     final activeChild = ref.watch(activeChildProvider);
     if (activeChild == null) return const SizedBox.shrink();
+    if (!_onboardingChecked) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
 
+    final mode = getDashboardMode(activeChild.grade);
+
+    // Klassenübergang prüfen
+    if (_lastMode != null && _lastMode != mode) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _handleGradeTransition(activeChild, mode);
+      });
+    }
+    _lastMode = mode;
+
+    // Onboarding für Klasse 5+ (einmalig)
+    if (_showOnboarding && mode == DashboardMode.secondaryLearner) {
+      return SecondaryOnboardingScreen(
+        childName: activeChild.name,
+        childId: activeChild.id,
+        onDone: () => setState(() => _showOnboarding = false),
+      );
+    }
+
+    switch (mode) {
+      case DashboardMode.earlyLearner:
+        return EarlyLearnerDashboardScreen(child: activeChild);
+      case DashboardMode.primaryLearner:
+        return _PrimaryDashboardScreen(child: activeChild);
+      case DashboardMode.secondaryLearner:
+        return SecondaryDashboardScreen(child: activeChild);
+    }
+  }
+}
+
+// ============================================================================
+// PRIMARY DASHBOARD (Klasse 3–4) – bisher bekanntes Design
+// Wurde aus dem alten StudentDashboardScreen hierher verschoben.
+// ============================================================================
+
+class _PrimaryDashboardScreen extends ConsumerStatefulWidget {
+  final ChildModel child;
+
+  const _PrimaryDashboardScreen({required this.child});
+
+  @override
+  ConsumerState<_PrimaryDashboardScreen> createState() =>
+      _PrimaryDashboardScreenState();
+}
+
+class _PrimaryDashboardScreenState
+    extends ConsumerState<_PrimaryDashboardScreen> {
+  int _currentTab = 0; // 0=Home, 1=Belohnungen, 2=Verlauf, 3=Statistik
+
+  @override
+  Widget build(BuildContext context) {
+    final child = widget.child;
     final availableRewardsCount =
-        ref.watch(_availableRewardsCountProvider).valueOrNull ?? 0;
+        ref.watch(availableRewardsCountProvider).valueOrNull ?? 0;
 
     return PopScope(
-      // System-Back abfangen wenn wir nicht auf Tab 0 sind
       canPop: _currentTab == 0,
       onPopInvokedWithResult: (didPop, _) {
         if (!didPop && _currentTab != 0) {
@@ -96,7 +175,7 @@ class _StudentDashboardScreenState
       child: Scaffold(
         backgroundColor: const Color(0xFFF5F3FF),
         appBar: AppBar(
-          title: Text(_appBarTitle(activeChild.name)),
+          title: Text(_appBarTitle(child.name)),
           backgroundColor: Colors.deepPurple,
           foregroundColor: Colors.white,
           elevation: 0,
@@ -115,18 +194,16 @@ class _StudentDashboardScreenState
             Padding(
               padding: const EdgeInsets.only(right: 12),
               child: GestureDetector(
-                onTap: () => _showAvatarSettings(context, activeChild),
+                onTap: () => _showAvatarSettings(context, child),
                 child: CircleAvatar(
                   radius: 18,
                   backgroundColor: Colors.white24,
-                  backgroundImage: activeChild.selectedAvatar != null
-                      ? AssetImage(
-                          'assets/images/${activeChild.selectedAvatar}.png',
-                        )
+                  backgroundImage: child.selectedAvatar != null
+                      ? AssetImage('assets/images/${child.selectedAvatar}.png')
                       : null,
-                  child: activeChild.selectedAvatar == null
+                  child: child.selectedAvatar == null
                       ? Text(
-                          activeChild.name[0].toUpperCase(),
+                          child.name[0].toUpperCase(),
                           style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
@@ -139,13 +216,13 @@ class _StudentDashboardScreenState
             ),
           ],
         ),
-        body: _buildBody(activeChild),
+        body: _buildBody(child),
         floatingActionButton: SizedBox(
           width: 68,
           height: 68,
           child: FloatingActionButton(
-            heroTag: 'tutor_fab',
-            onPressed: () => _openTutor(context, activeChild),
+            heroTag: 'tutor_fab_primary',
+            onPressed: () => _openTutor(context, child),
             backgroundColor: Colors.deepPurple.shade200,
             elevation: 6,
             shape: const CircleBorder(),
