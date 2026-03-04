@@ -2,10 +2,10 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:lerndex1/src/features/auth/data/auth_repository.dart';
-import 'package:lerndex1/src/features/auth/presentation/active_child_provider.dart';
-import 'package:lerndex1/src/features/learning_time/learning_time_tracker.dart';
-import 'package:lerndex1/src/features/rewards/data/xp_service.dart';
+import 'package:lerndex/src/features/auth/data/auth_repository.dart';
+import 'package:lerndex/src/features/auth/presentation/active_child_provider.dart';
+import 'package:lerndex/src/features/learning_time/learning_time_tracker.dart';
+import 'package:lerndex/src/features/rewards/data/xp_service.dart';
 
 // ============================================================================
 // EARLY LEARNER QUIZ SCREEN – Klasse 1–2

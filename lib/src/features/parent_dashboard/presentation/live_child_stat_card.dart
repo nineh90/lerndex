@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:lerndex1/src/features/generated_tasks/presentation/task_generator_screen.dart';
-import 'package:lerndex1/src/features/student_dashboard/presentation/widgets/dashboard_mode_badge.dart';
+import 'package:lerndex/src/features/generated_tasks/presentation/task_generator_screen.dart';
+import 'package:lerndex/src/features/student_dashboard/presentation/widgets/dashboard_mode_badge.dart';
 import '../../auth/domain/child_model.dart';
 import '../../auth/data/auth_repository.dart';
 import '../../rewards/presentation/manage_rewards_screen.dart';

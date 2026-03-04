@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:lerndex1/src/ai/vertex_ai_service.dart';
+import 'package:lerndex/src/ai/vertex_ai_service.dart';
 import '../domain/chat_message.dart';
 import '../data/tutor_session_model.dart';
 import '../../auth/presentation/active_child_provider.dart';

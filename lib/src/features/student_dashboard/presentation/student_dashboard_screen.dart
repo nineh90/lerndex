@@ -1,11 +1,11 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:lerndex1/src/features/student_dashboard/presentation/widgets/dashboard_mode.dart';
-import 'package:lerndex1/src/features/student_dashboard/presentation/widgets/early_learner_dashboard_screen.dart';
-import 'package:lerndex1/src/features/student_dashboard/presentation/widgets/rewards_count_provider.dart';
-import 'package:lerndex1/src/features/student_dashboard/presentation/widgets/secondary_dashboard_screen.dart';
-import 'package:lerndex1/src/features/student_dashboard/presentation/widgets/secondary_onboarding_screen.dart';
+import 'package:lerndex/src/features/student_dashboard/presentation/widgets/dashboard_mode.dart';
+import 'package:lerndex/src/features/student_dashboard/presentation/widgets/early_learner_dashboard_screen.dart';
+import 'package:lerndex/src/features/student_dashboard/presentation/widgets/rewards_count_provider.dart';
+import 'package:lerndex/src/features/student_dashboard/presentation/widgets/secondary_dashboard_screen.dart';
+import 'package:lerndex/src/features/student_dashboard/presentation/widgets/secondary_onboarding_screen.dart';
 import '../../auth/presentation/active_child_provider.dart';
 import '../../auth/data/auth_repository.dart';
 import '../../auth/domain/child_model.dart';

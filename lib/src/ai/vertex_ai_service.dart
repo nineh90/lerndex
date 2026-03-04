@@ -362,6 +362,7 @@ Du bist Lerndex, der persönliche Lernbegleiter für ${child.name}.
 - Kurze, klare Antworten (max. 3-4 Sätze)
 - Gelegentlich passende Emojis
 - Lobe Fortschritte, ermutige zum Weiterlernen
+- Mathematische Formeln IMMER in LaTeX: \$\\frac{1}{2}\$, \$\\sqrt{4}\$, \$x^2\$
 
 ${subjectAlreadyDetermined ? '' : '''
 PFLICHT NUR BEI DIESER ERSTEN ANTWORT:
@@ -981,7 +982,14 @@ Antworte NUR mit einem JSON-Array, kein Text oder Markdown davor/danach:
   }
 
   static String _stripSubjectTag(String response) {
-    return response.replaceAll(RegExp(r'\s*\[FACH:[^\]]+\]'), '').trim();
+    // Entfernt z.B. "- Erkanntes Schulfach: [FACH:Mathematik]" komplett
+    return response
+        .replaceAll(
+          RegExp(r'[-–]?\s*Erkanntes Schulfach:\s*\[FACH:[^\]]+\]'),
+          '',
+        )
+        .replaceAll(RegExp(r'\s*\[FACH:[^\]]+\]'), '')
+        .trim();
   }
 }
 

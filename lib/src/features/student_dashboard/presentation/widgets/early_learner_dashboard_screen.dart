@@ -3,9 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:lerndex1/src/features/auth/data/auth_repository.dart';
-import 'package:lerndex1/src/features/auth/domain/child_model.dart';
-import 'package:lerndex1/src/features/rewards/presentation/rewards_screen.dart';
+import 'package:lerndex/src/features/auth/data/auth_repository.dart';
+import 'package:lerndex/src/features/auth/domain/child_model.dart';
+import 'package:lerndex/src/features/rewards/presentation/rewards_screen.dart';
 import 'rewards_count_provider.dart';
 import 'early_learner_quiz_screen.dart';
 

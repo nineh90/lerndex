@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:lerndex1/src/features/student_dashboard/presentation/widgets/dashboard_mode.dart';
+import 'package:lerndex/src/features/student_dashboard/presentation/widgets/dashboard_mode.dart';
 
 // ============================================================================
 // DASHBOARD MODE BADGE

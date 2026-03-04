@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:lerndex1/src/features/generated_tasks/data/generated_task_repository.dart';
+import 'package:lerndex/src/features/generated_tasks/data/generated_task_repository.dart';
 import '../domain/question_model.dart';
 import '../../auth/presentation/active_child_provider.dart';
 import '../../auth/data/profile_repository.dart';

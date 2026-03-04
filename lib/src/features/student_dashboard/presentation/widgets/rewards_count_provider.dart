@@ -1,8 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:lerndex1/src/features/auth/presentation/active_child_provider.dart';
-import 'package:lerndex1/src/features/auth/data/auth_repository.dart';
-import 'package:lerndex1/src/features/rewards/data/reward_service.dart';
-import 'package:lerndex1/src/features/rewards/domain/reward_enums.dart';
+import 'package:lerndex/src/features/auth/presentation/active_child_provider.dart';
+import 'package:lerndex/src/features/auth/data/auth_repository.dart';
+import 'package:lerndex/src/features/rewards/data/reward_service.dart';
+import 'package:lerndex/src/features/rewards/domain/reward_enums.dart';
 
 // ============================================================================
 // REWARDS COUNT PROVIDER
