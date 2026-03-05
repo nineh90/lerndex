@@ -466,10 +466,10 @@ class _SecondaryHomeTab extends ConsumerWidget {
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                mainAxisSpacing: 12,
-                crossAxisSpacing: 12,
-                childAspectRatio: 1.5,
+                crossAxisCount: 3,
+                mainAxisSpacing: 10,
+                crossAxisSpacing: 10,
+                childAspectRatio: 1.05,
               ),
               itemCount: subjects.length,
               itemBuilder: (context, i) => _ModernSubjectCard(
@@ -784,7 +784,9 @@ class _QuickStatCard extends StatelessWidget {
   }
 }
 
-// ── Moderne Fach-Karte ────────────────────────────────────────────────────────
+// ── Moderne Fach-Karte (Klasse 5+) ───────────────────────────────────────────
+// Kompakte 3-Spalten-Kachel mit Kreis-Icon-Akzent (inspiriert vom
+// Grundschul-Design), aber clean & reifer – kein Kinder-Feeling.
 
 class _ModernSubjectCard extends StatefulWidget {
   final SubjectConfig config;
@@ -815,7 +817,7 @@ class _ModernSubjectCardState extends State<_ModernSubjectCard>
     );
     _scale = Tween(
       begin: 1.0,
-      end: 0.95,
+      end: 0.93,
     ).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
   }
 
@@ -827,6 +829,9 @@ class _ModernSubjectCardState extends State<_ModernSubjectCard>
 
   @override
   Widget build(BuildContext context) {
+    final primaryColor = widget.config.gradientColors.first;
+    final accentColor = widget.config.gradientColors.last;
+
     return ScaleTransition(
       scale: _scale,
       child: GestureDetector(
@@ -839,58 +844,126 @@ class _ModernSubjectCardState extends State<_ModernSubjectCard>
         onTapCancel: () => _ctrl.reverse(),
         child: Container(
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: widget.config.gradientColors,
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
+            color: widget.theme.surface,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: primaryColor.withOpacity(0.30),
+              width: 1.5,
             ),
-            borderRadius: BorderRadius.circular(18),
             boxShadow: [
               BoxShadow(
-                color: widget.config.gradientColors.last.withOpacity(0.35),
-                blurRadius: 12,
-                offset: const Offset(0, 5),
+                color: accentColor.withOpacity(0.20),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
               ),
             ],
           ),
-          child: Padding(
-            padding: const EdgeInsets.all(14),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
+          child: Stack(
+            clipBehavior: Clip.hardEdge,
+            children: [
+              // Dekorativer Kreis oben rechts – sichtbar, farbig
+              Positioned(
+                right: -18,
+                top: -18,
+                child: Container(
+                  width: 64,
+                  height: 64,
+                  decoration: BoxDecoration(
+                    color: primaryColor.withOpacity(0.18),
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ),
+              // Kleiner Akzent-Kreis unten links
+              Positioned(
+                left: -10,
+                bottom: -10,
+                child: Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: accentColor.withOpacity(0.15),
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ),
+
+              // Inhalt
+              Padding(
+                padding: const EdgeInsets.fromLTRB(8, 8, 8, 8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      widget.config.emoji,
-                      style: const TextStyle(fontSize: 26),
-                    ),
+                    // Icon-Kreis – nimmt Großteil der Kachel ein
                     Container(
-                      padding: const EdgeInsets.all(5),
+                      width: 44,
+                      height: 44,
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
+                        gradient: LinearGradient(
+                          colors: widget.config.gradientColors,
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
                         shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: accentColor.withOpacity(0.45),
+                            blurRadius: 8,
+                            offset: const Offset(0, 3),
+                          ),
+                        ],
                       ),
-                      child: const Icon(
-                        Icons.arrow_forward_rounded,
-                        color: Colors.white,
-                        size: 13,
+                      child: Center(
+                        child: Text(
+                          widget.config.emoji,
+                          style: const TextStyle(fontSize: 22),
+                        ),
                       ),
+                    ),
+
+                    // Fachname + Pfeil-Kreis
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Flexible(
+                          child: Text(
+                            widget.config.title,
+                            style: TextStyle(
+                              color: widget.theme.onSurface,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.1,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        Container(
+                          width: 20,
+                          height: 20,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: widget.config.gradientColors,
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.arrow_forward_rounded,
+                            color: Colors.white,
+                            size: 11,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
-                Text(
-                  widget.config.title,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.2,
-                  ),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
