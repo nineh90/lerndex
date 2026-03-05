@@ -21,20 +21,25 @@ class RewardService {
     required String reward,
     required RewardTrigger trigger,
     int? requiredLevel,
+    int? bonusXP,
+    String? avatarUnlockId,
+    String? badgeId,
   }) async {
     try {
       final rewardData = RewardModel(
-        id: '', // Wird von Firestore gesetzt
+        id: '',
         childId: childId,
         title: title,
         description: description,
         type: RewardType.system,
         trigger: trigger,
         requiredLevel: requiredLevel,
-        status: RewardStatus.approved, // System-Belohnungen sofort approved!
+        bonusXP: bonusXP,
+        avatarUnlockId: avatarUnlockId,
+        status: RewardStatus.approved,
         reward: reward,
         createdAt: DateTime.now(),
-        approvedAt: DateTime.now(), // Sofort approved
+        approvedAt: DateTime.now(),
         createdBy: 'system',
       );
 
@@ -47,7 +52,6 @@ class RewardService {
           .add(rewardData.toFirestore());
 
       print('✅ System-Belohnung erstellt: $title');
-
       return rewardData.copyWith(id: docRef.id);
     } catch (e) {
       print('❌ Fehler beim Erstellen der System-Belohnung: $e');
@@ -55,7 +59,7 @@ class RewardService {
     }
   }
 
-  /// Prüft alle Belohnungen und aktiviert getriggerte
+  /// Prüft alle pending Belohnungen und aktiviert getriggerte
   Future<List<RewardModel>> checkAndApproveRewards({
     required String userId,
     required ChildModel child,
@@ -64,7 +68,6 @@ class RewardService {
     try {
       print('🔍 Prüfe Belohnungen für ${child.name}...');
 
-      // Hole alle pending Belohnungen
       final snapshot = await _firestore
           .collection('users')
           .doc(userId)
@@ -79,7 +82,6 @@ class RewardService {
       for (var doc in snapshot.docs) {
         final reward = RewardModel.fromFirestore(doc.data(), doc.id);
 
-        // Prüfe ob Trigger erfüllt ist
         final isTriggered = reward.isTriggeredBy(
           currentLevel: child.level,
           currentXP: child.xp,
@@ -90,7 +92,6 @@ class RewardService {
         );
 
         if (isTriggered) {
-          // Status auf approved setzen
           await doc.reference.update({
             'status': 'approved',
             'approvedAt': FieldValue.serverTimestamp(),
@@ -98,7 +99,7 @@ class RewardService {
 
           print('✅ Belohnung freigeschaltet: ${reward.title}');
 
-          // 🎁 Bonus-XP automatisch vergeben (kein Eltern-OK nötig!)
+          // ⚡ Bonus-XP automatisch vergeben
           if (reward.bonusXP != null && reward.bonusXP! > 0) {
             try {
               final xpService = XPService(_firestore);
@@ -107,9 +108,7 @@ class RewardService {
                 childId: child.id,
                 xpToAdd: reward.bonusXP!,
               );
-              print(
-                '⚡ Bonus-XP vergeben: +${reward.bonusXP} XP für Streak-Belohnung',
-              );
+              print('⚡ +${reward.bonusXP} Bonus-XP vergeben');
             } catch (e) {
               print('❌ Fehler beim Vergeben von Bonus-XP: $e');
             }
@@ -128,9 +127,7 @@ class RewardService {
                       reward.avatarUnlockId!,
                     ]),
                   });
-              print(
-                '🎭 Avatar automatisch freigeschaltet: ${reward.avatarUnlockId}',
-              );
+              print('🎭 Avatar freigeschaltet: ${reward.avatarUnlockId}');
             } catch (e) {
               print('❌ Fehler beim Freischalten des Avatars: $e');
             }
@@ -152,14 +149,16 @@ class RewardService {
     }
   }
 
-  /// Erstellt System-Belohnungen für Level-Ups
+  /// Erstellt eine dynamische Level-Up Systembelohnung (für Level die nicht
+  /// im SystemRewardsInitializer vordefiniert sind, z.B. Level 4, 6, 8...).
+  /// Für vordefinierte Level-Achievements (2, 3, 5, 7, 10, 15, 20) greift
+  /// der SystemRewardsInitializer – diese Methode greift nur als Fallback.
   Future<RewardModel?> createLevelUpReward({
     required String userId,
     required String childId,
     required int level,
   }) async {
     try {
-      // Prüfe ob Level-Up Belohnung schon existiert
       final existing = await _firestore
           .collection('users')
           .doc(userId)
@@ -174,17 +173,21 @@ class RewardService {
 
       if (existing.docs.isNotEmpty) {
         print('ℹ️ Level-Up Belohnung existiert bereits');
-        return null; // Bereits vorhanden
+        return null;
       }
+
+      final xpBonus = _getLevelUpBonusXP(level);
 
       return await createSystemReward(
         userId: userId,
         childId: childId,
         title: '🎉 Level $level erreicht!',
-        description: 'Du hast Level $level geschafft!',
-        reward: _getLevelUpReward(level),
+        description: 'Du hast Level $level geschafft – weiter so!',
+        reward: '+$xpBonus Bonus-XP',
         trigger: RewardTrigger.level,
         requiredLevel: level,
+        bonusXP: xpBonus,
+        badgeId: 'badge-level-$level',
       );
     } catch (e) {
       print('❌ Fehler beim Erstellen der Level-Up Belohnung: $e');
@@ -192,7 +195,7 @@ class RewardService {
     }
   }
 
-  /// Erstellt Perfect-Quiz Belohnung
+  /// Erstellt eine Perfect-Quiz Systembelohnung (rein digital)
   Future<RewardModel?> createPerfectQuizReward({
     required String userId,
     required String childId,
@@ -201,10 +204,12 @@ class RewardService {
       return await createSystemReward(
         userId: userId,
         childId: childId,
-        title: '⭐ Perfekt!',
-        description: '10/10 Punkte im Quiz!',
-        reward: '1 Bonus-Stern + 25 Extra-XP',
+        title: '⭐ Perfektes Quiz!',
+        description: 'Alle Fragen auf Anhieb richtig beantwortet!',
+        reward: '+40 Bonus-XP & Badge „Perfektionist"',
         trigger: RewardTrigger.perfectQuiz,
+        bonusXP: 40,
+        badgeId: 'badge-perfect-quiz',
       );
     } catch (e) {
       print('❌ Fehler beim Erstellen der Perfect-Quiz Belohnung: $e');
@@ -212,7 +217,7 @@ class RewardService {
     }
   }
 
-  /// Löst eine Belohnung ein
+  /// Löst eine Eltern-Belohnung ein (setzt parentSeen = false → Eltern werden informiert)
   Future<void> claimReward({
     required String userId,
     required String childId,
@@ -229,7 +234,7 @@ class RewardService {
           .update({
             'status': 'claimed',
             'claimedAt': FieldValue.serverTimestamp(),
-            'parentSeen': false, // Eltern müssen die Einlösung noch bestätigen
+            'parentSeen': false,
           });
 
       print('✅ Belohnung eingelöst!');
@@ -245,7 +250,6 @@ class RewardService {
     required String childId,
   }) async {
     try {
-      // Alle claimed holen, client-seitig filtern (parentSeen fehlt bei älteren Docs)
       final snapshot = await _firestore
           .collection('users')
           .doc(userId)
@@ -255,9 +259,9 @@ class RewardService {
           .where('status', isEqualTo: 'claimed')
           .get();
 
-      final unseen = snapshot.docs.where((doc) {
-        return doc.data()['parentSeen'] != true;
-      }).toList();
+      final unseen = snapshot.docs
+          .where((doc) => doc.data()['parentSeen'] != true)
+          .toList();
 
       if (unseen.isEmpty) return;
 
@@ -272,7 +276,7 @@ class RewardService {
     }
   }
 
-  /// Holt alle Belohnungen eines Kindes
+  /// Stream aller Belohnungen eines Kindes
   Stream<List<RewardModel>> getRewardsStream({
     required String userId,
     required String childId,
@@ -297,7 +301,7 @@ class RewardService {
     });
   }
 
-  /// Validiert ob Eltern-Belohnung erstellt werden kann
+  /// Validiert ob eine Eltern-Belohnung erstellt werden kann
   ValidationResult validateParentReward({
     required ChildModel child,
     required RewardTrigger trigger,
@@ -347,13 +351,14 @@ class RewardService {
     }
   }
 
-  /// Gibt Belohnung basierend auf Level zurück
-  String _getLevelUpReward(int level) {
-    if (level <= 3) return '30 Min Extra-Spielzeit';
-    if (level <= 5) return '1 Stunde Extra-Spielzeit';
-    if (level <= 7) return 'Wunsch-Essen';
-    if (level <= 10) return 'Kleines Geschenk';
-    return 'Besonderes Erlebnis';
+  /// Bonus-XP für dynamische Level-Up Belohnungen (Fallback für nicht
+  /// vordefinierte Level)
+  int _getLevelUpBonusXP(int level) {
+    if (level <= 3) return 25;
+    if (level <= 5) return 50;
+    if (level <= 10) return 100;
+    if (level <= 15) return 200;
+    return 300;
   }
 }
 

@@ -11,8 +11,9 @@ import 'widgets/reward_manage_card.dart';
 import 'widgets/create_reward_dialog.dart';
 import 'widgets/edit_reward_dialog.dart';
 
-/// VOLLSTÄNDIGER MANAGE REWARDS SCREEN FÜR ELTERN
-/// Ermöglicht das Erstellen, Bearbeiten und Verwalten von Belohnungen
+/// MANAGE REWARDS SCREEN FÜR ELTERN
+/// Zeigt und verwaltet ausschließlich eltern-erstellte Belohnungen (RewardType.parent).
+/// System-Belohnungen (Achievements, XP, Avatare) werden im Schüler-Dashboard angezeigt.
 
 class ManageRewardsScreen extends ConsumerStatefulWidget {
   final ChildModel child;
@@ -79,22 +80,31 @@ class _ManageRewardsScreenState extends ConsumerState<ManageRewardsScreen>
             return Center(child: Text('Fehler: ${snapshot.error}'));
           }
 
-          final allRewards = snapshot.data ?? [];
-          final activeRewards = allRewards
+          // Nur eltern-erstellte Belohnungen – System-Achievements gehören ins Schüler-Dashboard
+          final parentRewards = (snapshot.data ?? [])
+              .where((r) => r.type == RewardType.parent)
+              .toList();
+
+          final activeRewards = parentRewards
               .where(
                 (r) =>
                     r.status == RewardStatus.pending ||
                     r.status == RewardStatus.approved,
               )
               .toList();
-          final claimedRewards = allRewards
+
+          final claimedRewards = parentRewards
               .where((r) => r.status == RewardStatus.claimed)
               .toList();
 
           return TabBarView(
             controller: _tabController,
             children: [
-              _buildRewardsList(allRewards, user.uid, 'Keine Belohnungen'),
+              _buildRewardsList(
+                parentRewards,
+                user.uid,
+                'Noch keine Belohnungen erstellt',
+              ),
               _buildRewardsList(
                 activeRewards,
                 user.uid,
@@ -110,7 +120,10 @@ class _ManageRewardsScreenState extends ConsumerState<ManageRewardsScreen>
         },
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showCreateRewardDialog(context, user.uid),
+        onPressed: () => _showCreateRewardDialog(
+          context,
+          ref.watch(authStateChangesProvider).value!.uid,
+        ),
         backgroundColor: Colors.amber,
         icon: const Icon(Icons.add),
         label: const Text('Neue Belohnung'),
@@ -133,6 +146,12 @@ class _ManageRewardsScreenState extends ConsumerState<ManageRewardsScreen>
             Text(
               emptyMessage,
               style: TextStyle(fontSize: 18, color: Colors.grey[600]),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Tippe auf „Neue Belohnung" um eine hinzuzufügen.',
+              style: TextStyle(fontSize: 13, color: Colors.grey[400]),
+              textAlign: TextAlign.center,
             ),
           ],
         ),
@@ -185,7 +204,6 @@ class _ManageRewardsScreenState extends ConsumerState<ManageRewardsScreen>
     String userId,
     RewardModel reward,
   ) async {
-    final isSystem = reward.type == RewardType.system;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -197,40 +215,7 @@ class _ManageRewardsScreenState extends ConsumerState<ManageRewardsScreen>
             const Text('Belohnung löschen?'),
           ],
         ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('"${reward.title}" wird dauerhaft gelöscht.'),
-            if (isSystem) ...[
-              const SizedBox(height: 8),
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: Colors.orange.shade50,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.orange.shade200),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.info_outline,
-                      size: 16,
-                      color: Colors.orange.shade700,
-                    ),
-                    const SizedBox(width: 8),
-                    const Expanded(
-                      child: Text(
-                        'Dies ist eine System-Belohnung. Nach dem Löschen wird sie nicht automatisch wiederhergestellt.',
-                        style: TextStyle(fontSize: 12),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ],
-        ),
+        content: Text('"${reward.title}" wird dauerhaft gelöscht.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),

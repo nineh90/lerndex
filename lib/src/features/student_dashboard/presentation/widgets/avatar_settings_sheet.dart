@@ -28,7 +28,6 @@ class _AvatarSettingsSheetState extends ConsumerState<AvatarSettingsSheet> {
     final user = ref.read(authStateChangesProvider).value;
     if (user == null) return;
 
-    // Wenn derselbe Avatar nochmal getippt wird → abwählen (null)
     final currentAvatar = ref.read(activeChildProvider)?.selectedAvatar;
     final newValue = currentAvatar == avatar.id ? null : avatar.id;
 
@@ -53,9 +52,31 @@ class _AvatarSettingsSheetState extends ConsumerState<AvatarSettingsSheet> {
     }
   }
 
+  /// Gibt den Lock-Hinweis für gesperrte Reward-Avatare zurück –
+  /// für Achievement-Avatare spezifisch, für andere generisch.
+  String _lockedLabel(AvatarConfig avatar) {
+    switch (avatar.id) {
+      case 'avatar-champion':
+        return '🏆 Level 15';
+      case 'avatar-legend':
+        return '💎 Level 20';
+      case 'avatar-xp-5k':
+        return '⚡ 5.000 XP';
+      case 'avatar-quiz-master':
+        return '🎯 100 Quizze';
+      case 'avatar-streak-uncommon':
+        return '🔥 14 Tage';
+      case 'avatar-streak-epic':
+        return '🔥 28 Tage';
+      case 'avatar-streak-legendary':
+        return '🔥 42 Tage';
+      default:
+        return '🎁 Belohnung';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    // Aktuellen Avatar-Stand live aus dem Provider lesen → Checkmark springt sofort
     final currentAvatar = ref.watch(activeChildProvider)?.selectedAvatar;
     final child = widget.child;
     final screenHeight = MediaQuery.of(context).size.height;
@@ -158,7 +179,7 @@ class _AvatarSettingsSheetState extends ConsumerState<AvatarSettingsSheet> {
                         children: [
                           Column(
                             children: [
-                              // ── Obere Badge-Zeile (Unlock-Bedingung oder Rarity) ──
+                              // ── Obere Badge-Zeile ──────────────────────
                               Container(
                                 width: double.infinity,
                                 padding: const EdgeInsets.symmetric(
@@ -178,7 +199,7 @@ class _AvatarSettingsSheetState extends ConsumerState<AvatarSettingsSheet> {
                                   isUnlocked
                                       ? avatar.rarityLabel
                                       : avatar.isRewardUnlock
-                                      ? '🎁 Belohnung'
+                                      ? _lockedLabel(avatar)
                                       : '🔒 Lvl ${avatar.requiredLevel}',
                                   style: TextStyle(
                                     fontSize: 9,
@@ -193,7 +214,7 @@ class _AvatarSettingsSheetState extends ConsumerState<AvatarSettingsSheet> {
                                 ),
                               ),
 
-                              // ── Avatar-Bild (zentriert, füllt Rest) ──
+                              // ── Avatar-Bild ────────────────────────────
                               Expanded(
                                 child: Padding(
                                   padding: const EdgeInsets.fromLTRB(

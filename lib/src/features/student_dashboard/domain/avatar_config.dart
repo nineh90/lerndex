@@ -23,6 +23,7 @@ class AvatarConfig {
 }
 
 const List<AvatarConfig> kAvatars = [
+  // ── STANDARD-AVATARE (Level-basiert) ──────────────────────────────────────
   AvatarConfig(
     id: 'avatar-common',
     label: 'Common',
@@ -89,7 +90,8 @@ const List<AvatarConfig> kAvatars = [
     isRewardUnlock: true,
   ),
 
-  // ── STREAK-EXKLUSIVE AVATARE (nur durch Streak-Meilensteine freischaltbar) ──
+  // ── STREAK-EXKLUSIVE AVATARE ───────────────────────────────────────────────
+  // Freischaltbar nur durch Streak-Meilensteine (14 / 28 / 42 Tage)
   AvatarConfig(
     id: 'avatar-streak-uncommon',
     label: 'Streak 14',
@@ -112,6 +114,41 @@ const List<AvatarConfig> kAvatars = [
     requiredLevel: 0,
     color: Color(0xFFFF6D00),
     rarityLabel: '👑 Streak-Legend',
+    isRewardUnlock: true,
+  ),
+
+  // ── ACHIEVEMENT-AVATARE ────────────────────────────────────────────────────
+  // Freischaltbar nur durch besondere In-App-Leistungen
+  AvatarConfig(
+    id: 'avatar-champion',
+    label: 'Champion',
+    requiredLevel: 0,
+    color: Color(0xFFFFD600), // Leuchtendes Gold
+    rarityLabel: '🏆 Champion',
+    isRewardUnlock: true,
+  ),
+  AvatarConfig(
+    id: 'avatar-legend',
+    label: 'Legende',
+    requiredLevel: 0,
+    color: Color(0xFFAA00FF), // Tiefes Violett
+    rarityLabel: '💎 Legende',
+    isRewardUnlock: true,
+  ),
+  AvatarConfig(
+    id: 'avatar-xp-5k',
+    label: 'XP-Titan',
+    requiredLevel: 0,
+    color: Color(0xFF00E5FF), // Cyan-Electric
+    rarityLabel: '⚡ XP-Titan',
+    isRewardUnlock: true,
+  ),
+  AvatarConfig(
+    id: 'avatar-quiz-master',
+    label: 'Quiz-Meister',
+    requiredLevel: 0,
+    color: Color(0xFF76FF03), // Neon-Grün
+    rarityLabel: '🎯 Quiz-Meister',
     isRewardUnlock: true,
   ),
 ];

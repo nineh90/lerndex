@@ -233,7 +233,7 @@ class _SecondaryDashboardScreenState
       case 0:
         return _SecondaryHomeTab(child: widget.child, theme: theme);
       case 1:
-        return const RewardsScreen();
+        return RewardsScreen(theme: theme);
       case 2:
         return TutorHistoryTab(child: widget.child);
       case 3:

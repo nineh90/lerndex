@@ -7,12 +7,13 @@ import 'package:lerndex/src/features/rewards/domain/reward_enums.dart';
 // ============================================================================
 // REWARDS COUNT PROVIDER
 //
-// In eigener Datei damit sowohl student_dashboard_screen.dart als auch
-// secondary_dashboard_screen.dart (und early_learner_dashboard_screen.dart)
-// diesen Provider importieren können – ohne zirkuläre Abhängigkeiten.
+// Zählt NUR einlösbare Eltern-Belohnungen (RewardType.parent + approved).
+// Systembelohnungen (Achievements) werden hier bewusst nicht gezählt –
+// sie haben keinen "Einlösen"-Flow und sollen den Badge nicht aufblasen.
 // ============================================================================
 
-/// Anzahl der einlösbaren (approved) Belohnungen für das aktive Kind.
+/// Anzahl der einlösbaren Eltern-Belohnungen für das aktive Kind.
+/// Wird als Badge in der Bottom-Navigation angezeigt.
 final availableRewardsCountProvider = StreamProvider<int>((ref) {
   final activeChild = ref.watch(activeChildProvider);
   final user = ref.watch(authStateChangesProvider).value;
@@ -23,7 +24,12 @@ final availableRewardsCountProvider = StreamProvider<int>((ref) {
       .read(rewardServiceProvider)
       .getRewardsStream(userId: user.uid, childId: activeChild.id)
       .map(
-        (rewards) =>
-            rewards.where((r) => r.status == RewardStatus.approved).length,
+        (rewards) => rewards
+            .where(
+              (r) =>
+                  r.type == RewardType.parent &&
+                  r.status == RewardStatus.approved,
+            )
+            .length,
       );
 });

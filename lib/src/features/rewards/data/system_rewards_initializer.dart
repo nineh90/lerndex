@@ -1,89 +1,123 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-/// 🎁 SYSTEM-BELOHNUNGEN INITIALIZER
-/// Erstellt automatisch System-Belohnungen für neue Kinder
+/// 🏆 SYSTEM-BELOHNUNGEN INITIALIZER
+/// Erstellt automatisch In-App-Achievements für neue Kinder.
+/// Systembelohnungen sind ausschließlich digitale Belohnungen (XP, Avatare,
+/// Badges, Titel) – keine echten Geschenke. Echte Geschenke werden von
+/// Eltern über eigene Belohnungen (RewardType.parent) vergeben.
 
 class SystemRewardsInitializer {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  /// Vordefinierte System-Belohnungen für alle Kinder
+  /// Vordefinierte System-Belohnungen (rein digital, kein Eltern-OK nötig)
   static final List<Map<String, dynamic>> _defaultSystemRewards = [
     // ========== LEVEL-BASIERTE BELOHNUNGEN ==========
     {
       'title': '🎉 Erste Schritte!',
-      'description': 'Du hast dein erstes Level erreicht!',
-      'reward': '15 Minuten Extra-Spielzeit',
+      'description': 'Du hast Level 2 erreicht – dein Abenteuer beginnt!',
+      'reward': '+25 Bonus-XP & Titel „Einsteiger"',
       'trigger': 'level',
       'requiredLevel': 2,
+      'bonusXP': 25,
+      'badgeId': 'badge-level-2',
     },
     {
       'title': '🌟 Auf dem Weg nach oben!',
-      'description': 'Level 3 geschafft - super!',
-      'reward': '30 Minuten Extra-Spielzeit',
+      'description': 'Level 3 geschafft – du wächst!',
+      'reward': '+50 Bonus-XP & Titel „Lernender"',
       'trigger': 'level',
       'requiredLevel': 3,
+      'bonusXP': 50,
+      'badgeId': 'badge-level-3',
     },
     {
       'title': '🚀 Fortgeschrittener!',
       'description': 'Wow, Level 5! Du bist richtig gut!',
-      'reward': '1 Stunde Extra-Spielzeit',
+      'reward': '+100 Bonus-XP & Titel „Fortgeschrittener"',
       'trigger': 'level',
       'requiredLevel': 5,
+      'bonusXP': 100,
+      'badgeId': 'badge-level-5',
     },
     {
       'title': '⭐ Experte!',
-      'description': 'Level 7 - das ist beeindruckend!',
-      'reward': 'Wunsch-Essen aussuchen',
+      'description': 'Level 7 – das ist beeindruckend!',
+      'reward': '+150 Bonus-XP & Titel „Experte" freigeschaltet',
       'trigger': 'level',
       'requiredLevel': 7,
+      'bonusXP': 150,
+      'badgeId': 'badge-level-7',
     },
     {
       'title': '👑 Meister!',
       'description': 'Level 10 erreicht! Du bist ein echter Meister!',
-      'reward': 'Kleines Geschenk deiner Wahl',
+      'reward': '+250 Bonus-XP & Titel „Meister"',
       'trigger': 'level',
       'requiredLevel': 10,
+      'bonusXP': 250,
+      'badgeId': 'badge-level-10',
     },
     {
       'title': '🏆 Champion!',
-      'description': 'Level 15 - Unglaublich!',
-      'reward': 'Ausflug nach Wahl',
+      'description': 'Level 15 – Unglaublich!',
+      'reward': '+400 Bonus-XP & exklusiver Champion-Avatar freigeschaltet',
       'trigger': 'level',
       'requiredLevel': 15,
+      'bonusXP': 400,
+      'badgeId': 'badge-level-15',
+      'avatarUnlockId': 'avatar-champion',
     },
     {
       'title': '💎 Legende!',
       'description': 'Level 20! Du bist eine Legende!',
-      'reward': 'Besonderes Geschenk + Familien-Aktivität',
+      'reward': '+750 Bonus-XP & legendärer Avatar + Titel „Legende"',
       'trigger': 'level',
       'requiredLevel': 20,
+      'bonusXP': 750,
+      'badgeId': 'badge-level-20',
+      'avatarUnlockId': 'avatar-legend',
     },
 
     // ========== XP-BASIERTE BELOHNUNGEN ==========
     {
       'title': '💪 100 XP gesammelt!',
-      'description': 'Du hast fleißig gelernt!',
-      'reward': 'Extra Nachtisch',
+      'description': 'Du hast fleißig gelernt – weiter so!',
+      'reward': '+20 Bonus-XP & Badge „Fleißig"',
       'trigger': 'xp',
       'requiredXP': 100,
+      'bonusXP': 20,
+      'badgeId': 'badge-xp-100',
     },
     {
       'title': '🔥 500 XP Meilenstein!',
-      'description': 'Wow, so viel XP!',
-      'reward': 'Film-Abend selbst aussuchen',
+      'description': 'Wow, 500 XP! Du bist auf dem richtigen Weg!',
+      'reward': '+75 Bonus-XP & Titel „XP-Sammler"',
       'trigger': 'xp',
       'requiredXP': 500,
+      'bonusXP': 75,
+      'badgeId': 'badge-xp-500',
     },
     {
-      'title': '⚡ 1000 XP erreicht!',
+      'title': '⚡ 1.000 XP erreicht!',
       'description': 'Das ist eine großartige Leistung!',
-      'reward': 'Freund zum Spielen einladen',
+      'reward': '+150 Bonus-XP & Titel „XP-Jäger" + Badge „1k Club"',
       'trigger': 'xp',
       'requiredXP': 1000,
+      'bonusXP': 150,
+      'badgeId': 'badge-xp-1000',
+    },
+    {
+      'title': '🌠 5.000 XP – Wahnsinn!',
+      'description': '5.000 XP gesammelt – du bist unaufhaltsam!',
+      'reward': '+500 Bonus-XP & exklusiver „5k"-Avatar freigeschaltet',
+      'trigger': 'xp',
+      'requiredXP': 5000,
+      'bonusXP': 500,
+      'badgeId': 'badge-xp-5000',
+      'avatarUnlockId': 'avatar-xp-5k',
     },
 
-    // ========== STREAK-BASIERTE BELOHNUNGEN (rein digital, kein Eltern-OK nötig) ==========
-    // Alle 7 Tage gibt es Bonus-XP; bei 14, 28 und 42 Tagen zusätzlich ein Avatar
+    // ========== STREAK-BASIERTE BELOHNUNGEN ==========
     {
       'title': '🔥 7 Tage Streak!',
       'description': 'Eine ganze Woche am Stück gelernt – mega!',
@@ -91,50 +125,56 @@ class SystemRewardsInitializer {
       'trigger': 'streak',
       'requiredStreak': 7,
       'bonusXP': 50,
+      'badgeId': 'badge-streak-7',
     },
     {
       'title': '⚡ 14 Tage Streak!',
       'description':
           'Zwei Wochen Durchhaltevermögen! Du bist ein Streak-Profi!',
-      'reward': '+100 Bonus-XP + exklusiver Streak-Avatar freigeschaltet!',
+      'reward': '+100 Bonus-XP & exklusiver Streak-Avatar freigeschaltet',
       'trigger': 'streak',
       'requiredStreak': 14,
       'bonusXP': 100,
+      'badgeId': 'badge-streak-14',
       'avatarUnlockId': 'avatar-streak-uncommon',
     },
     {
       'title': '🌟 21 Tage Streak!',
       'description': 'Drei Wochen! Unglaublich konsequent!',
-      'reward': '+200 Bonus-XP',
+      'reward': '+200 Bonus-XP & Titel „Streak-Krieger"',
       'trigger': 'streak',
       'requiredStreak': 21,
       'bonusXP': 200,
+      'badgeId': 'badge-streak-21',
     },
     {
       'title': '👑 28 Tage Streak!',
       'description': 'Vier Wochen am Stück – du bist ein echter Champion!',
-      'reward': '+300 Bonus-XP + epischer Streak-Avatar freigeschaltet!',
+      'reward': '+300 Bonus-XP & epischer Streak-Avatar freigeschaltet',
       'trigger': 'streak',
       'requiredStreak': 28,
       'bonusXP': 300,
+      'badgeId': 'badge-streak-28',
       'avatarUnlockId': 'avatar-streak-epic',
     },
     {
       'title': '💎 35 Tage Streak!',
       'description': 'Fünf Wochen! Du bist eine Lernmaschine!',
-      'reward': '+500 Bonus-XP',
+      'reward': '+500 Bonus-XP & Titel „Lernmaschine"',
       'trigger': 'streak',
       'requiredStreak': 35,
       'bonusXP': 500,
+      'badgeId': 'badge-streak-35',
     },
     {
       'title': '🏆 42 Tage Streak!',
       'description':
           'Sechs Wochen! Legendär! Der mächtigste Avatar gehört dir!',
-      'reward': '+750 Bonus-XP + legendärer Streak-Avatar freigeschaltet!',
+      'reward': '+750 Bonus-XP & legendärer Streak-Avatar freigeschaltet',
       'trigger': 'streak',
       'requiredStreak': 42,
       'bonusXP': 750,
+      'badgeId': 'badge-streak-42',
       'avatarUnlockId': 'avatar-streak-legendary',
     },
 
@@ -142,38 +182,49 @@ class SystemRewardsInitializer {
     {
       'title': '📚 10 Quizze geschafft!',
       'description': 'Du bist fleißig am Lernen!',
-      'reward': 'Kleine Überraschung',
+      'reward': '+30 Bonus-XP & Badge „Quiz-Starter"',
       'trigger': 'quiz_count',
       'requiredQuizCount': 10,
+      'bonusXP': 30,
+      'badgeId': 'badge-quiz-10',
     },
     {
       'title': '🎯 25 Quizze absolviert!',
-      'description': 'So viel Wissen!',
-      'reward': 'Familien-Spieleabend',
+      'description': 'So viel Wissen angesammelt!',
+      'reward': '+75 Bonus-XP & Titel „Wissenshungrig"',
       'trigger': 'quiz_count',
       'requiredQuizCount': 25,
+      'bonusXP': 75,
+      'badgeId': 'badge-quiz-25',
     },
     {
       'title': '🏅 50 Quizze gemeistert!',
-      'description': 'Ein halbes Hundert geschafft!',
-      'reward': 'Ausflug ins Kino oder Museum',
+      'description': 'Ein halbes Hundert – beeindruckend!',
+      'reward': '+150 Bonus-XP & Titel „Quiz-Profi"',
       'trigger': 'quiz_count',
       'requiredQuizCount': 50,
+      'bonusXP': 150,
+      'badgeId': 'badge-quiz-50',
     },
     {
       'title': '💯 100 Quizze abgeschlossen!',
-      'description': 'Du bist ein Quiz-Meister!',
-      'reward': 'Großer Ausflug nach Wahl',
+      'description': 'Du bist ein echter Quiz-Meister!',
+      'reward': '+300 Bonus-XP & legendärer Quiz-Avatar freigeschaltet',
       'trigger': 'quiz_count',
       'requiredQuizCount': 100,
+      'bonusXP': 300,
+      'badgeId': 'badge-quiz-100',
+      'avatarUnlockId': 'avatar-quiz-master',
     },
 
     // ========== SPEZIAL-BELOHNUNGEN ==========
     {
       'title': '⭐ Perfektes Quiz!',
-      'description': 'Alle Fragen richtig beantwortet!',
-      'reward': 'Bonus-Sterne + Süßigkeit',
+      'description': 'Alle Fragen auf Anhieb richtig beantwortet!',
+      'reward': '+40 Bonus-XP & Badge „Perfektionist"',
       'trigger': 'perfect_quiz',
+      'bonusXP': 40,
+      'badgeId': 'badge-perfect-quiz',
     },
   ];
 
@@ -209,7 +260,7 @@ class SystemRewardsInitializer {
           'createdBy': 'system',
         };
 
-        // Füge Trigger-Bedingungen hinzu
+        // Trigger-Bedingungen
         if (rewardData.containsKey('requiredLevel')) {
           data['requiredLevel'] = rewardData['requiredLevel'];
         }
@@ -225,11 +276,15 @@ class SystemRewardsInitializer {
         if (rewardData.containsKey('requiredQuizCount')) {
           data['requiredQuizCount'] = rewardData['requiredQuizCount'];
         }
+        // In-App-Belohnungs-Metadaten
         if (rewardData.containsKey('bonusXP')) {
           data['bonusXP'] = rewardData['bonusXP'];
         }
         if (rewardData.containsKey('avatarUnlockId')) {
           data['avatarUnlockId'] = rewardData['avatarUnlockId'];
+        }
+        if (rewardData.containsKey('badgeId')) {
+          data['badgeId'] = rewardData['badgeId'];
         }
 
         batch.set(docRef, data);
@@ -271,7 +326,6 @@ class SystemRewardsInitializer {
     try {
       print('🔍 Prüfe fehlende System-Belohnungen für Kind: $childId');
 
-      // Hole existierende System-Belohnungen
       final existingSnapshot = await _firestore
           .collection('users')
           .doc(userId)
@@ -285,7 +339,6 @@ class SystemRewardsInitializer {
           .map((doc) => doc.data()['title'] as String)
           .toSet();
 
-      // Filtere fehlende Belohnungen
       final missingRewards = _defaultSystemRewards
           .where((reward) => !existingTitles.contains(reward['title']))
           .toList();
@@ -320,7 +373,6 @@ class SystemRewardsInitializer {
           'createdBy': 'system',
         };
 
-        // Trigger-Bedingungen
         if (rewardData.containsKey('requiredLevel')) {
           data['requiredLevel'] = rewardData['requiredLevel'];
         }
@@ -341,6 +393,9 @@ class SystemRewardsInitializer {
         }
         if (rewardData.containsKey('avatarUnlockId')) {
           data['avatarUnlockId'] = rewardData['avatarUnlockId'];
+        }
+        if (rewardData.containsKey('badgeId')) {
+          data['badgeId'] = rewardData['badgeId'];
         }
 
         batch.set(docRef, data);

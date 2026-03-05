@@ -1,19 +1,37 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:lerndex/src/features/rewards/presentation/widgets/achievements.dart';
 import '../../auth/presentation/active_child_provider.dart';
 import '../../auth/data/auth_repository.dart';
 import '../data/reward_service.dart';
 import '../domain/reward_model.dart';
 import '../domain/reward_enums.dart';
-import 'widgets/reward_stat_item.dart';
 import 'widgets/reward_card.dart';
+import '../../student_dashboard/presentation/widgets/dashboard_theme.dart';
 
-/// 🎁 VOLLSTÄNDIGER REWARDS SCREEN
-/// Ersetzt die Stub-Version in rewards_screen.dart
+/// 🎁 REWARDS SCREEN (Schüler-Sicht)
+///
+/// Wird immer eingebettet aufgerufen – keine eigene AppBar.
+/// Das übergeordnete Dashboard liefert das [theme] für Farben.
+///
+/// Tab 1 – Verfügbar:    Eltern-Belohnungen die eingelöst werden können
+/// Tab 2 – Eingelöst:    Bereits eingelöste Eltern-Belohnungen
+/// Tab 3 – Achievements: Systembelohnungen mit Fortschrittsanzeige
 
 class RewardsScreen extends ConsumerWidget {
-  const RewardsScreen({super.key});
+  /// Theme des Dashboards – wird für Farben genutzt.
+  /// Für Primary-Dashboard (Klasse 3–4) wird null übergeben → Fallback DeepPurple.
+  final DashboardThemeData? theme;
+
+  const RewardsScreen({super.key, this.theme});
+
+  Color _primary(BuildContext context) => theme?.primary ?? Colors.deepPurple;
+  Color _background(BuildContext context) =>
+      theme?.background ?? const Color(0xFFF5F3FF);
+  Color _onSurface(BuildContext context) =>
+      theme?.onSurface ?? const Color(0xFF212121);
+  Color _onPrimary(BuildContext context) => theme?.onPrimary ?? Colors.white;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -21,183 +39,145 @@ class RewardsScreen extends ConsumerWidget {
     final user = ref.watch(authStateChangesProvider).value;
 
     if (activeChild == null || user == null) {
-      return Scaffold(
-        appBar: AppBar(title: const Text('Meine Belohnungen')),
-        body: const Center(child: Text('Kein Kind ausgewählt')),
-      );
+      return const Center(child: Text('Kein Kind ausgewählt'));
     }
 
     final rewardsStream = ref
         .watch(rewardServiceProvider)
         .getRewardsStream(userId: user.uid, childId: activeChild.id);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('🎁 Meine Belohnungen'),
-        backgroundColor: Colors.amber,
-        foregroundColor: Colors.white,
-      ),
-      body: StreamBuilder<List<RewardModel>>(
-        stream: rewardsStream,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
+    final primary = _primary(context);
+    final background = _background(context);
+    final onSurface = _onSurface(context);
+    final onPrimary = _onPrimary(context);
 
-          if (snapshot.hasError) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.error_outline, size: 64, color: Colors.red),
-                  const SizedBox(height: 16),
-                  Text('Fehler: ${snapshot.error}'),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text('Zurück'),
-                  ),
-                ],
-              ),
-            );
-          }
+    return StreamBuilder<List<RewardModel>>(
+      stream: rewardsStream,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Center(child: CircularProgressIndicator(color: primary));
+        }
 
-          final allRewards = snapshot.data ?? [];
-          final approvedRewards = allRewards
-              .where((r) => r.status == RewardStatus.approved)
-              .toList();
-          final claimedRewards = allRewards
-              .where((r) => r.status == RewardStatus.claimed)
-              .toList();
-
-          if (allRewards.isEmpty) {
-            return _buildEmptyState(context);
-          }
-
-          return DefaultTabController(
-            length: 2,
+        if (snapshot.hasError) {
+          return Center(
             child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // Stats Header
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  color: Colors.amber.shade50,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      RewardStatItem(
-                        icon: Icons.card_giftcard,
-                        label: 'Verfügbar',
-                        value: approvedRewards.length.toString(),
-                        color: Colors.green,
-                      ),
-                      RewardStatItem(
-                        icon: Icons.check_circle,
-                        label: 'Eingelöst',
-                        value: claimedRewards.length.toString(),
-                        color: Colors.blue,
-                      ),
-                      RewardStatItem(
-                        icon: Icons.stars,
-                        label: 'Gesamt',
-                        value: allRewards.length.toString(),
-                        color: Colors.amber,
-                      ),
-                    ],
-                  ),
-                ),
+                const Icon(Icons.error_outline, size: 64, color: Colors.red),
+                const SizedBox(height: 16),
+                Text('Fehler: ${snapshot.error}'),
+              ],
+            ),
+          );
+        }
 
-                // Tabs
-                Container(
-                  color: Colors.white,
-                  child: const TabBar(
-                    labelColor: Colors.amber,
-                    unselectedLabelColor: Colors.grey,
-                    indicatorColor: Colors.amber,
-                    tabs: [
-                      Tab(icon: Icon(Icons.card_giftcard), text: 'Verfügbar'),
-                      Tab(icon: Icon(Icons.history), text: 'Eingelöst'),
-                    ],
-                  ),
-                ),
+        final allRewards = snapshot.data ?? [];
 
-                // Tab Views
-                Expanded(
+        // Eltern-Belohnungen
+        final parentRewards = allRewards
+            .where((r) => r.type == RewardType.parent)
+            .toList();
+        final approvedRewards = parentRewards
+            .where((r) => r.status == RewardStatus.approved)
+            .toList();
+        final claimedRewards = parentRewards
+            .where((r) => r.status == RewardStatus.claimed)
+            .toList();
+
+        // Achievements (Systembelohnungen)
+        final systemRewards = allRewards
+            .where((r) => r.type == RewardType.system)
+            .toList();
+        final unlockedCount = systemRewards
+            .where((r) => r.status != RewardStatus.pending)
+            .length;
+
+        return DefaultTabController(
+          length: 3,
+          child: Column(
+            children: [
+              // ── Tab-Bar in Primary-Farbe ──────────────────────────────
+              Container(
+                color: primary,
+                child: TabBar(
+                  indicatorColor: onPrimary,
+                  indicatorWeight: 3,
+                  labelColor: onPrimary,
+                  unselectedLabelColor: onPrimary.withOpacity(0.55),
+                  labelStyle: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
+                  unselectedLabelStyle: const TextStyle(fontSize: 12),
+                  tabs: [
+                    Tab(
+                      icon: const Icon(Icons.card_giftcard, size: 18),
+                      text: approvedRewards.isNotEmpty
+                          ? 'Verfügbar (${approvedRewards.length})'
+                          : 'Verfügbar',
+                    ),
+                    const Tab(
+                      icon: Icon(Icons.history, size: 18),
+                      text: 'Eingelöst',
+                    ),
+                    Tab(
+                      icon: const Icon(Icons.emoji_events, size: 18),
+                      text: '$unlockedCount/${systemRewards.length} 🏆',
+                    ),
+                  ],
+                ),
+              ),
+
+              // ── Tab Views in Background-Farbe ─────────────────────────
+              Expanded(
+                child: Container(
+                  color: background,
                   child: TabBarView(
                     children: [
-                      // Verfügbare Belohnungen
-                      _buildRewardList(
+                      _buildParentRewardTab(
                         context,
                         ref,
                         approvedRewards,
                         user.uid,
                         activeChild.id,
                         isAvailable: true,
+                        onSurface: onSurface,
+                        primary: primary,
+                        onPrimary: onPrimary,
                       ),
-
-                      // Eingelöste Belohnungen
-                      _buildRewardList(
+                      _buildParentRewardTab(
                         context,
                         ref,
                         claimedRewards,
                         user.uid,
                         activeChild.id,
                         isAvailable: false,
+                        onSurface: onSurface,
+                        primary: primary,
+                        onPrimary: onPrimary,
                       ),
+                      AchievementsScreen(theme: theme),
                     ],
                   ),
                 ),
-              ],
-            ),
-          );
-        },
-      ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
-  Widget _buildEmptyState(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.card_giftcard, size: 100, color: Colors.grey.shade300),
-          const SizedBox(height: 24),
-          Text(
-            'Noch keine Belohnungen',
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: Colors.grey.shade600,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Mach Quizze und erreiche Level-Ups\num Belohnungen zu verdienen!',
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 16, color: Colors.grey.shade500),
-          ),
-          const SizedBox(height: 32),
-          ElevatedButton.icon(
-            onPressed: () => Navigator.pop(context),
-            icon: const Icon(Icons.arrow_back),
-            label: const Text('Zurück zum Dashboard'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.amber,
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildRewardList(
+  Widget _buildParentRewardTab(
     BuildContext context,
     WidgetRef ref,
     List<RewardModel> rewards,
     String userId,
     String childId, {
     required bool isAvailable,
+    required Color onSurface,
+    required Color primary,
+    required Color onPrimary,
   }) {
     if (rewards.isEmpty) {
       return Center(
@@ -205,17 +185,33 @@ class RewardsScreen extends ConsumerWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
-              isAvailable ? Icons.card_giftcard : Icons.check_circle,
-              size: 64,
-              color: Colors.grey.shade300,
+              isAvailable
+                  ? Icons.card_giftcard_outlined
+                  : Icons.check_circle_outline,
+              size: 72,
+              color: onSurface.withOpacity(0.2),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
             Text(
               isAvailable
-                  ? 'Keine verfügbaren Belohnungen'
-                  : 'Noch keine Belohnungen eingelöst',
-              style: TextStyle(fontSize: 18, color: Colors.grey.shade600),
+                  ? 'Keine Belohnungen verfügbar'
+                  : 'Noch nichts eingelöst',
+              style: TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.bold,
+                color: onSurface.withOpacity(0.5),
+              ),
             ),
+            if (isAvailable) ...[
+              const SizedBox(height: 8),
+              Text(
+                'Schau ins Achievements-Tab 🏆',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: onSurface.withOpacity(0.35),
+                ),
+              ),
+            ],
           ],
         ),
       );
@@ -230,7 +226,15 @@ class RewardsScreen extends ConsumerWidget {
           reward: reward,
           onClaim: isAvailable
               ? () async {
-                  await _claimReward(context, ref, userId, childId, reward);
+                  await _claimReward(
+                    context,
+                    ref,
+                    userId,
+                    childId,
+                    reward,
+                    primary,
+                    onPrimary,
+                  );
                 }
               : null,
         );
@@ -244,10 +248,13 @@ class RewardsScreen extends ConsumerWidget {
     String userId,
     String childId,
     RewardModel reward,
+    Color primary,
+    Color onPrimary,
   ) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text('🎁 Belohnung einlösen?'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -261,12 +268,12 @@ class RewardsScreen extends ConsumerWidget {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.amber.shade50,
+                color: primary.withOpacity(0.08),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.card_giftcard, color: Colors.amber),
+                  Icon(Icons.card_giftcard, color: primary),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
@@ -294,7 +301,10 @@ class RewardsScreen extends ConsumerWidget {
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.amber),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: primary,
+              foregroundColor: onPrimary,
+            ),
             child: const Text('Einlösen'),
           ),
         ],
@@ -307,7 +317,6 @@ class RewardsScreen extends ConsumerWidget {
             .read(rewardServiceProvider)
             .claimReward(userId: userId, childId: childId, rewardId: reward.id);
 
-        // Avatar freischalten falls avatarUnlockId gesetzt ist
         if (reward.avatarUnlockId != null) {
           await FirebaseFirestore.instance
               .collection('users')
@@ -320,7 +329,6 @@ class RewardsScreen extends ConsumerWidget {
                 ]),
               });
 
-          // Auch den lokalen Provider sofort aktualisieren
           if (context.mounted) {
             final current = ref.read(activeChildProvider);
             if (current != null) {
