@@ -48,6 +48,7 @@ dependencies:
   flutter_tts: ^3.8.3
 
   flutter_math_fork: ^0.7.2
+  flutter_native_splash: ^2.4.4
 
 dev_dependencies:
   flutter_test:
@@ -68,3 +69,14 @@ flutter:
   assets:
     - assets/questions/
     - assets/images/
+
+flutter_native_splash:
+  color: "#3B0764"
+
+android_12:
+  color: "#3B0764"
+  # image: assets/splash_logo.png
+
+ios: true
+android: true
+fullscreen: false

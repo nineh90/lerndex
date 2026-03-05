@@ -7,70 +7,146 @@ import 'package:lerndex/src/features/student_dashboard/presentation/subject_conf
 
 /// Pre-Fetch Service fuer Quiz-Fragen.
 ///
-/// Wird aufgerufen bei:
-///   1. Kind-Erstellung -> Mathe + Deutsch sofort, Rest im Hintergrund
+/// Wird aufgerufen beim App-Start (Splash-Screen):
+///   → Alle Kinder parallel
+///   → Pro Kind: alle Faecher parallel (mit Concurrency-Limit)
+///
+/// Auch aufgerufen bei:
+///   1. Kind-Erstellung -> sofort alle Faecher vorbereiten
 ///   2. Dashboard-Laden -> Sicherheitsnetz fuer existierende Kinder
 ///
-/// Nutzt prefillIfEmpty() statt getQuestions():
-///   - Generiert NUR wenn Cache leer ist
+/// Nutzt prefillIfEmpty():
+///   - Generiert NUR wenn Cache leer ist (< 5 Fragen)
 ///   - Markiert keine Fragen als gespielt
-///   - Kein Schnell-Batch noetig (hat ja Zeit)
 class QuizPrefetchService {
-  /// Faecher-Reihenfolge: Mathe und Deutsch zuerst,
-  /// weil Kinder diese am ehesten zuerst antippen.
+  // Maximale parallele Vertex-AI-Anfragen pro Kind.
+  // Zu viele parallele Requests koennen Rate-Limits triggern.
+  static const int _subjectConcurrency = 3;
+
+  /// Gibt die Anzahl der Fächer für ein Kind zurück.
+  /// Wird im Splash verwendet um den Gesamtfortschritt zu berechnen.
+  static int subjectCountForChild(ChildModel child) {
+    return getSubjectsForChild(child).length;
+  }
+
+  /// Faecher-Reihenfolge: Mathe und Deutsch zuerst.
   static List<SubjectConfig> _prioritized(List<SubjectConfig> subjects) {
-    final priority = ['Mathe', 'Deutsch', 'Englisch'];
+    const priority = ['Mathe', 'Deutsch', 'Englisch'];
     final sorted = List<SubjectConfig>.from(subjects);
     sorted.sort((a, b) {
       final aIdx = priority.indexOf(a.subject);
       final bIdx = priority.indexOf(b.subject);
-      final aPrio = aIdx >= 0 ? aIdx : 99;
-      final bPrio = bIdx >= 0 ? bIdx : 99;
-      return aPrio.compareTo(bPrio);
+      return (aIdx >= 0 ? aIdx : 99).compareTo(bIdx >= 0 ? bIdx : 99);
     });
     return sorted;
   }
 
-  /// Generiert Fragen fuer alle Faecher eines Kindes.
-  /// Priorisiert Mathe > Deutsch > Englisch > Rest.
-  /// Ueberspringt Faecher die schon genug Fragen im Cache haben.
+  // ============================================================
+  // NEU: Alle Kinder parallel prefetchen (fuer Splash-Screen)
+  // ============================================================
+
+  /// Laed fuer ALLE uebergebenen Kinder alle Faecher vor.
+  ///
+  /// Strategie:
+  /// - Kinder werden parallel gestartet (Future.wait)
+  /// - Pro Kind laufen bis zu [_subjectConcurrency] Faecher gleichzeitig
+  /// - Fehler eines Kindes/Fachs brechen nicht die anderen ab
+  static Future<void> prefetchAllChildren({
+    required String userId,
+    required List<ChildModel> children,
+    AiQuestionCacheRepository? cache,
+    void Function(String childName, String subject)? onSubjectDone,
+  }) async {
+    if (children.isEmpty) return;
+
+    final effectiveCache =
+        cache ??
+        AiQuestionCacheRepository(
+          FirebaseFirestore.instance,
+          VertexAIService(),
+        );
+
+    print(
+      '🚀 Splash-Prefetch: Starte fuer ${children.length} Kinder parallel...',
+    );
+
+    // Alle Kinder gleichzeitig starten
+    await Future.wait(
+      children.map(
+        (child) => _prefetchChildParallel(
+          userId: userId,
+          child: child,
+          cache: effectiveCache,
+          onSubjectDone: onSubjectDone,
+        ),
+      ),
+    );
+
+    print('✅ Splash-Prefetch abgeschlossen fuer alle Kinder');
+  }
+
+  /// Prefetch fuer ein einzelnes Kind mit parallelen Fach-Requests.
+  static Future<void> _prefetchChildParallel({
+    required String userId,
+    required ChildModel child,
+    required AiQuestionCacheRepository cache,
+    void Function(String childName, String subject)? onSubjectDone,
+  }) async {
+    final subjects = _prioritized(getSubjectsForChild(child));
+
+    print(
+      '🔮 ${child.name}: ${subjects.length} Faecher werden geladen '
+      '(max $_subjectConcurrency parallel)...',
+    );
+
+    // Faecher in Gruppen aufteilen fuer kontrollierten Parallelismus
+    for (int i = 0; i < subjects.length; i += _subjectConcurrency) {
+      final batch = subjects.skip(i).take(_subjectConcurrency).toList();
+
+      await Future.wait(
+        batch.map((subjectConfig) async {
+          try {
+            await cache.prefillIfEmpty(
+              userId: userId,
+              childId: child.id,
+              child: child,
+              subject: subjectConfig.subject,
+            );
+            onSubjectDone?.call(child.name, subjectConfig.subject);
+          } catch (e) {
+            print('⚠️ ${child.name} / ${subjectConfig.title}: $e');
+          }
+        }),
+      );
+    }
+
+    print('✅ ${child.name}: alle Faecher bereit');
+  }
+
+  // ============================================================
+  // BESTEHEND: Ein Kind prefetchen (sequenziell, fuer Fallback)
+  // ============================================================
+
+  /// Generiert Fragen fuer alle Faecher eines einzelnen Kindes.
+  /// Fuer Rueckwaertskompatibilitaet und den StudentDashboard-Fallback.
   static Future<void> prefetchAllSubjects({
     required String userId,
     required ChildModel child,
     AiQuestionCacheRepository? cache,
   }) async {
-    try {
-      final effectiveCache =
-          cache ??
-          AiQuestionCacheRepository(
-            FirebaseFirestore.instance,
-            VertexAIService(),
-          );
+    final effectiveCache =
+        cache ??
+        AiQuestionCacheRepository(
+          FirebaseFirestore.instance,
+          VertexAIService(),
+        );
 
-      final subjects = _prioritized(getSubjectsForChild(child));
-
-      print(
-        '🔮 Pre-Fetch: Starte fuer ${child.name} '
-        '(${subjects.length} Faecher: ${subjects.map((s) => s.title).join(", ")})',
-      );
-
-      for (final subject in subjects) {
-        try {
-          await effectiveCache.prefillIfEmpty(
-            userId: userId,
-            childId: child.id,
-            child: child,
-            subject: subject.subject,
-          );
-        } catch (e) {
-          print('⚠️ Pre-Fetch: ${subject.title} fehlgeschlagen: $e');
-        }
-      }
-
-      print('🔮 Pre-Fetch abgeschlossen fuer ${child.name}');
-    } catch (e) {
-      print('⚠️ Pre-Fetch Gesamtfehler: $e');
-    }
+    // Direkt die parallele Variante nutzen
+    await _prefetchChildParallel(
+      userId: userId,
+      child: child,
+      cache: effectiveCache,
+    );
   }
 }
 

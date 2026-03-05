@@ -52,10 +52,17 @@ class AiQuestionCacheRepository {
     required String subject,
   }) async {
     try {
-      // Pruefen ob schon genug da sind
+      // Level-Check: Cache invalidieren wenn Level nicht mehr passt.
+      // Gleiche Logik wie in getQuestions() – verhindert dass veraltete
+      // Fragen nach einem Level-Up im Cache bleiben.
+      await _checkAndInvalidateOnLevelChange(userId, childId, child, subject);
+
+      // Pruefen ob schon genug da sind (nach ggf. Invalidierung)
       final unplayed = await _loadUnplayed(userId, childId, subject);
       if (unplayed.length >= _refillThreshold) {
-        print('✅ Pre-Fill: $subject hat schon ${unplayed.length} Fragen');
+        print(
+          '✅ Pre-Fill: $subject hat schon ${unplayed.length} Fragen (Level ${child.level})',
+        );
         return;
       }
 
