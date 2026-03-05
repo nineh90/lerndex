@@ -100,6 +100,7 @@ class RewardModel {
       'approvedAt': approvedAt != null ? Timestamp.fromDate(approvedAt!) : null,
       'claimedAt': claimedAt != null ? Timestamp.fromDate(claimedAt!) : null,
       'createdBy': createdBy,
+      'parentSeen': parentSeen,
     };
   }
 
