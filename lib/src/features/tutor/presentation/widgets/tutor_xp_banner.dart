@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../tutor_provider.dart';
 
-const int _kMaxXpPerSession = 20;
+const int _kMaxXpPerDay = 50;
 
 // ============================================================================
-// REAKTIVER XP-BANNER
+// REAKTIVER XP-BANNER (Tagesübergreifend)
 // ============================================================================
 
 class TutorXpBanner extends ConsumerWidget {
@@ -14,13 +14,10 @@ class TutorXpBanner extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final sessionXP = ref.watch(tutorSessionXpProvider(childId));
-    final remaining = (_kMaxXpPerSession - sessionXP).clamp(
-      0,
-      _kMaxXpPerSession,
-    );
+    final dailyXP = ref.watch(tutorSessionXpProvider(childId));
+    final remaining = (_kMaxXpPerDay - dailyXP).clamp(0, _kMaxXpPerDay);
     final limitReached = remaining <= 0;
-    final progress = (sessionXP / _kMaxXpPerSession).clamp(0.0, 1.0);
+    final progress = (dailyXP / _kMaxXpPerDay).clamp(0.0, 1.0);
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 300),
@@ -40,8 +37,8 @@ class TutorXpBanner extends ConsumerWidget {
                   children: [
                     Text(
                       limitReached
-                          ? 'Session-Limit erreicht 🎉'
-                          : 'Hol dir noch $remaining XP – lern mit mir!',
+                          ? 'Tageslimit erreicht 🎉'
+                          : 'Noch $remaining XP heute – lern mit mir!',
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
@@ -51,7 +48,7 @@ class TutorXpBanner extends ConsumerWidget {
                       ),
                     ),
                     Text(
-                      '$sessionXP / $_kMaxXpPerSession XP',
+                      '$dailyXP / $_kMaxXpPerDay XP heute',
                       style: TextStyle(
                         fontSize: 11,
                         color: Colors.purple.shade600,

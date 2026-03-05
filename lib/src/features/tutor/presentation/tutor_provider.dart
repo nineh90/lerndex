@@ -23,7 +23,6 @@ class TutorNotifier extends StateNotifier<List<ChatMessage>> {
   bool _hasUserSentMessage = false;
   bool _subjectDetermined = false; // true sobald KI das Fach bestätigt hat
 
-  static const int maxXpPerSession = 20;
   static const int maxXpPerDay = 50;
 
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -37,6 +36,24 @@ class TutorNotifier extends StateNotifier<List<ChatMessage>> {
     );
 
     state = [welcomeMessage];
+    _loadDailyXpAndHistory();
+  }
+
+  /// Lädt die heutigen Tutor-XP aus Firestore und befüllt den Provider,
+  /// dann wird die Chat-Historie geladen.
+  Future<void> _loadDailyXpAndHistory() async {
+    try {
+      final xpService = _ref.read(xpServiceProvider);
+      final xpToday = await xpService.getTutorXpToday(
+        userId: _userId,
+        childId: _childId,
+      );
+      // Provider mit dem bereits heute verdienten XP-Stand befüllen
+      _ref.read(tutorSessionXpProvider(_childId).notifier).state = xpToday;
+      print('📊 Tutor: Heutige XP geladen → $xpToday / $maxXpPerDay');
+    } catch (e) {
+      print('⚠️ Tutor: Fehler beim Laden der Tages-XP: $e');
+    }
     _loadChatHistoryInBackground();
   }
 
@@ -382,33 +399,33 @@ class TutorNotifier extends StateNotifier<List<ChatMessage>> {
     return schoolSubjects.contains(topic);
   }
 
-  /// Vergib XP via XPService und updated den reaktiven SessionXP-Provider
+  /// Vergib XP via XPService und updated den reaktiven Tages-XP-Provider
   Future<void> _awardTutorXP() async {
     final xpService = _ref.read(xpServiceProvider);
-    final currentSessionXP = _ref.read(tutorSessionXpProvider(_childId));
+    final currentDailyXP = _ref.read(tutorSessionXpProvider(_childId));
 
     final result = await xpService.addTutorXP(
       userId: _userId,
       childId: _childId,
-      sessionXpSoFar: currentSessionXP,
+      dailyXpSoFar: currentDailyXP,
     );
 
     if (result != null && result.xpGained > 0) {
       // Reaktiven State updaten → Banner updated sofort
       _ref.read(tutorSessionXpProvider(_childId).notifier).state =
-          currentSessionXP + result.xpGained;
+          currentDailyXP + result.xpGained;
 
       // XP-Gain Event für +XP Animation im Screen
       _ref.read(tutorXpGainProvider(_childId).notifier).state = result.xpGained;
 
       print(
         '✨ Tutor XP: +${result.xpGained} '
-        '(Session: ${currentSessionXP + result.xpGained}/$maxXpPerSession)',
+        '(Heute: ${currentDailyXP + result.xpGained}/$maxXpPerDay)',
       );
     } else {
       print(
-        '⏸️ Tutor XP: Limit erreicht '
-        '(Session: $currentSessionXP/$maxXpPerSession)',
+        '⏸️ Tutor XP: Tageslimit erreicht '
+        '(Heute: $currentDailyXP/$maxXpPerDay)',
       );
     }
   }

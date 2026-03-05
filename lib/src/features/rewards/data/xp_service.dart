@@ -149,20 +149,52 @@ class XPService {
   }
 
   // =========================================================================
-  // TUTOR XP – mit Session- und Tageslimit
+  // TUTOR XP – mit globalem Tageslimit (kein Session-Limit mehr)
   // =========================================================================
 
+  /// Lädt die heute bereits verdienten Tutor-XP aus Firestore.
+  /// Gibt 0 zurück wenn noch keine oder wenn das Datum nicht heute ist.
+  Future<int> getTutorXpToday({
+    required String userId,
+    required String childId,
+  }) async {
+    try {
+      final snapshot = await _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('children')
+          .doc(childId)
+          .get();
+
+      if (!snapshot.exists) return 0;
+      final data = snapshot.data()!;
+
+      final lastDate = (data['tutorXpLastDate'] as Timestamp?)?.toDate();
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+
+      if (lastDate == null ||
+          DateTime(lastDate.year, lastDate.month, lastDate.day) != today) {
+        return 0; // Neuer Tag → noch 0 XP heute
+      }
+
+      return (data['tutorXpToday'] as int?) ?? 0;
+    } catch (e) {
+      print('❌ getTutorXpToday Fehler: $e');
+      return 0;
+    }
+  }
+
   /// Vergib XP für eine Tutor-Nachricht.
-  /// Gibt null zurück wenn das Session- oder Tageslimit bereits erreicht ist.
+  /// Gibt null zurück wenn das globale Tageslimit bereits erreicht ist.
   Future<XPResult?> addTutorXP({
     required String userId,
     required String childId,
-    required int sessionXpSoFar,
+    required int dailyXpSoFar,
     int xpPerMessage = 2,
-    int maxXpPerSession = 20,
     int maxXpPerDay = 50,
   }) async {
-    if (sessionXpSoFar >= maxXpPerSession) return null;
+    if (dailyXpSoFar >= maxXpPerDay) return null;
 
     try {
       final docRef = _firestore
@@ -190,13 +222,11 @@ class XPService {
 
         if (tutorXpToday >= maxXpPerDay) return null;
 
-        // Kleinsten erlaubten Wert aus allen Limits wählen
+        // Verbleibende XP bis Tageslimit
         final remainingDay = maxXpPerDay - tutorXpToday;
-        final remainingSession = maxXpPerSession - sessionXpSoFar;
         final actualXP = [
           xpPerMessage,
           remainingDay,
-          remainingSession,
         ].reduce((a, b) => a < b ? a : b);
 
         if (actualXP <= 0) return null;
