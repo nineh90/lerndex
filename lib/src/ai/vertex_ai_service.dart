@@ -16,12 +16,18 @@ import '../features/quiz/data/curriculum_data.dart';
 // ANTWORT-TYPEN
 // ============================================================================
 
-/// Antwort des KI-Tutors mit extrahiertem Schulfach.
+/// Antwort des KI-Tutors mit extrahiertem Schulfach und Korrektheitsstatus.
 class TutorResponse {
   final String text;
   final String subject; // z.B. 'Mathematik' oder 'kein_schulfach'
+  final bool
+  isCorrect; // true wenn Schüler eine Aufgabe korrekt beantwortet hat
 
-  const TutorResponse({required this.text, required this.subject});
+  const TutorResponse({
+    required this.text,
+    required this.subject,
+    this.isCorrect = false,
+  });
 
   bool get isSchoolSubject => subject != 'kein_schulfach';
 }
@@ -138,7 +144,6 @@ class VertexAIService {
     required ChildModel child,
     required String userMessage,
     required List<ChatMessage> conversationHistory,
-    bool subjectAlreadyDetermined = false,
   }) async {
     await _ensureTutorInitialized();
 
@@ -168,12 +173,44 @@ class VertexAIService {
     }
 
     try {
-      final systemPrompt = _buildTutorSystemPrompt(
-        child,
-        subjectAlreadyDetermined: subjectAlreadyDetermined,
+      final systemPrompt = _buildTutorSystemPrompt(child);
+
+      // Modell pro Anfrage mit systemInstruction erstellen –
+      // das ist der einzige Weg systemInstruction in firebase_ai zu übergeben.
+      final model = FirebaseAI.vertexAI().generativeModel(
+        model: 'gemini-2.0-flash',
+        generationConfig: GenerationConfig(
+          temperature: 0.7,
+          maxOutputTokens: 2048,
+          topP: 0.9,
+          topK: 40,
+        ),
+        systemInstruction: Content.system(systemPrompt),
+        safetySettings: [
+          SafetySetting(
+            HarmCategory.harassment,
+            HarmBlockThreshold.high,
+            HarmBlockMethod.severity,
+          ),
+          SafetySetting(
+            HarmCategory.hateSpeech,
+            HarmBlockThreshold.high,
+            HarmBlockMethod.severity,
+          ),
+          SafetySetting(
+            HarmCategory.sexuallyExplicit,
+            HarmBlockThreshold.medium,
+            HarmBlockMethod.severity,
+          ),
+          SafetySetting(
+            HarmCategory.dangerousContent,
+            HarmBlockThreshold.high,
+            HarmBlockMethod.severity,
+          ),
+        ],
       );
 
-      final history = <Content>[Content.text(systemPrompt)];
+      final history = <Content>[];
 
       final recentMessages = conversationHistory.length > 10
           ? conversationHistory.sublist(conversationHistory.length - 10)
@@ -186,7 +223,17 @@ class VertexAIService {
         );
       }
 
-      final chat = _tutorModel!.startChat(history: history);
+      print('📜 History an KI (${history.length} Nachrichten):');
+      for (final h in history) {
+        final role = h.role;
+        final txt = (h.parts.first as TextPart).text;
+        print(
+          '  [$role]: ${txt.length > 80 ? txt.substring(0, 80) + "..." : txt}',
+        );
+      }
+      print('  [user/neu]: $userMessage');
+
+      final chat = model.startChat(history: history);
       final response = await chat.sendMessage(Content.text(userMessage));
       final text = response.text;
 
@@ -199,8 +246,16 @@ class VertexAIService {
       }
 
       final subject = _extractSubjectTag(text);
+      final isCorrect = _extractCorrectTag(text);
       final cleanText = _stripSubjectTag(text);
-      return TutorResponse(text: cleanText, subject: subject);
+      print(
+        '🏷️ KI-Fach erkannt: "$subject" | korrekt: $isCorrect | Tag vorhanden: ${text.contains('[FACH:')}',
+      );
+      return TutorResponse(
+        text: cleanText,
+        subject: subject,
+        isCorrect: isCorrect,
+      );
     } catch (e) {
       print('❌ Tutor-Fehler: $e');
       return TutorResponse(
@@ -325,10 +380,7 @@ class VertexAIService {
   // PROMPTS
   // --------------------------------------------------------------------------
 
-  String _buildTutorSystemPrompt(
-    ChildModel child, {
-    bool subjectAlreadyDetermined = false,
-  }) {
+  String _buildTutorSystemPrompt(ChildModel child) {
     return '''
 Du bist Lerndex, der persönliche Lernbegleiter für ${child.name}.
 
@@ -364,12 +416,13 @@ Du bist Lerndex, der persönliche Lernbegleiter für ${child.name}.
 - Lobe Fortschritte, ermutige zum Weiterlernen
 - Mathematische Formeln IMMER in LaTeX: \$\\frac{1}{2}\$, \$\\sqrt{4}\$, \$x^2\$
 
-${subjectAlreadyDetermined ? '' : '''
-PFLICHT NUR BEI DIESER ERSTEN ANTWORT:
-Füge als ALLERLETZTE Zeile exakt dieses Tag an (wird automatisch entfernt):
-- Erkanntes Schulfach: [FACH:Mathematik] / [FACH:Deutsch] / [FACH:Englisch]${child.grade <= 4 || child.schoolType == 'Grundschule' ? ' / [FACH:Sachkunde]' : ''}${child.grade >= 5 ? ' / [FACH:Biologie]' : ''}${child.grade >= 5 && child.grade <= 10 ? ' / [FACH:Chemie] / [FACH:Physik]' : ''}${child.grade > 10 ? ' / [FACH:Chemie] / [FACH:Physik]' : ''} / [FACH:Geschichte]
-- Kein Schulfach / unklar / Smalltalk: [FACH:kein_schulfach]
-'''}
+PFLICHT BEI JEDER ANTWORT:
+Füge als ALLERLETZTE Zeile exakt diese zwei Tags an (werden automatisch entfernt, für den Nutzer unsichtbar):
+- Schulfach: [FACH:Mathematik] / [FACH:Deutsch] / [FACH:Englisch]${child.grade <= 4 || child.schoolType == 'Grundschule' ? ' / [FACH:Sachkunde]' : ''}${child.grade >= 5 ? ' / [FACH:Biologie] / [FACH:Chemie] / [FACH:Physik] / [FACH:Geschichte]' : ''}
+- Kein Schulfach / unklar / Smalltalk / Ablehnung: [FACH:kein_schulfach]
+- Nur wenn der Schüler eine Aufgabe FALSCH beantwortet hat: [KORREKT:nein]
+- Nur wenn der Schüler eine Aufgabe RICHTIG beantwortet hat: [KORREKT:ja]
+- Frage stellen / Erklärung bitten / kein Lösungsversuch: kein KORREKT-Tag
 ''';
   }
 
@@ -1126,14 +1179,89 @@ Antworte NUR mit einem JSON-Array, kein Text oder Markdown davor/danach:
     return match.group(1)?.trim() ?? 'kein_schulfach';
   }
 
+  static bool _extractCorrectTag(String response) {
+    // 1. Expliziter KI-Tag hat höchste Priorität
+    final match = RegExp(
+      r'\[KORREKT:(ja|nein)\]',
+      caseSensitive: false,
+    ).firstMatch(response);
+    if (match != null) {
+      return match.group(1)?.toLowerCase() != 'nein';
+    }
+
+    // 2. Lokale Textanalyse der KI-Antwort
+    final lower = response.toLowerCase();
+
+    // Eindeutig falsch
+    final wrongPhrases = [
+      'leider falsch',
+      'leider nicht richtig',
+      'leider nicht korrekt',
+      'das ist falsch',
+      'das ist leider',
+      'nicht ganz richtig',
+      'fast richtig',
+      'nicht ganz',
+      'nicht korrekt',
+      'leider nicht',
+      'das stimmt leider',
+      'das ist nicht richtig',
+      'das ist nicht korrekt',
+      'das war nicht',
+      'falsche antwort',
+      'noch nicht ganz',
+      'nicht die richtige',
+      'nicht die richtige antwort',
+      'not quite',
+      'not correct',
+      'that\'s not',
+      'almost',
+      'unfortunately',
+      'wrong',
+      'incorrect',
+    ];
+    if (wrongPhrases.any((p) => lower.contains(p))) return false;
+
+    // Eindeutig richtig
+    final correctPhrases = [
+      'richtig',
+      'korrekt',
+      'genau',
+      'super',
+      'toll',
+      'prima',
+      'klasse',
+      'bravo',
+      'perfekt',
+      'wunderbar',
+      'sehr gut',
+      'gut gemacht',
+      'das stimmt',
+      'das ist richtig',
+      'correct',
+      'exactly',
+      'well done',
+      'great',
+      'perfect',
+      'excellent',
+      'that\'s right',
+    ];
+    if (correctPhrases.any((p) => lower.contains(p))) return true;
+
+    // Kein klares Signal → kein XP (sicher ist sicher)
+    return false;
+  }
+
   static String _stripSubjectTag(String response) {
-    // Entfernt z.B. "- Erkanntes Schulfach: [FACH:Mathematik]" komplett
+    // Entfernt FACH- und KORREKT-Tags sowie ihre Label-Präfixe
     return response
         .replaceAll(
-          RegExp(r'[-–]?\s*Erkanntes Schulfach:\s*\[FACH:[^\]]+\]'),
+          RegExp(r'[-–]?\s*(?:Erkanntes\s+)?Schulfach:\s*\[FACH:[^\]]+\]'),
           '',
         )
         .replaceAll(RegExp(r'\s*\[FACH:[^\]]+\]'), '')
+        .replaceAll(RegExp(r'[-–]?\s*[^\n]*\[KORREKT:[^\]]+\]'), '')
+        .replaceAll(RegExp(r'\s*\[KORREKT:[^\]]+\]'), '')
         .trim();
   }
 }

@@ -193,9 +193,41 @@ class XPService {
     required int dailyXpSoFar,
     int xpPerMessage = 2,
     int maxXpPerDay = 50,
+    int retries = 3,
   }) async {
     if (dailyXpSoFar >= maxXpPerDay) return null;
 
+    // Bei Netzwerkfehler bis zu 3x mit Backoff wiederholen
+    for (int attempt = 1; attempt <= retries; attempt++) {
+      try {
+        return await _addTutorXPOnce(
+          userId: userId,
+          childId: childId,
+          dailyXpSoFar: dailyXpSoFar,
+          xpPerMessage: xpPerMessage,
+          maxXpPerDay: maxXpPerDay,
+        );
+      } catch (e) {
+        if (attempt == retries) {
+          print('❌ addTutorXP Fehler nach $retries Versuchen: $e');
+          rethrow;
+        }
+        print(
+          '⚠️ addTutorXP Versuch $attempt fehlgeschlagen, retry in ${attempt}s...',
+        );
+        await Future.delayed(Duration(seconds: attempt));
+      }
+    }
+    return null;
+  }
+
+  Future<XPResult?> _addTutorXPOnce({
+    required String userId,
+    required String childId,
+    required int dailyXpSoFar,
+    int xpPerMessage = 2,
+    int maxXpPerDay = 50,
+  }) async {
     try {
       final docRef = _firestore
           .collection('users')
@@ -256,8 +288,8 @@ class XPService {
         );
       });
     } catch (e) {
-      print('❌ addTutorXP Fehler: $e');
-      return null;
+      print('❌ _addTutorXPOnce Fehler: $e');
+      rethrow;
     }
   }
 

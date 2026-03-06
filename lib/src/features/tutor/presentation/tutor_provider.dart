@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:lerndex/src/ai/vertex_ai_service.dart';
@@ -21,7 +22,6 @@ class TutorNotifier extends StateNotifier<List<ChatMessage>> {
   bool _isLoadingHistory = false;
   String? _currentSessionId;
   bool _hasUserSentMessage = false;
-  bool _subjectDetermined = false; // true sobald KI das Fach bestätigt hat
 
   static const int maxXpPerDay = 50;
 
@@ -31,11 +31,16 @@ class TutorNotifier extends StateNotifier<List<ChatMessage>> {
     final child = _ref.read(activeChildProvider);
     if (child == null) return;
 
-    final welcomeMessage = ChatMessage.tutor(
-      VertexAIService.buildWelcomeMessage(child),
-    );
+    // Wenn eine Session reaktiviert werden soll, KEINE Welcome-Message setzen –
+    // der State bleibt leer bis die Nachrichten geladen sind (verhindert Flash).
+    final resumeId = _ref.read(tutorResumeSessionIdProvider);
+    if (resumeId == null) {
+      final welcomeMessage = ChatMessage.tutor(
+        VertexAIService.buildWelcomeMessage(child),
+      );
+      state = [welcomeMessage];
+    }
 
-    state = [welcomeMessage];
     _loadDailyXpAndHistory();
   }
 
@@ -65,9 +70,9 @@ class TutorNotifier extends StateNotifier<List<ChatMessage>> {
       // Prüfen ob eine Session reaktiviert werden soll
       final resumeId = _ref.read(tutorResumeSessionIdProvider);
       if (resumeId != null) {
-        Future.microtask(() {
-          _ref.read(tutorResumeSessionIdProvider.notifier).state = null;
-        });
+        // Resume-ID sofort synchron löschen (vor jedem await) damit kein zweiter
+        // Build-Zyklus sie nochmals liest und doppelt verarbeitet.
+        _ref.read(tutorResumeSessionIdProvider.notifier).state = null;
 
         // Session in Firestore auf 'active' setzen
         await _firestore
@@ -81,9 +86,6 @@ class TutorNotifier extends StateNotifier<List<ChatMessage>> {
 
         _currentSessionId = resumeId;
         _hasUserSentMessage = true;
-        _subjectDetermined =
-            true; // Fach bereits in vorheriger Session bestimmt
-
         // Nachrichten laden
         final messagesSnapshot = await _firestore
             .collection('users')
@@ -113,8 +115,6 @@ class TutorNotifier extends StateNotifier<List<ChatMessage>> {
         }
         return;
       }
-
-      // Frischer Chat: keine aktive Session laden, alte aktive Sessions bereinigen
       final isFreshChat = _ref.read(tutorFreshChatProvider);
       if (isFreshChat) {
         Future.microtask(() {
@@ -258,14 +258,19 @@ class TutorNotifier extends StateNotifier<List<ChatMessage>> {
     state = [...state, userMessage];
     _saveChatMessage(userMessage);
 
+    // History für KI: State VOR der aktuellen userMessage (ohne loading).
+    // Die userMessage wird separat via chat.sendMessage() übergeben.
+    final historyBeforeCurrentMessage =
+        state.where((m) => !m.isLoading).toList()
+          ..removeLast(); // entfernt die soeben hinzugefügte userMessage
+
     state = [...state, ChatMessage.loading()];
 
     try {
       final tutorResponse = await _aiService.sendTutorMessage(
         child: child,
         userMessage: text,
-        conversationHistory: state.where((m) => !m.isLoading).toList(),
-        subjectAlreadyDetermined: _subjectDetermined,
+        conversationHistory: historyBeforeCurrentMessage,
       );
 
       final tutorMessage = ChatMessage.tutor(tutorResponse.text);
@@ -274,15 +279,55 @@ class TutorNotifier extends StateNotifier<List<ChatMessage>> {
 
       _saveChatMessage(tutorMessage);
 
-      // ✅ Fach aus [FACH:...]-Tag – die KI entscheidet selbst was das Thema ist.
-      // Nur bei der ersten Antwort: Topic in Firestore setzen.
-      // Folgenachrichten: nur XP, kein Topic-Update mehr.
-      if (!_subjectDetermined && tutorResponse.isSchoolSubject) {
-        _subjectDetermined = true;
-        await _setSessionTopic(tutorResponse.subject);
-        await _awardTutorXP();
-      } else if (_subjectDetermined && tutorResponse.isSchoolSubject) {
-        await _awardTutorXP();
+      // XP vergeben wenn KI ein Schulfach erkannt hat.
+      // Topic beim ersten Mal in Firestore setzen.
+      // Fach bestimmen: KI-Tag bevorzugen.
+      // Fallback 1: lokales Keyword-Matching auf User-Text + KI-Antwort.
+      // Fallback 2: gespeichertes detectedTopic der aktuellen Session aus Firestore.
+      String detectedSubject = tutorResponse.subject;
+
+      if (!tutorResponse.isSchoolSubject) {
+        // Fallback 1: Keyword-Matching
+        final fromUserText = TutorNotifier.detectTopic(text);
+        if (TutorNotifier.isSchoolSubject(fromUserText)) {
+          detectedSubject = fromUserText;
+          print('🔄 Fach-Fallback 1 (Keyword): $detectedSubject');
+        } else if (_currentSessionId != null) {
+          // Fallback 2: Fach aus Firestore-Session lesen
+          try {
+            final sessionDoc = await _firestore
+                .collection('users')
+                .doc(_userId)
+                .collection('children')
+                .doc(_childId)
+                .collection('tutor_sessions')
+                .doc(_currentSessionId)
+                .get();
+            final savedTopic = sessionDoc.data()?['detectedTopic'] as String?;
+            if (savedTopic != null &&
+                TutorNotifier.isSchoolSubject(savedTopic)) {
+              detectedSubject = savedTopic;
+              print('🔄 Fach-Fallback 2 (Session): $detectedSubject');
+            }
+          } catch (_) {}
+        }
+      }
+
+      final isSchool = TutorNotifier.isSchoolSubject(detectedSubject);
+      print(
+        '🔍 XP-Check: subject="$detectedSubject" isSchool=$isSchool isCorrect=${tutorResponse.isCorrect} dailyXP=${_ref.read(tutorSessionXpProvider(_childId))}',
+      );
+      if (isSchool) {
+        // Topic-Update und XP unabhängig voneinander – ein Firestore-Fehler
+        // beim Topic-Setzen darf die XP-Vergabe nicht blockieren.
+        unawaited(_setSessionTopic(detectedSubject));
+        if (tutorResponse.isCorrect) {
+          await _awardTutorXP();
+        } else {
+          print('⏭️ Kein XP: Antwort war nicht korrekt');
+        }
+      } else {
+        print('⛔ Kein XP: Kein Schulfach erkannt (subject=$detectedSubject)');
       }
     } catch (e) {
       // ❌ Fehler beim Senden der Nachricht: $e
@@ -402,31 +447,41 @@ class TutorNotifier extends StateNotifier<List<ChatMessage>> {
   /// Vergib XP via XPService und updated den reaktiven Tages-XP-Provider
   Future<void> _awardTutorXP() async {
     final xpService = _ref.read(xpServiceProvider);
-    final currentDailyXP = _ref.read(tutorSessionXpProvider(_childId));
-
-    final result = await xpService.addTutorXP(
+    // Immer frisch aus Firestore lesen damit kein veralteter lokaler State
+    // das Tageslimit fälschlicherweise blockiert (z.B. nach Resume).
+    final currentDailyXP = await xpService.getTutorXpToday(
       userId: _userId,
       childId: _childId,
-      dailyXpSoFar: currentDailyXP,
+    );
+    // Lokalen Provider-State synchronisieren
+    _ref.read(tutorSessionXpProvider(_childId).notifier).state = currentDailyXP;
+
+    print(
+      '💰 _awardTutorXP: currentDailyXP=$currentDailyXP, maxXpPerDay=$maxXpPerDay, limit=${currentDailyXP >= maxXpPerDay}',
     );
 
-    if (result != null && result.xpGained > 0) {
-      // Reaktiven State updaten → Banner updated sofort
-      _ref.read(tutorSessionXpProvider(_childId).notifier).state =
-          currentDailyXP + result.xpGained;
-
-      // XP-Gain Event für +XP Animation im Screen
-      _ref.read(tutorXpGainProvider(_childId).notifier).state = result.xpGained;
-
-      print(
-        '✨ Tutor XP: +${result.xpGained} '
-        '(Heute: ${currentDailyXP + result.xpGained}/$maxXpPerDay)',
+    try {
+      final result = await xpService.addTutorXP(
+        userId: _userId,
+        childId: _childId,
+        dailyXpSoFar: currentDailyXP,
       );
-    } else {
-      print(
-        '⏸️ Tutor XP: Tageslimit erreicht '
-        '(Heute: $currentDailyXP/$maxXpPerDay)',
-      );
+
+      if (result != null && result.xpGained > 0) {
+        _ref.read(tutorSessionXpProvider(_childId).notifier).state =
+            currentDailyXP + result.xpGained;
+        _ref.read(tutorXpGainProvider(_childId).notifier).state =
+            result.xpGained;
+        print(
+          '✨ Tutor XP: +${result.xpGained} (Heute: ${currentDailyXP + result.xpGained}/$maxXpPerDay)',
+        );
+      } else {
+        print(
+          '⏸️ Tutor XP: Tageslimit erreicht (Heute: $currentDailyXP/$maxXpPerDay)',
+        );
+      }
+    } catch (e) {
+      print('❌ _awardTutorXP: Netzwerkfehler, XP nicht vergeben: $e');
     }
   }
 
@@ -1996,7 +2051,6 @@ class TutorNotifier extends StateNotifier<List<ChatMessage>> {
 
       _currentSessionId = sessionId;
       _hasUserSentMessage = true;
-
       // Nachrichten laden
       final messagesSnapshot = await _firestore
           .collection('users')

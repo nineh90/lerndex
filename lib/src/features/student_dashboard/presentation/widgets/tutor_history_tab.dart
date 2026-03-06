@@ -155,20 +155,25 @@ class TutorHistoryTab extends ConsumerWidget {
                           const SizedBox(height: 6),
                           GestureDetector(
                             onTap: () async {
-                              // 1. Resume-ID setzen BEVOR der Provider sich neu initialisiert
+                              final activeChild = ref.read(activeChildProvider);
+                              if (activeChild == null || !context.mounted)
+                                return;
+
+                              // Resume-ID ZUERST setzen, dann Provider invalidieren.
+                              // Der neue TutorNotifier liest die ID synchron in
+                              // _loadChatHistoryInBackground bevor der erste await.
                               ref
                                   .read(tutorResumeSessionIdProvider.notifier)
                                   .state = doc
                                   .id;
-
-                              // 2. Provider invalidieren → TutorNotifier wird neu erstellt
-                              //    und liest beim Init die Resume-ID
-                              final activeChild = ref.read(activeChildProvider);
-                              if (activeChild != null) {
-                                ref.invalidate(
-                                  tutorProviderFamily(activeChild.id),
-                                );
-                              }
+                              ref.invalidate(
+                                tutorProviderFamily(activeChild.id),
+                              );
+                              // XP-Provider ebenfalls zurücksetzen damit _loadDailyXpAndHistory
+                              // den korrekten Wert aus Firestore neu laden kann.
+                              ref.invalidate(
+                                tutorSessionXpProvider(activeChild.id),
+                              );
 
                               if (context.mounted) {
                                 await Navigator.push(
