@@ -39,7 +39,7 @@ const _earlySubjects = [
   _EarlySubject(
     emoji: '🔢',
     label: 'Zahlen',
-    colors: [Color(0xFFFF8C00), Color(0xFFE64A19)],
+    colors: [Color(0xFF7E57C2), Color(0xFF512DA8)],
     subject: 'Mathe',
   ),
   _EarlySubject(

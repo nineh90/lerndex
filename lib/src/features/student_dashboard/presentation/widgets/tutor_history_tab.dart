@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:lerndex/src/features/parent_dashboard/presentation/widgets/parent_session_detail_screen.dart';
 import 'package:lerndex/src/features/tutor/presentation/tutor_provider.dart';
 import 'package:lerndex/src/features/tutor/presentation/tutor_screen.dart';
 import '../../../auth/data/auth_repository.dart';
 import '../../../auth/domain/child_model.dart';
 import '../../../auth/presentation/active_child_provider.dart';
-import 'session_detail_screen.dart';
 
 // ============================================================================
 // TAB 2: TUTOR-VERLAUF (Schüler-Sicht)
@@ -91,12 +91,13 @@ class TutorHistoryTab extends ConsumerWidget {
                 onTap: () => Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) => SessionDetailScreen(
+                    builder: (_) => ParentSessionDetailScreen(
                       userId: user.uid,
                       childId: child.id,
                       sessionId: doc.id,
                       topic: topic,
                       startedAt: startedAt,
+                      childName: child.name,
                     ),
                   ),
                 ),

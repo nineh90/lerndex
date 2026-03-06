@@ -35,7 +35,7 @@ List<SubjectConfig> getSubjectsForChild(ChildModel child) {
         title: 'Mathe',
         emoji: '🔢',
         icon: Icons.calculate_rounded,
-        gradientColors: [Color(0xFFFF8C00), Color(0xFFE64A19)],
+        gradientColors: [Color(0xFF7E57C2), Color(0xFF512DA8)],
         subject: 'Mathe',
       ),
       SubjectConfig(
@@ -69,7 +69,7 @@ List<SubjectConfig> getSubjectsForChild(ChildModel child) {
         title: 'Mathe',
         emoji: '🔢',
         icon: Icons.calculate_rounded,
-        gradientColors: [Color(0xFFFF8C00), Color(0xFFE64A19)],
+        gradientColors: [Color(0xFF7E57C2), Color(0xFF512DA8)],
         subject: 'Mathe',
       ),
       SubjectConfig(
@@ -123,7 +123,7 @@ List<SubjectConfig> getSubjectsForChild(ChildModel child) {
       title: 'Mathe',
       emoji: '📐',
       icon: Icons.calculate_rounded,
-      gradientColors: [Color(0xFFFF8C00), Color(0xFFE64A19)],
+      gradientColors: [Color(0xFF7E57C2), Color(0xFF512DA8)],
       subject: 'Mathe',
     ),
     SubjectConfig(

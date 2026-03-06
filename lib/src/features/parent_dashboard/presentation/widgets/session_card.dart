@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../auth/domain/child_model.dart';
 import 'content_flag_banner.dart';
-import 'session_detail_screen.dart';
+import 'parent_session_detail_screen.dart';
 
 // ============================================================================
 // SESSION-KARTE
@@ -48,7 +48,7 @@ class SessionCard extends StatelessWidget {
         onTap: () => Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (_) => SessionDetailScreen(
+            builder: (_) => ParentSessionDetailScreen(
               sessionId: sessionId,
               userId: userId,
               childId: child.id,
@@ -224,7 +224,7 @@ class SessionCard extends StatelessWidget {
   Color _topicColor(String topic) {
     switch (topic) {
       case 'Mathematik':
-        return Colors.orange;
+        return Colors.deepPurple;
       case 'Deutsch':
         return Colors.red.shade700;
       case 'Englisch':

@@ -475,6 +475,23 @@ class TutorNotifier extends StateNotifier<List<ChatMessage>> {
         print(
           '✨ Tutor XP: +${result.xpGained} (Heute: ${currentDailyXP + result.xpGained}/$maxXpPerDay)',
         );
+
+        // xpEarned in der aktuellen Session in Firestore inkrementieren
+        // → wird im Elterndashboard pro Tag summiert angezeigt
+        if (_currentSessionId != null) {
+          try {
+            await _firestore
+                .collection('users')
+                .doc(_userId)
+                .collection('children')
+                .doc(_childId)
+                .collection('tutor_sessions')
+                .doc(_currentSessionId)
+                .update({'xpEarned': FieldValue.increment(result.xpGained)});
+          } catch (e) {
+            print('⚠️ Konnte xpEarned nicht in Session speichern: $e');
+          }
+        }
       } else {
         print(
           '⏸️ Tutor XP: Tageslimit erreicht (Heute: $currentDailyXP/$maxXpPerDay)',

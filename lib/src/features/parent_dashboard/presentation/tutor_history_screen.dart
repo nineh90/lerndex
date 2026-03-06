@@ -29,6 +29,45 @@ class _TutorHistoryScreenState extends ConsumerState<TutorHistoryScreen> {
   // Sonderfilter: zeigt nur Sessions mit contentFlag
   bool _showFlaggedOnly = false;
 
+  // Lokal gelöschte Session-IDs – sofortiges Ausblenden vor Stream-Update
+  // verhindert den "Dismissible still in tree"-Fehler
+  final Set<String> _deletedIds = {};
+
+  // Heute verdiente Tutor-XP – direkt aus dem Child-Dokument geladen
+  int _todayXp = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadTodayXp();
+  }
+
+  Future<void> _loadTodayXp() async {
+    final user = ref.read(authStateChangesProvider).value;
+    if (user == null) return;
+    try {
+      final snapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('children')
+          .doc(widget.child.id)
+          .get();
+      if (!snapshot.exists) return;
+      final data = snapshot.data()!;
+      final lastDate = (data['tutorXpLastDate'] as Timestamp?)?.toDate();
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      if (lastDate != null &&
+          DateTime(lastDate.year, lastDate.month, lastDate.day) == today) {
+        if (mounted) {
+          setState(() => _todayXp = (data['tutorXpToday'] as int?) ?? 0);
+        }
+      }
+    } catch (_) {
+      // Fehler beim Laden – Badge bleibt leer
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final user = ref.watch(authStateChangesProvider).value;
@@ -85,14 +124,22 @@ class _TutorHistoryScreenState extends ConsumerState<TutorHistoryScreen> {
                   final selected = topic == _filterTopic && !_showFlaggedOnly;
                   return Padding(
                     padding: const EdgeInsets.only(right: 8),
-                    child: ChoiceChip(
+                    child: FilterChip(
                       label: Text(topic),
                       selected: selected,
                       onSelected: (_) => setState(() {
                         _filterTopic = topic;
                         _showFlaggedOnly = false;
                       }),
+                      backgroundColor: Colors.white,
                       selectedColor: Colors.deepPurple,
+                      checkmarkColor: Colors.white,
+                      showCheckmark: true,
+                      side: BorderSide(
+                        color: selected
+                            ? Colors.deepPurple
+                            : Colors.deepPurple.shade200,
+                      ),
                       labelStyle: TextStyle(
                         color: selected ? Colors.white : Colors.deepPurple,
                         fontWeight: FontWeight.w600,
@@ -178,8 +225,9 @@ class _TutorHistoryScreenState extends ConsumerState<TutorHistoryScreen> {
           return const Center(child: CircularProgressIndicator());
         }
 
-        // Leere Sessions ausblenden
+        // Leere Sessions ausblenden + lokal gelöschte sofort ausfiltern
         final allDocs = (snapshot.data?.docs ?? []).where((doc) {
+          if (_deletedIds.contains(doc.id)) return false;
           final data = doc.data() as Map<String, dynamic>;
           return (data['messageCount'] as int? ?? 0) > 1;
         }).toList();
@@ -278,6 +326,20 @@ class _TutorHistoryScreenState extends ConsumerState<TutorHistoryScreen> {
     return ListView(
       padding: const EdgeInsets.only(bottom: 24),
       children: grouped.entries.map((entry) {
+        // Tutor-XP für diesen Tag ermitteln:
+        // → Heute: direkt aus tutorXpToday im Child-Dokument (zuverlässig,
+        //          unabhängig davon ob xpEarned in den Sessions gesetzt ist)
+        // → Vergangene Tage: xpEarned aus den Sessions summieren
+        final isToday = entry.key == 'Heute';
+        final dailyXp = isToday
+            ? _todayXp
+            : entry.value.fold<int>(0, (sum, doc) {
+                final data = doc.data() as Map<String, dynamic>;
+                return sum + ((data['xpEarned'] as int?) ?? 0);
+              });
+        const kMaxXpPerDay = 50;
+        final xpCapped = dailyXp.clamp(0, kMaxXpPerDay);
+
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -307,6 +369,47 @@ class _TutorHistoryScreenState extends ConsumerState<TutorHistoryScreen> {
                     '${entry.value.length} ${entry.value.length == 1 ? 'Gespräch' : 'Gespräche'}',
                     style: TextStyle(fontSize: 12, color: Colors.grey[500]),
                   ),
+                  const Spacer(),
+                  // ⚡ Tutor-XP Badge für diesen Tag
+                  if (dailyXp > 0)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color: xpCapped >= kMaxXpPerDay
+                            ? Colors.orange.shade100
+                            : Colors.deepPurple.shade50,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: xpCapped >= kMaxXpPerDay
+                              ? Colors.orange.shade400
+                              : Colors.deepPurple.shade200,
+                          width: 1,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            xpCapped >= kMaxXpPerDay ? '🏆' : '⚡',
+                            style: const TextStyle(fontSize: 11),
+                          ),
+                          const SizedBox(width: 3),
+                          Text(
+                            '$xpCapped / $kMaxXpPerDay XP',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: xpCapped >= kMaxXpPerDay
+                                  ? Colors.orange.shade800
+                                  : Colors.deepPurple.shade700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                 ],
               ),
             ),
@@ -329,8 +432,10 @@ class _TutorHistoryScreenState extends ConsumerState<TutorHistoryScreen> {
                   child: const Icon(Icons.delete, color: Colors.white),
                 ),
                 confirmDismiss: (_) => _confirmDelete(context),
-                onDismissed: (_) =>
-                    _deleteSession(userId: userId, sessionId: doc.id),
+                onDismissed: (_) {
+                  setState(() => _deletedIds.add(doc.id));
+                  _deleteSession(userId: userId, sessionId: doc.id);
+                },
                 child: SessionCard(
                   sessionId: doc.id,
                   data: doc.data() as Map<String, dynamic>,
@@ -513,7 +618,3 @@ class _TutorHistoryScreenState extends ConsumerState<TutorHistoryScreen> {
     }
   }
 }
-
-// ============================================================================
-// FLAG-FILTER CHIP
-// ============================================================================

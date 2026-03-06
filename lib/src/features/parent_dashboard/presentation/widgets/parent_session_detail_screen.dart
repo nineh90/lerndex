@@ -6,10 +6,11 @@ import '../../../tutor/domain/chat_message.dart';
 import 'content_flag_banner.dart';
 
 // ============================================================================
-// SESSION DETAIL
+// PARENT SESSION DETAIL
+// Eltern-Ansicht eines Tutor-Gesprächs mit Löschen-Button und Flag-Banner
 // ============================================================================
 
-class SessionDetailScreen extends StatelessWidget {
+class ParentSessionDetailScreen extends StatelessWidget {
   final String sessionId;
   final String userId;
   final String childId;
@@ -18,7 +19,7 @@ class SessionDetailScreen extends StatelessWidget {
   final String childName;
   final String? contentFlag;
 
-  const SessionDetailScreen({
+  const ParentSessionDetailScreen({
     super.key,
     required this.sessionId,
     required this.userId,
@@ -31,8 +32,6 @@ class SessionDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final topicColor = _topicColor(topic);
-
     return Scaffold(
       appBar: AppBar(
         title: Column(
@@ -49,7 +48,8 @@ class SessionDetailScreen extends StatelessWidget {
               ),
           ],
         ),
-        backgroundColor: topicColor,
+        // ✅ Immer Lerndex-Lila – unabhängig vom Fach
+        backgroundColor: Colors.deepPurple,
         foregroundColor: Colors.white,
         actions: [
           IconButton(
@@ -61,9 +61,7 @@ class SessionDetailScreen extends StatelessWidget {
       ),
       body: Column(
         children: [
-          // Flag-Banner oben im Detail, wenn vorhanden
           if (contentFlag != null) ContentFlagBanner(flag: contentFlag!),
-
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
               stream: FirebaseFirestore.instance
@@ -108,7 +106,7 @@ class SessionDetailScreen extends StatelessWidget {
                         timestamp: timestamp,
                       ),
                       childName: childName,
-                      topicColor: topicColor,
+                      topicColor: Colors.deepPurple,
                     );
                   },
                 );
@@ -173,30 +171,5 @@ class SessionDetailScreen extends StatelessWidget {
     if (dateOnly == today) return 'Heute, $timeStr';
     if (dateOnly == yesterday) return 'Gestern, $timeStr';
     return '${date.day}.${date.month}.${date.year}, $timeStr';
-  }
-
-  Color _topicColor(String topic) {
-    switch (topic) {
-      case 'Mathematik':
-        return Colors.orange;
-      case 'Deutsch':
-        return Colors.red.shade700;
-      case 'Englisch':
-        return Colors.blue;
-      case 'Sachkunde':
-        return Colors.green;
-      case 'Physik':
-        return Colors.indigo;
-      case 'Chemie':
-        return Colors.teal;
-      case 'Biologie':
-        return Colors.lightGreen.shade700;
-      case 'Geschichte':
-        return Colors.brown;
-      case 'Geographie':
-        return Colors.cyan.shade700;
-      default:
-        return Colors.deepPurple;
-    }
   }
 }
