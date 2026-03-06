@@ -16,7 +16,7 @@ class EditChildScreen extends ConsumerStatefulWidget {
 class _EditChildScreenState extends ConsumerState<EditChildScreen> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _nameController;
-  late TextEditingController _ageController;
+  late int _selectedAge;
   late int _selectedGrade;
   late String _selectedSchoolType;
   bool _isSaving = false;
@@ -33,15 +33,15 @@ class _EditChildScreenState extends ConsumerState<EditChildScreen> {
   void initState() {
     super.initState();
     _nameController = TextEditingController(text: widget.child.name);
-    _ageController = TextEditingController(text: widget.child.age.toString());
-    _selectedGrade = widget.child.grade;
+    // Alter auf gültigen Bereich 6-16 klemmen
+    _selectedAge = widget.child.age.clamp(6, 16);
+    _selectedGrade = widget.child.grade.clamp(1, 8);
     _selectedSchoolType = widget.child.schoolType;
   }
 
   @override
   void dispose() {
     _nameController.dispose();
-    _ageController.dispose();
     super.dispose();
   }
 
@@ -55,7 +55,7 @@ class _EditChildScreenState extends ConsumerState<EditChildScreen> {
           .updateChild(
             childId: widget.child.id,
             name: _nameController.text.trim(),
-            age: int.tryParse(_ageController.text.trim()) ?? widget.child.age,
+            age: _selectedAge,
             schoolType: _selectedSchoolType,
             grade: _selectedGrade,
           );
@@ -167,21 +167,23 @@ class _EditChildScreenState extends ConsumerState<EditChildScreen> {
               ),
               const SizedBox(height: 16),
 
-              TextFormField(
-                controller: _ageController,
+              DropdownButtonFormField<int>(
+                value: _selectedAge,
                 decoration: _inputDecoration(
                   label: 'Alter',
-                  hint: 'z.B. 10',
+                  hint: '',
                   icon: Icons.cake_outlined,
                 ),
-                keyboardType: TextInputType.number,
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty)
-                    return 'Bitte gib das Alter ein';
-                  final age = int.tryParse(value.trim());
-                  if (age == null || age < 5 || age > 20)
-                    return 'Alter zwischen 5 und 20';
-                  return null;
+                items: List.generate(11, (i) => i + 6)
+                    .map(
+                      (age) => DropdownMenuItem(
+                        value: age,
+                        child: Text('$age Jahre'),
+                      ),
+                    )
+                    .toList(),
+                onChanged: (value) {
+                  if (value != null) setState(() => _selectedAge = value);
                 },
               ),
               const SizedBox(height: 28),
@@ -219,7 +221,7 @@ class _EditChildScreenState extends ConsumerState<EditChildScreen> {
                   hint: '',
                   icon: Icons.class_outlined,
                 ),
-                items: List.generate(13, (i) => i + 1)
+                items: List.generate(8, (i) => i + 1)
                     .map(
                       (g) =>
                           DropdownMenuItem(value: g, child: Text('Klasse $g')),

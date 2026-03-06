@@ -125,7 +125,7 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
   // ── Kind hinzufügen ──────────────────────────────────────────────────────
   void _showAddChildDialog(BuildContext context) {
     final nameController = TextEditingController();
-    final ageController = TextEditingController();
+    int selectedAge = 6;
     int selectedGrade = 1;
     String selectedSchoolType = 'Grundschule';
 
@@ -144,16 +144,27 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
                   textCapitalization: TextCapitalization.words,
                 ),
                 const SizedBox(height: 16),
-                TextField(
-                  controller: ageController,
-                  decoration: const InputDecoration(labelText: 'Alter'),
-                  keyboardType: TextInputType.number,
+                DropdownButtonFormField<int>(
+                  value: selectedAge,
+                  decoration: const InputDecoration(
+                    labelText: 'Alter',
+                    prefixIcon: Icon(Icons.cake_outlined),
+                  ),
+                  items: List.generate(11, (i) => i + 6)
+                      .map(
+                        (age) => DropdownMenuItem(
+                          value: age,
+                          child: Text('$age Jahre'),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (val) => setState(() => selectedAge = val!),
                 ),
                 const SizedBox(height: 16),
                 DropdownButtonFormField<int>(
                   initialValue: selectedGrade,
                   decoration: const InputDecoration(labelText: 'Klasse'),
-                  items: List.generate(13, (i) => i + 1)
+                  items: List.generate(8, (i) => i + 1)
                       .map(
                         (g) => DropdownMenuItem(
                           value: g,
@@ -203,7 +214,7 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
                         .read(profileRepositoryProvider)
                         .createChild(
                           name: nameController.text,
-                          age: int.tryParse(ageController.text) ?? 6,
+                          age: selectedAge,
                           grade: selectedGrade,
                           schoolType: selectedSchoolType,
                         );

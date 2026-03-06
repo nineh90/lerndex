@@ -6,7 +6,7 @@ class ChildModel {
   final String id; // Eindeutige ID aus Firestore
   final String name; // Name des Kindes
   final int level; // Aktuelles Level (startet bei 1)
-  final int grade; // Schulklasse (1-13)
+  final int grade; // Schulklasse (1-8)
   final String schoolType; // Schulform (Grundschule, Gymnasium, etc.)
   final int age; // Alter des Kindes
   final int stars; // Gesammelte Sterne

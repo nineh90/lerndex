@@ -4,7 +4,7 @@
 //
 // Klasse 1–2  → earlyLearner   (bildbasiert, kein Lesen nötig)
 // Klasse 3–4  → primaryLearner (bestehendes kindgerechtes Design)
-// Klasse 5–13 → secondaryLearner (modernes Design + Personalisierung)
+// Klasse 5–8  → secondaryLearner (modernes Design + Personalisierung)
 // ============================================================================
 
 enum DashboardMode {
@@ -39,7 +39,7 @@ extension DashboardModeX on DashboardMode {
       case DashboardMode.primaryLearner:
         return 'Lern-Abenteuer (Klasse 3–4)';
       case DashboardMode.secondaryLearner:
-        return 'Mein Bereich (Klasse 5+)';
+        return 'Mein Bereich (Klasse 5–8)';
     }
   }
 }
