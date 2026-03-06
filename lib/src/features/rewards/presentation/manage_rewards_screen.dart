@@ -99,11 +99,18 @@ class _ManageRewardsScreenState extends ConsumerState<ManageRewardsScreen>
               .where((r) => r.status == RewardStatus.claimed)
               .toList();
 
+          // "Alle" = aktive + noch nicht ausgehändigte claimed (parentSeen != true)
+          final allRelevant = parentRewards
+              .where(
+                (r) => r.status != RewardStatus.claimed || r.parentSeen != true,
+              )
+              .toList();
+
           return TabBarView(
             controller: _tabController,
             children: [
               _buildRewardsList(
-                parentRewards,
+                allRelevant,
                 user.uid,
                 'Noch keine Belohnungen erstellt',
               ),

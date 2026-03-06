@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:lerndex/src/features/auth/presentation/active_child_provider.dart';
+import 'package:lerndex/src/features/tutor/presentation/tutor_provider.dart';
+import 'package:lerndex/src/features/tutor/presentation/tutor_screen.dart';
 
 // ============================================================================
-// SESSION DETAIL – Nachrichtenanzeige
+// SESSION DETAIL – Nachrichtenanzeige (Schüler-Sicht)
 // ============================================================================
 
-class SessionDetailScreen extends StatelessWidget {
+class SessionDetailScreen extends ConsumerWidget {
   final String userId;
   final String childId;
   final String sessionId;
@@ -21,8 +25,26 @@ class SessionDetailScreen extends StatelessWidget {
     this.startedAt,
   });
 
+  Future<void> _resumeSession(BuildContext context, WidgetRef ref) async {
+    final activeChild = ref.read(activeChildProvider);
+    if (activeChild == null || !context.mounted) return;
+
+    ref.read(tutorResumeSessionIdProvider.notifier).state = sessionId;
+    ref.invalidate(tutorProviderFamily(activeChild.id));
+    ref.invalidate(tutorSessionXpProvider(activeChild.id));
+
+    if (context.mounted) {
+      // Pop detail screen first, then open tutor
+      Navigator.pop(context);
+      await Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const TutorScreen()),
+      );
+    }
+  }
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
       appBar: AppBar(
         title: Column(
@@ -41,6 +63,13 @@ class SessionDetailScreen extends StatelessWidget {
         ),
         backgroundColor: Colors.deepPurple,
         foregroundColor: Colors.white,
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => _resumeSession(context, ref),
+        backgroundColor: Colors.deepPurple,
+        foregroundColor: Colors.white,
+        icon: const Icon(Icons.restart_alt_rounded),
+        label: const Text('Chat fortsetzen'),
       ),
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
@@ -64,7 +93,7 @@ class SessionDetailScreen extends StatelessWidget {
           }
 
           return ListView.builder(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
             itemCount: docs.length,
             itemBuilder: (context, i) {
               final msg = docs[i].data() as Map<String, dynamic>;

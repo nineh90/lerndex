@@ -244,7 +244,16 @@ class LiveChildStatCard extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // ── Benachrichtigungs-Banner (nur wenn eingelöste Belohnungen) ──
-              if (claimedCount > 0) ClaimedRewardsBanner(count: claimedCount),
+              if (claimedCount > 0)
+                ClaimedRewardsBanner(
+                  count: claimedCount,
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => ManageRewardsScreen(child: child),
+                    ),
+                  ),
+                ),
 
               Padding(
                 padding: const EdgeInsets.all(16),

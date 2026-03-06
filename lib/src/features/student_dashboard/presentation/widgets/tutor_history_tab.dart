@@ -1,12 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:lerndex/src/features/parent_dashboard/presentation/widgets/parent_session_detail_screen.dart';
-import 'package:lerndex/src/features/tutor/presentation/tutor_provider.dart';
-import 'package:lerndex/src/features/tutor/presentation/tutor_screen.dart';
 import '../../../auth/data/auth_repository.dart';
 import '../../../auth/domain/child_model.dart';
-import '../../../auth/presentation/active_child_provider.dart';
+import 'session_detail_screen.dart';
 
 // ============================================================================
 // TAB 2: TUTOR-VERLAUF (Schüler-Sicht)
@@ -91,13 +88,12 @@ class TutorHistoryTab extends ConsumerWidget {
                 onTap: () => Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) => ParentSessionDetailScreen(
+                    builder: (_) => SessionDetailScreen(
                       userId: user.uid,
                       childId: child.id,
                       sessionId: doc.id,
                       topic: topic,
                       startedAt: startedAt,
-                      childName: child.name,
                     ),
                   ),
                 ),
@@ -153,67 +149,11 @@ class TutorHistoryTab extends ConsumerWidget {
                               color: Colors.grey[600],
                             ),
                           ),
-                          const SizedBox(height: 6),
-                          GestureDetector(
-                            onTap: () async {
-                              final activeChild = ref.read(activeChildProvider);
-                              if (activeChild == null || !context.mounted)
-                                return;
-
-                              // Resume-ID ZUERST setzen, dann Provider invalidieren.
-                              // Der neue TutorNotifier liest die ID synchron in
-                              // _loadChatHistoryInBackground bevor der erste await.
-                              ref
-                                  .read(tutorResumeSessionIdProvider.notifier)
-                                  .state = doc
-                                  .id;
-                              ref.invalidate(
-                                tutorProviderFamily(activeChild.id),
-                              );
-                              // XP-Provider ebenfalls zurücksetzen damit _loadDailyXpAndHistory
-                              // den korrekten Wert aus Firestore neu laden kann.
-                              ref.invalidate(
-                                tutorSessionXpProvider(activeChild.id),
-                              );
-
-                              if (context.mounted) {
-                                await Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => const TutorScreen(),
-                                  ),
-                                );
-                              }
-                            },
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 10,
-                                vertical: 4,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.deepPurple,
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: const Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    Icons.play_arrow_rounded,
-                                    color: Colors.white,
-                                    size: 13,
-                                  ),
-                                  SizedBox(width: 3),
-                                  Text(
-                                    'Fortsetzen',
-                                    style: TextStyle(
-                                      fontSize: 10,
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
+                          const SizedBox(height: 4),
+                          Icon(
+                            Icons.chevron_right,
+                            color: Colors.grey[400],
+                            size: 20,
                           ),
                         ],
                       ),
