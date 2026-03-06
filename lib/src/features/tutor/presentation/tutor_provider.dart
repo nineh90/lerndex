@@ -32,7 +32,7 @@ class TutorNotifier extends StateNotifier<List<ChatMessage>> {
     if (child == null) return;
 
     final welcomeMessage = ChatMessage.tutor(
-      'Hallo ${child.name}! 👋 Ich bin **Lerndex**, dein persönlicher Lernbegleiter! 🎓 Ich helfe dir bei allen Fragen zu Mathe, Deutsch, Englisch und anderen Schulfächern. Was möchtest du heute lernen? 📚✨',
+      VertexAIService.buildWelcomeMessage(child),
     );
 
     state = [welcomeMessage];
@@ -1969,7 +1969,7 @@ class TutorNotifier extends StateNotifier<List<ChatMessage>> {
       _hasUserSentMessage = false;
 
       final welcomeMessage = ChatMessage.tutor(
-        'Hallo ${child.name}! 👋 Ich bin **Lerndex**, dein persönlicher Lernbegleiter! 🎓 Ich helfe dir bei allen Fragen zu Mathe, Deutsch, Englisch und anderen Schulfächern. Was möchtest du heute lernen? 📚✨',
+        VertexAIService.buildWelcomeMessage(child),
       );
 
       state = [welcomeMessage];

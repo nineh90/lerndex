@@ -52,7 +52,7 @@ class _ManageRewardsScreenState extends ConsumerState<ManageRewardsScreen>
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
         title: Text('Belohnungen für ${widget.child.name}'),
-        backgroundColor: Colors.amber,
+        backgroundColor: Colors.deepPurple,
         foregroundColor: Colors.white,
         elevation: 0,
         bottom: TabBar(
@@ -73,7 +73,9 @@ class _ManageRewardsScreenState extends ConsumerState<ManageRewardsScreen>
             .getRewardsStream(userId: user.uid, childId: widget.child.id),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
+            return const Center(
+              child: CircularProgressIndicator(color: Colors.deepPurple),
+            );
           }
 
           if (snapshot.hasError) {
@@ -124,7 +126,8 @@ class _ManageRewardsScreenState extends ConsumerState<ManageRewardsScreen>
           context,
           ref.watch(authStateChangesProvider).value!.uid,
         ),
-        backgroundColor: Colors.amber,
+        backgroundColor: Colors.deepPurple,
+        foregroundColor: Colors.white,
         icon: const Icon(Icons.add),
         label: const Text('Neue Belohnung'),
       ),

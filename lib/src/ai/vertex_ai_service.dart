@@ -345,7 +345,7 @@ Du bist Lerndex, der persönliche Lernbegleiter für ${child.name}.
 - Aktuelles Level: ${child.level}
 
 ✅ DEINE HAUPTAUFGABEN:
-1. Beantworte NUR Fragen zu Schulfächern (Mathe, Deutsch, Englisch, Sachkunde, Naturwissenschaften usw.)
+1. Beantworte NUR Fragen zu Schulfächern (${_subjectsForGrade(child.grade, child.schoolType)})
 2. Erkläre Konzepte Schritt für Schritt und altersgerecht
 3. Verwende Beispiele, die für Klasse ${child.grade} passen
 4. Sei motivierend, ermutigend und geduldig
@@ -367,10 +367,142 @@ Du bist Lerndex, der persönliche Lernbegleiter für ${child.name}.
 ${subjectAlreadyDetermined ? '' : '''
 PFLICHT NUR BEI DIESER ERSTEN ANTWORT:
 Füge als ALLERLETZTE Zeile exakt dieses Tag an (wird automatisch entfernt):
-- Erkanntes Schulfach: [FACH:Mathematik] / [FACH:Deutsch] / [FACH:Englisch] / [FACH:Biologie] / [FACH:Chemie] / [FACH:Physik] / [FACH:Geschichte] / [FACH:Geographie] / [FACH:Sachkunde] / [FACH:Informatik] / [FACH:Latein] / [FACH:Französisch] / [FACH:Spanisch] / [FACH:Ethik] / [FACH:Philosophie] / [FACH:Musik] / [FACH:Kunst] / [FACH:Sport] / [FACH:Politik]
+- Erkanntes Schulfach: [FACH:Mathematik] / [FACH:Deutsch] / [FACH:Englisch]${child.grade <= 4 || child.schoolType == 'Grundschule' ? ' / [FACH:Sachkunde]' : ''}${child.grade >= 5 ? ' / [FACH:Biologie]' : ''}${child.grade >= 5 && child.grade <= 10 ? ' / [FACH:Chemie] / [FACH:Physik]' : ''}${child.grade > 10 ? ' / [FACH:Chemie] / [FACH:Physik]' : ''} / [FACH:Geschichte]
 - Kein Schulfach / unklar / Smalltalk: [FACH:kein_schulfach]
 '''}
 ''';
+  }
+
+  // --------------------------------------------------------------------------
+  // DYNAMISCHE BEGRÜSSUNG
+  // --------------------------------------------------------------------------
+
+  /// Baut eine dynamische Begrüßungsnachricht aus Tageszeit, Wochentag,
+  /// Streak und Level. Jeder Baustein hat mehrere Varianten → viele
+  /// mögliche Kombinationen, ohne extra KI-Aufruf.
+  static String buildWelcomeMessage(ChildModel child) {
+    final now = DateTime.now();
+    final hour = now.hour;
+    final weekday = now.weekday; // 1=Mo … 7=So
+    final streak = child.streak ?? 0;
+    final level = child.level;
+    final name = child.name;
+
+    // Seed wechselt jede Sekunde → andere Kombination bei jedem Öffnen
+    final seed = now.second + now.minute * 60;
+    String pick(List<String> options) => options[seed % options.length];
+
+    // ── Tageszeit-Gruß ──────────────────────────────────────────────────
+    final String greeting;
+    if (hour < 10) {
+      greeting = pick([
+        'Guten Morgen, $name! 🌅',
+        'Hey $name, früh auf heute! 🌄',
+        'Morgen, $name! ☀️ Der Tag fängt gut an.',
+        'Oh, schon wach, $name? Super! 🐦',
+      ]);
+    } else if (hour < 13) {
+      greeting = pick([
+        'Hallo $name! 👋',
+        'Hi $name! 😊',
+        'Hey $name, schön dass du da bist!',
+        'Na $name, bereit zum Lernen? 💪',
+      ]);
+    } else if (hour < 17) {
+      greeting = pick([
+        'Schön, dass du vorbeischaust, $name! 🌤️',
+        'Hey $name! 👋 Nachmittagsrunde?',
+        'Hi $name! Nach der Schule direkt weitergemacht? 🎒',
+        'Hallo $name! 😄 Hausaufgaben-Zeit?',
+      ]);
+    } else if (hour < 20) {
+      greeting = pick([
+        'Hallo $name! 🌇 Noch ein bisschen lernen?',
+        'Hey $name! Abends ist auch eine gute Zeit. 🌆',
+        'Hi $name! 👋 Den Tag noch gut nutzen?',
+        'Schön, $name! Abends lernt es sich oft am besten. 🌙',
+      ]);
+    } else {
+      greeting = pick([
+        'Hallo $name! 🌙 Noch ein bisschen?',
+        'Hey $name! Nicht zu lange, aber kurz lernen geht immer. ⭐',
+        'Hi $name! 🌟 Ein kleines Lern-Abenteuer vor dem Schlafen?',
+      ]);
+    }
+
+    // ── Kontext-Kommentar ────────────────────────────────────────────────
+    final String context;
+    if (streak >= 14) {
+      context = pick([
+        '🔥 **$streak Tage** am Stück – das ist wirklich beeindruckend! Du bist kaum aufzuhalten.',
+        '🏆 **$streak-Tage-Streak**! So eine Ausdauer haben nur die Besten.',
+        '⚡ Unfassbar – **$streak Tage** ohne Pause! Du bist eine echte Lernmaschine.',
+      ]);
+    } else if (streak >= 7) {
+      context = pick([
+        '🔥 Eine ganze Woche am Stück – **$streak Tage Streak**! Weiter so!',
+        '⭐ **$streak Tage** in Folge! Das ist echte Ausdauer.',
+        '💪 **$streak-Tage-Streak** – du bist richtig im Rhythmus!',
+      ]);
+    } else if (streak >= 3) {
+      context = pick([
+        '⚡ Schon **$streak Tage** hintereinander dabei – bleib dran!',
+        '🌟 **$streak Tage Streak** – du kommst in Fahrt!',
+        '👍 **$streak Tage** am Stück! Noch ein paar mehr und du knackst eine Woche.',
+      ]);
+    } else if (level >= 15) {
+      context = pick([
+        '🏆 Level **$level** – du weißt wirklich schon eine Menge!',
+        '🌟 Level **$level**! Nicht viele kommen so weit.',
+        '💎 Wow, Level **$level**. Richtig beeindruckend!',
+      ]);
+    } else if (level >= 8) {
+      context = pick([
+        '📈 Level **$level** – du machst tolle Fortschritte!',
+        '🎯 Level **$level** erreicht! Du wirst immer besser.',
+        '🚀 Level **$level** – weiter so, du bist auf einem guten Weg!',
+      ]);
+    } else if (weekday == 1) {
+      context = pick([
+        '🗓️ Montag – neuer Start, neue Chance! Was nimmst du dir diese Woche vor?',
+        '💪 Die Woche fängt direkt gut an, wenn man lernt!',
+        '🌱 Montags den Grundstein für die Woche legen – gute Idee!',
+      ]);
+    } else if (weekday == 5) {
+      context = pick([
+        '🎉 Freitag! Noch ein bisschen Lernen, dann kommt das Wochenende.',
+        '⭐ Freitags noch dabei sein – das zeigt echten Einsatz!',
+        '🏁 Zielgerade der Woche! Ein bisschen Lernen und dann Wochenende.',
+      ]);
+    } else if (weekday >= 6) {
+      context = pick([
+        '🛋️ Auch am Wochenende dabei – das zahlt sich aus!',
+        '🌈 Wochenende und trotzdem lernen – du bist wirklich motiviert!',
+        '⭐ Selbst am Wochenende? Respekt, $name!',
+      ]);
+    } else {
+      context = pick([
+        '💡 Ich bin gespannt, was du heute wissen möchtest!',
+        '📖 Jede Frage ist eine gute Frage. Nur raus damit!',
+        '🚀 Gemeinsam kriegen wir das hin. Was beschäftigt dich gerade?',
+        '🧠 Dein Gehirn ist bereit – ich auch!',
+        '✏️ Hausaufgaben, ein schwieriges Thema oder einfach Neugier? Ich bin da!',
+        '🌟 Keine Frage ist zu klein oder zu groß für mich!',
+        '🎯 Was lernst du gerade in der Schule? Ich helfe dir dabei.',
+        '😊 Schön, dass du da bist! Womit soll ich dir helfen?',
+      ]);
+    }
+
+    // ── Abschluss-Frage ──────────────────────────────────────────────────
+    final subjects = _subjectsForGrade(child.grade, child.schoolType);
+    final String closing = pick([
+      'Ich helfe dir bei $subjects und allem anderen was in der Schule drankommt. **Was möchtest du heute lernen?** 📚',
+      'Stell mir einfach deine Frage – ich erkläre alles Schritt für Schritt. **Womit fangen wir an?** 🎓',
+      'Hausaufgaben, Erklärungen oder einfach üben – ich bin für alles bereit. **Was darf es sein?** ✨',
+      '$subjects – alles kein Problem. **Was beschäftigt dich heute?** 📖',
+    ]);
+
+    return '$greeting\n\n$context\n\n$closing';
   }
 
   String _buildTaskGeneratorPrompt({
@@ -885,6 +1017,19 @@ Antworte NUR mit einem JSON-Array, kein Text oder Markdown davor/danach:
     }
   }
 
+  /// Gibt eine kommaseparierte Liste der tatsächlich verfügbaren Fächer zurück.
+  /// Spiegelt exakt die Fächer aus subject_config.dart – nie mehr, nie weniger.
+  static String _subjectsForGrade(int grade, String schoolType) {
+    if (schoolType == 'Grundschule' || grade <= 4) {
+      return 'Mathe, Deutsch, Englisch, Sachkunde';
+    } else if (grade <= 10) {
+      return 'Mathe, Deutsch, Englisch, Biologie, Chemie, Physik, Geschichte';
+    } else {
+      // Oberstufe Klasse 11–13
+      return 'Mathe, Deutsch, Englisch, Chemie, Physik, Geschichte';
+    }
+  }
+
   // --------------------------------------------------------------------------
   // SICHERHEITS-FILTER (Tutor)
   // --------------------------------------------------------------------------
@@ -993,11 +1138,6 @@ Antworte NUR mit einem JSON-Array, kein Text oder Markdown davor/danach:
   }
 }
 
-// ============================================================================
-// RIVERPOD PROVIDER
-// ============================================================================
-
-/// Singleton VertexAIService — wird von Tutor, Task-Generator und Quiz genutzt
 final vertexAIServiceProvider = Provider<VertexAIService>((ref) {
   return VertexAIService();
 });

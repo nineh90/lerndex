@@ -51,7 +51,7 @@ class TaskApprovalScreen extends ConsumerWidget {
                 _buildSectionHeader(
                   title: 'Warten auf Freigabe',
                   count: pending.length,
-                  color: Colors.orange,
+                  color: Colors.deepPurple,
                 ),
                 const SizedBox(height: 12),
                 ...pending.map((batch) => BatchCard(batch: batch)),

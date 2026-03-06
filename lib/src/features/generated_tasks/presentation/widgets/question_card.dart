@@ -393,9 +393,9 @@ class _QuestionCardState extends ConsumerState<QuestionCard> {
               width: double.infinity,
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.blue.shade50,
+                color: Colors.deepPurple.shade50,
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.blue.shade200),
+                border: Border.all(color: Colors.deepPurple.shade200),
               ),
               child: Text(
                 widget.question.solution!,
@@ -500,7 +500,7 @@ class _QuestionCardState extends ConsumerState<QuestionCard> {
       case 'hard':
         return Colors.red;
       default:
-        return Colors.orange;
+        return Colors.deepPurple;
     }
   }
 
@@ -533,7 +533,7 @@ class _QuestionCardState extends ConsumerState<QuestionCard> {
       case TaskApprovalStatus.rejected:
         return Colors.red;
       default:
-        return Colors.orange;
+        return Colors.deepPurple;
     }
   }
 

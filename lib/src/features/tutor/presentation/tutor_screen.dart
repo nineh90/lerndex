@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lerndex/src/shared/widgets/message_bubble.dart';
 import '../domain/chat_message.dart';
 import 'tutor_provider.dart';
 import '../../auth/presentation/active_child_provider.dart';
@@ -10,7 +11,6 @@ import '../../rewards/data/xp_service.dart';
 import '../../rewards/data/reward_service.dart';
 import 'widgets/xp_gain_overlay.dart';
 import 'widgets/tutor_xp_banner.dart';
-import '../../../shared/widgets/message_bubble.dart';
 
 /// Chat-Screen mit dem KI-Tutor
 class TutorScreen extends ConsumerStatefulWidget {
@@ -198,7 +198,26 @@ class _TutorScreenState extends ConsumerState<TutorScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('🎓 Lerndex Tutor'),
+        title: Row(
+          children: [
+            CircleAvatar(
+              radius: 18,
+              backgroundColor: Colors.deepPurple.shade300,
+              child: ClipOval(
+                child: Image.asset(
+                  'assets/images/lerndex_logo.png',
+                  width: 36,
+                  height: 36,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) =>
+                      const Icon(Icons.school, size: 20, color: Colors.white),
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            const Text('Lerndex Tutor'),
+          ],
+        ),
         backgroundColor: Colors.deepPurple,
         foregroundColor: Colors.white,
         actions: const [],

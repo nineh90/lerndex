@@ -256,7 +256,7 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.hourglass_top, size: 56, color: Colors.amber),
+            const Icon(Icons.hourglass_top, size: 56, color: Colors.deepPurple),
             const SizedBox(height: 16),
             Text(
               '„$feature" ist bald verfügbar! 🚀',

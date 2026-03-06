@@ -99,7 +99,7 @@ class BatchCard extends ConsumerWidget {
                     icon: Icons.schedule,
                     label: 'Ausstehend',
                     count: batch.pendingTasks,
-                    color: Colors.orange,
+                    color: Colors.deepPurple,
                   ),
                   const SizedBox(width: 8),
                   StatusChip(

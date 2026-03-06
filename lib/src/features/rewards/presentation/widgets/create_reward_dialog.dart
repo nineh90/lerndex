@@ -116,12 +116,12 @@ class _CreateRewardDialogState extends ConsumerState<CreateRewardDialog> {
                           ),
                           decoration: BoxDecoration(
                             color: !_isAvatarReward
-                                ? Colors.amber.shade50
+                                ? Colors.deepPurple.shade50
                                 : Colors.grey.shade100,
                             borderRadius: BorderRadius.circular(10),
                             border: Border.all(
                               color: !_isAvatarReward
-                                  ? Colors.amber
+                                  ? Colors.deepPurple
                                   : Colors.grey.shade300,
                               width: !_isAvatarReward ? 2 : 1,
                             ),
@@ -131,7 +131,7 @@ class _CreateRewardDialogState extends ConsumerState<CreateRewardDialog> {
                               Icon(
                                 Icons.card_giftcard,
                                 color: !_isAvatarReward
-                                    ? Colors.amber.shade700
+                                    ? Colors.deepPurple
                                     : Colors.grey,
                                 size: 24,
                               ),
@@ -145,7 +145,7 @@ class _CreateRewardDialogState extends ConsumerState<CreateRewardDialog> {
                                       ? FontWeight.bold
                                       : FontWeight.normal,
                                   color: !_isAvatarReward
-                                      ? Colors.amber.shade700
+                                      ? Colors.deepPurple
                                       : Colors.grey,
                                 ),
                               ),
@@ -456,7 +456,8 @@ class _CreateRewardDialogState extends ConsumerState<CreateRewardDialog> {
                     ElevatedButton(
                       onPressed: _isCreating ? null : _createReward,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.amber,
+                        backgroundColor: Colors.deepPurple,
+                        foregroundColor: Colors.white,
                       ),
                       child: _isCreating
                           ? const SizedBox(

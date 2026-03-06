@@ -66,7 +66,7 @@ class DashboardModeBadge extends StatelessWidget {
   Color _color(DashboardMode mode) {
     switch (mode) {
       case DashboardMode.earlyLearner:
-        return Colors.orange;
+        return Colors.deepPurple;
       case DashboardMode.primaryLearner:
         return Colors.deepPurple;
       case DashboardMode.secondaryLearner:

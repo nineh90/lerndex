@@ -161,7 +161,7 @@ class LiveChildStatCard extends ConsumerWidget {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text('${child.name} wurde gelöscht'),
-                      backgroundColor: Colors.orange,
+                      backgroundColor: Colors.deepPurple,
                     ),
                   );
                 }
@@ -461,8 +461,8 @@ class LiveChildStatCard extends ConsumerWidget {
                                     Icons.card_giftcard,
                                     size: 18,
                                     color: claimedCount > 0
-                                        ? Colors.orange
-                                        : Colors.amber,
+                                        ? Colors.deepPurple
+                                        : Colors.deepPurple,
                                   ),
                                   const SizedBox(width: 8),
                                   Text(
@@ -471,7 +471,7 @@ class LiveChildStatCard extends ConsumerWidget {
                                         : 'Belohnungen verwalten',
                                     style: TextStyle(
                                       color: claimedCount > 0
-                                          ? Colors.orange
+                                          ? Colors.deepPurple
                                           : null,
                                       fontWeight: claimedCount > 0
                                           ? FontWeight.bold
@@ -507,7 +507,7 @@ class LiveChildStatCard extends ConsumerWidget {
                                     Icons.task_alt,
                                     size: 18,
                                     color: pendingCount > 0
-                                        ? Colors.orange
+                                        ? Colors.deepPurple
                                         : Colors.green,
                                   ),
                                   const SizedBox(width: 8),
@@ -637,13 +637,13 @@ class LiveChildStatCard extends ConsumerWidget {
                       children: [
                         StatChip(
                           icon: Icons.star,
-                          color: Colors.amber,
+                          color: Colors.deepPurple,
                           label: '${child.stars} Sterne',
                         ),
                         const SizedBox(width: 8),
                         StatChip(
                           icon: Icons.local_fire_department,
-                          color: Colors.orange,
+                          color: Colors.deepPurple.shade300,
                           label: '${child.streak ?? 0} Tage',
                         ),
                         const SizedBox(width: 8),
