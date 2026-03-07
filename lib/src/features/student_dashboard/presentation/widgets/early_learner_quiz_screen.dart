@@ -7,6 +7,7 @@ import 'package:confetti/confetti.dart';
 import 'package:lerndex/src/features/auth/data/auth_repository.dart';
 import 'package:lerndex/src/features/auth/presentation/active_child_provider.dart';
 import 'package:lerndex/src/features/learning_time/learning_time_tracker.dart';
+import 'package:lerndex/src/features/parent_dashboard/presentation/widgets/early_learner_question_repository.dart';
 import 'package:lerndex/src/features/rewards/data/xp_service.dart';
 import 'package:lerndex/src/features/tts/tts_provider.dart';
 import 'package:lerndex/src/features/student_dashboard/presentation/widgets/avatar_progress_bar.dart';
@@ -239,71 +240,154 @@ final Map<String, List<_EarlyQuestion>> _questionBank = {
     ),
   ],
 
-  'Englisch': [
+  'FarbenFormen': [
+    // Farben erkennen
     const _EarlyQuestion(
       type: _QuestionType.imageChoice,
       questionEmoji: '🔴',
       questionText: 'Welche Farbe siehst du?',
-      options: ['🔵', '🟡', '🔴', '🟢'],
-      correctAnswer: '🔴',
-      feedbackCorrect: '🌟 Das ist Rot!',
+      options: ['Rot', 'Blau', 'Gelb', 'Grün'],
+      correctAnswer: 'Rot',
+      feedbackCorrect: '🌟 Richtig, das ist Rot!',
       feedbackWrong: '💪 Das ist Rot 🔴!',
     ),
     const _EarlyQuestion(
       type: _QuestionType.imageChoice,
-      questionEmoji: '🐘',
-      questionText: 'Welches Tier ist das?',
-      options: ['🦁', '🐘', '🦒', '🐬'],
-      correctAnswer: '🐘',
-      feedbackCorrect: '🎉 Ein Elefant!',
-      feedbackWrong: '💪 Das ist ein Elefant 🐘!',
+      questionEmoji: '🔵',
+      questionText: 'Welche Farbe siehst du?',
+      options: ['Rot', 'Blau', 'Gelb', 'Grün'],
+      correctAnswer: 'Blau',
+      feedbackCorrect: '🎉 Richtig, das ist Blau!',
+      feedbackWrong: '💪 Das ist Blau 🔵!',
     ),
     const _EarlyQuestion(
       type: _QuestionType.imageChoice,
       questionEmoji: '🟡',
       questionText: 'Was hat diese Farbe?',
-      options: ['🌊', '🍋', '🍓', '🍀'],
+      options: ['🍓', '🍋', '🍀', '🫐'],
       correctAnswer: '🍋',
-      feedbackCorrect: '🌟 Eine Zitrone ist gelb!',
-      feedbackWrong: '💪 Die Zitrone ist gelb 🍋!',
+      feedbackCorrect: '🌟 Die Zitrone ist gelb!',
+      feedbackWrong: '💪 Die Zitrone 🍋 ist gelb!',
+    ),
+    // Formen erkennen
+    const _EarlyQuestion(
+      type: _QuestionType.imageChoice,
+      questionEmoji: '⭕',
+      questionText: 'Was hat die gleiche Form?',
+      options: ['🪟', '📦', '🌕', '📐'],
+      correctAnswer: '🌕',
+      feedbackCorrect: '🌟 Der Mond ist auch rund!',
+      feedbackWrong: '💪 Ein Kreis ist rund wie der Mond 🌕!',
     ),
     const _EarlyQuestion(
       type: _QuestionType.imageChoice,
-      questionEmoji: '🐬',
-      questionText: 'Wo lebt dieser Delfin?',
-      options: ['🌳', '🌊', '🏔️', '🌸'],
-      correctAnswer: '🌊',
-      feedbackCorrect: '🎊 Im Wasser!',
-      feedbackWrong: '💪 Delfine leben im Wasser 🌊!',
+      questionEmoji: '🟦',
+      questionText: 'Was hat die gleiche Form wie das Quadrat?',
+      options: ['🌕', '🟦', '🔺', '🪟'],
+      correctAnswer: '🟦',
+      feedbackCorrect: '🎊 Genau, ein Quadrat!',
+      feedbackWrong: '💪 Das Quadrat hat 4 gleiche Seiten!',
+    ),
+    // Farb-Muster
+    const _EarlyQuestion(
+      type: _QuestionType.pattern,
+      questionEmoji: '🔴🔵🔴🔵🔴❓',
+      questionText: 'Welche Farbe kommt jetzt?',
+      options: ['🔵', '🔴', '🟡', '🟢'],
+      correctAnswer: '🔵',
+      feedbackCorrect: '🎉 Blau kommt jetzt!',
+      feedbackWrong: '💪 Rot, Blau, Rot, Blau...',
     ),
     const _EarlyQuestion(
-      type: _QuestionType.imageChoice,
-      questionEmoji: '🦋',
-      questionText: 'Was ist das?',
-      options: ['🐝', '🐛', '🦋', '🐞'],
-      correctAnswer: '🦋',
-      feedbackCorrect: '🌟 Ein Schmetterling!',
-      feedbackWrong: '💪 Das ist ein Schmetterling 🦋!',
+      type: _QuestionType.pattern,
+      questionEmoji: '🟡🟢🟡🟢🟡❓',
+      questionText: 'Was kommt als nächstes?',
+      options: ['🟡', '🟢', '🔴', '🔵'],
+      correctAnswer: '🟢',
+      feedbackCorrect: '🌟 Grün ist richtig!',
+      feedbackWrong: '💪 Gelb, Grün, Gelb, Grün...',
     ),
-    // ── Neue Aufgabentypen ──────────────────────────────────────────
+    // Odd one out nach Farbe/Form
     const _EarlyQuestion(
       type: _QuestionType.oddOneOut,
-      questionEmoji: '🔴🔵🟡🌳',
-      questionText: 'Was ist keine Farbe?',
-      options: ['🔴', '🔵', '🟡', '🌳'],
-      correctAnswer: '🌳',
-      feedbackCorrect: '🎉 Der Baum ist keine Farbe!',
-      feedbackWrong: '💪 Drei sind Farben!',
+      questionEmoji: '🔴🍓🌹🔵',
+      questionText: 'Was ist nicht rot?',
+      options: ['🔴', '🍓', '🌹', '🔵'],
+      correctAnswer: '🔵',
+      feedbackCorrect: '🎉 Blau ist nicht rot!',
+      feedbackWrong: '💪 Drei davon sind rot!',
     ),
+    const _EarlyQuestion(
+      type: _QuestionType.oddOneOut,
+      questionEmoji: '⭕🌕🍕🔺',
+      questionText: 'Was ist nicht rund?',
+      options: ['⭕', '🌕', '🍕', '🔺'],
+      correctAnswer: '🔺',
+      feedbackCorrect: '🌟 Das Dreieck ist nicht rund!',
+      feedbackWrong: '💪 Drei sind rund!',
+    ),
+    // Größen vergleichen
+    const _EarlyQuestion(
+      type: _QuestionType.sizeOrder,
+      questionEmoji: '🔵🟤⚫',
+      questionText: 'Welcher Kreis ist am kleinsten? Tippe der Reihe nach!',
+      options: ['🔵', '🟤', '⚫'],
+      correctAnswer: '⚫🟤🔵',
+      orderedAnswers: ['⚫', '🟤', '🔵'],
+      feedbackCorrect: '🎊 Klein, mittel, groß!',
+      feedbackWrong: '💪 Tippe den kleinsten zuerst!',
+    ),
+  ],
+
+  'Logik': [
+    // Zugehörigkeit
+    const _EarlyQuestion(
+      type: _QuestionType.oddOneOut,
+      questionEmoji: '🍎🍌🍓🚗',
+      questionText: 'Was passt nicht dazu?',
+      options: ['🍎', '🍌', '🍓', '🚗'],
+      correctAnswer: '🚗',
+      feedbackCorrect: '🌟 Das Auto ist kein Obst!',
+      feedbackWrong: '💪 Drei sind Früchte!',
+    ),
+    const _EarlyQuestion(
+      type: _QuestionType.oddOneOut,
+      questionEmoji: '🐶🐱🐟✏️',
+      questionText: 'Was ist kein Tier?',
+      options: ['🐶', '🐱', '🐟', '✏️'],
+      correctAnswer: '✏️',
+      feedbackCorrect: '🎉 Der Stift ist kein Tier!',
+      feedbackWrong: '💪 Drei sind Tiere!',
+    ),
+    const _EarlyQuestion(
+      type: _QuestionType.oddOneOut,
+      questionEmoji: '🌧️☀️❄️🍕',
+      questionText: 'Was ist kein Wetter?',
+      options: ['🌧️', '☀️', '❄️', '🍕'],
+      correctAnswer: '🍕',
+      feedbackCorrect: '🌟 Pizza ist kein Wetter!',
+      feedbackWrong: '💪 Drei sind Wetterarten!',
+    ),
+    // Muster
     const _EarlyQuestion(
       type: _QuestionType.pattern,
       questionEmoji: '🐶🐱🐶🐱🐶❓',
       questionText: 'Welches Tier kommt jetzt?',
       options: ['🐶', '🐱', '🐰', '🐸'],
       correctAnswer: '🐱',
-      feedbackCorrect: '🌟 Katze ist richtig!',
+      feedbackCorrect: '🌟 Katze kommt jetzt!',
       feedbackWrong: '💪 Hund, Katze, Hund, Katze...',
     ),
+    const _EarlyQuestion(
+      type: _QuestionType.pattern,
+      questionEmoji: '1️⃣2️⃣1️⃣2️⃣1️⃣❓',
+      questionText: 'Was kommt als nächstes?',
+      options: ['1️⃣', '2️⃣', '3️⃣', '0️⃣'],
+      correctAnswer: '2️⃣',
+      feedbackCorrect: '🎉 Die Zwei kommt!',
+      feedbackWrong: '💪 Eins, Zwei, Eins, Zwei...',
+    ),
+    // Größen & Reihenfolgen
     const _EarlyQuestion(
       type: _QuestionType.sizeOrder,
       questionEmoji: '🐜🐇🐻',
@@ -311,90 +395,37 @@ final Map<String, List<_EarlyQuestion>> _questionBank = {
       options: ['🐻', '🐜', '🐇'],
       correctAnswer: '🐜🐇🐻',
       orderedAnswers: ['🐜', '🐇', '🐻'],
-      feedbackCorrect: '🎊 Ameise, Hase, Bär!',
+      feedbackCorrect: '🎊 Ameise, Hase, Bär – perfekt!',
       feedbackWrong: '💪 Ameise ist am kleinsten!',
-    ),
-  ],
-
-  'Sachkunde': [
-    const _EarlyQuestion(
-      type: _QuestionType.imageChoice,
-      questionEmoji: '🌤️',
-      questionText: 'Welches Wetter siehst du?',
-      options: ['☀️', '🌤️', '🌧️', '❄️'],
-      correctAnswer: '🌤️',
-      feedbackCorrect: '🌟 Leicht bewölkt!',
-      feedbackWrong: '💪 Schau genau hin!',
-    ),
-    const _EarlyQuestion(
-      type: _QuestionType.imageChoice,
-      questionEmoji: '🐦',
-      questionText: 'Was kann dieses Tier?',
-      options: ['🏊', '✈️ Fliegen', '🏃', '🛏️'],
-      correctAnswer: '✈️ Fliegen',
-      feedbackCorrect: '🎉 Vögel können fliegen!',
-      feedbackWrong: '💪 Vögel haben Flügel!',
-    ),
-    const _EarlyQuestion(
-      type: _QuestionType.imageChoice,
-      questionEmoji: '🌳',
-      questionText: 'Was ist das?',
-      options: ['🌊', '🏔️', '🌳', '🌸'],
-      correctAnswer: '🌳',
-      feedbackCorrect: '🌟 Ein Baum!',
-      feedbackWrong: '💪 Das ist ein Baum!',
-    ),
-    const _EarlyQuestion(
-      type: _QuestionType.imageChoice,
-      questionEmoji: '☀️🌱',
-      questionText: 'Was braucht eine Pflanze?',
-      options: ['☀️', '🍕', '🎮', '📱'],
-      correctAnswer: '☀️',
-      feedbackCorrect: '🌟 Sonne und Wasser!',
-      feedbackWrong: '💪 Pflanzen brauchen Sonne!',
-    ),
-    const _EarlyQuestion(
-      type: _QuestionType.imageChoice,
-      questionEmoji: '🌧️',
-      questionText: 'Was passiert bei Regen?',
-      options: [
-        'Es wird nass 💧',
-        'Es schneit ❄️',
-        'Es wird heiß 🌡️',
-        'Es ist Nacht 🌙',
-      ],
-      correctAnswer: 'Es wird nass 💧',
-      feedbackCorrect: '🎊 Richtig, alles wird nass!',
-      feedbackWrong: '💪 Regen macht alles nass!',
-    ),
-    // ── Neue Aufgabentypen ──────────────────────────────────────────
-    const _EarlyQuestion(
-      type: _QuestionType.oddOneOut,
-      questionEmoji: '🌸🌷🌻🚀',
-      questionText: 'Was ist keine Pflanze?',
-      options: ['🌸', '🌷', '🌻', '🚀'],
-      correctAnswer: '🚀',
-      feedbackCorrect: '🌟 Die Rakete ist keine Pflanze!',
-      feedbackWrong: '💪 Drei sind Blumen!',
-    ),
-    const _EarlyQuestion(
-      type: _QuestionType.pattern,
-      questionEmoji: '☀️🌧️☀️🌧️☀️❓',
-      questionText: 'Welches Wetter kommt jetzt?',
-      options: ['🌧️', '☀️', '❄️', '🌈'],
-      correctAnswer: '🌧️',
-      feedbackCorrect: '🎉 Regen kommt!',
-      feedbackWrong: '💪 Sonne, Regen, Sonne, Regen...',
     ),
     const _EarlyQuestion(
       type: _QuestionType.sizeOrder,
-      questionEmoji: '🌱🌳🌲',
-      questionText: 'Was wächst zuerst? Tippe der Reihe nach!',
-      options: ['🌳', '🌱', '🌲'],
-      correctAnswer: '🌱🌲🌳',
-      orderedAnswers: ['🌱', '🌲', '🌳'],
-      feedbackCorrect: '🌟 Samen, Baum, großer Baum!',
-      feedbackWrong: '💪 Zuerst der kleine Keim!',
+      questionEmoji: '🌱🌿🌳',
+      questionText: 'Was ist am kleinsten? Tippe der Reihe nach!',
+      options: ['🌳', '🌱', '🌿'],
+      correctAnswer: '🌱🌿🌳',
+      orderedAnswers: ['🌱', '🌿', '🌳'],
+      feedbackCorrect: '🌟 Keim, Pflanze, Baum!',
+      feedbackWrong: '💪 Der Keim ist am kleinsten!',
+    ),
+    // Zuordnen
+    const _EarlyQuestion(
+      type: _QuestionType.imageChoice,
+      questionEmoji: '☀️',
+      questionText: 'Was gehört zur Sonne?',
+      options: ['🌊', '☀️', '❄️', '🌙'],
+      correctAnswer: '☀️',
+      feedbackCorrect: '🎉 Die Sonne ist warm und hell!',
+      feedbackWrong: '💪 Die Sonne scheint!',
+    ),
+    const _EarlyQuestion(
+      type: _QuestionType.imageChoice,
+      questionEmoji: '🚗🚌🚲✈️',
+      questionText: 'Womit kannst du fliegen?',
+      options: ['🚗', '🚌', '🚲', '✈️'],
+      correctAnswer: '✈️',
+      feedbackCorrect: '🌟 Mit dem Flugzeug fliegt man!',
+      feedbackWrong: '💪 Das Flugzeug fliegt ✈️!',
     ),
   ],
 };
@@ -505,10 +536,54 @@ class _EarlyLearnerQuizScreenState extends ConsumerState<EarlyLearnerQuizScreen>
   }
 
   void _loadQuestions() {
+    final child = ref.read(activeChildProvider);
+    final user = ref.read(authStateChangesProvider).value;
+
+    // Versuche KI-generierte Fragen zu laden
+    if (child != null && user != null) {
+      _loadAiQuestions(user.uid, child);
+    } else {
+      _loadStaticQuestions();
+    }
+  }
+
+  Future<void> _loadAiQuestions(String userId, dynamic child) async {
+    try {
+      final repo = ref.read(earlyLearnerQuestionRepoProvider);
+      final aiQuestions = await repo.getQuestions(
+        userId: userId,
+        childId: child.id,
+        child: child,
+        subject: widget.subject,
+        count: 5,
+      );
+
+      if (aiQuestions.isNotEmpty && mounted) {
+        final converted = aiQuestions
+            .map(_convertAiQuestion)
+            .map(_ensureFourOptions)
+            .toList();
+        setState(() {
+          _questions = converted;
+          _stepResults = List.filled(_questions.length, null);
+        });
+        Future.delayed(const Duration(milliseconds: 600), () {
+          if (mounted && _questions.isNotEmpty) _speakCurrentQuestion();
+        });
+        return;
+      }
+    } catch (e) {
+      print('⚠️ EarlyQuiz: KI-Fragen nicht verfügbar, nutze statische: $e');
+    }
+    // Fallback
+    _loadStaticQuestions();
+  }
+
+  void _loadStaticQuestions() {
     final bank = _questionBank[widget.subject] ?? _questionBank['Mathe']!;
     final shuffled = List<_EarlyQuestion>.from(bank)..shuffle();
     setState(() {
-      _questions = shuffled.take(5).toList();
+      _questions = shuffled.take(5).map(_ensureFourOptions).toList();
       _stepResults = List.filled(_questions.length, null);
     });
 
@@ -520,6 +595,131 @@ class _EarlyLearnerQuizScreenState extends ConsumerState<EarlyLearnerQuizScreen>
     });
   }
 
+  /// Stellt sicher dass eine Frage immer genau 4 Antwortoptionen hat.
+  /// Füllt fehlende Optionen mit typgerechten Distraktoren auf.
+  _EarlyQuestion _ensureFourOptions(_EarlyQuestion q) {
+    if (q.options.length == 4) return q;
+    // sizeOrder braucht keine 4 Standard-Optionen
+    if (q.type == _QuestionType.sizeOrder) return q;
+
+    final opts = List<String>.from(q.options);
+
+    // Sicherstellen dass correctAnswer enthalten ist
+    if (!opts.contains(q.correctAnswer)) opts.insert(0, q.correctAnswer);
+
+    // Passende Distraktoren je nach Inhaltstyp
+    final isNumber = opts.every((o) => RegExp(r'^\d+$').hasMatch(o));
+    final isLetter = opts.every(
+      (o) => o.length == 1 && RegExp(r'[A-ZÄÖÜa-zäöü]').hasMatch(o),
+    );
+
+    final numberPool = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'];
+    final letterPool = [
+      'A',
+      'B',
+      'C',
+      'D',
+      'E',
+      'F',
+      'G',
+      'H',
+      'I',
+      'K',
+      'L',
+      'M',
+      'N',
+      'O',
+      'P',
+      'R',
+      'S',
+      'T',
+    ];
+    final emojiPool = [
+      '🌟',
+      '🎈',
+      '🌈',
+      '🦄',
+      '🍀',
+      '🌙',
+      '🎯',
+      '🚀',
+      '💎',
+      '🎪',
+    ];
+
+    final pool = isNumber
+        ? numberPool
+        : isLetter
+        ? letterPool
+        : emojiPool;
+
+    while (opts.length < 4) {
+      final candidate = pool.firstWhere(
+        (f) => !opts.contains(f),
+        orElse: () => '❓',
+      );
+      opts.add(candidate);
+    }
+
+    // Auf 4 kürzen falls mehr vorhanden (correctAnswer immer behalten)
+    if (opts.length > 4) {
+      final idx = opts.indexOf(q.correctAnswer);
+      if (idx > 3) {
+        opts.removeAt(idx);
+        opts.insert(0, q.correctAnswer);
+      }
+      opts.removeRange(4, opts.length);
+    }
+
+    opts.shuffle();
+
+    return _EarlyQuestion(
+      type: q.type,
+      questionEmoji: q.questionEmoji,
+      questionText: q.questionText,
+      options: opts,
+      correctAnswer: q.correctAnswer,
+      feedbackCorrect: q.feedbackCorrect,
+      feedbackWrong: q.feedbackWrong,
+      orderedAnswers: q.orderedAnswers,
+    );
+  }
+
+  /// Konvertiert eine KI-generierte Frage in das interne _EarlyQuestion-Format.
+  _EarlyQuestion _convertAiQuestion(EarlyAiQuestion q) {
+    _QuestionType type;
+    switch (q.type) {
+      case 'counting':
+        type = _QuestionType.counting;
+        break;
+      case 'anlaut':
+        type = _QuestionType.anlaut;
+        break;
+      case 'pattern':
+        type = _QuestionType.pattern;
+        break;
+      case 'oddOneOut':
+        type = _QuestionType.oddOneOut;
+        break;
+      case 'sizeOrder':
+        type = _QuestionType.sizeOrder;
+        break;
+      default:
+        type = _QuestionType.imageChoice;
+    }
+
+    return _EarlyQuestion(
+      type: type,
+      questionEmoji: q.questionEmoji,
+      questionText: q.questionText,
+      options: q.options,
+      correctAnswer: q.correctAnswer,
+      feedbackCorrect: q.feedbackCorrect,
+      feedbackWrong: q.feedbackWrong,
+      orderedAnswers: q.orderedAnswers,
+    );
+  }
+
   @override
   void dispose() {
     _feedbackController.dispose();
@@ -528,8 +728,12 @@ class _EarlyLearnerQuizScreenState extends ConsumerState<EarlyLearnerQuizScreen>
     _confettiController.dispose();
     _finishConfettiController.dispose();
     _timeTracker?.stopTracking();
-    // TTS stoppen wenn Screen verlassen wird
-    ref.read(ttsControllerProvider.notifier).stop();
+    // TTS stoppen BEVOR super.dispose() – danach ist ref ungültig
+    try {
+      ref.read(ttsControllerProvider.notifier).stop();
+    } catch (_) {
+      // ref bereits ungültig – kein Problem, TTS stoppt von selbst
+    }
     super.dispose();
   }
 
@@ -606,7 +810,20 @@ class _EarlyLearnerQuizScreenState extends ConsumerState<EarlyLearnerQuizScreen>
     // Feedback-Overlay Animation
     _feedbackController.forward().then((_) => _feedbackController.reverse());
 
+    // Mindest-Anzeigezeit: 1800ms ODER bis TTS fertig ist – je was länger dauert
     await Future.delayed(const Duration(milliseconds: 1800));
+    if (!mounted) return;
+
+    // Warten bis TTS fertig gesprochen hat (max. 4 weitere Sekunden)
+    if (_ttsEnabled) {
+      int waitMs = 0;
+      while (waitMs < 4000 &&
+          mounted &&
+          ref.read(ttsControllerProvider).isSpeaking) {
+        await Future.delayed(const Duration(milliseconds: 100));
+        waitMs += 100;
+      }
+    }
     if (!mounted) return;
 
     setState(() => _showFeedback = false);
@@ -867,14 +1084,16 @@ class _EarlyLearnerQuizScreenState extends ConsumerState<EarlyLearnerQuizScreen>
                   // Typ-Hinweis
                   _buildTypeHint(question.type),
                   const SizedBox(height: 16),
-                  // Großes Frage-Emoji
+                  // Frage-Emoji: 2×2 Grid für oddOneOut, sonst einzeiliger Text
                   ScaleTransition(
                     scale: _bounceAnim,
-                    child: Text(
-                      question.questionEmoji,
-                      style: const TextStyle(fontSize: 72),
-                      textAlign: TextAlign.center,
-                    ),
+                    child: question.type == _QuestionType.oddOneOut
+                        ? _buildOddOneOutGrid(question.questionEmoji)
+                        : Text(
+                            question.questionEmoji,
+                            style: const TextStyle(fontSize: 72),
+                            textAlign: TextAlign.center,
+                          ),
                   ),
                   const SizedBox(height: 14),
                   // Frage-Text
@@ -961,6 +1180,103 @@ class _EarlyLearnerQuizScreenState extends ConsumerState<EarlyLearnerQuizScreen>
         ],
       ),
     );
+  }
+
+  /// Rendert die 4 Emojis einer oddOneOut-Frage als sauberes 2×2 Grid.
+  /// Parst den questionEmoji-String der verschiedene Formate haben kann:
+  /// "🍎 🍌 🍓 🚗" oder "🍎🍌🍓🚗" oder als kommaseparierten String.
+  Widget _buildOddOneOutGrid(String emojiString) {
+    // Klammern vorab entfernen – Sicherheitsnetz falls _extractEmojis sie übersieht
+    final input = emojiString
+        .replaceAll('[', '')
+        .replaceAll(']', '')
+        .replaceAll('"', '')
+        .trim();
+
+    final emojis = _extractEmojis(input);
+
+    if (emojis.length < 2) {
+      return Text(input, style: const TextStyle(fontSize: 56));
+    }
+
+    // Auf 4 normieren
+    while (emojis.length < 4) emojis.add('❓');
+    final display = emojis.take(4).toList();
+
+    return GridView.count(
+      crossAxisCount: 2,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      mainAxisSpacing: 8,
+      crossAxisSpacing: 8,
+      childAspectRatio: 1.1,
+      children: display
+          .map(
+            (e) => Container(
+              decoration: BoxDecoration(
+                color: const Color(0xFFF8F8FF),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: const Color(0xFFE0E0E0), width: 1.5),
+              ),
+              child: Center(
+                child: Text(e, style: const TextStyle(fontSize: 48)),
+              ),
+            ),
+          )
+          .toList(),
+    );
+  }
+
+  /// Extrahiert einzelne Emojis aus einem String.
+  /// Unterstützt: leerzeichen-getrennt, komma-getrennt, direkt aneinandergereiht,
+  /// sowie Strings mit eckigen Klammern wie "[🔴, 🔵, 🟢, 3️⃣]".
+  List<String> _extractEmojis(String input) {
+    // Schritt 1: JSON-Array-Notation komplett bereinigen
+    String cleaned = input
+        .replaceAll('[', '')
+        .replaceAll(']', '')
+        .replaceAll('"', '')
+        .replaceAll("'", '')
+        .trim();
+
+    // Schritt 2: Komma- oder leerzeichen-getrennte Teile versuchen
+    final parts = cleaned
+        .replaceAll(',', ' ')
+        .split(' ')
+        .map((s) => s.trim())
+        .where((s) => s.isNotEmpty)
+        .toList();
+
+    if (parts.length >= 2) return parts;
+
+    // Schritt 3: Fallback – Emojis via Characters-Grapheme-Cluster extrahieren
+    // Nutzt Dart's String.characters falls verfügbar, sonst Rune-Annäherung
+    final result = <String>[];
+    final chars = cleaned.runes.toList();
+    int i = 0;
+    while (i < chars.length) {
+      final cp = chars[i];
+      if (cp >= 0x1F300 ||
+          cp == 0x2764 ||
+          (cp >= 0x2600 && cp <= 0x27BF) ||
+          cp >= 0x1F900) {
+        String emoji = String.fromCharCode(cp);
+        i++;
+        // ZWJ-Sequences und Variation Selectors anhängen
+        while (i < chars.length &&
+            (chars[i] == 0xFE0F ||
+                chars[i] == 0x200D ||
+                chars[i] == 0x20E3 ||
+                chars[i] >= 0xDC00)) {
+          emoji += String.fromCharCode(chars[i]);
+          i++;
+        }
+        result.add(emoji);
+      } else {
+        i++;
+      }
+    }
+    return result.isNotEmpty ? result : (parts.isNotEmpty ? parts : [cleaned]);
   }
 
   Widget _buildAnswerGrid(_EarlyQuestion question) {
@@ -1271,29 +1587,22 @@ class _EarlyLearnerQuizScreenState extends ConsumerState<EarlyLearnerQuizScreen>
                         },
                         child: Container(
                           width: double.infinity,
-                          padding: const EdgeInsets.symmetric(vertical: 20),
+                          padding: const EdgeInsets.symmetric(vertical: 22),
                           decoration: BoxDecoration(
                             color: Colors.white,
-                            borderRadius: BorderRadius.circular(28),
+                            borderRadius: BorderRadius.circular(32),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withOpacity(0.15),
-                                blurRadius: 16,
-                                offset: const Offset(0, 6),
+                                color: Colors.black.withOpacity(0.18),
+                                blurRadius: 20,
+                                offset: const Offset(0, 8),
                               ),
                             ],
                           ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.home_rounded,
-                                color: widget.subjectColors.first,
-                                size: 32,
-                              ),
-                              const SizedBox(width: 10),
-                              const Text('🏠', style: TextStyle(fontSize: 28)),
-                            ],
+                          child: Icon(
+                            Icons.home_rounded,
+                            color: widget.subjectColors.first,
+                            size: 44,
                           ),
                         ),
                       ),

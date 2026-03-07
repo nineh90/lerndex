@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -52,14 +53,15 @@ class TtsController extends StateNotifier<TtsState> {
   final FlutterTts _tts = FlutterTts();
 
   // TTS-Konfiguration für Kinder (Klasse 1–2)
-  static const double _speechRate = 0.42; // Langsam & deutlich
-  static const double _pitch = 1.1; // Leicht höher → freundlicher
+  // Weniger Pitch-Tweaking = weniger Roboter-Klang
+  static const double _speechRate = 0.48; // Etwas schneller → natürlicher
+  static const double _pitch = 1.0; // Natürliches Pitch – kein Tweak!
   static const double _volume = 1.0;
   static const String _language = 'de-DE';
 
-  // Feedback-spezifische Einstellungen
-  static const double _feedbackRate = 0.48; // Lob etwas schneller
-  static const double _feedbackPitch = 1.2; // Enthusiastischer
+  // Feedback: minimal höher, aber kaum Unterschied
+  static const double _feedbackRate = 0.50;
+  static const double _feedbackPitch = 1.0; // Pitch NICHT verändern
 
   Future<void> _init() async {
     try {
@@ -68,26 +70,45 @@ class TtsController extends StateNotifier<TtsState> {
       await _tts.setPitch(_pitch);
       await _tts.setVolume(_volume);
 
-      // iOS-spezifisch: Audio-Session konfigurieren
-      await _tts.setIosAudioCategory(IosTextToSpeechAudioCategory.ambient, [
-        IosTextToSpeechAudioCategoryOptions.allowBluetooth,
-        IosTextToSpeechAudioCategoryOptions.allowBluetoothA2DP,
-      ]);
+      // iOS: playback-Kategorie für bessere Audio-Qualität
+      // (ambient schneidet Frequenzen ab → klingt dumpfer/roboterhafter)
+      await _tts.setIosAudioCategory(
+        IosTextToSpeechAudioCategory.playback,
+        [
+          IosTextToSpeechAudioCategoryOptions.allowBluetooth,
+          IosTextToSpeechAudioCategoryOptions.allowBluetoothA2DP,
+          IosTextToSpeechAudioCategoryOptions.mixWithOthers,
+        ],
+        IosTextToSpeechAudioMode.defaultMode,
+      );
+
+      // Beste verfügbare deutsche Stimme wählen
+      // iOS: Siri/Neural-Stimmen klingen deutlich natürlicher
+      await _selectBestVoice();
 
       _tts.setStartHandler(() {
-        if (mounted) state = state.copyWith(isSpeaking: true);
+        // Scheduling über SchedulerBinding verhindert setState auf defunct Elementen
+        SchedulerBinding.instance.addPostFrameCallback((_) {
+          if (mounted) state = state.copyWith(isSpeaking: true);
+        });
       });
 
       _tts.setCompletionHandler(() {
-        if (mounted) state = state.copyWith(isSpeaking: false);
+        SchedulerBinding.instance.addPostFrameCallback((_) {
+          if (mounted) state = state.copyWith(isSpeaking: false);
+        });
       });
 
       _tts.setCancelHandler(() {
-        if (mounted) state = state.copyWith(isSpeaking: false);
+        SchedulerBinding.instance.addPostFrameCallback((_) {
+          if (mounted) state = state.copyWith(isSpeaking: false);
+        });
       });
 
       _tts.setErrorHandler((msg) {
-        if (mounted) state = state.copyWith(isSpeaking: false);
+        SchedulerBinding.instance.addPostFrameCallback((_) {
+          if (mounted) state = state.copyWith(isSpeaking: false);
+        });
       });
 
       if (mounted) state = state.copyWith(isInitialized: true);
@@ -204,6 +225,74 @@ class TtsController extends StateNotifier<TtsState> {
         )
         .replaceAll(RegExp(r'\s{2,}'), ' ') // Doppelte Leerzeichen entfernen
         .trim();
+  }
+
+  /// Wählt die best verfügbare deutsche Stimme.
+  /// iOS: Siri/Neural-Stimmen bevorzugen (klingen deutlich natürlicher)
+  /// Android: Google-Stimme bevorzugen
+  Future<void> _selectBestVoice() async {
+    try {
+      final voices = await _tts.getVoices as List?;
+      if (voices == null || voices.isEmpty) return;
+
+      // Preferred voice IDs (iOS Neural/Siri Stimmen für de-DE)
+      const iosPreferred = [
+        'com.apple.ttsbundle.siri_female_de-DE_premium',
+        'com.apple.ttsbundle.siri_male_de-DE_premium',
+        'com.apple.voice.premium.de-DE.Anna',
+        'com.apple.ttsbundle.Anna-premium',
+        'com.apple.ttsbundle.siri_female_de-DE_compact',
+        'com.apple.ttsbundle.Anna-compact',
+      ];
+
+      // Alle de-DE Stimmen sammeln
+      final deVoices = voices.cast<Map>().where((v) {
+        final locale = (v['locale'] ?? v['language'] ?? '').toString();
+        return locale.startsWith('de');
+      }).toList();
+
+      if (deVoices.isEmpty) return;
+
+      // iOS: Bevorzugte Stimme nach Priorität suchen
+      for (final preferred in iosPreferred) {
+        final match = deVoices.firstWhere(
+          (v) => v['name']?.toString() == preferred,
+          orElse: () => {},
+        );
+        if (match.isNotEmpty) {
+          await _tts.setVoice({
+            'name': match['name'].toString(),
+            'locale': match['locale']?.toString() ?? 'de-DE',
+          });
+          print('🎙️ TTS: Stimme gewählt: ${match['name']}');
+          return;
+        }
+      }
+
+      // Android: Google de-DE bevorzugen
+      final googleVoice = deVoices.firstWhere(
+        (v) => v['name']?.toString().contains('Google') == true,
+        orElse: () => {},
+      );
+      if (googleVoice.isNotEmpty) {
+        await _tts.setVoice({
+          'name': googleVoice['name'].toString(),
+          'locale': googleVoice['locale']?.toString() ?? 'de-DE',
+        });
+        print('🎙️ TTS: Google-Stimme gewählt: ${googleVoice['name']}');
+        return;
+      }
+
+      // Fallback: erste verfügbare de-Stimme
+      final first = deVoices.first;
+      await _tts.setVoice({
+        'name': first['name'].toString(),
+        'locale': first['locale']?.toString() ?? 'de-DE',
+      });
+      print('🎙️ TTS: Fallback-Stimme: ${first['name']}');
+    } catch (e) {
+      print('⚠️ TTS: Stimme konnte nicht gesetzt werden: $e');
+    }
   }
 
   @override

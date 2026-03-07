@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lerndex/src/ai/vertex_ai_service.dart';
 import 'package:lerndex/src/features/auth/domain/child_model.dart';
+import 'package:lerndex/src/features/parent_dashboard/presentation/widgets/early_learner_question_repository.dart';
 import 'package:lerndex/src/features/quiz/data/ai_question_cache_repository.dart';
 import 'package:lerndex/src/features/student_dashboard/presentation/subject_config.dart';
 
@@ -31,7 +32,7 @@ class QuizPrefetchService {
 
   /// Faecher-Reihenfolge: Mathe und Deutsch zuerst.
   static List<SubjectConfig> _prioritized(List<SubjectConfig> subjects) {
-    const priority = ['Mathe', 'Deutsch', 'Englisch'];
+    const priority = ['Mathe', 'Deutsch', 'FarbenFormen'];
     final sorted = List<SubjectConfig>.from(subjects);
     sorted.sort((a, b) {
       final aIdx = priority.indexOf(a.subject);
@@ -121,6 +122,39 @@ class QuizPrefetchService {
     }
 
     print('✅ ${child.name}: alle Faecher bereit');
+
+    // Extra: Für Klasse 1–2 auch Early-Learner-Fragen vorladen
+    if (child.grade <= 2) {
+      _prefetchEarlyLearnerQuestions(userId: userId, child: child);
+    }
+  }
+
+  // ============================================================
+  // EARLY LEARNER: KI-Fragen für Klasse 1–2 vorladen
+  // ============================================================
+
+  static Future<void> _prefetchEarlyLearnerQuestions({
+    required String userId,
+    required ChildModel child,
+  }) async {
+    const earlySubjects = ['Mathe', 'Deutsch', 'FarbenFormen'];
+    final repo = EarlyLearnerQuestionRepository(FirebaseFirestore.instance);
+    print(
+      '🧒 ${child.name} (Klasse ${child.grade}): Early-Learner-Fragen vorladen...',
+    );
+    for (final subject in earlySubjects) {
+      try {
+        await repo.prefillIfEmpty(
+          userId: userId,
+          childId: child.id,
+          child: child,
+          subject: subject,
+        );
+      } catch (e) {
+        print('⚠️ Early-Prefill Fehler $subject: $e');
+      }
+    }
+    print('✅ ${child.name}: Early-Learner-Fragen bereit');
   }
 
   // ============================================================

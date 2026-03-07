@@ -1,13 +1,13 @@
-import 'dart:async';
-import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:lerndex/src/features/auth/data/auth_repository.dart';
 import 'package:lerndex/src/features/auth/domain/child_model.dart';
-import 'package:lerndex/src/features/rewards/presentation/rewards_screen.dart';
+import 'package:lerndex/src/features/parent_dashboard/presentation/tracing_game_screen.dart';
+import 'package:lerndex/src/features/parent_dashboard/presentation/widgets/early_learner_rewards_screen.dart';
 import 'package:lerndex/src/features/tts/tts_provider.dart';
+import 'avatar_settings_sheet.dart';
 import 'rewards_count_provider.dart';
 import 'early_learner_quiz_screen.dart';
 
@@ -58,16 +58,16 @@ const _earlySubjects = [
     subject: 'Deutsch',
   ),
   _EarlySubject(
-    emoji: '🦋',
-    label: 'Tiere & Farben',
-    colors: [Color(0xFF1E88E5), Color(0xFF0D47A1)],
-    subject: 'Englisch',
+    emoji: '🔴',
+    label: 'Farben & Formen',
+    colors: [Color(0xFF1E88E5), Color(0xFF00897B)],
+    subject: 'FarbenFormen',
   ),
   _EarlySubject(
-    emoji: '🌿',
-    label: 'Natur',
-    colors: [Color(0xFF43A047), Color(0xFF1B5E20)],
-    subject: 'Sachkunde',
+    emoji: '✏️',
+    label: 'Malen',
+    colors: [Color(0xFFFF7043), Color(0xFFBF360C)],
+    subject: 'Malen',
   ),
 ];
 
@@ -137,7 +137,7 @@ class _EarlyLearnerDashboardScreenState
           onRewardsTap: () => setState(() => _currentTab = _EarlyTab.rewards),
         );
       case _EarlyTab.rewards:
-        return const RewardsScreen();
+        return const EarlyLearnerRewardsScreen();
       case _EarlyTab.stars:
         return _StarsContent(child: widget.child);
     }
@@ -147,6 +147,31 @@ class _EarlyLearnerDashboardScreenState
     HapticFeedback.mediumImpact();
     // TTS stoppen bevor wir navigieren
     ref.read(ttsControllerProvider.notifier).stop();
+
+    // Sonderfall: Mal-Spiel
+    if (subject.subject == 'Malen') {
+      Navigator.push(
+        context,
+        PageRouteBuilder(
+          pageBuilder: (_, animation, __) => TracingGameScreen(
+            subjectColors: subject.colors,
+            mode: TracingMode.mixed,
+          ),
+          transitionsBuilder: (_, animation, __, child) {
+            return ScaleTransition(
+              scale: CurvedAnimation(
+                parent: animation,
+                curve: Curves.easeOutBack,
+              ),
+              child: child,
+            );
+          },
+          transitionDuration: const Duration(milliseconds: 400),
+        ),
+      );
+      return;
+    }
+
     Navigator.push(
       context,
       PageRouteBuilder(
@@ -170,8 +195,9 @@ class _EarlyLearnerDashboardScreenState
   }
 
   Widget _buildBottomNav(int rewardsCount) {
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
     return Container(
-      height: 80,
+      height: 80 + bottomPadding,
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
@@ -183,29 +209,32 @@ class _EarlyLearnerDashboardScreenState
           ),
         ],
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: [
-          _BigNavButton(
-            emoji: '🏠',
-            isSelected: _currentTab == _EarlyTab.home,
-            color: const Color(0xFFFF8C00),
-            onTap: () => setState(() => _currentTab = _EarlyTab.home),
-          ),
-          _BigNavButton(
-            emoji: '🎁',
-            isSelected: _currentTab == _EarlyTab.rewards,
-            color: const Color(0xFFEC407A),
-            badgeCount: rewardsCount,
-            onTap: () => setState(() => _currentTab = _EarlyTab.rewards),
-          ),
-          _BigNavButton(
-            emoji: '⭐',
-            isSelected: _currentTab == _EarlyTab.stars,
-            color: const Color(0xFFFFB300),
-            onTap: () => setState(() => _currentTab = _EarlyTab.stars),
-          ),
-        ],
+      child: Padding(
+        padding: EdgeInsets.only(bottom: bottomPadding),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            _BigNavButton(
+              emoji: '🏠',
+              isSelected: _currentTab == _EarlyTab.home,
+              color: const Color(0xFFFF8C00),
+              onTap: () => setState(() => _currentTab = _EarlyTab.home),
+            ),
+            _BigNavButton(
+              emoji: '🎁',
+              isSelected: _currentTab == _EarlyTab.rewards,
+              color: const Color(0xFFEC407A),
+              badgeCount: rewardsCount,
+              onTap: () => setState(() => _currentTab = _EarlyTab.rewards),
+            ),
+            _BigNavButton(
+              emoji: '⭐',
+              isSelected: _currentTab == _EarlyTab.stars,
+              color: const Color(0xFFFFB300),
+              onTap: () => setState(() => _currentTab = _EarlyTab.stars),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -325,9 +354,6 @@ class _HomeContentState extends ConsumerState<_HomeContent> {
         // ── Geschenk-Teaser (wenn Eltern-Belohnung vorhanden) ────────
         _GiftTeaser(child: widget.child, onTap: widget.onRewardsTap),
 
-        // ── Tages-Tipp ───────────────────────────────────────────────
-        _DailyTip(child: widget.child),
-
         const SizedBox(height: 12),
       ],
     );
@@ -430,44 +456,72 @@ class _CompactHeader extends ConsumerWidget {
 
               const SizedBox(width: 10),
 
-              // ── Avatar (tippbar → Begrüßung) ──────────────────────
+              // ── Avatar (tippbar → Avatar-Auswahl) ────────────────
               GestureDetector(
                 onTap: () {
-                  HapticFeedback.lightImpact();
-                  if (ttsEnabled) {
-                    ref
-                        .read(ttsControllerProvider.notifier)
-                        .speakGreeting(child.name);
-                  }
+                  HapticFeedback.mediumImpact();
+                  showModalBottomSheet(
+                    context: context,
+                    isScrollControlled: true,
+                    backgroundColor: Colors.transparent,
+                    builder: (_) => AvatarSettingsSheet(child: child),
+                  );
                 },
                 child: AnimatedBuilder(
                   animation: waveController,
                   builder: (_, __) => Transform.translate(
                     offset: Offset(0, waveController.value * 3 - 1.5),
-                    child: Container(
-                      width: 56,
-                      height: 56,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Colors.white,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.orange.shade900.withOpacity(0.3),
-                            blurRadius: 12,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: child.selectedAvatar != null
-                          ? ClipOval(
-                              child: Image.asset(
-                                'assets/images/${child.selectedAvatar}.png',
-                                fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) =>
-                                    _initials(child.name),
+                    child: Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        Container(
+                          width: 56,
+                          height: 56,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.white,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.orange.shade900.withOpacity(0.3),
+                                blurRadius: 12,
+                                offset: const Offset(0, 4),
                               ),
-                            )
-                          : _initials(child.name),
+                            ],
+                          ),
+                          child: child.selectedAvatar != null
+                              ? ClipOval(
+                                  child: Image.asset(
+                                    'assets/images/${child.selectedAvatar}.png',
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, __, ___) =>
+                                        _initials(child.name),
+                                  ),
+                                )
+                              : _initials(child.name),
+                        ),
+                        // Kleines ✏️-Badge
+                        Positioned(
+                          right: -2,
+                          bottom: -2,
+                          child: Container(
+                            width: 20,
+                            height: 20,
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.15),
+                                  blurRadius: 4,
+                                ),
+                              ],
+                            ),
+                            child: const Center(
+                              child: Text('✏️', style: TextStyle(fontSize: 10)),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -777,16 +831,7 @@ class _CarouselSubjectCardState extends State<_CarouselSubjectCard>
                           Icon(
                             Icons.play_arrow_rounded,
                             color: Colors.white,
-                            size: 32,
-                          ),
-                          SizedBox(width: 6),
-                          Text(
-                            '▶',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
+                            size: 36,
                           ),
                         ],
                       ),
@@ -1040,10 +1085,6 @@ class _DailyTip extends ConsumerWidget {
     if (streak >= 3) {
       return _Tip('🔥', 'Schon $streak Tage! Weiter so!');
     }
-    if (streak == 1) {
-      return _Tip('✨', 'Schön, dass du wieder da bist!');
-    }
-
     // Sterne-basierte Tipps
     if (stars > 0 && stars % 10 == 0) {
       return _Tip('🌟', '$stars Sterne gesammelt! Super!');
