@@ -83,7 +83,11 @@ class _AvatarSettingsSheetState extends ConsumerState<AvatarSettingsSheet> {
 
     return ConstrainedBox(
       constraints: BoxConstraints(maxHeight: screenHeight * 0.85),
-      child: Padding(
+      child: Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        ),
         padding: EdgeInsets.only(
           left: 24,
           right: 24,

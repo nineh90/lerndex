@@ -16,6 +16,8 @@ class RewardModel {
   final int? requiredStars;
   final int? requiredStreak;
   final int? requiredQuizCount;
+  final int?
+  baselineXP; // XP-Stand zum Zeitpunkt der Erstellung (für relative XP-Ziele)
   final String? avatarUnlockId; // Welcher Avatar freigeschaltet wird
   final int? bonusXP; // Bonus-XP die automatisch vergeben werden
 
@@ -40,6 +42,7 @@ class RewardModel {
     this.requiredStars,
     this.requiredStreak,
     this.requiredQuizCount,
+    this.baselineXP,
     this.avatarUnlockId,
     this.bonusXP,
     required this.status,
@@ -67,6 +70,7 @@ class RewardModel {
       requiredStars: data['requiredStars'],
       requiredStreak: data['requiredStreak'],
       requiredQuizCount: data['requiredQuizCount'],
+      baselineXP: data['baselineXP'],
       avatarUnlockId: data['avatarUnlockId'],
       bonusXP: data['bonusXP'],
       status: RewardStatusExtension.fromFirestore(data['status'] ?? 'pending'),
@@ -92,6 +96,7 @@ class RewardModel {
       'requiredStars': requiredStars,
       'requiredStreak': requiredStreak,
       'requiredQuizCount': requiredQuizCount,
+      if (baselineXP != null) 'baselineXP': baselineXP,
       if (avatarUnlockId != null) 'avatarUnlockId': avatarUnlockId,
       if (bonusXP != null) 'bonusXP': bonusXP,
       'status': status.toFirestore(),
@@ -117,6 +122,7 @@ class RewardModel {
     int? requiredStars,
     int? requiredStreak,
     int? requiredQuizCount,
+    int? baselineXP,
     String? avatarUnlockId,
     int? bonusXP,
     RewardStatus? status,
@@ -139,6 +145,7 @@ class RewardModel {
       requiredStars: requiredStars ?? this.requiredStars,
       requiredStreak: requiredStreak ?? this.requiredStreak,
       requiredQuizCount: requiredQuizCount ?? this.requiredQuizCount,
+      baselineXP: baselineXP ?? this.baselineXP,
       avatarUnlockId: avatarUnlockId ?? this.avatarUnlockId,
       bonusXP: bonusXP ?? this.bonusXP,
       status: status ?? this.status,
@@ -164,7 +171,8 @@ class RewardModel {
       case RewardTrigger.level:
         return requiredLevel != null && currentLevel >= requiredLevel!;
       case RewardTrigger.xp:
-        return requiredXP != null && currentXP >= requiredXP!;
+        final xpTarget = (baselineXP ?? 0) + (requiredXP ?? 0);
+        return requiredXP != null && currentXP >= xpTarget;
       case RewardTrigger.stars:
         return requiredStars != null && currentStars >= requiredStars!;
       case RewardTrigger.streak:

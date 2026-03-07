@@ -505,7 +505,7 @@ class _CreateRewardDialogState extends ConsumerState<CreateRewardDialog> {
       case RewardTrigger.level:
         return 'Aktuell: Level ${widget.child.level}';
       case RewardTrigger.xp:
-        return 'Aktuell: ${widget.child.xp} XP';
+        return 'XP die das Kind noch sammeln muss (hat aktuell ${widget.child.xp} XP)';
       case RewardTrigger.stars:
         return 'Aktuell: ${widget.child.stars} Sterne';
       case RewardTrigger.streak:
@@ -542,6 +542,7 @@ class _CreateRewardDialogState extends ConsumerState<CreateRewardDialog> {
         if (_selectedTrigger == RewardTrigger.level)
           'requiredLevel': _triggerValue,
         if (_selectedTrigger == RewardTrigger.xp) 'requiredXP': _triggerValue,
+        if (_selectedTrigger == RewardTrigger.xp) 'baselineXP': widget.child.xp,
         if (_selectedTrigger == RewardTrigger.stars)
           'requiredStars': _triggerValue,
         if (_selectedTrigger == RewardTrigger.streak)

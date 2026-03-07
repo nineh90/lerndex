@@ -7,6 +7,7 @@ import 'package:lerndex/src/features/auth/domain/child_model.dart';
 import 'package:lerndex/src/features/parent_dashboard/presentation/tracing_game_screen.dart';
 import 'package:lerndex/src/features/parent_dashboard/presentation/widgets/early_learner_rewards_screen.dart';
 import 'package:lerndex/src/features/tts/tts_provider.dart';
+import 'package:lerndex/src/features/rewards/data/system_rewards_initializer.dart';
 import 'avatar_settings_sheet.dart';
 import 'rewards_count_provider.dart';
 import 'early_learner_quiz_screen.dart';
@@ -101,6 +102,18 @@ class _EarlyLearnerDashboardScreenState
       vsync: this,
       duration: const Duration(seconds: 2),
     )..repeat(reverse: true);
+
+    // Systembelohnungen (Achievements) sicherstellen –
+    // falls das Kind noch keine hat, werden sie jetzt angelegt.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final user = ref.read(authStateChangesProvider).value;
+      if (user != null) {
+        SystemRewardsInitializer().addMissingSystemRewards(
+          userId: user.uid,
+          childId: widget.child.id,
+        );
+      }
+    });
   }
 
   @override
@@ -120,7 +133,7 @@ class _EarlyLearnerDashboardScreenState
         if (!didPop) setState(() => _currentTab = _EarlyTab.home);
       },
       child: Scaffold(
-        backgroundColor: const Color(0xFFFFF8E1),
+        backgroundColor: const Color(0xFFF3F0FF),
         body: SafeArea(child: _buildBody()),
         bottomNavigationBar: _buildBottomNav(rewardsCount),
       ),
@@ -217,7 +230,7 @@ class _EarlyLearnerDashboardScreenState
             _BigNavButton(
               emoji: '🏠',
               isSelected: _currentTab == _EarlyTab.home,
-              color: const Color(0xFFFF8C00),
+              color: Color(0xFF7C4DFF),
               onTap: () => setState(() => _currentTab = _EarlyTab.home),
             ),
             _BigNavButton(
@@ -230,7 +243,7 @@ class _EarlyLearnerDashboardScreenState
             _BigNavButton(
               emoji: '⭐',
               isSelected: _currentTab == _EarlyTab.stars,
-              color: const Color(0xFFFFB300),
+              color: const Color(0xFF9C64FF),
               onTap: () => setState(() => _currentTab = _EarlyTab.stars),
             ),
           ],
@@ -421,7 +434,7 @@ class _CompactHeader extends ConsumerWidget {
       width: double.infinity,
       decoration: const BoxDecoration(
         gradient: LinearGradient(
-          colors: [Color(0xFFFF8C00), Color(0xFFFFB300)],
+          colors: [Color(0xFF7C4DFF), Color(0xFF512DA8)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -482,7 +495,7 @@ class _CompactHeader extends ConsumerWidget {
                             color: Colors.white,
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.orange.shade900.withOpacity(0.3),
+                                color: const Color(0xFF512DA8).withOpacity(0.3),
                                 blurRadius: 12,
                                 offset: const Offset(0, 4),
                               ),
@@ -1012,107 +1025,6 @@ class _GiftTeaserState extends ConsumerState<_GiftTeaser>
 }
 
 // ============================================================================
-// TAGES-TIPP – Motivierende Nachricht die rotiert
-// ============================================================================
-
-class _DailyTip extends ConsumerWidget {
-  final ChildModel child;
-
-  const _DailyTip({required this.child});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final tip = _getTip(child);
-    final ttsEnabled = ref.watch(ttsSettingsProvider(child.id));
-
-    return GestureDetector(
-      onTap: () {
-        HapticFeedback.lightImpact();
-        if (ttsEnabled) {
-          ref.read(ttsControllerProvider.notifier).speak(tip.text);
-        }
-      },
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 24),
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(22),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.orange.withOpacity(0.1),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Text(tip.emoji, style: const TextStyle(fontSize: 28)),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                tip.text,
-                style: const TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF5D4037),
-                  height: 1.3,
-                ),
-              ),
-            ),
-            if (ttsEnabled)
-              const Icon(
-                Icons.volume_up_rounded,
-                color: Color(0xFFFFB300),
-                size: 20,
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  _Tip _getTip(ChildModel child) {
-    final streak = child.streak ?? 0;
-    final stars = child.stars;
-    final level = child.level;
-
-    // Streak-basierte Tipps haben Priorität
-    if (streak >= 7) {
-      return _Tip('🔥', '$streak Tage in Folge gelernt! Wow!');
-    }
-    if (streak >= 3) {
-      return _Tip('🔥', 'Schon $streak Tage! Weiter so!');
-    }
-    // Sterne-basierte Tipps
-    if (stars > 0 && stars % 10 == 0) {
-      return _Tip('🌟', '$stars Sterne gesammelt! Super!');
-    }
-
-    // Level-basiert
-    if (level >= 3) {
-      return _Tip('🏆', 'Level $level! Du wirst immer besser!');
-    }
-
-    // Fallback: Zufällige Ermutigung
-    final tips = [
-      const _Tip('🌈', 'Bereit für ein neues Abenteuer?'),
-      const _Tip('🚀', 'Lass uns heute etwas Neues lernen!'),
-      const _Tip('🎯', 'Welches Fach wählst du heute?'),
-      const _Tip('💪', 'Du schaffst das!'),
-    ];
-    return tips[DateTime.now().minute % tips.length];
-  }
-}
-
-class _Tip {
-  final String emoji;
-  final String text;
-  const _Tip(this.emoji, this.text);
-}
-
-// ============================================================================
 // STARS CONTENT (unverändert aus v1)
 // ============================================================================
 
@@ -1144,81 +1056,120 @@ class _StarsContent extends ConsumerWidget {
   }
 
   Widget _buildView(int stars, int level) {
-    final displayCount = stars.clamp(0, 50);
+    const starsPerLevel = 10;
+    final starsForCurrentLevel = stars % starsPerLevel;
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(28),
-      child: Column(
-        children: [
-          const Text('⭐', style: TextStyle(fontSize: 72)),
-          const SizedBox(height: 8),
-          Text(
-            '$stars',
-            style: const TextStyle(
-              fontSize: 60,
-              fontWeight: FontWeight.w900,
-              color: Color(0xFFFF8C00),
-            ),
-          ),
-          const SizedBox(height: 32),
-          // Sterne-Sammlung
-          Wrap(
-            spacing: 6,
-            runSpacing: 6,
-            alignment: WrapAlignment.center,
-            children: List.generate(displayCount.clamp(10, 50), (i) {
-              final filled = i < displayCount;
-              return TweenAnimationBuilder<double>(
-                tween: Tween(begin: 0.0, end: 1.0),
-                duration: Duration(milliseconds: 100 + (i * 30).clamp(0, 1000)),
-                curve: Curves.elasticOut,
-                builder: (_, v, __) => Transform.scale(
-                  scale: v,
-                  child: Text(
-                    filled ? '⭐' : '☆',
-                    style: TextStyle(
-                      fontSize: 32,
-                      color: filled ? Colors.amber : Colors.grey.shade300,
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 28),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // ── Gesamt-Sterne auf lila Hintergrund ──────────────────
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 28),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF7C4DFF), Color(0xFF512DA8)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(32),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF7C4DFF).withOpacity(0.4),
+                    blurRadius: 20,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+              ),
+              child: Column(
+                children: [
+                  const Text('⭐', style: TextStyle(fontSize: 56)),
+                  const SizedBox(height: 8),
+                  Text(
+                    '$stars',
+                    style: const TextStyle(
+                      fontSize: 72,
+                      fontWeight: FontWeight.w900,
+                      color: Colors.white,
                     ),
                   ),
-                ),
-              );
-            }),
-          ),
-          const SizedBox(height: 36),
-          // Level Badge
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFFFF8C00), Color(0xFFFFB300)],
+                ],
               ),
-              borderRadius: BorderRadius.circular(28),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.orange.withOpacity(0.4),
-                  blurRadius: 16,
-                  offset: const Offset(0, 6),
-                ),
-              ],
             ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
+
+            const SizedBox(height: 40),
+
+            // ── Sterne zum nächsten Level ────────────────────────────
+            // Level Badge
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Text('🏆', style: TextStyle(fontSize: 36)),
-                const SizedBox(width: 12),
+                const Text('🏆', style: TextStyle(fontSize: 28)),
+                const SizedBox(width: 8),
                 Text(
-                  'Level $level',
+                  '$level',
                   style: const TextStyle(
-                    fontSize: 30,
+                    fontSize: 32,
                     fontWeight: FontWeight.w900,
-                    color: Colors.white,
+                    color: Color(0xFF7C4DFF),
                   ),
                 ),
+                const SizedBox(width: 16),
+                const Icon(
+                  Icons.arrow_forward_rounded,
+                  color: Color(0xFFBDBDBD),
+                  size: 28,
+                ),
+                const SizedBox(width: 16),
+                Text(
+                  '${level + 1}',
+                  style: TextStyle(
+                    fontSize: 32,
+                    fontWeight: FontWeight.w900,
+                    color: Colors.grey.shade400,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  '🏆',
+                  style: TextStyle(fontSize: 28, color: Colors.grey.shade400),
+                ),
               ],
             ),
-          ),
-        ],
+
+            const SizedBox(height: 24),
+
+            // ── 10 Sterne-Icons ──────────────────────────────────────
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              alignment: WrapAlignment.center,
+              children: List.generate(starsPerLevel, (i) {
+                final filled = i < starsForCurrentLevel;
+                return TweenAnimationBuilder<double>(
+                  tween: Tween(begin: 0.0, end: 1.0),
+                  duration: Duration(
+                    milliseconds: 200 + (i * 80).clamp(0, 900),
+                  ),
+                  curve: Curves.elasticOut,
+                  builder: (_, v, __) => Transform.scale(
+                    scale: v,
+                    child: Text(
+                      filled ? '⭐' : '☆',
+                      style: TextStyle(
+                        fontSize: 38,
+                        color: filled ? Colors.amber : Colors.grey.shade300,
+                      ),
+                    ),
+                  ),
+                );
+              }),
+            ),
+          ],
+        ),
       ),
     );
   }

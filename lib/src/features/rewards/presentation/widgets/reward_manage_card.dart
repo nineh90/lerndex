@@ -53,7 +53,7 @@ class RewardManageCard extends StatelessWidget {
               ? Colors.grey.shade300
               : isApproved
               ? Colors.green.shade300
-              : Colors.orange.shade300,
+              : const Color(0xFF9C64FF),
           width: 2,
         ),
       ),
@@ -67,7 +67,7 @@ class RewardManageCard extends StatelessWidget {
                   ? Colors.grey.shade100
                   : isApproved
                   ? Colors.green.shade50
-                  : Colors.orange.shade50,
+                  : const Color(0xFFF3F0FF),
               borderRadius: const BorderRadius.only(
                 topLeft: Radius.circular(12),
                 topRight: Radius.circular(12),
@@ -111,7 +111,7 @@ class RewardManageCard extends StatelessWidget {
                                 vertical: 2,
                               ),
                               decoration: BoxDecoration(
-                                color: Colors.orange,
+                                color: const Color(0xFF7C4DFF),
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: const Text(
@@ -181,13 +181,16 @@ class RewardManageCard extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: Colors.amber.shade50,
+                    color: const Color(0xFFF3F0FF),
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.amber.shade200),
+                    border: Border.all(color: const Color(0xFFCDB8FF)),
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.card_giftcard, color: Colors.amber),
+                      const Icon(
+                        Icons.card_giftcard,
+                        color: const Color(0xFF7C4DFF),
+                      ),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
@@ -330,7 +333,7 @@ class RewardManageCard extends StatelessWidget {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: isPending
                             ? Colors.green
-                            : Colors.orange,
+                            : const Color(0xFF9C64FF),
                         foregroundColor: Colors.white,
                       ),
                     ),

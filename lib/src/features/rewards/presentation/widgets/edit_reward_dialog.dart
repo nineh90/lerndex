@@ -127,12 +127,12 @@ class _EditRewardDialogState extends ConsumerState<EditRewardDialog> {
                     Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: Colors.amber.shade100,
+                        color: const Color(0xFFEDE7FF),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: const Icon(
                         Icons.edit,
-                        color: Colors.amber,
+                        color: Color(0xFF7C4DFF),
                         size: 20,
                       ),
                     ),
@@ -264,7 +264,7 @@ class _EditRewardDialogState extends ConsumerState<EditRewardDialog> {
                     ElevatedButton.icon(
                       onPressed: _isUpdating ? null : _updateReward,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.amber,
+                        backgroundColor: const Color(0xFF7C4DFF),
                         foregroundColor: Colors.white,
                       ),
                       icon: _isUpdating

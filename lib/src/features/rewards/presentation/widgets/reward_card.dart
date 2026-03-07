@@ -23,7 +23,7 @@ class RewardCard extends StatelessWidget {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
         side: BorderSide(
-          color: isClaimed ? Colors.grey.shade200 : Colors.amber.shade200,
+          color: isClaimed ? Colors.grey.shade200 : const Color(0xFF9C64FF),
           width: 2,
         ),
       ),
@@ -67,14 +67,16 @@ class RewardCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: isClaimed ? Colors.grey.shade100 : Colors.amber.shade50,
+                color: isClaimed
+                    ? Colors.grey.shade100
+                    : const Color(0xFFF3F0FF),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Row(
                 children: [
                   Icon(
                     Icons.card_giftcard,
-                    color: isClaimed ? Colors.grey : Colors.amber,
+                    color: isClaimed ? Colors.grey : const Color(0xFF7C4DFF),
                   ),
                   const SizedBox(width: 8),
                   Expanded(
@@ -99,7 +101,7 @@ class RewardCard extends StatelessWidget {
                   icon: const Icon(Icons.redeem),
                   label: const Text('Belohnung einlösen'),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.amber,
+                    backgroundColor: const Color(0xFF7C4DFF),
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 12),
                   ),

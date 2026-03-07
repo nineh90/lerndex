@@ -326,11 +326,8 @@ class RewardService {
         if (requiredXP == null) {
           return ValidationResult(false, 'Bitte XP angeben');
         }
-        if (requiredXP <= child.xp) {
-          return ValidationResult(
-            false,
-            '${child.name} hat bereits ${child.xp} XP. Wähle mehr XP!',
-          );
+        if (requiredXP <= 0) {
+          return ValidationResult(false, 'XP muss größer als 0 sein');
         }
         return ValidationResult(true, '');
 
