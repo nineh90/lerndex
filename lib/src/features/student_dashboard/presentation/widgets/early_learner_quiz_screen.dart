@@ -8,6 +8,8 @@ import 'package:lerndex/src/features/auth/data/auth_repository.dart';
 import 'package:lerndex/src/features/auth/presentation/active_child_provider.dart';
 import 'package:lerndex/src/features/learning_time/learning_time_tracker.dart';
 import 'package:lerndex/src/features/parent_dashboard/presentation/widgets/early_learner_question_repository.dart';
+import 'package:lerndex/src/features/generated_tasks/data/generated_task_repository.dart';
+import 'package:lerndex/src/features/generated_tasks/data/generated_task_models.dart';
 import 'package:lerndex/src/features/rewards/data/xp_service.dart';
 import 'package:lerndex/src/features/tts/tts_provider.dart';
 import 'package:lerndex/src/features/student_dashboard/presentation/widgets/avatar_progress_bar.dart';
@@ -487,6 +489,9 @@ class _EarlyLearnerQuizScreenState extends ConsumerState<EarlyLearnerQuizScreen>
   // Child-ID für TTS Settings
   String? _childId;
 
+  /// parentTaskRef je Fragen-Index (nur für Eltern-Aufgaben gesetzt)
+  final Map<int, String> _parentTaskRefs = {};
+
   @override
   void initState() {
     super.initState();
@@ -548,6 +553,58 @@ class _EarlyLearnerQuizScreenState extends ConsumerState<EarlyLearnerQuizScreen>
   }
 
   Future<void> _loadAiQuestions(String userId, dynamic child) async {
+    // ── 1. Eltern-Aufgaben mit höchster Priorität ────────────────────────────
+    try {
+      final taskRepo = ref.read(generatedTaskRepositoryProvider);
+      final subjectEnum = SubjectExtension.fromString(widget.subject);
+      final parentQuestions = await taskRepo.getUnansweredApprovedQuestions(
+        userId: userId,
+        childId: child.id,
+        subject: subjectEnum,
+      );
+
+      if (parentQuestions.isNotEmpty && mounted) {
+        final shuffled = List<GeneratedQuestion>.from(parentQuestions)
+          ..shuffle();
+        final selected = shuffled.take(5).toList();
+
+        final converted = selected.asMap().entries.map((entry) {
+          final idx = entry.key;
+          final gq = entry.value;
+          // parentTaskRef für späteres Tracking speichern
+          if (gq.batchId != null) {
+            _parentTaskRefs[idx] = '${gq.batchId}/${gq.id}';
+          }
+          return _ensureFourOptions(
+            _EarlyQuestion(
+              type: _QuestionType.imageChoice,
+              questionEmoji: '📝',
+              questionText: gq.question,
+              options: gq.options,
+              correctAnswer: gq.correctAnswer,
+              feedbackCorrect: '🌟 Super gemacht!',
+              feedbackWrong: '💪 Versuch es nochmal!',
+            ),
+          );
+        }).toList();
+
+        setState(() {
+          _questions = converted;
+          _stepResults = List.filled(_questions.length, null);
+        });
+        Future.delayed(const Duration(milliseconds: 600), () {
+          if (mounted && _questions.isNotEmpty) _speakCurrentQuestion();
+        });
+        print(
+          '👨‍👩‍👧 ${selected.length} Eltern-Aufgaben für Early Learner geladen',
+        );
+        return;
+      }
+    } catch (e) {
+      print('⚠️ EarlyQuiz: Eltern-Aufgaben nicht verfügbar: $e');
+    }
+
+    // ── 2. KI-generierte Fragen ──────────────────────────────────────────────
     try {
       final repo = ref.read(earlyLearnerQuestionRepoProvider);
       final aiQuestions = await repo.getQuestions(
@@ -575,7 +632,8 @@ class _EarlyLearnerQuizScreenState extends ConsumerState<EarlyLearnerQuizScreen>
     } catch (e) {
       print('⚠️ EarlyQuiz: KI-Fragen nicht verfügbar, nutze statische: $e');
     }
-    // Fallback
+
+    // ── 3. Statische Fallback-Fragen ─────────────────────────────────────────
     _loadStaticQuestions();
   }
 
@@ -797,6 +855,20 @@ class _EarlyLearnerQuizScreenState extends ConsumerState<EarlyLearnerQuizScreen>
               .read(xpServiceProvider)
               .addXP(userId: user.uid, childId: child.id, xpToAdd: 5);
         } catch (_) {}
+
+        // Eltern-Aufgabe als beantwortet markieren (falls vorhanden)
+        final parentTaskRef = _parentTaskRefs[_currentIndex];
+        if (parentTaskRef != null) {
+          try {
+            await ref
+                .read(generatedTaskRepositoryProvider)
+                .markQuestionAnsweredCorrectly(
+                  userId: user.uid,
+                  parentTaskRef: parentTaskRef,
+                );
+            print('✅ Early-Learner Eltern-Aufgabe markiert: $parentTaskRef');
+          } catch (_) {}
+        }
       }
     } else {
       // ── Falsche Antwort ───────────────────────────────────────────

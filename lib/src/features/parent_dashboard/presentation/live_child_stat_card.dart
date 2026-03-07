@@ -220,12 +220,19 @@ class LiveChildStatCard extends ConsumerWidget {
             : (xpInLevel / xpForThisLevel).clamp(0.0, 1.0);
         final rank = XPService.getRankForLevel(child.level);
 
-        // pendingCount für das Menü-Label
+        // pendingCount für das Menü-Label – kindspezifisch
         final user = ref.watch(authStateChangesProvider).value;
-        final pendingCountAsync = user != null
-            ? ref.watch(pendingTaskCountProvider(user.uid))
-            : null;
-        final pendingCount = pendingCountAsync?.value ?? 0;
+        final pendingCount = user != null
+            ? ref
+                      .watch(
+                        pendingTaskCountForChildProvider((
+                          userId: user.uid,
+                          childId: childId,
+                        )),
+                      )
+                      .value ??
+                  0
+            : 0;
 
         // claimedCount: eingelöste Belohnungen die Eltern noch nicht gesehen haben
         final claimedCount =
@@ -404,7 +411,8 @@ class LiveChildStatCard extends ConsumerWidget {
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(
-                                    builder: (_) => const TaskApprovalScreen(),
+                                    builder: (_) =>
+                                        TaskApprovalScreen(childId: child.id),
                                   ),
                                 );
                                 break;

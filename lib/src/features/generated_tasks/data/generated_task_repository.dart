@@ -97,6 +97,59 @@ class GeneratedTaskRepository {
     });
   }
 
+  /// Lädt alle Batches für einen User gefiltert nach Kind
+  Stream<List<GeneratedTaskBatch>> watchBatchesForChild(
+    String userId,
+    String childId,
+  ) {
+    return _firestore
+        .collection('users')
+        .doc(userId)
+        .collection('generated_batches')
+        .where('childId', isEqualTo: childId)
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .asyncMap((snapshot) async {
+          final batches = <GeneratedTaskBatch>[];
+          for (var doc in snapshot.docs) {
+            final questionsSnapshot = await doc.reference
+                .collection('questions')
+                .get();
+            final questions = questionsSnapshot.docs
+                .map((qDoc) => GeneratedQuestion.fromFirestore(qDoc))
+                .toList();
+            batches.add(GeneratedTaskBatch.fromFirestore(doc, questions));
+          }
+          return batches;
+        });
+  }
+
+  /// Stream für Live-Fragen eines einzelnen Batches
+  Stream<List<GeneratedQuestion>> watchQuestionsForBatch(
+    String userId,
+    String batchId,
+  ) {
+    return _firestore
+        .collection('users')
+        .doc(userId)
+        .collection('generated_batches')
+        .doc(batchId)
+        .collection('questions')
+        .snapshots()
+        .map(
+          (snapshot) => snapshot.docs
+              .map((doc) => GeneratedQuestion.fromFirestore(doc))
+              .toList(),
+        );
+  }
+
+  /// Pending task count für ein spezifisches Kind
+  Stream<int> watchPendingTaskCountForChild(String userId, String childId) {
+    return watchBatchesForChild(userId, childId).map((batches) {
+      return batches.fold<int>(0, (sum, batch) => sum + batch.pendingTasks);
+    });
+  }
+
   /// Lädt einen einzelnen Batch mit allen Details
   Future<GeneratedTaskBatch?> getBatch(String userId, String batchId) async {
     try {
@@ -444,7 +497,7 @@ final pendingBatchesProvider =
       return repository.watchPendingBatches(userId);
     });
 
-/// Provider für Anzahl ausstehender Aufgaben
+/// Provider für Anzahl ausstehender Aufgaben (alle Kinder)
 final pendingTaskCountProvider = StreamProvider.family<int, String>((
   ref,
   userId,
@@ -452,6 +505,39 @@ final pendingTaskCountProvider = StreamProvider.family<int, String>((
   final repository = ref.watch(generatedTaskRepositoryProvider);
   return repository.watchPendingTaskCount(userId);
 });
+
+/// Provider für Batches gefiltert nach Kind
+final generatedBatchesForChildProvider =
+    StreamProvider.family<
+      List<GeneratedTaskBatch>,
+      ({String userId, String childId})
+    >((ref, params) {
+      final repository = ref.watch(generatedTaskRepositoryProvider);
+      return repository.watchBatchesForChild(params.userId, params.childId);
+    });
+
+/// Provider für Anzahl ausstehender Aufgaben eines bestimmten Kindes
+final pendingTaskCountForChildProvider =
+    StreamProvider.family<int, ({String userId, String childId})>((
+      ref,
+      params,
+    ) {
+      final repository = ref.watch(generatedTaskRepositoryProvider);
+      return repository.watchPendingTaskCountForChild(
+        params.userId,
+        params.childId,
+      );
+    });
+
+/// Provider für Live-Fragen eines einzelnen Batches
+final batchQuestionsProvider =
+    StreamProvider.family<
+      List<GeneratedQuestion>,
+      ({String userId, String batchId})
+    >((ref, params) {
+      final repository = ref.watch(generatedTaskRepositoryProvider);
+      return repository.watchQuestionsForBatch(params.userId, params.batchId);
+    });
 
 /// Provider für freigegebene Aufgaben eines Kindes in einem Fach
 final approvedQuestionsProvider =

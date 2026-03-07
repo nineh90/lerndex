@@ -374,36 +374,6 @@ class _QuestionCardState extends ConsumerState<QuestionCard> {
           );
         }),
 
-        // Lösung ein-/ausklappen
-        if (widget.question.solution != null &&
-            widget.question.solution!.isNotEmpty) ...[
-          TextButton.icon(
-            onPressed: () => setState(() => _showSolution = !_showSolution),
-            icon: Icon(_showSolution ? Icons.visibility_off : Icons.visibility),
-            label: Text(
-              _showSolution ? 'Lösung ausblenden' : 'Lösung anzeigen',
-            ),
-            style: TextButton.styleFrom(
-              foregroundColor: Colors.deepPurple,
-              padding: EdgeInsets.zero,
-            ),
-          ),
-          if (_showSolution)
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.deepPurple.shade50,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.deepPurple.shade200),
-              ),
-              child: Text(
-                widget.question.solution!,
-                style: const TextStyle(fontSize: 14, height: 1.4),
-              ),
-            ),
-        ],
-
         // Approve / Reject (nur wenn noch pending)
         if (widget.question.status == TaskApprovalStatus.pending) ...[
           const SizedBox(height: 12),

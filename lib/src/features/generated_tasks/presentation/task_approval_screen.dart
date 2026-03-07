@@ -14,7 +14,9 @@ import 'widgets/batch_card.dart';
 /// - Batches löschen
 
 class TaskApprovalScreen extends ConsumerWidget {
-  const TaskApprovalScreen({super.key});
+  final String childId;
+
+  const TaskApprovalScreen({super.key, required this.childId});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -25,7 +27,9 @@ class TaskApprovalScreen extends ConsumerWidget {
       return const Scaffold(body: Center(child: Text('Nicht angemeldet')));
     }
 
-    final batchesAsync = ref.watch(generatedBatchesProvider(userId));
+    final batchesAsync = ref.watch(
+      generatedBatchesForChildProvider((userId: userId, childId: childId)),
+    );
 
     return Scaffold(
       backgroundColor: Colors.grey[50],

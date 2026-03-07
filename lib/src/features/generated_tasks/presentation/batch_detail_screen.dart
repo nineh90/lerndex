@@ -21,6 +21,21 @@ class _BatchDetailScreenState extends ConsumerState<BatchDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final authRepo = ref.watch(authRepositoryProvider);
+    final userId = authRepo.currentUser?.uid;
+
+    // Live-Fragen per Stream – aktualisieren sich sofort nach approve/reject
+    final questionsAsync = userId != null
+        ? ref.watch(
+            batchQuestionsProvider((userId: userId, batchId: widget.batch.id)),
+          )
+        : null;
+
+    final questions = questionsAsync?.value ?? widget.batch.questions;
+    final hasPending = questions.any(
+      (q) => q.status == TaskApprovalStatus.pending,
+    );
+
     return Scaffold(
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
@@ -28,7 +43,7 @@ class _BatchDetailScreenState extends ConsumerState<BatchDetailScreen> {
         backgroundColor: Colors.deepPurple,
         foregroundColor: Colors.white,
         actions: [
-          if (widget.batch.pendingTasks > 0)
+          if (hasPending)
             TextButton.icon(
               onPressed: _isProcessing ? null : _approveAll,
               icon: const Icon(Icons.done_all, color: Colors.white),
@@ -111,17 +126,18 @@ class _BatchDetailScreenState extends ConsumerState<BatchDetailScreen> {
 
             // Aufgaben-Liste
             Text(
-              'Aufgaben (${widget.batch.totalTasks})',
+              'Aufgaben (${questions.length})',
               style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
 
-            ...widget.batch.questions.asMap().entries.map((entry) {
+            ...questions.asMap().entries.map((entry) {
               return QuestionCard(
                 question: entry.value,
                 index: entry.key + 1,
                 batchId: widget.batch.id,
-                onStatusChanged: () => setState(() {}),
+                onStatusChanged:
+                    () {}, // Kein setState nötig – Stream updated automatisch
               );
             }),
           ],
