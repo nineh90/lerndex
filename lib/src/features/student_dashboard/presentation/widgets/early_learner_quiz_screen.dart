@@ -1,22 +1,38 @@
 import 'dart:async';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:confetti/confetti.dart';
 import 'package:lerndex/src/features/auth/data/auth_repository.dart';
 import 'package:lerndex/src/features/auth/presentation/active_child_provider.dart';
 import 'package:lerndex/src/features/learning_time/learning_time_tracker.dart';
 import 'package:lerndex/src/features/rewards/data/xp_service.dart';
+import 'package:lerndex/src/features/tts/tts_provider.dart';
+import 'package:lerndex/src/features/student_dashboard/presentation/widgets/avatar_progress_bar.dart';
+import 'package:lerndex/src/features/student_dashboard/presentation/widgets/treasure_chest_overlay.dart';
 
 // ============================================================================
-// EARLY LEARNER QUIZ SCREEN – Klasse 1–2
+// EARLY LEARNER QUIZ SCREEN – Klasse 1–2 (v2)
+//
+// Neu in v2:
+// • TTS: Frage wird automatisch vorgelesen (wenn TTS aktiv)
+// • TTS: Feedback wird gesprochen ("Richtig toll gemacht!")
+// • TTS: Ergebnis am Ende wird vorgelesen
+// • Konfetti-Effekt bei richtiger Antwort (confetti Package)
+// • Differenziertes Haptic Feedback (light/heavy/selection)
+// • Avatar-Fortschrittsanzeige statt einfacher Dots
+// • Lautsprecher-Button zum erneuten Vorlesen
+// • Shake-Animation bei falscher Antwort
 //
 // Aufgabentypen:
-// 1. BILD-AUSWAHL     → Emoji-Bild + 4 große Emoji-Buttons als Antwort
-// 2. ANLAUT-AUFGABE   → Bild hören → welcher Anfangsbuchstabe?
-// 3. ZAHLEN-AUFGABE   → Wie viele Punkte siehst du?
-// 4. AUDIO-FRAGE      → Frage wird vorgelesen (simuliert via Text-Anzeige)
-//
-// Kein Fließtext als Antwort – immer Emojis, Buchstaben oder Zahlen.
+// 1. BILD-AUSWAHL     → Emoji-Bild + 4 große Emoji-Buttons
+// 2. ANLAUT-AUFGABE   → Bild → welcher Anfangsbuchstabe?
+// 3. ZAHLEN-AUFGABE   → Wie viele siehst du?
+// 4. WORT-ZU-BILD     → Welches Bild passt zum Wort?
+// 5. PATTERN          → Was kommt als nächstes? (Muster erkennen)
+// 6. ODD ONE OUT      → Was passt nicht dazu?
+// 7. SIZE ORDER       → Tippe vom Kleinsten zum Größten!
 // ============================================================================
 
 // ── Fragetypen ────────────────────────────────────────────────────────────────
@@ -26,6 +42,9 @@ enum _QuestionType {
   anlaut, // Welcher Buchstabe beginnt das Wort?
   counting, // Wie viele sind es?
   wordToImage, // Welches Bild passt zum Wort?
+  pattern, // Was kommt als nächstes? (Muster erkennen)
+  oddOneOut, // Was passt nicht dazu?
+  sizeOrder, // Tippe in der richtigen Reihenfolge (klein → groß)
 }
 
 class _EarlyQuestion {
@@ -33,10 +52,14 @@ class _EarlyQuestion {
   final String questionEmoji; // Großes Bild/Emoji als Frage
   final String questionText; // Wird vorgelesen / als Hinweis gezeigt
   final List<String>
-  options; // Immer 4 Optionen (Emojis, Buchstaben oder Zahlen)
+  options; // Immer 3-4 Optionen (Emojis, Buchstaben oder Zahlen)
   final String correctAnswer;
   final String feedbackCorrect;
   final String feedbackWrong;
+
+  /// Nur für sizeOrder: Die korrekte Reihenfolge der Optionen.
+  /// Bei anderen Typen: null (wird ignoriert).
+  final List<String>? orderedAnswers;
 
   const _EarlyQuestion({
     required this.type,
@@ -46,6 +69,7 @@ class _EarlyQuestion {
     required this.correctAnswer,
     this.feedbackCorrect = '🌟 Super!',
     this.feedbackWrong = '💪 Nochmal!',
+    this.orderedAnswers,
   });
 }
 
@@ -98,6 +122,45 @@ final Map<String, List<_EarlyQuestion>> _questionBank = {
       feedbackCorrect: '🌟 2 ist größer!',
       feedbackWrong: '💪 Nochmal überlegen!',
     ),
+    // ── Neue Aufgabentypen ──────────────────────────────────────────
+    const _EarlyQuestion(
+      type: _QuestionType.pattern,
+      questionEmoji: '🍎🍌🍎🍌🍎❓',
+      questionText: 'Was kommt als nächstes?',
+      options: ['🍌', '🍎', '🍇', '🍊'],
+      correctAnswer: '🍌',
+      feedbackCorrect: '🌟 Richtig, Banane!',
+      feedbackWrong: '💪 Schau dir das Muster an!',
+    ),
+    const _EarlyQuestion(
+      type: _QuestionType.pattern,
+      questionEmoji: '🔴🔵🔴🔵🔴❓',
+      questionText: 'Welche Farbe kommt jetzt?',
+      options: ['🔵', '🔴', '🟡', '🟢'],
+      correctAnswer: '🔵',
+      feedbackCorrect: '🎉 Blau ist richtig!',
+      feedbackWrong: '💪 Rot, Blau, Rot, Blau...',
+    ),
+    const _EarlyQuestion(
+      type: _QuestionType.sizeOrder,
+      questionEmoji: '🐭🐶🐘',
+      questionText: 'Tippe vom Kleinsten zum Größten!',
+      options: ['🐘', '🐭', '🐶'],
+      correctAnswer: '🐭🐶🐘',
+      orderedAnswers: ['🐭', '🐶', '🐘'],
+      feedbackCorrect: '🌟 Perfekt sortiert!',
+      feedbackWrong: '💪 Maus, Hund, Elefant!',
+    ),
+    const _EarlyQuestion(
+      type: _QuestionType.sizeOrder,
+      questionEmoji: '🍓🍉🫐',
+      questionText: 'Was ist am kleinsten? Tippe der Reihe nach!',
+      options: ['🍉', '🫐', '🍓'],
+      correctAnswer: '🫐🍓🍉',
+      orderedAnswers: ['🫐', '🍓', '🍉'],
+      feedbackCorrect: '🎊 Super sortiert!',
+      feedbackWrong: '💪 Blaubeere, Erdbeere, Melone!',
+    ),
   ],
 
   'Deutsch': [
@@ -146,10 +209,36 @@ final Map<String, List<_EarlyQuestion>> _questionBank = {
       feedbackCorrect: '🌟 F wie Fisch!',
       feedbackWrong: '💪 F-F-Fisch!',
     ),
+    // ── Neue Aufgabentypen ──────────────────────────────────────────
+    const _EarlyQuestion(
+      type: _QuestionType.pattern,
+      questionEmoji: 'A B A B A ❓',
+      questionText: 'Welcher Buchstabe kommt jetzt?',
+      options: ['A', 'B', 'C', 'D'],
+      correctAnswer: 'B',
+      feedbackCorrect: '🌟 B ist richtig!',
+      feedbackWrong: '💪 A, B, A, B, A...',
+    ),
+    const _EarlyQuestion(
+      type: _QuestionType.oddOneOut,
+      questionEmoji: '🐱🐶🐰🚗',
+      questionText: 'Was passt nicht dazu?',
+      options: ['🐱', '🐶', '🐰', '🚗'],
+      correctAnswer: '🚗',
+      feedbackCorrect: '🎉 Das Auto ist kein Tier!',
+      feedbackWrong: '💪 Drei sind Tiere, eins nicht!',
+    ),
+    const _EarlyQuestion(
+      type: _QuestionType.oddOneOut,
+      questionEmoji: '🍎🍌🍊🎸',
+      questionText: 'Eins gehört nicht dazu!',
+      options: ['🍎', '🍌', '🍊', '🎸'],
+      correctAnswer: '🎸',
+      feedbackCorrect: '🌟 Die Gitarre ist kein Obst!',
+      feedbackWrong: '💪 Drei Früchte und eine Gitarre!',
+    ),
   ],
 
-  // Für Klasse 1–2: Englisch wird als Farben- & Tierkunde auf Deutsch vorbereitet.
-  // Kein englischer Text – die Kinder lernen Zuordnung durch Bilder.
   'Englisch': [
     const _EarlyQuestion(
       type: _QuestionType.imageChoice,
@@ -195,6 +284,35 @@ final Map<String, List<_EarlyQuestion>> _questionBank = {
       correctAnswer: '🦋',
       feedbackCorrect: '🌟 Ein Schmetterling!',
       feedbackWrong: '💪 Das ist ein Schmetterling 🦋!',
+    ),
+    // ── Neue Aufgabentypen ──────────────────────────────────────────
+    const _EarlyQuestion(
+      type: _QuestionType.oddOneOut,
+      questionEmoji: '🔴🔵🟡🌳',
+      questionText: 'Was ist keine Farbe?',
+      options: ['🔴', '🔵', '🟡', '🌳'],
+      correctAnswer: '🌳',
+      feedbackCorrect: '🎉 Der Baum ist keine Farbe!',
+      feedbackWrong: '💪 Drei sind Farben!',
+    ),
+    const _EarlyQuestion(
+      type: _QuestionType.pattern,
+      questionEmoji: '🐶🐱🐶🐱🐶❓',
+      questionText: 'Welches Tier kommt jetzt?',
+      options: ['🐶', '🐱', '🐰', '🐸'],
+      correctAnswer: '🐱',
+      feedbackCorrect: '🌟 Katze ist richtig!',
+      feedbackWrong: '💪 Hund, Katze, Hund, Katze...',
+    ),
+    const _EarlyQuestion(
+      type: _QuestionType.sizeOrder,
+      questionEmoji: '🐜🐇🐻',
+      questionText: 'Vom Kleinsten zum Größten!',
+      options: ['🐻', '🐜', '🐇'],
+      correctAnswer: '🐜🐇🐻',
+      orderedAnswers: ['🐜', '🐇', '🐻'],
+      feedbackCorrect: '🎊 Ameise, Hase, Bär!',
+      feedbackWrong: '💪 Ameise ist am kleinsten!',
     ),
   ],
 
@@ -249,6 +367,35 @@ final Map<String, List<_EarlyQuestion>> _questionBank = {
       feedbackCorrect: '🎊 Richtig, alles wird nass!',
       feedbackWrong: '💪 Regen macht alles nass!',
     ),
+    // ── Neue Aufgabentypen ──────────────────────────────────────────
+    const _EarlyQuestion(
+      type: _QuestionType.oddOneOut,
+      questionEmoji: '🌸🌷🌻🚀',
+      questionText: 'Was ist keine Pflanze?',
+      options: ['🌸', '🌷', '🌻', '🚀'],
+      correctAnswer: '🚀',
+      feedbackCorrect: '🌟 Die Rakete ist keine Pflanze!',
+      feedbackWrong: '💪 Drei sind Blumen!',
+    ),
+    const _EarlyQuestion(
+      type: _QuestionType.pattern,
+      questionEmoji: '☀️🌧️☀️🌧️☀️❓',
+      questionText: 'Welches Wetter kommt jetzt?',
+      options: ['🌧️', '☀️', '❄️', '🌈'],
+      correctAnswer: '🌧️',
+      feedbackCorrect: '🎉 Regen kommt!',
+      feedbackWrong: '💪 Sonne, Regen, Sonne, Regen...',
+    ),
+    const _EarlyQuestion(
+      type: _QuestionType.sizeOrder,
+      questionEmoji: '🌱🌳🌲',
+      questionText: 'Was wächst zuerst? Tippe der Reihe nach!',
+      options: ['🌳', '🌱', '🌲'],
+      correctAnswer: '🌱🌲🌳',
+      orderedAnswers: ['🌱', '🌲', '🌳'],
+      feedbackCorrect: '🌟 Samen, Baum, großer Baum!',
+      feedbackWrong: '💪 Zuerst der kleine Keim!',
+    ),
   ],
 };
 
@@ -283,11 +430,31 @@ class _EarlyLearnerQuizScreenState extends ConsumerState<EarlyLearnerQuizScreen>
   bool _wasCorrect = false;
   String _feedbackText = '';
 
+  /// Pro-Frage-Ergebnis: true = richtig, false = falsch, null = unbeantwortet
+  List<bool?> _stepResults = [];
+
+  /// Für sizeOrder: bisher getippte Reihenfolge
+  List<String> _sizeOrderTaps = [];
+
+  /// Schatzkiste anzeigen (vor dem Finish-Screen, bei ≥ 4/5 richtig)
+  bool _showTreasureChest = false;
+
+  // Animation Controllers
   late AnimationController _feedbackController;
   late AnimationController _bounceController;
   late Animation<double> _bounceAnim;
+  late AnimationController _shakeController;
+  late Animation<double> _shakeAnim;
 
+  // Konfetti
+  late ConfettiController _confettiController;
+  late ConfettiController _finishConfettiController;
+
+  // Tracking
   LearningTimeTracker? _timeTracker;
+
+  // Child-ID für TTS Settings
+  String? _childId;
 
   @override
   void initState() {
@@ -295,22 +462,43 @@ class _EarlyLearnerQuizScreenState extends ConsumerState<EarlyLearnerQuizScreen>
 
     final child = ref.read(activeChildProvider);
     final user = ref.read(authStateChangesProvider).value;
+    _childId = child?.id;
+
     if (child != null && user != null) {
       _timeTracker = LearningTimeTracker(userId: user.uid, childId: child.id);
       _timeTracker!.startTracking();
     }
 
+    // Feedback-Animation (für das Overlay)
     _feedbackController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 700),
     );
 
+    // Bounce bei richtiger Antwort
     _bounceController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 500),
     );
     _bounceAnim = Tween<double>(begin: 1.0, end: 1.15).animate(
       CurvedAnimation(parent: _bounceController, curve: Curves.elasticOut),
+    );
+
+    // Shake bei falscher Antwort
+    _shakeController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 400),
+    );
+    _shakeAnim = Tween<double>(begin: 0, end: 1).animate(
+      CurvedAnimation(parent: _shakeController, curve: Curves.elasticOut),
+    );
+
+    // Konfetti-Controller
+    _confettiController = ConfettiController(
+      duration: const Duration(seconds: 2),
+    );
+    _finishConfettiController = ConfettiController(
+      duration: const Duration(seconds: 5),
     );
 
     _loadQuestions();
@@ -321,6 +509,14 @@ class _EarlyLearnerQuizScreenState extends ConsumerState<EarlyLearnerQuizScreen>
     final shuffled = List<_EarlyQuestion>.from(bank)..shuffle();
     setState(() {
       _questions = shuffled.take(5).toList();
+      _stepResults = List.filled(_questions.length, null);
+    });
+
+    // Erste Frage nach kurzem Delay vorlesen
+    Future.delayed(const Duration(milliseconds: 600), () {
+      if (mounted && _questions.isNotEmpty) {
+        _speakCurrentQuestion();
+      }
     });
   }
 
@@ -328,17 +524,49 @@ class _EarlyLearnerQuizScreenState extends ConsumerState<EarlyLearnerQuizScreen>
   void dispose() {
     _feedbackController.dispose();
     _bounceController.dispose();
+    _shakeController.dispose();
+    _confettiController.dispose();
+    _finishConfettiController.dispose();
     _timeTracker?.stopTracking();
+    // TTS stoppen wenn Screen verlassen wird
+    ref.read(ttsControllerProvider.notifier).stop();
     super.dispose();
   }
+
+  // ── TTS Hilfsmethoden ─────────────────────────────────────────────────────
+
+  bool get _ttsEnabled {
+    if (_childId == null) return false;
+    return ref.read(ttsSettingsProvider(_childId!));
+  }
+
+  void _speakCurrentQuestion() {
+    if (!_ttsEnabled || _questions.isEmpty) return;
+    final question = _questions[_currentIndex];
+    ref
+        .read(ttsControllerProvider.notifier)
+        .speakQuestion(question.questionText);
+  }
+
+  void _speakFeedback(String text) {
+    if (!_ttsEnabled) return;
+    ref.read(ttsControllerProvider.notifier).speakFeedback(text);
+  }
+
+  void _speakResult() {
+    if (!_ttsEnabled) return;
+    ref
+        .read(ttsControllerProvider.notifier)
+        .speakResult(correct: _correctAnswers, total: _questions.length);
+  }
+
+  // ── Antwort-Logik ─────────────────────────────────────────────────────────
 
   Future<void> _checkAnswer(String selected) async {
     if (_showFeedback) return;
 
     final question = _questions[_currentIndex];
     final correct = selected == question.correctAnswer;
-
-    HapticFeedback.mediumImpact();
 
     setState(() {
       _showFeedback = true;
@@ -347,11 +575,14 @@ class _EarlyLearnerQuizScreenState extends ConsumerState<EarlyLearnerQuizScreen>
           ? question.feedbackCorrect
           : question.feedbackWrong;
       if (correct) _correctAnswers++;
+      _stepResults[_currentIndex] = correct;
     });
 
-    // Bounce-Animation bei richtig
     if (correct) {
+      // ── Richtige Antwort ──────────────────────────────────────────
+      HapticFeedback.lightImpact();
       _bounceController.forward().then((_) => _bounceController.reverse());
+      _confettiController.play();
 
       // XP vergeben
       final child = ref.read(activeChildProvider);
@@ -363,22 +594,49 @@ class _EarlyLearnerQuizScreenState extends ConsumerState<EarlyLearnerQuizScreen>
               .addXP(userId: user.uid, childId: child.id, xpToAdd: 5);
         } catch (_) {}
       }
+    } else {
+      // ── Falsche Antwort ───────────────────────────────────────────
+      HapticFeedback.heavyImpact();
+      _shakeController.forward().then((_) => _shakeController.reset());
     }
 
+    // Feedback vorlesen
+    _speakFeedback(_feedbackText);
+
+    // Feedback-Overlay Animation
     _feedbackController.forward().then((_) => _feedbackController.reverse());
 
-    await Future.delayed(const Duration(milliseconds: 1600));
+    await Future.delayed(const Duration(milliseconds: 1800));
     if (!mounted) return;
 
     setState(() => _showFeedback = false);
 
     if (_currentIndex < _questions.length - 1) {
-      setState(() => _currentIndex++);
+      setState(() {
+        _currentIndex++;
+        _sizeOrderTaps = []; // Reset für nächste Frage
+      });
+      // Nächste Frage vorlesen (kurzer Delay damit Übergang sichtbar ist)
+      Future.delayed(const Duration(milliseconds: 400), () {
+        if (mounted) _speakCurrentQuestion();
+      });
     } else {
       _timeTracker?.stopTracking();
-      setState(() => _isFinished = true);
+
+      if (_correctAnswers >= 4) {
+        // Schatzkiste zeigen VOR dem Finish-Screen
+        setState(() => _showTreasureChest = true);
+      } else {
+        setState(() => _isFinished = true);
+        // Ergebnis vorlesen
+        Future.delayed(const Duration(milliseconds: 500), () {
+          if (mounted) _speakResult();
+        });
+      }
     }
   }
+
+  // ── Build ─────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -387,6 +645,31 @@ class _EarlyLearnerQuizScreenState extends ConsumerState<EarlyLearnerQuizScreen>
     }
 
     if (_isFinished) return _buildFinishScreen();
+
+    // Schatzkiste (vor dem Finish-Screen)
+    if (_showTreasureChest) {
+      final earnedStars = _correctAnswers * 2;
+      final isPerfect = _correctAnswers == _questions.length;
+      return Scaffold(
+        body: TreasureChestOverlay(
+          earnedStars: earnedStars,
+          isPerfect: isPerfect,
+          onDismiss: () {
+            setState(() {
+              _showTreasureChest = false;
+              _isFinished = true;
+            });
+            // Ergebnis vorlesen + Konfetti nach Schatzkiste
+            Future.delayed(const Duration(milliseconds: 300), () {
+              if (mounted) {
+                _speakResult();
+                _finishConfettiController.play();
+              }
+            });
+          },
+        ),
+      );
+    }
 
     final question = _questions[_currentIndex];
 
@@ -409,7 +692,31 @@ class _EarlyLearnerQuizScreenState extends ConsumerState<EarlyLearnerQuizScreen>
                   Expanded(child: _buildQuestionArea(question)),
                 ],
               ),
+              // Feedback Overlay
               if (_showFeedback) _buildFeedbackOverlay(),
+              // Konfetti (von oben Mitte)
+              Align(
+                alignment: Alignment.topCenter,
+                child: ConfettiWidget(
+                  confettiController: _confettiController,
+                  blastDirectionality: BlastDirectionality.explosive,
+                  shouldLoop: false,
+                  numberOfParticles: 15,
+                  maxBlastForce: 20,
+                  minBlastForce: 8,
+                  emissionFrequency: 0.05,
+                  gravity: 0.2,
+                  colors: const [
+                    Color(0xFFFFD700), // Gold
+                    Color(0xFFFFA500), // Orange
+                    Color(0xFFFF6B6B), // Rot
+                    Color(0xFF4ECDC4), // Türkis
+                    Color(0xFFFFE66D), // Gelb
+                    Color(0xFFFF69B4), // Pink
+                  ],
+                  createParticlePath: _starPath,
+                ),
+              ),
             ],
           ),
         ),
@@ -417,16 +724,51 @@ class _EarlyLearnerQuizScreenState extends ConsumerState<EarlyLearnerQuizScreen>
     );
   }
 
-  // ── Header ────────────────────────────────────────────────────────────────
+  /// Erzeugt sternförmige Konfetti-Partikel
+  Path _starPath(Size size) {
+    final path = Path();
+    final cx = size.width / 2;
+    final cy = size.height / 2;
+    final outerR = size.width / 2;
+    final innerR = size.width / 4;
+
+    for (int i = 0; i < 5; i++) {
+      final outerAngle = (i * 72 - 90) * pi / 180;
+      final innerAngle = ((i * 72) + 36 - 90) * pi / 180;
+
+      if (i == 0) {
+        path.moveTo(
+          cx + outerR * cos(outerAngle),
+          cy + outerR * sin(outerAngle),
+        );
+      } else {
+        path.lineTo(
+          cx + outerR * cos(outerAngle),
+          cy + outerR * sin(outerAngle),
+        );
+      }
+      path.lineTo(cx + innerR * cos(innerAngle), cy + innerR * sin(innerAngle));
+    }
+    path.close();
+    return path;
+  }
+
+  // ── Header mit Avatar-Fortschritt ─────────────────────────────────────────
 
   Widget _buildHeader() {
+    final child = ref.watch(activeChildProvider);
+    final ttsState = ref.watch(ttsControllerProvider);
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
       child: Row(
         children: [
           // Zurück-Button
           GestureDetector(
-            onTap: () => Navigator.pop(context),
+            onTap: () {
+              ref.read(ttsControllerProvider.notifier).stop();
+              Navigator.pop(context);
+            },
             child: Container(
               width: 48,
               height: 48,
@@ -441,36 +783,47 @@ class _EarlyLearnerQuizScreenState extends ConsumerState<EarlyLearnerQuizScreen>
               ),
             ),
           ),
-          const SizedBox(width: 12),
-          // Fortschritt als Sterne-Punkte
+
+          const SizedBox(width: 8),
+
+          // ── Avatar-Fortschrittsanzeige ─────────────────────────────
           Expanded(
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(
-                _questions.length,
-                (i) => Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 3),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 300),
-                    width: i == _currentIndex ? 32 : 20,
-                    height: 20,
-                    decoration: BoxDecoration(
-                      color: i <= _currentIndex
-                          ? Colors.white
-                          : Colors.white.withOpacity(0.35),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: i < _currentIndex
-                        ? const Center(
-                            child: Text('⭐', style: TextStyle(fontSize: 12)),
-                          )
-                        : null,
-                  ),
-                ),
+            child: AvatarProgressBar(
+              totalSteps: _questions.length,
+              currentStep: _currentIndex,
+              stepResults: _stepResults,
+              isFinished: _isFinished,
+              correctCount: _correctAnswers,
+              avatarId: child?.selectedAvatar,
+              childName: child?.name ?? '',
+              subjectColor: widget.subjectColors.first,
+            ),
+          ),
+
+          const SizedBox(width: 8),
+
+          // Lautsprecher-Button (erneut vorlesen)
+          GestureDetector(
+            onTap: () {
+              HapticFeedback.selectionClick();
+              _speakCurrentQuestion();
+            },
+            child: Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.25),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                ttsState.isSpeaking
+                    ? Icons.volume_up_rounded
+                    : Icons.volume_up_outlined,
+                color: Colors.white,
+                size: 24,
               ),
             ),
           ),
-          const SizedBox(width: 48),
         ],
       ),
     );
@@ -485,55 +838,69 @@ class _EarlyLearnerQuizScreenState extends ConsumerState<EarlyLearnerQuizScreen>
         children: [
           const SizedBox(height: 8),
 
-          // ── Frage-Karte ─────────────────────────────────────────────────
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(28),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(32),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.15),
-                  blurRadius: 24,
-                  offset: const Offset(0, 8),
-                ),
-              ],
-            ),
-            child: Column(
-              children: [
-                // Typ-Hinweis (klein, aber mit Emoji verständlich)
-                _buildTypeHint(question.type),
-                const SizedBox(height: 16),
-                // Großes Frage-Emoji
-                ScaleTransition(
-                  scale: _bounceAnim,
-                  child: Text(
-                    question.questionEmoji,
-                    style: const TextStyle(fontSize: 72),
+          // ── Frage-Karte (mit Shake-Animation bei Fehler) ────────────
+          AnimatedBuilder(
+            animation: _shakeAnim,
+            builder: (_, child) {
+              final shakeOffset = sin(_shakeAnim.value * pi * 3) * 8;
+              return Transform.translate(
+                offset: Offset(_wasCorrect ? 0 : shakeOffset, 0),
+                child: child,
+              );
+            },
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(28),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(32),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.15),
+                    blurRadius: 24,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+              ),
+              child: Column(
+                children: [
+                  // Typ-Hinweis
+                  _buildTypeHint(question.type),
+                  const SizedBox(height: 16),
+                  // Großes Frage-Emoji
+                  ScaleTransition(
+                    scale: _bounceAnim,
+                    child: Text(
+                      question.questionEmoji,
+                      style: const TextStyle(fontSize: 72),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  // Frage-Text
+                  Text(
+                    question.questionText,
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF1A1A2E),
+                      height: 1.3,
+                    ),
                     textAlign: TextAlign.center,
                   ),
-                ),
-                const SizedBox(height: 14),
-                // Frage-Text (groß, gut lesbar)
-                Text(
-                  question.questionText,
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF1A1A2E),
-                    height: 1.3,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ],
+                ],
+              ),
             ),
           ),
 
           const SizedBox(height: 20),
 
-          // ── Antwort-Buttons ─────────────────────────────────────────────
-          Expanded(child: _buildAnswerGrid(question)),
+          // ── Antwort-Buttons ─────────────────────────────────────────
+          Expanded(
+            child: question.type == _QuestionType.sizeOrder
+                ? _buildSizeOrderArea(question)
+                : _buildAnswerGrid(question),
+          ),
         ],
       ),
     );
@@ -558,6 +925,18 @@ class _EarlyLearnerQuizScreenState extends ConsumerState<EarlyLearnerQuizScreen>
       case _QuestionType.imageChoice:
         emoji = '👆';
         hint = 'Tippe auf die Antwort!';
+        break;
+      case _QuestionType.pattern:
+        emoji = '🔮';
+        hint = 'Was kommt als nächstes?';
+        break;
+      case _QuestionType.oddOneOut:
+        emoji = '🤔';
+        hint = 'Was passt nicht?';
+        break;
+      case _QuestionType.sizeOrder:
+        emoji = '📏';
+        hint = 'Tippe in der Reihenfolge!';
         break;
     }
     return Container(
@@ -603,6 +982,98 @@ class _EarlyLearnerQuizScreenState extends ConsumerState<EarlyLearnerQuizScreen>
           )
           .toList(),
     );
+  }
+
+  // ── Size Order: Reihenfolge-Tipp-UI ─────────────────────────────────────
+
+  Widget _buildSizeOrderArea(_EarlyQuestion question) {
+    return Column(
+      children: [
+        // Zeige bisherige Taps als Reihenfolge-Anzeige
+        if (_sizeOrderTaps.isNotEmpty)
+          Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                for (int i = 0; i < _sizeOrderTaps.length; i++) ...[
+                  if (i > 0)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 4),
+                      child: Icon(
+                        Icons.arrow_forward_rounded,
+                        color: Colors.white70,
+                        size: 18,
+                      ),
+                    ),
+                  Text(_sizeOrderTaps[i], style: const TextStyle(fontSize: 32)),
+                ],
+              ],
+            ),
+          ),
+
+        // Antwort-Buttons (noch nicht getippte)
+        Expanded(
+          child: Center(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: question.options.map((opt) {
+                final alreadyTapped = _sizeOrderTaps.contains(opt);
+                return Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 6),
+                    child: AnimatedOpacity(
+                      duration: const Duration(milliseconds: 250),
+                      opacity: alreadyTapped ? 0.3 : 1.0,
+                      child: _AnswerTile(
+                        text: opt,
+                        colors: widget.subjectColors,
+                        onTap: () => _handleSizeOrderTap(opt, question),
+                        enabled: !_showFeedback && !alreadyTapped,
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _handleSizeOrderTap(String tapped, _EarlyQuestion question) {
+    if (_showFeedback) return;
+
+    final ordered = question.orderedAnswers!;
+    final nextExpected = ordered[_sizeOrderTaps.length];
+
+    HapticFeedback.selectionClick();
+
+    if (tapped == nextExpected) {
+      // Richtiger Tap in der Reihenfolge
+      setState(() => _sizeOrderTaps.add(tapped));
+      HapticFeedback.lightImpact();
+
+      // Alle getippt? → Prüfen
+      if (_sizeOrderTaps.length == ordered.length) {
+        _checkAnswer(ordered.join());
+        // Reset für nächste sizeOrder-Frage
+        Future.delayed(const Duration(milliseconds: 200), () {
+          if (mounted) setState(() => _sizeOrderTaps = []);
+        });
+      }
+    } else {
+      // Falsche Reihenfolge → sofort als Fehler werten
+      HapticFeedback.heavyImpact();
+      setState(() => _sizeOrderTaps = []); // Reset
+      _checkAnswer('__wrong__'); // Erzwingt falsches Ergebnis
+    }
   }
 
   // ── Feedback Overlay ──────────────────────────────────────────────────────
@@ -661,6 +1132,7 @@ class _EarlyLearnerQuizScreenState extends ConsumerState<EarlyLearnerQuizScreen>
   Widget _buildFinishScreen() {
     final allCorrect = _correctAnswers == _questions.length;
     final earnedStars = _correctAnswers * 2;
+    final showConfetti = _correctAnswers >= 4;
 
     return Scaffold(
       body: Container(
@@ -672,150 +1144,190 @@ class _EarlyLearnerQuizScreenState extends ConsumerState<EarlyLearnerQuizScreen>
           ),
         ),
         child: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(28),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  // Haupt-Emoji
-                  TweenAnimationBuilder<double>(
-                    tween: Tween(begin: 0.0, end: 1.0),
-                    duration: const Duration(milliseconds: 600),
-                    curve: Curves.elasticOut,
-                    builder: (_, v, __) => Transform.scale(
-                      scale: v,
-                      child: Text(
-                        allCorrect ? '🏆' : '🌟',
-                        style: const TextStyle(fontSize: 100),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Glückwunsch-Text
-                  Text(
-                    allCorrect ? 'Perfekt!' : 'Super gemacht!',
-                    style: const TextStyle(
-                      fontSize: 36,
-                      fontWeight: FontWeight.w900,
-                      color: Colors.white,
-                      shadows: [Shadow(color: Colors.black26, blurRadius: 6)],
-                    ),
-                  ),
-                  const SizedBox(height: 28),
-
-                  // Ergebnis-Karte
-                  Container(
-                    padding: const EdgeInsets.all(28),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(32),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.15),
-                          blurRadius: 24,
-                          offset: const Offset(0, 8),
+          child: Stack(
+            children: [
+              Center(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(28),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      // Haupt-Emoji
+                      TweenAnimationBuilder<double>(
+                        tween: Tween(begin: 0.0, end: 1.0),
+                        duration: const Duration(milliseconds: 600),
+                        curve: Curves.elasticOut,
+                        builder: (_, v, __) => Transform.scale(
+                          scale: v,
+                          child: Text(
+                            allCorrect ? '🏆' : '🌟',
+                            style: const TextStyle(fontSize: 100),
+                          ),
                         ),
-                      ],
-                    ),
-                    child: Column(
-                      children: [
-                        // Sterne als Ergebnis
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: List.generate(
-                            _questions.length,
-                            (i) => Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 4,
-                              ),
-                              child: TweenAnimationBuilder<double>(
-                                tween: Tween(begin: 0.0, end: 1.0),
-                                duration: Duration(milliseconds: 400 + i * 150),
-                                curve: Curves.elasticOut,
-                                builder: (_, v, __) => Transform.scale(
-                                  scale: v,
-                                  child: Text(
-                                    i < _correctAnswers ? '⭐' : '☆',
-                                    style: TextStyle(
-                                      fontSize: 36,
-                                      color: i < _correctAnswers
-                                          ? Colors.amber
-                                          : Colors.grey.shade300,
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Glückwunsch-Text
+                      Text(
+                        allCorrect ? 'Perfekt!' : 'Super gemacht!',
+                        style: const TextStyle(
+                          fontSize: 36,
+                          fontWeight: FontWeight.w900,
+                          color: Colors.white,
+                          shadows: [
+                            Shadow(color: Colors.black26, blurRadius: 6),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 28),
+
+                      // Ergebnis-Karte
+                      Container(
+                        padding: const EdgeInsets.all(28),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(32),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.15),
+                              blurRadius: 24,
+                              offset: const Offset(0, 8),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          children: [
+                            // Sterne als Ergebnis
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: List.generate(
+                                _questions.length,
+                                (i) => Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 4,
+                                  ),
+                                  child: TweenAnimationBuilder<double>(
+                                    tween: Tween(begin: 0.0, end: 1.0),
+                                    duration: Duration(
+                                      milliseconds: 400 + i * 150,
+                                    ),
+                                    curve: Curves.elasticOut,
+                                    builder: (_, v, __) => Transform.scale(
+                                      scale: v,
+                                      child: Text(
+                                        i < _correctAnswers ? '⭐' : '☆',
+                                        style: TextStyle(
+                                          fontSize: 36,
+                                          color: i < _correctAnswers
+                                              ? Colors.amber
+                                              : Colors.grey.shade300,
+                                        ),
+                                      ),
                                     ),
                                   ),
                                 ),
                               ),
                             ),
-                          ),
+                            const SizedBox(height: 20),
+                            // Sterne-Gewinn
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 20,
+                                vertical: 10,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.amber.shade50,
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Text(
+                                    '⭐',
+                                    style: TextStyle(fontSize: 28),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    '+$earnedStars',
+                                    style: const TextStyle(
+                                      fontSize: 28,
+                                      fontWeight: FontWeight.w900,
+                                      color: Color(0xFFFF8C00),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: 20),
-                        // Sterne-Gewinn
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 20,
-                            vertical: 10,
-                          ),
+                      ),
+                      const SizedBox(height: 36),
+
+                      // Zurück-Button
+                      GestureDetector(
+                        onTap: () {
+                          ref.read(ttsControllerProvider.notifier).stop();
+                          Navigator.pop(context);
+                        },
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(vertical: 20),
                           decoration: BoxDecoration(
-                            color: Colors.amber.shade50,
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Text('⭐', style: TextStyle(fontSize: 28)),
-                              const SizedBox(width: 8),
-                              Text(
-                                '+$earnedStars',
-                                style: const TextStyle(
-                                  fontSize: 28,
-                                  fontWeight: FontWeight.w900,
-                                  color: Color(0xFFFF8C00),
-                                ),
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(28),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.15),
+                                blurRadius: 16,
+                                offset: const Offset(0, 6),
                               ),
                             ],
                           ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.home_rounded,
+                                color: widget.subjectColors.first,
+                                size: 32,
+                              ),
+                              const SizedBox(width: 10),
+                              const Text('🏠', style: TextStyle(fontSize: 28)),
+                            ],
+                          ),
                         ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 36),
-
-                  // Zurück-Button – groß und eindeutig
-                  GestureDetector(
-                    onTap: () => Navigator.pop(context),
-                    child: Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(vertical: 20),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(28),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.15),
-                            blurRadius: 16,
-                            offset: const Offset(0, 6),
-                          ),
-                        ],
                       ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.home_rounded,
-                            color: widget.subjectColors.first,
-                            size: 32,
-                          ),
-                          const SizedBox(width: 10),
-                          Text('🏠', style: const TextStyle(fontSize: 28)),
-                        ],
-                      ),
-                    ),
+                    ],
                   ),
-                ],
+                ),
               ),
-            ),
+
+              // Konfetti beim Abschluss (bei ≥ 4/5 richtig)
+              if (showConfetti)
+                Align(
+                  alignment: Alignment.topCenter,
+                  child: ConfettiWidget(
+                    confettiController: _finishConfettiController,
+                    blastDirectionality: BlastDirectionality.explosive,
+                    shouldLoop: false,
+                    numberOfParticles: 30,
+                    maxBlastForce: 25,
+                    minBlastForce: 10,
+                    emissionFrequency: 0.04,
+                    gravity: 0.15,
+                    colors: const [
+                      Color(0xFFFFD700),
+                      Color(0xFFFFA500),
+                      Color(0xFFFF6B6B),
+                      Color(0xFF4ECDC4),
+                      Color(0xFFFFE66D),
+                      Color(0xFFFF69B4),
+                      Color(0xFF7C4DFF),
+                    ],
+                    createParticlePath: _starPath,
+                  ),
+                ),
+            ],
           ),
         ),
       ),
@@ -824,7 +1336,7 @@ class _EarlyLearnerQuizScreenState extends ConsumerState<EarlyLearnerQuizScreen>
 }
 
 // ============================================================================
-// ANTWORT-KACHEL
+// ANTWORT-KACHEL (unverändert aus v1)
 // ============================================================================
 
 class _AnswerTile extends StatefulWidget {
@@ -870,7 +1382,6 @@ class _AnswerTileState extends State<_AnswerTile>
 
   @override
   Widget build(BuildContext context) {
-    // Erkennt ob der Text ein Emoji ist (für große Darstellung)
     final isEmoji = _isEmojiText(widget.text);
     final isBuchstabe =
         widget.text.length == 1 &&
@@ -884,6 +1395,7 @@ class _AnswerTileState extends State<_AnswerTile>
         onTapUp: widget.enabled
             ? (_) {
                 _ctrl.reverse();
+                HapticFeedback.selectionClick();
                 widget.onTap();
               }
             : null,
@@ -935,7 +1447,6 @@ class _AnswerTileState extends State<_AnswerTile>
   }
 
   bool _isEmojiText(String text) {
-    // Heuristik: enthält Emoji-Codepoints
     return text.runes.any(
       (r) =>
           (r >= 0x1F300 && r <= 0x1FAFF) ||
