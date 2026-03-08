@@ -7,6 +7,9 @@ import 'widgets/info_row.dart';
 import 'widgets/question_card.dart';
 
 /// 📋 BATCH DETAIL SCREEN - Zeigt alle Aufgaben eines Batches
+///
+/// - Ausstehende Aufgaben oben
+/// - Bereits freigegebene/abgelehnte ganz unten, eingeklappt
 class BatchDetailScreen extends ConsumerStatefulWidget {
   final GeneratedTaskBatch batch;
 
@@ -18,13 +21,13 @@ class BatchDetailScreen extends ConsumerStatefulWidget {
 
 class _BatchDetailScreenState extends ConsumerState<BatchDetailScreen> {
   bool _isProcessing = false;
+  bool _reviewedExpanded = false;
 
   @override
   Widget build(BuildContext context) {
     final authRepo = ref.watch(authRepositoryProvider);
     final userId = authRepo.currentUser?.uid;
 
-    // Live-Fragen per Stream – aktualisieren sich sofort nach approve/reject
     final questionsAsync = userId != null
         ? ref.watch(
             batchQuestionsProvider((userId: userId, batchId: widget.batch.id)),
@@ -32,32 +35,39 @@ class _BatchDetailScreenState extends ConsumerState<BatchDetailScreen> {
         : null;
 
     final questions = questionsAsync?.value ?? widget.batch.questions;
-    final hasPending = questions.any(
-      (q) => q.status == TaskApprovalStatus.pending,
-    );
+
+    final pendingQuestions = questions
+        .where((q) => q.status == TaskApprovalStatus.pending)
+        .toList();
+    final reviewedQuestions = questions
+        .where((q) => q.status != TaskApprovalStatus.pending)
+        .toList();
+
+    final hasPending = pendingQuestions.isNotEmpty;
 
     return Scaffold(
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
-        title: Text(widget.batch.childName),
+        title: Text(
+          '${widget.batch.childName} · ${widget.batch.subject.displayName}',
+          style: const TextStyle(fontSize: 16),
+        ),
         backgroundColor: Colors.deepPurple,
         foregroundColor: Colors.white,
         actions: [
           if (hasPending)
             TextButton.icon(
               onPressed: _isProcessing ? null : _approveAll,
-              icon: const Icon(Icons.done_all, color: Colors.white),
+              icon: const Icon(Icons.done_all, color: Colors.white, size: 18),
               label: const Text(
                 'Alle freigeben',
-                style: TextStyle(color: Colors.white),
+                style: TextStyle(color: Colors.white, fontSize: 13),
               ),
             ),
           PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert, color: Colors.white),
             onSelected: (value) {
-              if (value == 'delete') {
-                _confirmDelete();
-              }
+              if (value == 'delete') _confirmDelete();
             },
             itemBuilder: (context) => [
               const PopupMenuItem(
@@ -74,74 +84,206 @@ class _BatchDetailScreenState extends ConsumerState<BatchDetailScreen> {
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Bild-Vorschau
-            ClipRRect(
-              borderRadius: BorderRadius.circular(16),
-              child: Image.network(
-                widget.batch.imageUrl,
-                width: double.infinity,
-                fit: BoxFit.cover,
+      body: CustomScrollView(
+        slivers: [
+          // --- Kompakte Header-Info ---
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+              child: _buildCompactHeader(),
+            ),
+          ),
+
+          // --- Ausstehende Aufgaben ---
+          if (pendingQuestions.isNotEmpty) ...[
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 20, 16, 10),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.pending_actions,
+                      size: 16,
+                      color: Colors.deepPurple,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Ausstehend (${pendingQuestions.length})',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.deepPurple,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-
-            const SizedBox(height: 24),
-
-            // Info-Card
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.grey.shade200),
-              ),
-              child: Column(
-                children: [
-                  InfoRow(
-                    icon: Icons.person,
-                    label: 'Schüler',
-                    value: widget.batch.childName,
+            SliverPadding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              sliver: SliverList(
+                delegate: SliverChildBuilderDelegate(
+                  (context, index) => QuestionCard(
+                    question: pendingQuestions[index],
+                    index: index + 1,
+                    batchId: widget.batch.id,
+                    onStatusChanged: () {},
                   ),
-                  const SizedBox(height: 12),
-                  InfoRow(
-                    icon: _getSubjectIcon(widget.batch.subject),
-                    label: 'Fach',
-                    value: widget.batch.subject.displayName,
-                  ),
-                  const SizedBox(height: 12),
-                  InfoRow(
-                    icon: Icons.calendar_today,
-                    label: 'Erstellt',
-                    value: _formatDate(widget.batch.createdAt),
-                  ),
-                ],
+                  childCount: pendingQuestions.length,
+                ),
               ),
             ),
-
-            const SizedBox(height: 24),
-
-            // Aufgaben-Liste
-            Text(
-              'Aufgaben (${questions.length})',
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 16),
-
-            ...questions.asMap().entries.map((entry) {
-              return QuestionCard(
-                question: entry.value,
-                index: entry.key + 1,
-                batchId: widget.batch.id,
-                onStatusChanged:
-                    () {}, // Kein setState nötig – Stream updated automatisch
-              );
-            }),
           ],
-        ),
+
+          // --- Bereits bearbeitet (eingeklappt) ---
+          if (reviewedQuestions.isNotEmpty) ...[
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(8),
+                  onTap: () =>
+                      setState(() => _reviewedExpanded = !_reviewedExpanded),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.check_circle_outline,
+                          size: 16,
+                          color: Colors.green.shade600,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Bereits bearbeitet (${reviewedQuestions.length})',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.green.shade700,
+                          ),
+                        ),
+                        const Spacer(),
+                        Icon(
+                          _reviewedExpanded
+                              ? Icons.keyboard_arrow_up
+                              : Icons.keyboard_arrow_down,
+                          color: Colors.grey.shade500,
+                          size: 18,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            if (_reviewedExpanded)
+              SliverPadding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                sliver: SliverList(
+                  delegate: SliverChildBuilderDelegate(
+                    (context, index) => QuestionCard(
+                      question: reviewedQuestions[index],
+                      index: pendingQuestions.length + index + 1,
+                      batchId: widget.batch.id,
+                      onStatusChanged: () {},
+                    ),
+                    childCount: reviewedQuestions.length,
+                  ),
+                ),
+              ),
+          ],
+
+          // --- Alle fertig ---
+          if (!hasPending && reviewedQuestions.isNotEmpty)
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+                child: Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: Colors.green.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.green.shade200),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.celebration,
+                        color: Colors.green.shade700,
+                        size: 24,
+                      ),
+                      const SizedBox(width: 12),
+                      Text(
+                        'Alle Aufgaben bearbeitet!',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.green.shade800,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
+          const SliverToBoxAdapter(child: SizedBox(height: 56)),
+        ],
+      ),
+    );
+  }
+
+  // Kompakter Header statt großem Bild + Info-Card
+  Widget _buildCompactHeader() {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Row(
+        children: [
+          // Kleines Vorschaubild
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: Image.network(
+              widget.batch.imageUrl,
+              width: 56,
+              height: 56,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => Container(
+                width: 56,
+                height: 56,
+                color: Colors.grey.shade100,
+                child: Icon(
+                  _getSubjectIcon(widget.batch.subject),
+                  color: Colors.grey.shade400,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  widget.batch.childName,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '${widget.batch.subject.displayName} · ${_formatDate(widget.batch.createdAt)}',
+                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -168,17 +310,14 @@ class _BatchDetailScreenState extends ConsumerState<BatchDetailScreen> {
   }
 
   String _formatDate(DateTime date) {
-    return '${date.day}.${date.month}.${date.year} um ${date.hour}:${date.minute.toString().padLeft(2, '0')} Uhr';
+    return '${date.day}.${date.month}.${date.year} · ${date.hour}:${date.minute.toString().padLeft(2, '0')} Uhr';
   }
 
   Future<void> _approveAll() async {
     setState(() => _isProcessing = true);
-
     try {
       final repository = ref.read(generatedTaskRepositoryProvider);
-      final authRepo = ref.read(authRepositoryProvider);
-      final userId = authRepo.currentUser?.uid;
-
+      final userId = ref.read(authRepositoryProvider).currentUser?.uid;
       if (userId == null) throw Exception('Nicht angemeldet');
 
       await repository.approveAllPendingInBatch(
@@ -203,7 +342,7 @@ class _BatchDetailScreenState extends ConsumerState<BatchDetailScreen> {
         );
       }
     } finally {
-      setState(() => _isProcessing = false);
+      if (mounted) setState(() => _isProcessing = false);
     }
   }
 
@@ -213,8 +352,7 @@ class _BatchDetailScreenState extends ConsumerState<BatchDetailScreen> {
       builder: (context) => AlertDialog(
         title: const Text('Batch löschen?'),
         content: const Text(
-          'Möchtest du diesen Batch wirklich löschen? '
-          'Alle Aufgaben werden entfernt.',
+          'Möchtest du diesen Batch wirklich löschen? Alle Aufgaben werden entfernt.',
         ),
         actions: [
           TextButton(
@@ -229,24 +367,17 @@ class _BatchDetailScreenState extends ConsumerState<BatchDetailScreen> {
         ],
       ),
     );
-
-    if (confirmed == true) {
-      _deleteBatch();
-    }
+    if (confirmed == true) _deleteBatch();
   }
 
   Future<void> _deleteBatch() async {
     setState(() => _isProcessing = true);
-
     try {
       final repository = ref.read(generatedTaskRepositoryProvider);
-      final authRepo = ref.read(authRepositoryProvider);
-      final userId = authRepo.currentUser?.uid;
-
+      final userId = ref.read(authRepositoryProvider).currentUser?.uid;
       if (userId == null) throw Exception('Nicht angemeldet');
 
       await repository.deleteBatch(userId: userId, batchId: widget.batch.id);
-
       if (mounted) {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
@@ -263,7 +394,7 @@ class _BatchDetailScreenState extends ConsumerState<BatchDetailScreen> {
         );
       }
     } finally {
-      setState(() => _isProcessing = false);
+      if (mounted) setState(() => _isProcessing = false);
     }
   }
 }

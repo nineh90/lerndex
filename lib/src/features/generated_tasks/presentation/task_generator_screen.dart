@@ -3,11 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:lerndex/src/features/generated_tasks/presentation/widgets/info_row.dart';
-import 'package:lerndex/src/features/generated_tasks/presentation/widgets/question_card.dart';
 import '../../auth/domain/child_model.dart';
 import '../../auth/data/auth_repository.dart';
 import '../../generated_tasks/data/generated_task_models.dart';
 import '../../generated_tasks/data/generated_task_repository.dart';
+import '../../generated_tasks/presentation/task_approval_screen.dart';
 import '../../../ai/vertex_ai_service.dart';
 import '../../student_dashboard/presentation/subject_config.dart'
     show getSubjectsForChild;
@@ -15,9 +15,7 @@ import '../../student_dashboard/presentation/subject_config.dart'
 /// 📸 KI-AUFGABENGENERATOR FÜR ELTERN
 ///
 /// Foto von Schulaufgabe → Vertex AI generiert Multiple-Choice-Übungen
-/// Auto-Save direkt nach Generierung → sofort in "Freigeben" sichtbar
-///
-/// Ersetzt: ai_task_generator_screen.dart + improved_ai_task_generator_screen.dart
+/// Nach Generierung direkt Weiterleitung zum Freigabe-Screen (passendem Batch)
 class TaskGeneratorScreen extends ConsumerStatefulWidget {
   final ChildModel child;
 
@@ -32,7 +30,6 @@ class _TaskGeneratorScreenState extends ConsumerState<TaskGeneratorScreen> {
   Subject? _selectedSubject;
   File? _selectedImage;
   bool _isGenerating = false;
-  List<GeneratedQuestion>? _generatedQuestions;
   String? _errorMessage;
   int _numberOfTasks = 5;
 
@@ -67,7 +64,6 @@ class _TaskGeneratorScreenState extends ConsumerState<TaskGeneratorScreen> {
       }
     }
 
-    // Fallback: nach Klasse filtern
     return result.isEmpty
         ? Subject.values
               .where((s) => s.isAvailableForGrade(widget.child.grade))
@@ -89,7 +85,7 @@ class _TaskGeneratorScreenState extends ConsumerState<TaskGeneratorScreen> {
         foregroundColor: Colors.white,
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 40),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -107,10 +103,6 @@ class _TaskGeneratorScreenState extends ConsumerState<TaskGeneratorScreen> {
                 _buildTaskCountSelector(),
                 const SizedBox(height: 24),
                 _buildGenerateButton(),
-              ],
-              if (_generatedQuestions != null) ...[
-                const SizedBox(height: 32),
-                _buildResults(),
               ],
               if (_errorMessage != null) ...[
                 const SizedBox(height: 16),
@@ -191,7 +183,7 @@ class _TaskGeneratorScreenState extends ConsumerState<TaskGeneratorScreen> {
           const SizedBox(height: 8),
           const InfoRow(
             icon: Icons.check_circle,
-            text: 'Aufgaben sofort in "Freigeben" sichtbar',
+            text: 'Du wirst direkt zur Freigabe weitergeleitet',
           ),
         ],
       ),
@@ -222,7 +214,6 @@ class _TaskGeneratorScreenState extends ConsumerState<TaskGeneratorScreen> {
               onTap: () => setState(() {
                 _selectedSubject = subject;
                 _selectedImage = null;
-                _generatedQuestions = null;
                 _errorMessage = null;
               }),
               child: AnimatedContainer(
@@ -404,7 +395,6 @@ class _TaskGeneratorScreenState extends ConsumerState<TaskGeneratorScreen> {
               child: IconButton(
                 onPressed: () => setState(() {
                   _selectedImage = null;
-                  _generatedQuestions = null;
                   _errorMessage = null;
                 }),
                 icon: const Icon(Icons.close),
@@ -517,93 +507,8 @@ class _TaskGeneratorScreenState extends ConsumerState<TaskGeneratorScreen> {
   }
 
   // ---------------------------------------------------------------------------
-  // ERGEBNIS
+  // FEHLER-CARD
   // ---------------------------------------------------------------------------
-
-  Widget _buildResults() {
-    final questions = _generatedQuestions!;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Colors.green.shade400, Colors.green.shade600],
-            ),
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Row(
-            children: [
-              const Icon(Icons.check_circle, color: Colors.white, size: 40),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      '✨ Aufgaben generiert & gespeichert!',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                    Text(
-                      '${questions.length} Übungen für ${widget.child.name} · Jetzt in "Freigeben" sichtbar',
-                      style: const TextStyle(fontSize: 13, color: Colors.white),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 24),
-        const Text(
-          'Generierte Aufgaben (Vorschau)',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 12),
-        ...questions.asMap().entries.map(
-          (entry) => QuestionCard(question: entry.value, index: entry.key + 1),
-        ),
-        const SizedBox(height: 24),
-        Row(
-          children: [
-            Expanded(
-              child: OutlinedButton.icon(
-                onPressed: () => setState(() {
-                  _selectedImage = null;
-                  _generatedQuestions = null;
-                  _errorMessage = null;
-                }),
-                icon: const Icon(Icons.refresh),
-                label: const Text('Neu generieren'),
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  side: const BorderSide(color: Colors.deepPurple, width: 2),
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: ElevatedButton.icon(
-                onPressed: () => Navigator.pop(context),
-                icon: const Icon(Icons.check),
-                label: const Text('Fertig'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.deepPurple,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
 
   Widget _buildErrorCard() {
     return Container(
@@ -658,7 +563,6 @@ class _TaskGeneratorScreenState extends ConsumerState<TaskGeneratorScreen> {
         setState(() {
           _selectedImage = File(image.path);
           _errorMessage = null;
-          _generatedQuestions = null;
         });
       }
     } catch (e) {
@@ -679,14 +583,12 @@ class _TaskGeneratorScreenState extends ConsumerState<TaskGeneratorScreen> {
     setState(() {
       _isGenerating = true;
       _errorMessage = null;
-      _generatedQuestions = null;
     });
 
     try {
       final userId = ref.read(authRepositoryProvider).currentUser?.uid;
       if (userId == null) throw Exception('Nicht angemeldet');
 
-      // Vertex AI generiert die Aufgaben (DSGVO-konform)
       final aiService = ref.read(vertexAIServiceProvider);
       final result = await aiService.generateTasksFromImage(
         imageFile: _selectedImage!,
@@ -702,9 +604,9 @@ class _TaskGeneratorScreenState extends ConsumerState<TaskGeneratorScreen> {
         );
       }
 
-      // Direkt in Firestore speichern → sofort in Freigabe-Liste
+      // In Firestore speichern → gibt Batch-ID zurück
       final repository = ref.read(generatedTaskRepositoryProvider);
-      await repository.saveGeneratedBatch(
+      final batchId = await repository.saveGeneratedBatch(
         userId: userId,
         childId: widget.child.id,
         childName: widget.child.name,
@@ -714,11 +616,14 @@ class _TaskGeneratorScreenState extends ConsumerState<TaskGeneratorScreen> {
       );
 
       if (mounted) {
-        setState(() => _generatedQuestions = result.questions);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('✅ Aufgaben generiert & gespeichert!'),
-            backgroundColor: Colors.green,
+        // Direkt zum Freigabe-Screen mit dem neuen Batch weiterleiten
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => TaskApprovalScreen(
+              childId: widget.child.id,
+              initialBatchId: batchId,
+            ),
           ),
         );
       }

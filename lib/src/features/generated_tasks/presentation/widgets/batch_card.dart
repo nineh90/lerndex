@@ -2,9 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/generated_task_models.dart';
 import '../batch_detail_screen.dart';
-import 'status_chip.dart';
 
-/// 📦 BATCH CARD - Zeigt Übersicht eines Aufgaben-Batches
+/// 📦 BATCH CARD - Kompakte Übersicht eines Aufgaben-Batches
 class BatchCard extends ConsumerWidget {
   final GeneratedTaskBatch batch;
 
@@ -12,13 +11,12 @@ class BatchCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final hasReviewed = batch.reviewProgress > 0;
     final isFullyReviewed = batch.isFullyReviewed;
 
     return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      margin: const EdgeInsets.only(bottom: 8),
+      elevation: 1,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: InkWell(
         onTap: () {
           Navigator.push(
@@ -26,146 +24,98 @@ class BatchCard extends ConsumerWidget {
             MaterialPageRoute(builder: (_) => BatchDetailScreen(batch: batch)),
           );
         },
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(12),
         child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          child: Row(
             children: [
-              // Header
-              Row(
-                children: [
-                  // Vorschaubild
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: Image.network(
-                      batch.imageUrl,
-                      width: 60,
-                      height: 60,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Container(
-                        width: 60,
-                        height: 60,
-                        color: Colors.grey.shade200,
-                        child: const Icon(Icons.image_not_supported),
-                      ),
+              // Vorschaubild – kleiner
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Image.network(
+                  batch.imageUrl,
+                  width: 48,
+                  height: 48,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade100,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(
+                      _getSubjectIcon(batch.subject),
+                      size: 22,
+                      color: Colors.grey.shade400,
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                ),
+              ),
+              const SizedBox(width: 12),
+
+              // Info
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
                       children: [
-                        Text(
-                          batch.childName,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
+                        Expanded(
+                          child: Text(
+                            '${batch.childName} · ${batch.subject.displayName}',
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        const SizedBox(height: 4),
-                        Row(
-                          children: [
-                            Icon(
-                              _getSubjectIcon(batch.subject),
-                              size: 16,
-                              color: Colors.grey.shade600,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              batch.subject.displayName,
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: Colors.grey.shade600,
-                              ),
-                            ),
-                          ],
+                        Text(
+                          _formatDate(batch.createdAt),
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Colors.grey.shade500,
+                          ),
                         ),
                       ],
                     ),
-                  ),
-                  Icon(Icons.chevron_right, color: Colors.grey.shade400),
-                ],
-              ),
-
-              const SizedBox(height: 16),
-              const Divider(),
-              const SizedBox(height: 12),
-
-              // Status-Übersicht
-              Row(
-                children: [
-                  StatusChip(
-                    icon: Icons.schedule,
-                    label: 'Ausstehend',
-                    count: batch.pendingTasks,
-                    color: Colors.deepPurple,
-                  ),
-                  const SizedBox(width: 8),
-                  StatusChip(
-                    icon: Icons.check_circle,
-                    label: 'Freigegeben',
-                    count: batch.approvedTasks,
-                    color: Colors.green,
-                  ),
-                  if (batch.rejectedTasks > 0) ...[
-                    const SizedBox(width: 8),
-                    StatusChip(
-                      icon: Icons.cancel,
-                      label: 'Abgelehnt',
-                      count: batch.rejectedTasks,
-                      color: Colors.red,
-                    ),
-                  ],
-                ],
-              ),
-
-              // Fortschrittsbalken
-              if (hasReviewed && !isFullyReviewed) ...[
-                const SizedBox(height: 12),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Fortschritt: ${batch.reviewProgress.toStringAsFixed(0)}%',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey.shade600,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
                     const SizedBox(height: 6),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(4),
-                      child: LinearProgressIndicator(
-                        value: batch.reviewProgress / 100,
-                        backgroundColor: Colors.grey.shade200,
-                        valueColor: const AlwaysStoppedAnimation<Color>(
-                          Colors.deepPurple,
-                        ),
-                        minHeight: 6,
-                      ),
+                    Row(
+                      children: [
+                        if (batch.pendingTasks > 0)
+                          _MiniChip(
+                            label: '${batch.pendingTasks} offen',
+                            color: Colors.deepPurple,
+                          ),
+                        if (batch.pendingTasks > 0 && batch.approvedTasks > 0)
+                          const SizedBox(width: 6),
+                        if (batch.approvedTasks > 0)
+                          _MiniChip(
+                            label: '${batch.approvedTasks} ✓',
+                            color: Colors.green,
+                          ),
+                        if (batch.rejectedTasks > 0) ...[
+                          const SizedBox(width: 6),
+                          _MiniChip(
+                            label: '${batch.rejectedTasks} ✗',
+                            color: Colors.red,
+                          ),
+                        ],
+                        const Spacer(),
+                        if (isFullyReviewed)
+                          Icon(
+                            Icons.check_circle,
+                            size: 16,
+                            color: Colors.green.shade400,
+                          ),
+                      ],
                     ),
                   ],
                 ),
-              ],
-
-              // Zeitstempel
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Icon(
-                    Icons.access_time,
-                    size: 14,
-                    color: Colors.grey.shade500,
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    _formatDate(batch.createdAt),
-                    style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
-                  ),
-                ],
               ),
+              const SizedBox(width: 8),
+              Icon(Icons.chevron_right, size: 18, color: Colors.grey.shade400),
             ],
           ),
         ),
@@ -210,5 +160,32 @@ class BatchCard extends ConsumerWidget {
     } else {
       return '${date.day}.${date.month}.${date.year}';
     }
+  }
+}
+
+class _MiniChip extends StatelessWidget {
+  final String label;
+  final Color color;
+
+  const _MiniChip({required this.label, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withValues(alpha: 0.4)),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 11,
+          color: color,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
   }
 }
