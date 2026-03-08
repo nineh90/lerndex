@@ -424,7 +424,9 @@ class _TracingGameScreenState extends ConsumerState<TracingGameScreen>
     if (child != null) {
       final ttsEnabled = ref.read(ttsSettingsProvider(child.id));
       if (ttsEnabled) {
-        ref.read(ttsControllerProvider.notifier).speak(_feedbackText);
+        ref
+            .read(ttsControllerProvider.notifier)
+            .speak(isCorrect ? _feedbackText : 'Versuch es noch einmal!');
       }
     }
 
@@ -438,11 +440,14 @@ class _TracingGameScreenState extends ConsumerState<TracingGameScreen>
       }
     }
 
-    // Auto-weiter nach 2 Sekunden
-    Timer(const Duration(seconds: 2), () {
-      if (!mounted) return;
-      _nextTask();
-    });
+    if (isCorrect) {
+      // ── Richtig: Auto-weiter nach 2 Sekunden ─────────────────────
+      Timer(const Duration(seconds: 2), () {
+        if (!mounted) return;
+        _nextTask();
+      });
+    }
+    // ── Falsch: KEIN auto-advance! Buttons werden angezeigt (see build)
   }
 
   void _showFallbackResult({required bool success}) {
@@ -456,6 +461,21 @@ class _TracingGameScreenState extends ConsumerState<TracingGameScreen>
     }
     setState(() {
       _taskIndex++;
+      _strokes.clear();
+      _currentStroke = [];
+      _showHint = true;
+      _status = _TracingStatus.idle;
+      _feedbackText = '';
+    });
+    _feedbackCtrl.reset();
+    _shakeCtrl.reset();
+    Future.delayed(const Duration(milliseconds: 300), _speakCurrentTask);
+  }
+
+  /// Setzt den Canvas zurück damit das Kind die gleiche Aufgabe nochmal malen kann.
+  void _retryCurrentTask() {
+    HapticFeedback.lightImpact();
+    setState(() {
       _strokes.clear();
       _currentStroke = [];
       _showHint = true;
@@ -800,6 +820,84 @@ class _TracingGameScreenState extends ConsumerState<TracingGameScreen>
   }
 
   Widget _buildControls() {
+    // ── Bei falscher Antwort: Nochmal / Weiter Buttons ──────────────
+    if (_status == _TracingStatus.wrong) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        child: Column(
+          children: [
+            // 🔄 Nochmal-Button
+            GestureDetector(
+              onTap: _retryCurrentTask,
+              child: Container(
+                width: double.infinity,
+                height: 64,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(colors: widget.subjectColors),
+                  borderRadius: BorderRadius.circular(22),
+                  boxShadow: [
+                    BoxShadow(
+                      color: widget.subjectColors.first.withOpacity(0.4),
+                      blurRadius: 16,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
+                ),
+                child: const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text('🔄', style: TextStyle(fontSize: 28)),
+                    SizedBox(width: 10),
+                    Text(
+                      'Nochmal!',
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w900,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            // ➡️ Weiter-Button
+            GestureDetector(
+              onTap: _nextTask,
+              child: Container(
+                width: double.infinity,
+                height: 52,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(22),
+                  border: Border.all(
+                    color: widget.subjectColors.first.withOpacity(0.3),
+                    width: 2,
+                  ),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Text('➡️', style: TextStyle(fontSize: 24)),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Weiter',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        color: widget.subjectColors.first,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // ── Normal: Löschen + Prüfen Buttons ────────────────────────────
     final canSubmit =
         (_strokes.isNotEmpty || _currentStroke.isNotEmpty) &&
         _status == _TracingStatus.idle;

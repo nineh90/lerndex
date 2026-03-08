@@ -120,53 +120,61 @@ final Map<String, List<_EarlyQuestion>> _questionBank = {
       feedbackCorrect: '🎊 Wow, 5 Blumen!',
       feedbackWrong: '💪 Zähl die Blumen!',
     ),
+    // ── Zahlenvergleiche (IMMER zwei Zahlen im Emoji!) ──────────────
     const _EarlyQuestion(
       type: _QuestionType.imageChoice,
-      questionEmoji: '1️⃣',
-      questionText: 'Welche Zahl ist größer als 1?',
-      options: ['2', '0', '1', '🌸'],
+      questionEmoji: '1️⃣ und 3️⃣',
+      questionText: 'Welche Zahl ist größer?',
+      options: ['1', '3', '2', '4'],
+      correctAnswer: '3',
+      feedbackCorrect: '🌟 3 ist größer als 1!',
+      feedbackWrong: '💪 3 ist mehr als 1!',
+    ),
+    const _EarlyQuestion(
+      type: _QuestionType.imageChoice,
+      questionEmoji: '🍎🍎 ➕ 🍎',
+      questionText: '2 Äpfel und noch 1 – wie viele?',
+      options: ['2', '3', '4', '1'],
+      correctAnswer: '3',
+      feedbackCorrect: '🎉 Richtig, 2 + 1 = 3!',
+      feedbackWrong: '💪 Zähle alle zusammen!',
+    ),
+    const _EarlyQuestion(
+      type: _QuestionType.imageChoice,
+      questionEmoji: '5️⃣ und 8️⃣',
+      questionText: 'Welche Zahl ist kleiner?',
+      options: ['5', '8', '3', '10'],
+      correctAnswer: '5',
+      feedbackCorrect: '🌟 Ja, 5 ist kleiner als 8!',
+      feedbackWrong: '💪 5 ist weniger als 8!',
+    ),
+    // ── Zahlen-Muster (NUR Zahlen-Emojis!) ────────────────────────
+    const _EarlyQuestion(
+      type: _QuestionType.pattern,
+      questionEmoji: '1️⃣2️⃣1️⃣2️⃣1️⃣❓',
+      questionText: 'Welche Zahl kommt jetzt?',
+      options: ['1', '2', '3', '0'],
       correctAnswer: '2',
-      feedbackCorrect: '🌟 2 ist größer!',
-      feedbackWrong: '💪 Nochmal überlegen!',
-    ),
-    // ── Neue Aufgabentypen ──────────────────────────────────────────
-    const _EarlyQuestion(
-      type: _QuestionType.pattern,
-      questionEmoji: '🍎🍌🍎🍌🍎❓',
-      questionText: 'Was kommt als nächstes?',
-      options: ['🍌', '🍎', '🍇', '🍊'],
-      correctAnswer: '🍌',
-      feedbackCorrect: '🌟 Richtig, Banane!',
-      feedbackWrong: '💪 Schau dir das Muster an!',
+      feedbackCorrect: '🎉 Die 2 kommt!',
+      feedbackWrong: '💪 1, 2, 1, 2, 1...',
     ),
     const _EarlyQuestion(
       type: _QuestionType.pattern,
-      questionEmoji: '🔴🔵🔴🔵🔴❓',
-      questionText: 'Welche Farbe kommt jetzt?',
-      options: ['🔵', '🔴', '🟡', '🟢'],
-      correctAnswer: '🔵',
-      feedbackCorrect: '🎉 Blau ist richtig!',
-      feedbackWrong: '💪 Rot, Blau, Rot, Blau...',
+      questionEmoji: '1️⃣2️⃣3️⃣4️⃣❓',
+      questionText: 'Welche Zahl kommt als nächstes?',
+      options: ['5', '4', '6', '3'],
+      correctAnswer: '5',
+      feedbackCorrect: '🌟 5 kommt nach 4!',
+      feedbackWrong: '💪 1, 2, 3, 4... was kommt dann?',
     ),
     const _EarlyQuestion(
-      type: _QuestionType.sizeOrder,
-      questionEmoji: '🐭🐶🐘',
-      questionText: 'Tippe vom Kleinsten zum Größten!',
-      options: ['🐘', '🐭', '🐶'],
-      correctAnswer: '🐭🐶🐘',
-      orderedAnswers: ['🐭', '🐶', '🐘'],
-      feedbackCorrect: '🌟 Perfekt sortiert!',
-      feedbackWrong: '💪 Maus, Hund, Elefant!',
-    ),
-    const _EarlyQuestion(
-      type: _QuestionType.sizeOrder,
-      questionEmoji: '🍓🍉🫐',
-      questionText: 'Was ist am kleinsten? Tippe der Reihe nach!',
-      options: ['🍉', '🫐', '🍓'],
-      correctAnswer: '🫐🍓🍉',
-      orderedAnswers: ['🫐', '🍓', '🍉'],
-      feedbackCorrect: '🎊 Super sortiert!',
-      feedbackWrong: '💪 Blaubeere, Erdbeere, Melone!',
+      type: _QuestionType.counting,
+      questionEmoji: '🐟🐟🐟🐟🐟🐟',
+      questionText: 'Wie viele Fische siehst du?',
+      options: ['5', '6', '7', '4'],
+      correctAnswer: '6',
+      feedbackCorrect: '🌟 Genau, 6 Fische!',
+      feedbackWrong: '💪 Zähl nochmal ganz langsam!',
     ),
   ],
 
@@ -228,21 +236,21 @@ final Map<String, List<_EarlyQuestion>> _questionBank = {
     ),
     const _EarlyQuestion(
       type: _QuestionType.oddOneOut,
-      questionEmoji: '🐱🐶🐰🚗',
-      questionText: 'Was passt nicht dazu?',
-      options: ['🐱', '🐶', '🐰', '🚗'],
-      correctAnswer: '🚗',
-      feedbackCorrect: '🎉 Das Auto ist kein Tier!',
-      feedbackWrong: '💪 Drei sind Tiere, eins nicht!',
+      questionEmoji: '🐻🍌🐝🎸',
+      questionText: 'Was fängt NICHT mit B an?',
+      options: ['🐻', '🍌', '🐝', '🎸'],
+      correctAnswer: '🎸',
+      feedbackCorrect: '🎉 Gitarre fängt mit G an, nicht B!',
+      feedbackWrong: '💪 Bär, Banane, Biene – alle mit B!',
     ),
     const _EarlyQuestion(
       type: _QuestionType.oddOneOut,
-      questionEmoji: '🍎🍌🍊🎸',
-      questionText: 'Eins gehört nicht dazu!',
-      options: ['🍎', '🍌', '🍊', '🎸'],
-      correctAnswer: '🎸',
-      feedbackCorrect: '🌟 Die Gitarre ist kein Obst!',
-      feedbackWrong: '💪 Drei Früchte und eine Gitarre!',
+      questionEmoji: '🐱🍒🐄🌞',
+      questionText: 'Was fängt NICHT mit K an?',
+      options: ['🐱', '🍒', '🐄', '🌞'],
+      correctAnswer: '🌞',
+      feedbackCorrect: '🌟 Sonne fängt mit S an!',
+      feedbackWrong: '💪 Katze, Kirsche, Kuh – alle mit K!',
     ),
   ],
 
@@ -342,96 +350,6 @@ final Map<String, List<_EarlyQuestion>> _questionBank = {
       orderedAnswers: ['⚫', '🟤', '🔵'],
       feedbackCorrect: '🎊 Klein, mittel, groß!',
       feedbackWrong: '💪 Tippe den kleinsten zuerst!',
-    ),
-  ],
-
-  'Logik': [
-    // Zugehörigkeit
-    const _EarlyQuestion(
-      type: _QuestionType.oddOneOut,
-      questionEmoji: '🍎🍌🍓🚗',
-      questionText: 'Was passt nicht dazu?',
-      options: ['🍎', '🍌', '🍓', '🚗'],
-      correctAnswer: '🚗',
-      feedbackCorrect: '🌟 Das Auto ist kein Obst!',
-      feedbackWrong: '💪 Drei sind Früchte!',
-    ),
-    const _EarlyQuestion(
-      type: _QuestionType.oddOneOut,
-      questionEmoji: '🐶🐱🐟✏️',
-      questionText: 'Was ist kein Tier?',
-      options: ['🐶', '🐱', '🐟', '✏️'],
-      correctAnswer: '✏️',
-      feedbackCorrect: '🎉 Der Stift ist kein Tier!',
-      feedbackWrong: '💪 Drei sind Tiere!',
-    ),
-    const _EarlyQuestion(
-      type: _QuestionType.oddOneOut,
-      questionEmoji: '🌧️☀️❄️🍕',
-      questionText: 'Was ist kein Wetter?',
-      options: ['🌧️', '☀️', '❄️', '🍕'],
-      correctAnswer: '🍕',
-      feedbackCorrect: '🌟 Pizza ist kein Wetter!',
-      feedbackWrong: '💪 Drei sind Wetterarten!',
-    ),
-    // Muster
-    const _EarlyQuestion(
-      type: _QuestionType.pattern,
-      questionEmoji: '🐶🐱🐶🐱🐶❓',
-      questionText: 'Welches Tier kommt jetzt?',
-      options: ['🐶', '🐱', '🐰', '🐸'],
-      correctAnswer: '🐱',
-      feedbackCorrect: '🌟 Katze kommt jetzt!',
-      feedbackWrong: '💪 Hund, Katze, Hund, Katze...',
-    ),
-    const _EarlyQuestion(
-      type: _QuestionType.pattern,
-      questionEmoji: '1️⃣2️⃣1️⃣2️⃣1️⃣❓',
-      questionText: 'Was kommt als nächstes?',
-      options: ['1️⃣', '2️⃣', '3️⃣', '0️⃣'],
-      correctAnswer: '2️⃣',
-      feedbackCorrect: '🎉 Die Zwei kommt!',
-      feedbackWrong: '💪 Eins, Zwei, Eins, Zwei...',
-    ),
-    // Größen & Reihenfolgen
-    const _EarlyQuestion(
-      type: _QuestionType.sizeOrder,
-      questionEmoji: '🐜🐇🐻',
-      questionText: 'Vom Kleinsten zum Größten!',
-      options: ['🐻', '🐜', '🐇'],
-      correctAnswer: '🐜🐇🐻',
-      orderedAnswers: ['🐜', '🐇', '🐻'],
-      feedbackCorrect: '🎊 Ameise, Hase, Bär – perfekt!',
-      feedbackWrong: '💪 Ameise ist am kleinsten!',
-    ),
-    const _EarlyQuestion(
-      type: _QuestionType.sizeOrder,
-      questionEmoji: '🌱🌿🌳',
-      questionText: 'Was ist am kleinsten? Tippe der Reihe nach!',
-      options: ['🌳', '🌱', '🌿'],
-      correctAnswer: '🌱🌿🌳',
-      orderedAnswers: ['🌱', '🌿', '🌳'],
-      feedbackCorrect: '🌟 Keim, Pflanze, Baum!',
-      feedbackWrong: '💪 Der Keim ist am kleinsten!',
-    ),
-    // Zuordnen
-    const _EarlyQuestion(
-      type: _QuestionType.imageChoice,
-      questionEmoji: '☀️',
-      questionText: 'Was gehört zur Sonne?',
-      options: ['🌊', '☀️', '❄️', '🌙'],
-      correctAnswer: '☀️',
-      feedbackCorrect: '🎉 Die Sonne ist warm und hell!',
-      feedbackWrong: '💪 Die Sonne scheint!',
-    ),
-    const _EarlyQuestion(
-      type: _QuestionType.imageChoice,
-      questionEmoji: '🚗🚌🚲✈️',
-      questionText: 'Womit kannst du fliegen?',
-      options: ['🚗', '🚌', '🚲', '✈️'],
-      correctAnswer: '✈️',
-      feedbackCorrect: '🌟 Mit dem Flugzeug fliegt man!',
-      feedbackWrong: '💪 Das Flugzeug fliegt ✈️!',
     ),
   ],
 };
@@ -546,6 +464,9 @@ class _EarlyLearnerQuizScreenState extends ConsumerState<EarlyLearnerQuizScreen>
     _loadQuestions();
   }
 
+  // ── Ziel-Fragenanzahl ─────────────────────────────────────────────────────
+  static const int _targetQuestionCount = 5;
+
   void _loadQuestions() {
     final child = ref.read(activeChildProvider);
     final user = ref.read(authStateChangesProvider).value;
@@ -572,7 +493,7 @@ class _EarlyLearnerQuizScreenState extends ConsumerState<EarlyLearnerQuizScreen>
       if (parentQuestions.isNotEmpty && mounted) {
         final shuffled = List<GeneratedQuestion>.from(parentQuestions)
           ..shuffle();
-        final selected = shuffled.take(5).toList();
+        final selected = shuffled.take(_targetQuestionCount).toList();
 
         final converted = selected.asMap().entries.map((entry) {
           final idx = entry.key;
@@ -611,27 +532,31 @@ class _EarlyLearnerQuizScreenState extends ConsumerState<EarlyLearnerQuizScreen>
     }
 
     // ── 2. KI-generierte Fragen ──────────────────────────────────────────────
+    //
+    // Der Fach-Filter läuft jetzt schon im Repository VOR dem Cachen.
+    // Alle Fragen im Cache sind garantiert fachkonform → einfach 5 holen.
+    // Statische Fragen NUR als absoluter Fallback (kein Internet etc.)
+    //
     try {
       final repo = ref.read(earlyLearnerQuestionRepoProvider);
+
       final aiQuestions = await repo.getQuestions(
         userId: userId,
         childId: child.id,
         child: child,
         subject: widget.subject,
-        count: 5,
+        count: _targetQuestionCount,
       );
 
       if (aiQuestions.isNotEmpty && mounted) {
-        final all = aiQuestions
+        final converted = aiQuestions
             .map(_convertAiQuestion)
             .map(_ensureFourOptions)
             .toList();
-        final converted = all
-            .where((q) => _filterBySubject([q], widget.subject).isNotEmpty)
-            .toList();
-        if (converted.isNotEmpty && mounted) {
+
+        if (converted.length >= _targetQuestionCount) {
           setState(() {
-            _questions = converted;
+            _questions = converted.take(_targetQuestionCount).toList();
             _stepResults = List.filled(_questions.length, null);
           });
           Future.delayed(const Duration(milliseconds: 600), () {
@@ -639,27 +564,55 @@ class _EarlyLearnerQuizScreenState extends ConsumerState<EarlyLearnerQuizScreen>
           });
           return;
         }
-        print(
-          '⚠️ EarlyQuiz: KI-Fragen nach Fach-Filter alle rausgefiltert → statische Fragen',
-        );
+
+        // Weniger als 5 – trotzdem KI-Fragen nutzen wenn welche da sind
+        if (converted.isNotEmpty) {
+          print(
+            '⚠️ EarlyQuiz: Nur ${converted.length}/$_targetQuestionCount '
+            'KI-Fragen verfügbar → starte mit ${converted.length}',
+          );
+          setState(() {
+            _questions = converted;
+            _stepResults = List.filled(_questions.length, null);
+          });
+          Future.delayed(const Duration(milliseconds: 600), () {
+            if (mounted && _questions.isNotEmpty) _speakCurrentQuestion();
+          });
+
+          // Hintergrund: Mehr generieren für nächstes Mal
+          repo.getQuestions(
+            userId: userId,
+            childId: child.id,
+            child: child,
+            subject: widget.subject,
+            count: _targetQuestionCount * 3,
+          );
+          return;
+        }
       }
     } catch (e) {
       print('⚠️ EarlyQuiz: KI-Fragen nicht verfügbar, nutze statische: $e');
     }
 
     // ── 3. Statische Fallback-Fragen ─────────────────────────────────────────
+    // NUR wenn gar keine KI-Fragen verfügbar sind (kein Internet, Fehler etc.)
     _loadStaticQuestions();
   }
 
-  void _loadStaticQuestions() {
+  /// Gibt [count] gefilterte statische Fragen für das aktuelle Fach zurück.
+  /// NUR als absoluter Fallback wenn KI nicht verfügbar ist!
+  List<_EarlyQuestion> _getStaticQuestions(int count) {
     final bank = _questionBank[widget.subject] ?? _questionBank['Mathe']!;
     final filtered = _filterBySubject(bank, widget.subject);
-    final pool = filtered.isNotEmpty
-        ? filtered
-        : bank; // Fallback falls Filter zu streng
+    final pool = filtered.isNotEmpty ? filtered : bank;
     final shuffled = List<_EarlyQuestion>.from(pool)..shuffle();
+    return shuffled.take(count).map(_ensureFourOptions).toList();
+  }
+
+  void _loadStaticQuestions() {
+    final questions = _getStaticQuestions(_targetQuestionCount);
     setState(() {
-      _questions = shuffled.take(5).map(_ensureFourOptions).toList();
+      _questions = questions;
       _stepResults = List.filled(_questions.length, null);
     });
     Future.delayed(const Duration(milliseconds: 600), () {
@@ -1411,77 +1364,122 @@ class _EarlyLearnerQuizScreenState extends ConsumerState<EarlyLearnerQuizScreen>
   Widget _buildQuestionArea(_EarlyQuestion question) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Column(
-        children: [
-          const SizedBox(height: 8),
-
-          // ── Frage-Karte (mit Shake-Animation bei Fehler) ────────────
-          AnimatedBuilder(
-            animation: _shakeAnim,
-            builder: (_, child) {
-              final shakeOffset = sin(_shakeAnim.value * pi * 3) * 8;
-              return Transform.translate(
-                offset: Offset(_wasCorrect ? 0 : shakeOffset, 0),
-                child: child,
-              );
-            },
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(28),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(32),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.15),
-                    blurRadius: 24,
-                    offset: const Offset(0, 8),
-                  ),
-                ],
-              ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          return SingleChildScrollView(
+            physics: const ClampingScrollPhysics(),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minHeight: constraints.maxHeight),
               child: Column(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  // Typ-Hinweis
-                  _buildTypeHint(question.type),
-                  const SizedBox(height: 16),
-                  // Frage-Emoji: 2×2 Grid für oddOneOut, sonst einzeiliger Text
-                  ScaleTransition(
-                    scale: _bounceAnim,
-                    child: question.type == _QuestionType.oddOneOut
-                        ? _buildOddOneOutGrid(question.questionEmoji)
-                        : Text(
-                            question.questionEmoji,
-                            style: const TextStyle(fontSize: 72),
+                  const SizedBox(height: 8),
+
+                  // ── Frage-Karte (mit Shake-Animation bei Fehler) ─────
+                  AnimatedBuilder(
+                    animation: _shakeAnim,
+                    builder: (_, child) {
+                      final shakeOffset = sin(_shakeAnim.value * pi * 3) * 8;
+                      return Transform.translate(
+                        offset: Offset(_wasCorrect ? 0 : shakeOffset, 0),
+                        child: child,
+                      );
+                    },
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 20,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(32),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.15),
+                            blurRadius: 24,
+                            offset: const Offset(0, 8),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // Typ-Hinweis
+                          _buildTypeHint(question.type),
+                          const SizedBox(height: 12),
+                          // Frage-Emoji: dynamische Größe!
+                          ScaleTransition(
+                            scale: _bounceAnim,
+                            child: question.type == _QuestionType.oddOneOut
+                                ? _buildOddOneOutGrid(
+                                    question.questionEmoji,
+                                    question.options,
+                                  )
+                                : _buildAdaptiveEmoji(question.questionEmoji),
+                          ),
+                          const SizedBox(height: 10),
+                          // Frage-Text
+                          Text(
+                            question.questionText,
+                            style: const TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF1A1A2E),
+                              height: 1.3,
+                            ),
                             textAlign: TextAlign.center,
                           ),
-                  ),
-                  const SizedBox(height: 14),
-                  // Frage-Text
-                  Text(
-                    question.questionText,
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF1A1A2E),
-                      height: 1.3,
+                        ],
+                      ),
                     ),
-                    textAlign: TextAlign.center,
                   ),
+
+                  const SizedBox(height: 16),
+
+                  // ── Antwort-Buttons ──────────────────────────────────
+                  question.type == _QuestionType.sizeOrder
+                      ? SizedBox(
+                          height: constraints.maxHeight * 0.4,
+                          child: _buildSizeOrderArea(question),
+                        )
+                      : _buildAnswerGrid(question),
+
+                  // Extra bottom-padding damit nichts von System-Buttons
+                  // (Android Navigation Bar) überdeckt wird
+                  SizedBox(height: MediaQuery.of(context).padding.bottom + 8),
                 ],
               ),
             ),
-          ),
-
-          const SizedBox(height: 20),
-
-          // ── Antwort-Buttons ─────────────────────────────────────────
-          Expanded(
-            child: question.type == _QuestionType.sizeOrder
-                ? _buildSizeOrderArea(question)
-                : _buildAnswerGrid(question),
-          ),
-        ],
+          );
+        },
       ),
+    );
+  }
+
+  /// Emoji-Anzeige die sich an die Menge der Emojis anpasst.
+  /// Bei wenigen Emojis (z.B. "🍎🍎🍎") → groß (fontSize 72)
+  /// Bei vielen Emojis (z.B. "🍎🍎🍎🍎🍎🍎🍎") → kleiner (fontSize 44)
+  Widget _buildAdaptiveEmoji(String emoji) {
+    final runes = emoji.runes.toList();
+    final emojiCount = runes.where((r) => r >= 0x1F300 || r >= 0x2600).length;
+    final textLength = emoji.replaceAll(' ', '').length;
+
+    double fontSize;
+    if (emojiCount <= 3 || textLength <= 6) {
+      fontSize = 72;
+    } else if (emojiCount <= 5 || textLength <= 10) {
+      fontSize = 56;
+    } else if (emojiCount <= 7 || textLength <= 14) {
+      fontSize = 44;
+    } else {
+      fontSize = 36;
+    }
+
+    return Text(
+      emoji,
+      style: TextStyle(fontSize: fontSize),
+      textAlign: TextAlign.center,
     );
   }
 
@@ -1543,25 +1541,25 @@ class _EarlyLearnerQuizScreenState extends ConsumerState<EarlyLearnerQuizScreen>
   }
 
   /// Rendert die 4 Emojis einer oddOneOut-Frage als sauberes 2×2 Grid.
-  /// Parst den questionEmoji-String der verschiedene Formate haben kann:
-  /// "🍎 🍌 🍓 🚗" oder "🍎🍌🍓🚗" oder als kommaseparierten String.
-  Widget _buildOddOneOutGrid(String emojiString) {
-    // Klammern vorab entfernen – Sicherheitsnetz falls _extractEmojis sie übersieht
-    final input = emojiString
-        .replaceAll('[', '')
-        .replaceAll(']', '')
-        .replaceAll('"', '')
-        .trim();
-
-    final emojis = _extractEmojis(input);
-
-    if (emojis.length < 2) {
-      return Text(input, style: const TextStyle(fontSize: 56));
+  ///
+  /// WICHTIG: Nutzt primär [options] statt [emojiString] zu parsen!
+  /// Die options kommen einzeln aus dem JSON-Array und sind immer korrekt
+  /// aufgesplittet – im Gegensatz zu questionEmoji das ein einziger String
+  /// ist und bei zusammengesetzten Emojis (ZWJ-Sequences) oft falsch
+  /// zerlegt wird.
+  Widget _buildOddOneOutGrid(String emojiString, List<String> options) {
+    // Primär: options verwenden (sind immer korrekt aufgesplittet)
+    List<String> display;
+    if (options.length >= 4) {
+      display = options.take(4).toList();
+    } else if (options.length >= 2) {
+      // Auffüllen falls weniger als 4
+      display = List<String>.from(options);
+      while (display.length < 4) display.add('❓');
+    } else {
+      // Fallback: emojiString als Ganzes anzeigen
+      return Text(emojiString, style: const TextStyle(fontSize: 56));
     }
-
-    // Auf 4 normieren
-    while (emojis.length < 4) emojis.add('❓');
-    final display = emojis.take(4).toList();
 
     return GridView.count(
       crossAxisCount: 2,
@@ -1642,9 +1640,9 @@ class _EarlyLearnerQuizScreenState extends ConsumerState<EarlyLearnerQuizScreen>
   Widget _buildAnswerGrid(_EarlyQuestion question) {
     return GridView.count(
       crossAxisCount: 2,
-      mainAxisSpacing: 12,
-      crossAxisSpacing: 12,
-      childAspectRatio: 1.4,
+      mainAxisSpacing: 10,
+      crossAxisSpacing: 10,
+      childAspectRatio: 1.6,
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       children: question.options

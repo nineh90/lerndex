@@ -26,8 +26,9 @@ class QuizPrefetchService {
 
   /// Gibt die Anzahl der Fächer für ein Kind zurück.
   /// Wird im Splash verwendet um den Gesamtfortschritt zu berechnen.
+  /// Für Klasse 1–2 werden auch die Early-Learner-Fächer mitgezählt.
   static int subjectCountForChild(ChildModel child) {
-    return getSubjectsForChild(child).length;
+    return getSubjectsForChild(child).length + earlyLearnerSubjectCount(child);
   }
 
   /// Faecher-Reihenfolge: Mathe und Deutsch zuerst.
@@ -124,18 +125,33 @@ class QuizPrefetchService {
     print('✅ ${child.name}: alle Faecher bereit');
 
     // Extra: Für Klasse 1–2 auch Early-Learner-Fragen vorladen
+    // WICHTIG: await damit der Splash-Screen darauf wartet!
     if (child.grade <= 2) {
-      _prefetchEarlyLearnerQuestions(userId: userId, child: child);
+      await _prefetchEarlyLearnerQuestions(
+        userId: userId,
+        child: child,
+        onSubjectDone: onSubjectDone,
+      );
     }
   }
 
   // ============================================================
   // EARLY LEARNER: KI-Fragen für Klasse 1–2 vorladen
+  //
+  // Generiert pro Fach GENUG Fragen damit nach dem Client-Filter
+  // mindestens 5 gute Fragen für ein Quiz übrig bleiben.
+  // Ziel: 20 Fragen pro Fach im Cache (bei ~50% Filterrate → 10 gute)
   // ============================================================
+
+  /// Anzahl der Early-Learner-Fächer (für Fortschrittsberechnung im Splash)
+  static int earlyLearnerSubjectCount(ChildModel child) {
+    return child.grade <= 2 ? 3 : 0; // Mathe, Deutsch, FarbenFormen
+  }
 
   static Future<void> _prefetchEarlyLearnerQuestions({
     required String userId,
     required ChildModel child,
+    void Function(String childName, String subject)? onSubjectDone,
   }) async {
     const earlySubjects = ['Mathe', 'Deutsch', 'FarbenFormen'];
     final repo = EarlyLearnerQuestionRepository(FirebaseFirestore.instance);
@@ -144,12 +160,16 @@ class QuizPrefetchService {
     );
     for (final subject in earlySubjects) {
       try {
-        await repo.prefillIfEmpty(
+        // prefillForQuiz generiert genug Fragen damit nach dem Filter
+        // mindestens 15 übrig bleiben (= 3 volle Quiz-Runden)
+        await repo.prefillForQuiz(
           userId: userId,
           childId: child.id,
           child: child,
           subject: subject,
+          targetCount: 20, // 20 Fragen → nach ~50% Filter bleiben ~10
         );
+        onSubjectDone?.call(child.name, '$subject 🧒');
       } catch (e) {
         print('⚠️ Early-Prefill Fehler $subject: $e');
       }
