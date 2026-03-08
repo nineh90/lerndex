@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/generated_task_models.dart';
 import '../batch_detail_screen.dart';
+import 'status_chip.dart';
 
 /// 📦 BATCH CARD - Kompakte Übersicht eines Aufgaben-Batches
 class BatchCard extends ConsumerWidget {
@@ -32,25 +33,7 @@ class BatchCard extends ConsumerWidget {
               // Vorschaubild – kleiner
               ClipRRect(
                 borderRadius: BorderRadius.circular(8),
-                child: Image.network(
-                  batch.imageUrl,
-                  width: 48,
-                  height: 48,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => Container(
-                    width: 48,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade100,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Icon(
-                      _getSubjectIcon(batch.subject),
-                      size: 22,
-                      color: Colors.grey.shade400,
-                    ),
-                  ),
-                ),
+                child: _buildThumbnail(48),
               ),
               const SizedBox(width: 12),
 
@@ -118,6 +101,50 @@ class BatchCard extends ConsumerWidget {
               Icon(Icons.chevron_right, size: 18, color: Colors.grey.shade400),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildThumbnail(double size) {
+    final url = batch.imageUrl;
+    final hasValidUrl =
+        url.isNotEmpty &&
+        Uri.tryParse(url)?.hasAbsolutePath == true &&
+        url.startsWith('http');
+
+    if (!hasValidUrl) {
+      return Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          color: Colors.grey.shade100,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Icon(
+          _getSubjectIcon(batch.subject),
+          size: size * 0.45,
+          color: Colors.grey.shade400,
+        ),
+      );
+    }
+
+    return Image.network(
+      url,
+      width: size,
+      height: size,
+      fit: BoxFit.cover,
+      errorBuilder: (_, __, ___) => Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          color: Colors.grey.shade100,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Icon(
+          _getSubjectIcon(batch.subject),
+          size: size * 0.45,
+          color: Colors.grey.shade400,
         ),
       ),
     );

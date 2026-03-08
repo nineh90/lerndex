@@ -247,21 +247,7 @@ class _BatchDetailScreenState extends ConsumerState<BatchDetailScreen> {
           // Kleines Vorschaubild
           ClipRRect(
             borderRadius: BorderRadius.circular(8),
-            child: Image.network(
-              widget.batch.imageUrl,
-              width: 56,
-              height: 56,
-              fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => Container(
-                width: 56,
-                height: 56,
-                color: Colors.grey.shade100,
-                child: Icon(
-                  _getSubjectIcon(widget.batch.subject),
-                  color: Colors.grey.shade400,
-                ),
-              ),
-            ),
+            child: _buildThumbnail(56),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -284,6 +270,44 @@ class _BatchDetailScreenState extends ConsumerState<BatchDetailScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildThumbnail(double size) {
+    final url = widget.batch.imageUrl;
+    final hasValidUrl = url.isNotEmpty && url.startsWith('http');
+
+    if (!hasValidUrl) {
+      return Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          color: Colors.grey.shade100,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Icon(
+          _getSubjectIcon(widget.batch.subject),
+          size: size * 0.45,
+          color: Colors.grey.shade400,
+        ),
+      );
+    }
+
+    return Image.network(
+      url,
+      width: size,
+      height: size,
+      fit: BoxFit.cover,
+      errorBuilder: (_, __, ___) => Container(
+        width: size,
+        height: size,
+        color: Colors.grey.shade100,
+        child: Icon(
+          _getSubjectIcon(widget.batch.subject),
+          size: size * 0.45,
+          color: Colors.grey.shade400,
+        ),
       ),
     );
   }

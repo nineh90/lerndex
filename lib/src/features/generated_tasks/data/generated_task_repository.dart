@@ -31,7 +31,7 @@ class GeneratedTaskRepository {
 
       final batch = _firestore.batch();
 
-      // Hauptdokument
+      // Hauptdokument (inkl. Zähler-Felder für Live-Stream)
       batch.set(batchDoc, {
         'childId': childId,
         'childName': childName,
@@ -39,6 +39,9 @@ class GeneratedTaskRepository {
         'imageUrl': imageUrl,
         'createdAt': FieldValue.serverTimestamp(),
         'totalTasks': questions.length,
+        'pendingTasks': questions.length,
+        'approvedTasks': 0,
+        'rejectedTasks': 0,
       });
 
       // Einzelne Fragen als Sub-Collection
@@ -64,6 +67,7 @@ class GeneratedTaskRepository {
   // ========================================================================
 
   /// Lädt alle Batches für einen User (für Eltern-Dashboard)
+  /// Zähler werden direkt aus dem Batch-Dokument gelesen → echter Live-Stream
   Stream<List<GeneratedTaskBatch>> watchBatchesForUser(String userId) {
     return _firestore
         .collection('users')
@@ -73,19 +77,13 @@ class GeneratedTaskRepository {
         .snapshots()
         .asyncMap((snapshot) async {
           final batches = <GeneratedTaskBatch>[];
-
-          for (var doc in snapshot.docs) {
-            // Lade alle Fragen für diesen Batch
-            final questionsSnapshot = await doc.reference
-                .collection('questions')
-                .get();
-            final questions = questionsSnapshot.docs
-                .map((qDoc) => GeneratedQuestion.fromFirestore(qDoc))
-                .toList();
-
-            batches.add(GeneratedTaskBatch.fromFirestore(doc, questions));
+          for (final doc in snapshot.docs) {
+            final data = doc.data() as Map<String, dynamic>;
+            final migrated = await _migrateCountersIfNeeded(doc, data, userId);
+            batches.add(
+              GeneratedTaskBatch.fromFirestore(migrated ?? doc, const []),
+            );
           }
-
           return batches;
         });
   }
@@ -98,6 +96,7 @@ class GeneratedTaskRepository {
   }
 
   /// Lädt alle Batches für einen User gefiltert nach Kind
+  /// Zähler werden direkt aus dem Batch-Dokument gelesen → echter Live-Stream
   Stream<List<GeneratedTaskBatch>> watchBatchesForChild(
     String userId,
     String childId,
@@ -111,17 +110,53 @@ class GeneratedTaskRepository {
         .snapshots()
         .asyncMap((snapshot) async {
           final batches = <GeneratedTaskBatch>[];
-          for (var doc in snapshot.docs) {
-            final questionsSnapshot = await doc.reference
-                .collection('questions')
-                .get();
-            final questions = questionsSnapshot.docs
-                .map((qDoc) => GeneratedQuestion.fromFirestore(qDoc))
-                .toList();
-            batches.add(GeneratedTaskBatch.fromFirestore(doc, questions));
+          for (final doc in snapshot.docs) {
+            final data = doc.data() as Map<String, dynamic>;
+            final migrated = await _migrateCountersIfNeeded(doc, data, userId);
+            batches.add(
+              GeneratedTaskBatch.fromFirestore(migrated ?? doc, const []),
+            );
           }
           return batches;
         });
+  }
+
+  /// Migriert alte Batches ohne Zähler-Felder einmalig.
+  /// Gibt das aktualisierte Dokument zurück, oder null wenn keine Migration nötig war.
+  Future<DocumentSnapshot?> _migrateCountersIfNeeded(
+    DocumentSnapshot doc,
+    Map<String, dynamic> data,
+    String userId,
+  ) async {
+    final hasCounters =
+        data.containsKey('pendingTasks') &&
+        data.containsKey('approvedTasks') &&
+        data.containsKey('rejectedTasks');
+
+    if (hasCounters) return null; // Nichts zu tun
+
+    // Fragen einmalig laden um echte Zähler zu ermitteln
+    final questionsSnapshot = await doc.reference.collection('questions').get();
+    int pending = 0, approved = 0, rejected = 0;
+    for (final q in questionsSnapshot.docs) {
+      final status = (q.data() as Map<String, dynamic>)['status'] ?? 'pending';
+      if (status == 'approved')
+        approved++;
+      else if (status == 'rejected')
+        rejected++;
+      else
+        pending++;
+    }
+
+    // Schreibe Zähler ins Dokument
+    await doc.reference.update({
+      'pendingTasks': pending,
+      'approvedTasks': approved,
+      'rejectedTasks': rejected,
+    });
+
+    // Frisch geladenes Dokument zurückgeben
+    return doc.reference.get();
   }
 
   /// Stream für Live-Fragen eines einzelnen Batches
@@ -226,21 +261,33 @@ class GeneratedTaskRepository {
     required String batchId,
     required String questionId,
     required String approvedByUserId,
+    bool wasPending = true,
   }) async {
     try {
-      await _firestore
+      final batchRef = _firestore
           .collection('users')
           .doc(userId)
           .collection('generated_batches')
-          .doc(batchId)
-          .collection('questions')
-          .doc(questionId)
-          .update({
-            'status': 'approved',
-            'approvedAt': FieldValue.serverTimestamp(),
-            'approvedBy': approvedByUserId,
-          });
+          .doc(batchId);
 
+      final firestoreBatch = _firestore.batch();
+
+      // Frage updaten
+      firestoreBatch.update(batchRef.collection('questions').doc(questionId), {
+        'status': 'approved',
+        'approvedAt': FieldValue.serverTimestamp(),
+        'approvedBy': approvedByUserId,
+      });
+
+      // Zähler im Batch-Dokument atomar anpassen
+      if (wasPending) {
+        firestoreBatch.update(batchRef, {
+          'approvedTasks': FieldValue.increment(1),
+          'pendingTasks': FieldValue.increment(-1),
+        });
+      }
+
+      await firestoreBatch.commit();
       print('✅ Aufgabe freigegeben: $questionId');
     } catch (e) {
       print('❌ Fehler beim Freigeben: $e');
@@ -254,21 +301,33 @@ class GeneratedTaskRepository {
     required String batchId,
     required String questionId,
     String? reason,
+    bool wasPending = true,
   }) async {
     try {
-      await _firestore
+      final batchRef = _firestore
           .collection('users')
           .doc(userId)
           .collection('generated_batches')
-          .doc(batchId)
-          .collection('questions')
-          .doc(questionId)
-          .update({
-            'status': 'rejected',
-            'rejectionReason': reason,
-            'approvedAt': FieldValue.serverTimestamp(),
-          });
+          .doc(batchId);
 
+      final firestoreBatch = _firestore.batch();
+
+      // Frage updaten
+      firestoreBatch.update(batchRef.collection('questions').doc(questionId), {
+        'status': 'rejected',
+        'rejectionReason': reason,
+        'approvedAt': FieldValue.serverTimestamp(),
+      });
+
+      // Zähler im Batch-Dokument atomar anpassen
+      if (wasPending) {
+        firestoreBatch.update(batchRef, {
+          'rejectedTasks': FieldValue.increment(1),
+          'pendingTasks': FieldValue.increment(-1),
+        });
+      }
+
+      await firestoreBatch.commit();
       print('✅ Aufgabe abgelehnt: $questionId');
     } catch (e) {
       print('❌ Fehler beim Ablehnen: $e');
@@ -283,26 +342,37 @@ class GeneratedTaskRepository {
     required String approvedByUserId,
   }) async {
     try {
-      final questionsSnapshot = await _firestore
+      final batchRef = _firestore
           .collection('users')
           .doc(userId)
           .collection('generated_batches')
-          .doc(batchId)
+          .doc(batchId);
+
+      final questionsSnapshot = await batchRef
           .collection('questions')
           .where('status', isEqualTo: 'pending')
           .get();
 
-      final batch = _firestore.batch();
+      final pendingCount = questionsSnapshot.docs.length;
+      if (pendingCount == 0) return;
+
+      final firestoreBatch = _firestore.batch();
 
       for (var doc in questionsSnapshot.docs) {
-        batch.update(doc.reference, {
+        firestoreBatch.update(doc.reference, {
           'status': 'approved',
           'approvedAt': FieldValue.serverTimestamp(),
           'approvedBy': approvedByUserId,
         });
       }
 
-      await batch.commit();
+      // Zähler atomar anpassen
+      firestoreBatch.update(batchRef, {
+        'approvedTasks': FieldValue.increment(pendingCount),
+        'pendingTasks': 0,
+      });
+
+      await firestoreBatch.commit();
       print('✅ Alle ausstehenden Aufgaben freigegeben in Batch: $batchId');
     } catch (e) {
       print('❌ Fehler beim Massen-Freigeben: $e');

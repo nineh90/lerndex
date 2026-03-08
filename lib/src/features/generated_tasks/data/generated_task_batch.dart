@@ -36,16 +36,29 @@ class GeneratedTaskBatch {
   ) {
     final data = doc.data() as Map<String, dynamic>;
 
-    // Zähle Status
-    final approved = questions
-        .where((q) => q.status == TaskApprovalStatus.approved)
-        .length;
-    final pending = questions
-        .where((q) => q.status == TaskApprovalStatus.pending)
-        .length;
-    final rejected = questions
-        .where((q) => q.status == TaskApprovalStatus.rejected)
-        .length;
+    // Zähler direkt aus dem Dokument lesen (werden bei approve/reject atomar gepflegt).
+    // Für alte Batches ohne diese Felder: totalTasks als pendingTasks annehmen —
+    // die Migration in watchBatchesForChild schreibt die echten Werte beim nächsten Öffnen.
+    final hasStoredCounters =
+        data.containsKey('pendingTasks') &&
+        data.containsKey('approvedTasks') &&
+        data.containsKey('rejectedTasks');
+
+    final int approved;
+    final int pending;
+    final int rejected;
+    final int total = (data['totalTasks'] as num?)?.toInt() ?? 0;
+
+    if (hasStoredCounters) {
+      approved = (data['approvedTasks'] as num?)?.toInt() ?? 0;
+      pending = (data['pendingTasks'] as num?)?.toInt() ?? 0;
+      rejected = (data['rejectedTasks'] as num?)?.toInt() ?? 0;
+    } else {
+      // Alter Batch: Felder noch nicht vorhanden → als komplett ausstehend behandeln
+      approved = 0;
+      pending = total;
+      rejected = 0;
+    }
 
     return GeneratedTaskBatch(
       id: doc.id,
@@ -54,7 +67,7 @@ class GeneratedTaskBatch {
       subject: SubjectExtension.fromString(data['subject'] ?? 'mathe'),
       imageUrl: data['imageUrl'] ?? '',
       createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
-      totalTasks: questions.length,
+      totalTasks: (data['totalTasks'] as num?)?.toInt() ?? questions.length,
       approvedTasks: approved,
       pendingTasks: pending,
       rejectedTasks: rejected,

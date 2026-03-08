@@ -98,6 +98,13 @@ class _EarlyLearnerDashboardScreenState
   @override
   void initState() {
     super.initState();
+    SystemChrome.setSystemUIOverlayStyle(
+      const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.light,
+        statusBarBrightness: Brightness.dark, // iOS
+      ),
+    );
     _waveController = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 2),
@@ -119,6 +126,14 @@ class _EarlyLearnerDashboardScreenState
   @override
   void dispose() {
     _waveController.dispose();
+    // Statusleisten-Style zurücksetzen für andere Screens
+    SystemChrome.setSystemUIOverlayStyle(
+      const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.dark,
+        statusBarBrightness: Brightness.light,
+      ),
+    );
     super.dispose();
   }
 
@@ -134,7 +149,8 @@ class _EarlyLearnerDashboardScreenState
       },
       child: Scaffold(
         backgroundColor: const Color(0xFFF3F0FF),
-        body: SafeArea(child: _buildBody()),
+        extendBodyBehindAppBar: true,
+        body: _buildBody(),
         bottomNavigationBar: _buildBottomNav(rewardsCount),
       ),
     );
@@ -443,7 +459,12 @@ class _CompactHeader extends ConsumerWidget {
           bottomRight: Radius.circular(32),
         ),
       ),
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+      padding: EdgeInsets.fromLTRB(
+        16,
+        MediaQuery.of(context).padding.top + 8,
+        16,
+        16,
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
