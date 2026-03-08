@@ -9,6 +9,7 @@ import 'package:lerndex/src/features/quiz/presentation/quiz_screen.dart';
 import 'package:lerndex/src/features/rewards/data/xp_service.dart';
 import 'package:lerndex/src/features/rewards/presentation/rewards_screen.dart';
 import 'rewards_count_provider.dart';
+import 'rewards_count_provider.dart';
 import 'package:lerndex/src/features/student_dashboard/presentation/widgets/avatar_settings_sheet.dart';
 import 'package:lerndex/src/features/student_dashboard/presentation/widgets/statistics_tab.dart';
 import 'package:lerndex/src/features/student_dashboard/presentation/widgets/tutor_history_tab.dart';
@@ -76,6 +77,14 @@ class _SecondaryDashboardScreenState
     final theme = themeState.theme;
     final rewardsCount =
         ref.watch(availableRewardsCountProvider).valueOrNull ?? 0;
+
+    // Auf Navigation-Signal vom Quiz lauschen
+    ref.listen<bool>(navigateToRewardsTabProvider, (_, shouldNavigate) {
+      if (shouldNavigate) {
+        ref.read(navigateToRewardsTabProvider.notifier).state = false;
+        setState(() => _currentTab = 1);
+      }
+    });
 
     return PopScope(
       canPop: _currentTab == 0,

@@ -33,3 +33,8 @@ final availableRewardsCountProvider = StreamProvider<int>((ref) {
             .length,
       );
 });
+
+/// Signal-Provider: wird auf true gesetzt wenn das Dashboard nach einem
+/// Reward-Unlock zum Belohnungs-Tab wechseln soll.
+/// Das Dashboard konsumiert ihn (liest + setzt ihn zurück auf false).
+final navigateToRewardsTabProvider = StateProvider<bool>((ref) => false);

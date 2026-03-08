@@ -280,47 +280,54 @@ class TutorNotifier extends StateNotifier<List<ChatMessage>> {
       _saveChatMessage(tutorMessage);
 
       // XP vergeben wenn KI ein Schulfach erkannt hat.
-      // Topic beim ersten Mal in Firestore setzen.
-      // Fach bestimmen: KI-Tag bevorzugen.
-      // Fallback 1: lokales Keyword-Matching auf User-Text + KI-Antwort.
-      // Fallback 2: gespeichertes detectedTopic der aktuellen Session aus Firestore.
+      // Priorität 1: KI-Tag aus der Antwort (zuverlässigste Quelle)
+      // Priorität 2: Bereits gespeichertes Fach der Session (einmal korrekt → beibehalten)
+      // Priorität 3: Keyword-Matching auf User-Text (nur wenn noch gar nichts bekannt)
       String detectedSubject = tutorResponse.subject;
 
+      // Gespeichertes Session-Fach vorab laden (einmalig, für alle Fälle)
+      String? savedSessionTopic;
+      if (_currentSessionId != null) {
+        try {
+          final sessionDoc = await _firestore
+              .collection('users')
+              .doc(_userId)
+              .collection('children')
+              .doc(_childId)
+              .collection('tutor_sessions')
+              .doc(_currentSessionId)
+              .get();
+          final t = sessionDoc.data()?['detectedTopic'] as String?;
+          if (t != null && TutorNotifier.isSchoolSubject(t)) {
+            savedSessionTopic = t;
+          }
+        } catch (_) {}
+      }
+
       if (!tutorResponse.isSchoolSubject) {
-        // Fallback 1: Keyword-Matching
-        final fromUserText = TutorNotifier.detectTopic(text);
-        if (TutorNotifier.isSchoolSubject(fromUserText)) {
-          detectedSubject = fromUserText;
-          print('🔄 Fach-Fallback 1 (Keyword): $detectedSubject');
-        } else if (_currentSessionId != null) {
-          // Fallback 2: Fach aus Firestore-Session lesen
-          try {
-            final sessionDoc = await _firestore
-                .collection('users')
-                .doc(_userId)
-                .collection('children')
-                .doc(_childId)
-                .collection('tutor_sessions')
-                .doc(_currentSessionId)
-                .get();
-            final savedTopic = sessionDoc.data()?['detectedTopic'] as String?;
-            if (savedTopic != null &&
-                TutorNotifier.isSchoolSubject(savedTopic)) {
-              detectedSubject = savedTopic;
-              print('🔄 Fach-Fallback 2 (Session): $detectedSubject');
-            }
-          } catch (_) {}
+        if (savedSessionTopic != null) {
+          // Fach wurde früher korrekt erkannt → beibehalten, nicht überschreiben
+          detectedSubject = savedSessionTopic;
+          print('🔄 Fach beibehalten (Session): $detectedSubject');
+        } else {
+          // Noch kein Fach bekannt → Keyword-Matching als letzter Fallback
+          final fromUserText = TutorNotifier.detectTopic(text);
+          if (TutorNotifier.isSchoolSubject(fromUserText)) {
+            detectedSubject = fromUserText;
+            print('🔄 Fach-Fallback (Keyword): $detectedSubject');
+          }
         }
       }
 
       final isSchool = TutorNotifier.isSchoolSubject(detectedSubject);
+      // Fach nur in Firestore schreiben wenn es noch nicht gesetzt wurde
+      final topicNeedsUpdate = savedSessionTopic == null && isSchool;
       print(
-        '🔍 XP-Check: subject="$detectedSubject" isSchool=$isSchool isCorrect=${tutorResponse.isCorrect} dailyXP=${_ref.read(tutorSessionXpProvider(_childId))}',
+        '🔍 XP-Check: subject="$detectedSubject" isSchool=$isSchool isCorrect=${tutorResponse.isCorrect} dailyXP=${_ref.read(tutorSessionXpProvider(_childId))} topicNeedsUpdate=$topicNeedsUpdate',
       );
       if (isSchool) {
-        // Topic-Update und XP unabhängig voneinander – ein Firestore-Fehler
-        // beim Topic-Setzen darf die XP-Vergabe nicht blockieren.
-        unawaited(_setSessionTopic(detectedSubject));
+        // Topic nur beim ersten Mal setzen – verhindert Überschreiben mit falschem Fach
+        if (topicNeedsUpdate) unawaited(_setSessionTopic(detectedSubject));
         if (tutorResponse.isCorrect) {
           await _awardTutorXP();
         } else {

@@ -7,6 +7,8 @@ import '../../auth/data/profile_repository.dart';
 import '../../rewards/data/xp_service.dart';
 import '../../rewards/data/reward_service.dart';
 import '../../rewards/presentation/reward_unlocked_dialog.dart';
+import '../../rewards/presentation/student_notification_popup.dart';
+import '../../student_dashboard/presentation/widgets/rewards_count_provider.dart';
 import '../../auth/domain/child_model.dart';
 import '../../auth/data/auth_repository.dart';
 import '../../learning_time/learning_time_tracker.dart';
@@ -33,6 +35,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
   bool _showingFeedback = false;
   bool _wasCorrect = false;
   bool _isFinished = false;
+  bool _finishQuizCalled = false; // Guard gegen Doppelaufruf
 
   late AnimationController _feedbackController;
   late Animation<double> _scaleAnimation;
@@ -265,6 +268,8 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
   }
 
   void _finishQuiz() async {
+    if (_finishQuizCalled) return;
+    _finishQuizCalled = true;
     setState(() => _isFinished = true);
 
     final child = ref.read(activeChildProvider);
@@ -328,52 +333,32 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
           if (unlockedRewards.isNotEmpty && mounted) {
             print('🎁 ${unlockedRewards.length} Belohnungen freigeschaltet!');
 
-            final streakRewards = unlockedRewards
-                .where((r) => r.trigger.toString().contains('streak'))
-                .toList();
-            if (streakRewards.isNotEmpty) {
-              print(
-                '🔥 Streak-Belohnung(en): ${streakRewards.map((r) => r.title).join(', ')}',
-              );
-            }
-
             Future.delayed(const Duration(milliseconds: 500), () {
               if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      '🎁 ${unlockedRewards.length} neue Belohnung(en) freigeschaltet!',
-                    ),
-                    backgroundColor: Colors.amber,
-                    duration: const Duration(seconds: 3),
-                  ),
+                showRewardNotifications(
+                  context,
+                  rewards: unlockedRewards,
+                  onGoToRewards: () {
+                    // Signal ans Dashboard: zum Belohnungs-Tab wechseln
+                    ref.read(navigateToRewardsTabProvider.notifier).state =
+                        true;
+                    // Quiz-Screen schließen (Dialog hat sich bereits selbst geschlossen)
+                    if (mounted) Navigator.of(context).pop();
+                  },
                 );
               }
             });
           }
 
-          // 7️⃣ Streak-Meilenstein-Feedback
-          if (mounted && _isStreakMilestone(newStreak)) {
+          // 7️⃣ Streak-Meilenstein-Feedback (nur wenn kein reward popup kommt)
+          if (mounted &&
+              _isStreakMilestone(newStreak) &&
+              unlockedRewards.isEmpty) {
             Future.delayed(const Duration(milliseconds: 800), () {
               if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Row(
-                      children: [
-                        const Text('🔥', style: TextStyle(fontSize: 20)),
-                        const SizedBox(width: 8),
-                        Text(
-                          '$newStreak Tage Streak! Weiter so!',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ],
-                    ),
-                    backgroundColor: Colors.orange,
-                    duration: const Duration(seconds: 3),
-                  ),
+                StudentNotificationPopup.show(
+                  context,
+                  type: StudentNotificationType.streakMilestone,
                 );
               }
             });

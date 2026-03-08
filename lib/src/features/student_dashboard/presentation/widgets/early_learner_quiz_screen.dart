@@ -11,6 +11,10 @@ import 'package:lerndex/src/features/parent_dashboard/presentation/widgets/early
 import 'package:lerndex/src/features/generated_tasks/data/generated_task_repository.dart';
 import 'package:lerndex/src/features/generated_tasks/data/generated_task_models.dart';
 import 'package:lerndex/src/features/rewards/data/xp_service.dart';
+import 'package:lerndex/src/features/rewards/data/reward_service.dart';
+import 'package:lerndex/src/features/auth/data/profile_repository.dart';
+import 'package:lerndex/src/features/rewards/presentation/student_notification_popup.dart';
+import 'package:lerndex/src/features/student_dashboard/presentation/widgets/rewards_count_provider.dart';
 import 'package:lerndex/src/features/tts/tts_provider.dart';
 import 'package:lerndex/src/features/student_dashboard/presentation/widgets/avatar_progress_bar.dart';
 import 'package:lerndex/src/features/student_dashboard/presentation/widgets/treasure_chest_overlay.dart';
@@ -460,6 +464,7 @@ class _EarlyLearnerQuizScreenState extends ConsumerState<EarlyLearnerQuizScreen>
   int _correctAnswers = 0;
   bool _isFinished = false;
   bool _showFeedback = false;
+  bool _finishQuizCalled = false; // Guard gegen Doppelaufruf
   bool _wasCorrect = false;
   String _feedbackText = '';
 
@@ -795,6 +800,103 @@ class _EarlyLearnerQuizScreenState extends ConsumerState<EarlyLearnerQuizScreen>
     super.dispose();
   }
 
+  // ── Quiz-Abschluss: Stats & Rewards ──────────────────────────────────────
+
+  /// Wird einmalig aufgerufen wenn das Quiz endet (direkt oder nach Schatzkiste).
+  /// Speichert Streak, Lernzeit, Quiz-Stats, Sterne und prüft Belohnungen.
+  Future<void> _finishQuiz() async {
+    if (_finishQuizCalled) return;
+    _finishQuizCalled = true;
+
+    final child = ref.read(activeChildProvider);
+    final user = ref.read(authStateChangesProvider).value;
+    if (child == null || user == null) return;
+
+    final isPerfect = _correctAnswers == _questions.length;
+    final earnedStars = _correctAnswers * 2;
+
+    try {
+      final xpService = ref.read(xpServiceProvider);
+
+      // 1️⃣ Streak aktualisieren (ZUERST – vor saveTime)
+      final newStreak = await xpService.updateStreak(
+        userId: user.uid,
+        childId: child.id,
+      );
+
+      // 2️⃣ Lernzeit speichern (timeTracker wurde schon in _nextQuestion gestoppt)
+      if (_timeTracker != null) {
+        await _timeTracker!.saveTime();
+      }
+
+      // 3️⃣ Quiz-Stats aktualisieren (totalQuizzes, perfectQuizzes)
+      await xpService.updateQuizStats(
+        userId: user.uid,
+        childId: child.id,
+        isPerfect: isPerfect,
+      );
+
+      // 4️⃣ Sterne vergeben
+      await ref
+          .read(profileRepositoryProvider)
+          .updateStars(child.id, earnedStars);
+
+      // 5️⃣ Aktuellen Kind-Stand laden + Streak eintragen
+      final rewardService = ref.read(rewardServiceProvider);
+      var updatedChild = await xpService.getChild(
+        userId: user.uid,
+        childId: child.id,
+      );
+
+      if (updatedChild != null && mounted) {
+        updatedChild = updatedChild.copyWith(streak: newStreak);
+
+        // 6️⃣ Reward-Check
+        final unlockedRewards = await rewardService.checkAndApproveRewards(
+          userId: user.uid,
+          child: updatedChild,
+          isPerfectQuiz: isPerfect,
+        );
+
+        if (unlockedRewards.isNotEmpty && mounted) {
+          Future.delayed(const Duration(milliseconds: 600), () {
+            if (mounted) {
+              showRewardNotifications(
+                context,
+                rewards: unlockedRewards,
+                onGoToRewards: () {
+                  ref.read(navigateToRewardsTabProvider.notifier).state = true;
+                  Navigator.of(context).pop();
+                },
+              );
+            }
+          });
+        } else if (mounted && _isStreakMilestone(newStreak)) {
+          // Streak-Meilenstein nur zeigen wenn kein Reward-Popup kommt
+          Future.delayed(const Duration(milliseconds: 800), () {
+            if (mounted) {
+              StudentNotificationPopup.show(
+                context,
+                type: StudentNotificationType.streakMilestone,
+              );
+            }
+          });
+        }
+      }
+    } catch (e) {
+      print('❌ EarlyLearner: Fehler beim Quiz-Abschluss: $e');
+    }
+  }
+
+  bool _isStreakMilestone(int streak) {
+    return streak == 3 ||
+        streak == 7 ||
+        streak == 14 ||
+        streak == 30 ||
+        streak == 50 ||
+        streak == 100;
+  }
+
   // ── TTS Hilfsmethoden ─────────────────────────────────────────────────────
 
   bool get _ttsEnabled {
@@ -917,6 +1019,7 @@ class _EarlyLearnerQuizScreenState extends ConsumerState<EarlyLearnerQuizScreen>
         setState(() => _showTreasureChest = true);
       } else {
         setState(() => _isFinished = true);
+        _finishQuiz(); // Stats + Rewards speichern
         // Ergebnis vorlesen
         Future.delayed(const Duration(milliseconds: 500), () {
           if (mounted) _speakResult();
@@ -948,6 +1051,7 @@ class _EarlyLearnerQuizScreenState extends ConsumerState<EarlyLearnerQuizScreen>
               _showTreasureChest = false;
               _isFinished = true;
             });
+            _finishQuiz(); // Stats + Rewards speichern
             // Ergebnis vorlesen + Konfetti nach Schatzkiste
             Future.delayed(const Duration(milliseconds: 300), () {
               if (mounted) {

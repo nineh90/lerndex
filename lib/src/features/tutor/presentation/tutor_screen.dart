@@ -9,6 +9,8 @@ import '../../auth/domain/child_model.dart';
 import '../../learning_time/learning_time_tracker.dart';
 import '../../rewards/data/xp_service.dart';
 import '../../rewards/data/reward_service.dart';
+import '../../rewards/presentation/student_notification_popup.dart';
+import '../../student_dashboard/presentation/widgets/rewards_count_provider.dart';
 import 'widgets/xp_gain_overlay.dart';
 import 'widgets/tutor_xp_banner.dart';
 
@@ -82,6 +84,43 @@ class _TutorScreenState extends ConsumerState<TutorScreen> {
       ),
     );
     Overlay.of(context).insert(_xpOverlay!);
+  }
+
+  Future<void> _checkRewardsAfterXp(dynamic child) async {
+    final user = ref.read(authStateChangesProvider).value;
+    final xpService = _xpService;
+    final rewardService = _rewardService;
+    if (user == null || xpService == null || rewardService == null) return;
+
+    try {
+      // Kurz warten damit Firestore den XP-Write abgeschlossen hat
+      await Future.delayed(const Duration(milliseconds: 800));
+      if (!mounted) return;
+
+      ChildModel? updatedChild = await xpService.getChild(
+        userId: user.uid,
+        childId: child.id,
+      );
+      if (updatedChild == null || !mounted) return;
+
+      final unlockedRewards = await rewardService.checkAndApproveRewards(
+        userId: user.uid,
+        child: updatedChild,
+      );
+
+      if (unlockedRewards.isNotEmpty && mounted) {
+        showRewardNotifications(
+          context,
+          rewards: unlockedRewards,
+          onGoToRewards: () {
+            ref.read(navigateToRewardsTabProvider.notifier).state = true;
+            Navigator.of(context).pop();
+          },
+        );
+      }
+    } catch (e) {
+      print('❌ Tutor: Reward-Check fehlgeschlagen: $e');
+    }
   }
 
   @override
@@ -183,7 +222,7 @@ class _TutorScreenState extends ConsumerState<TutorScreen> {
       return const Scaffold(body: Center(child: Text('Kein Kind ausgewählt')));
     }
 
-    // ✅ XP-Gain Listener → Animation triggern
+    // ✅ XP-Gain Listener → Animation + Reward-Check
     ref.listen(tutorXpGainProvider(child.id), (previous, gained) {
       if (gained > 0 && mounted) {
         _showXpAnimation(gained);
@@ -193,6 +232,8 @@ class _TutorScreenState extends ConsumerState<TutorScreen> {
             ref.read(tutorXpGainProvider(child.id).notifier).state = 0;
           }
         });
+        // Reward-Check nach XP-Vergabe
+        _checkRewardsAfterXp(child);
       }
     });
 

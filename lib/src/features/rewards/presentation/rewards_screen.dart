@@ -9,6 +9,7 @@ import '../domain/reward_model.dart';
 import '../domain/reward_enums.dart';
 import 'widgets/reward_card.dart';
 import '../../student_dashboard/presentation/widgets/dashboard_theme.dart';
+import 'student_notification_popup.dart';
 
 /// 🎁 REWARDS SCREEN (Schüler-Sicht)
 ///
@@ -342,17 +343,10 @@ class RewardsScreen extends ConsumerWidget {
         }
 
         if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                reward.avatarUnlockId != null
-                    ? '🎭 Avatar freigeschaltet!'
-                    : '🎉 ${reward.title} eingelöst!',
-              ),
-              backgroundColor: Colors.green,
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
+          final type = reward.avatarUnlockId != null
+              ? StudentNotificationType.avatarUnlocked
+              : StudentNotificationType.rewardUnlocked;
+          StudentNotificationPopup.show(context, type: type, reward: reward);
         }
       } catch (e) {
         if (context.mounted) {

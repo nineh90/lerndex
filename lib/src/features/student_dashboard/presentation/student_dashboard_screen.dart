@@ -19,6 +19,7 @@ import 'widgets/home_tab.dart';
 import 'widgets/tutor_history_tab.dart';
 import 'widgets/statistics_tab.dart';
 import 'widgets/avatar_settings_sheet.dart';
+import 'widgets/rewards_count_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 // ============================================================================
@@ -164,6 +165,14 @@ class _PrimaryDashboardScreenState
     final child = widget.child;
     final availableRewardsCount =
         ref.watch(availableRewardsCountProvider).valueOrNull ?? 0;
+
+    // Auf Navigation-Signal vom Quiz lauschen
+    ref.listen<bool>(navigateToRewardsTabProvider, (_, shouldNavigate) {
+      if (shouldNavigate) {
+        ref.read(navigateToRewardsTabProvider.notifier).state = false;
+        setState(() => _currentTab = 1);
+      }
+    });
 
     return PopScope(
       canPop: _currentTab == 0,
