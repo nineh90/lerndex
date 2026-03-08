@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/generated_task_models.dart';
 import '../batch_detail_screen.dart';
-import 'status_chip.dart';
 
 /// 📦 BATCH CARD - Kompakte Übersicht eines Aufgaben-Batches
 class BatchCard extends ConsumerWidget {
@@ -168,6 +167,8 @@ class BatchCard extends ConsumerWidget {
         return Icons.bolt;
       case Subject.geschichte:
         return Icons.history_edu;
+      case Subject.farbenFormen:
+        return Icons.palette;
     }
   }
 

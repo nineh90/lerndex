@@ -329,11 +329,48 @@ class _TracingGameScreenState extends ConsumerState<TracingGameScreen>
       }
 
       final task = _currentTask;
+      // Buchstaben-spezifische Hinweise für häufige Verwechslungen
+      final letterHints = {
+        'L':
+            'L has a vertical stroke going DOWN and a horizontal stroke going RIGHT at the bottom. A mirrored L (horizontal going LEFT) is WRONG.',
+        'J':
+            'J has a vertical stroke with a hook curving LEFT at the bottom. A mirrored J is WRONG.',
+        'F':
+            'F has horizontal strokes going RIGHT only. A mirrored F is WRONG.',
+        'E':
+            'E has horizontal strokes going RIGHT only. A mirrored E is WRONG.',
+        'G':
+            'G opens to the LEFT with a small inward horizontal bar. A mirrored G is WRONG.',
+        'K':
+            'K has diagonal strokes going to the RIGHT. A mirrored K is WRONG.',
+        'R': 'R has the leg going to the RIGHT. A mirrored R is WRONG.',
+        'P':
+            'P has the bump on the RIGHT side of the vertical stroke. A mirrored P (like q or d) is WRONG.',
+        'B': 'B has TWO bumps on the RIGHT side. A mirrored B is WRONG.',
+        'D': 'D has the bump on the RIGHT side. A mirrored D is WRONG.',
+        'S':
+            'S curves first to the right at top, then to the left at bottom. A backwards S is WRONG.',
+        'Z':
+            'Z has a top horizontal going RIGHT, diagonal going DOWN-LEFT, and bottom horizontal going RIGHT. A mirrored Z is WRONG.',
+        'N':
+            'N has two vertical strokes connected by a diagonal going DOWN-RIGHT. A mirrored N is WRONG.',
+      };
+      final hint = task.isLetter ? (letterHints[task.character] ?? '') : '';
+
       final prompt = task.isLetter
-          ? 'Does this handwritten drawing look like the letter "${task.character}"? '
-                'Answer with only "yes" or "no". Be generous with children.'
-          : 'Does this handwritten drawing look like the number "${task.character}"? '
-                'Answer with only "yes" or "no". Be generous with children.';
+          ? 'Does this handwritten drawing correctly show the letter "${task.character}"? '
+                '${hint.isNotEmpty ? hint + " " : ""}'
+                'STRICT RULES: orientation and direction MUST be correct. '
+                'A mirrored, flipped, or reversed version is WRONG – answer "no". '
+                'Only answer "yes" if the letter faces the correct direction. '
+                'Be generous with stroke thickness or slight wobble, but NEVER accept wrong orientation. '
+                'Answer with only "yes" or "no".'
+          : 'Does this handwritten drawing correctly show the digit "${task.character}"? '
+                'STRICT: orientation must be correct. '
+                'A backwards "3" is WRONG. A "2" drawn as a mirror image is WRONG. '
+                '"6" opens downward (the loop is at the bottom), "9" opens upward (loop at top) – do NOT confuse them. '
+                '"1" is a single near-vertical stroke only. '
+                'Answer with only "yes" or "no".';
 
       final response = await _aiModel!
           .generateContent([
@@ -902,8 +939,7 @@ class _DrawingPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_DrawingPainter old) =>
-      old.strokes != strokes || old.currentStroke != currentStroke;
+  bool shouldRepaint(_DrawingPainter old) => true; // live redraw on every stroke update
 }
 
 // ── Finished View ─────────────────────────────────────────────────────────────

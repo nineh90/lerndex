@@ -466,6 +466,7 @@ class _EarlyLearnerQuizScreenState extends ConsumerState<EarlyLearnerQuizScreen>
   bool _showFeedback = false;
   bool _finishQuizCalled = false; // Guard gegen Doppelaufruf
   bool _wasCorrect = false;
+  bool _showRetryChoice = false;
   String _feedbackText = '';
 
   /// Pro-Frage-Ergebnis: true = richtig, false = falsch, null = unbeantwortet
@@ -621,18 +622,26 @@ class _EarlyLearnerQuizScreenState extends ConsumerState<EarlyLearnerQuizScreen>
       );
 
       if (aiQuestions.isNotEmpty && mounted) {
-        final converted = aiQuestions
+        final all = aiQuestions
             .map(_convertAiQuestion)
             .map(_ensureFourOptions)
             .toList();
-        setState(() {
-          _questions = converted;
-          _stepResults = List.filled(_questions.length, null);
-        });
-        Future.delayed(const Duration(milliseconds: 600), () {
-          if (mounted && _questions.isNotEmpty) _speakCurrentQuestion();
-        });
-        return;
+        final converted = all
+            .where((q) => _filterBySubject([q], widget.subject).isNotEmpty)
+            .toList();
+        if (converted.isNotEmpty && mounted) {
+          setState(() {
+            _questions = converted;
+            _stepResults = List.filled(_questions.length, null);
+          });
+          Future.delayed(const Duration(milliseconds: 600), () {
+            if (mounted && _questions.isNotEmpty) _speakCurrentQuestion();
+          });
+          return;
+        }
+        print(
+          '⚠️ EarlyQuiz: KI-Fragen nach Fach-Filter alle rausgefiltert → statische Fragen',
+        );
       }
     } catch (e) {
       print('⚠️ EarlyQuiz: KI-Fragen nicht verfügbar, nutze statische: $e');
@@ -644,18 +653,162 @@ class _EarlyLearnerQuizScreenState extends ConsumerState<EarlyLearnerQuizScreen>
 
   void _loadStaticQuestions() {
     final bank = _questionBank[widget.subject] ?? _questionBank['Mathe']!;
-    final shuffled = List<_EarlyQuestion>.from(bank)..shuffle();
+    final filtered = _filterBySubject(bank, widget.subject);
+    final pool = filtered.isNotEmpty
+        ? filtered
+        : bank; // Fallback falls Filter zu streng
+    final shuffled = List<_EarlyQuestion>.from(pool)..shuffle();
     setState(() {
       _questions = shuffled.take(5).map(_ensureFourOptions).toList();
       _stepResults = List.filled(_questions.length, null);
     });
-
-    // Erste Frage nach kurzem Delay vorlesen
     Future.delayed(const Duration(milliseconds: 600), () {
-      if (mounted && _questions.isNotEmpty) {
-        _speakCurrentQuestion();
-      }
+      if (mounted && _questions.isNotEmpty) _speakCurrentQuestion();
     });
+  }
+
+  /// Filtert Fragen nach erlaubten Typen UND Inhalten pro Fach.
+  /// Verhindert z.B. Zählen-Aufgaben bei Buchstaben oder Sonnen-Fragen bei Mathe.
+  /// Hilfsmethode: Prüft ob alle options reine Zahlen sind
+  bool _optionsAreNumbers(List<String> opts) =>
+      opts.every((o) => RegExp(r'^\d+$').hasMatch(o));
+
+  /// Hilfsmethode: Prüft ob alle options einzelne Buchstaben sind
+  bool _optionsAreLetters(List<String> opts) =>
+      opts.every((o) => o.length == 1 && RegExp(r'[A-ZÄÖÜa-zäöü]').hasMatch(o));
+
+  /// Hilfsmethode: Prüft ob questionEmoji Zahlen-Emojis enthält
+  bool _emojiHasNumbers(String emoji) =>
+      RegExp(r'[0-9]|[1️⃣2️⃣3️⃣4️⃣5️⃣6️⃣7️⃣8️⃣9️⃣0️⃣]').hasMatch(emoji);
+
+  List<_EarlyQuestion> _filterBySubject(
+    List<_EarlyQuestion> questions,
+    String subject,
+  ) {
+    switch (subject) {
+      case 'Mathe':
+        return questions.where((q) {
+          final text = q.questionText.toLowerCase();
+
+          // Erlaubte Typen für Mathe
+          switch (q.type) {
+            case _QuestionType.counting:
+              // counting ist immer Mathe (Dinge zählen → Zahlen als Antwort)
+              return _optionsAreNumbers(q.options);
+
+            case _QuestionType.imageChoice:
+              // Muss eindeutigen Zahlen-Bezug haben
+              return text.contains('zahl') ||
+                  text.contains('größer') ||
+                  text.contains('kleiner') ||
+                  text.contains('wie viele') ||
+                  text.contains('mehr') ||
+                  text.contains('weniger') ||
+                  text.contains('rechne') ||
+                  text.contains('ergebnis') ||
+                  _optionsAreNumbers(q.options);
+
+            case _QuestionType.pattern:
+              // Muster nur wenn Zahlen oder Mathe-Emojis → options sind Zahlen
+              // ODER der questionText explizit Zahlen-Muster anspricht
+              return _optionsAreNumbers(q.options) ||
+                  _emojiHasNumbers(q.questionEmoji) ||
+                  text.contains('zahl') ||
+                  text.contains('zähl');
+
+            case _QuestionType.sizeOrder:
+              // sizeOrder bei Mathe: options müssen Zahlen sein
+              return _optionsAreNumbers(q.options);
+
+            default:
+              // oddOneOut, anlaut, wordToImage → nicht für Mathe
+              return false;
+          }
+        }).toList();
+
+      case 'Deutsch':
+        return questions.where((q) {
+          final text = q.questionText.toLowerCase();
+
+          switch (q.type) {
+            case _QuestionType.anlaut:
+              // anlaut immer Deutsch wenn options Buchstaben sind
+              return _optionsAreLetters(q.options);
+
+            case _QuestionType.pattern:
+              // Muster nur wenn options Buchstaben sind
+              return _optionsAreLetters(q.options);
+
+            case _QuestionType.oddOneOut:
+              // Kein Zahlen-Text, kein Reimen
+              return !text.contains('wie viele') &&
+                  !text.contains('zähl') &&
+                  !text.contains('reimt') &&
+                  !text.contains('zahl') &&
+                  !text.contains('farbe') &&
+                  !text.contains('form') &&
+                  !text.contains('rund') &&
+                  !text.contains('eckig');
+
+            default:
+              // counting, imageChoice, sizeOrder → nicht für Deutsch
+              return false;
+          }
+        }).toList();
+
+      case 'FarbenFormen':
+        return questions.where((q) {
+          final text = q.questionText.toLowerCase();
+
+          switch (q.type) {
+            case _QuestionType.imageChoice:
+              // Muss Farb- oder Form-Bezug haben
+              return text.contains('farbe') ||
+                  text.contains('form') ||
+                  text.contains('farb') ||
+                  text.contains('rot') ||
+                  text.contains('blau') ||
+                  text.contains('gelb') ||
+                  text.contains('grün') ||
+                  text.contains('rund') ||
+                  text.contains('eckig') ||
+                  text.contains('kreis') ||
+                  text.contains('dreieck') ||
+                  text.contains('quadrat') ||
+                  text.contains('rechteck') ||
+                  text.contains('gleiche');
+
+            case _QuestionType.pattern:
+              // Muster nur wenn options Farb-Emojis sind (keine Zahlen, keine Buchstaben)
+              return !_optionsAreNumbers(q.options) &&
+                  !_optionsAreLetters(q.options);
+
+            case _QuestionType.oddOneOut:
+              // Farb- oder Form-Kontext
+              return !text.contains('buchstab') &&
+                  !text.contains('anlaut') &&
+                  !text.contains('zahl') &&
+                  !text.contains('wie viele') &&
+                  (text.contains('nicht') ||
+                      text.contains('passt') ||
+                      text.contains('farb') ||
+                      text.contains('form') ||
+                      text.contains('rund') ||
+                      text.contains('rot') ||
+                      text.contains('blau'));
+
+            case _QuestionType.sizeOrder:
+              // sizeOrder bei FarbenFormen: keine Zahlen-Optionen
+              return !_optionsAreNumbers(q.options);
+
+            default:
+              return false;
+          }
+        }).toList();
+
+      default:
+        return questions;
+    }
   }
 
   /// Stellt sicher dass eine Frage immer genau 4 Antwortoptionen hat.
@@ -984,48 +1137,79 @@ class _EarlyLearnerQuizScreenState extends ConsumerState<EarlyLearnerQuizScreen>
     // Feedback-Overlay Animation
     _feedbackController.forward().then((_) => _feedbackController.reverse());
 
-    // Mindest-Anzeigezeit: 1800ms ODER bis TTS fertig ist – je was länger dauert
-    await Future.delayed(const Duration(milliseconds: 1800));
-    if (!mounted) return;
-
-    // Warten bis TTS fertig gesprochen hat (max. 4 weitere Sekunden)
-    if (_ttsEnabled) {
-      int waitMs = 0;
-      while (waitMs < 4000 &&
-          mounted &&
-          ref.read(ttsControllerProvider).isSpeaking) {
-        await Future.delayed(const Duration(milliseconds: 100));
-        waitMs += 100;
+    if (correct) {
+      // ── Richtige Antwort: kurz warten, dann auto-advance ─────────────
+      await Future.delayed(const Duration(milliseconds: 1800));
+      if (!mounted) return;
+      if (_ttsEnabled) {
+        int waitMs = 0;
+        while (waitMs < 4000 &&
+            mounted &&
+            ref.read(ttsControllerProvider).isSpeaking) {
+          await Future.delayed(const Duration(milliseconds: 100));
+          waitMs += 100;
+        }
       }
+      if (!mounted) return;
+      setState(() => _showFeedback = false);
+      _advanceToNext();
+    } else {
+      // ── Falsche Antwort: kurz warten, dann Retry-Wahl zeigen ─────────
+      await Future.delayed(const Duration(milliseconds: 1400));
+      if (!mounted) return;
+      if (_ttsEnabled) {
+        int waitMs = 0;
+        while (waitMs < 3000 &&
+            mounted &&
+            ref.read(ttsControllerProvider).isSpeaking) {
+          await Future.delayed(const Duration(milliseconds: 100));
+          waitMs += 100;
+        }
+      }
+      if (!mounted) return;
+      setState(() => _showRetryChoice = true);
     }
-    if (!mounted) return;
+  }
 
-    setState(() => _showFeedback = false);
-
+  /// Geht zur nächsten Frage oder beendet das Quiz.
+  void _advanceToNext() {
+    setState(() {
+      _showFeedback = false;
+      _showRetryChoice = false;
+    });
     if (_currentIndex < _questions.length - 1) {
       setState(() {
         _currentIndex++;
-        _sizeOrderTaps = []; // Reset für nächste Frage
+        _sizeOrderTaps = [];
       });
-      // Nächste Frage vorlesen (kurzer Delay damit Übergang sichtbar ist)
       Future.delayed(const Duration(milliseconds: 400), () {
         if (mounted) _speakCurrentQuestion();
       });
     } else {
       _timeTracker?.stopTracking();
-
       if (_correctAnswers >= 4) {
-        // Schatzkiste zeigen VOR dem Finish-Screen
         setState(() => _showTreasureChest = true);
       } else {
         setState(() => _isFinished = true);
-        _finishQuiz(); // Stats + Rewards speichern
-        // Ergebnis vorlesen
+        _finishQuiz();
         Future.delayed(const Duration(milliseconds: 500), () {
           if (mounted) _speakResult();
         });
       }
     }
+  }
+
+  /// Wiederholt die aktuelle Frage (nach falscher Antwort).
+  void _retryCurrentQuestion() {
+    setState(() {
+      _showFeedback = false;
+      _showRetryChoice = false;
+      _sizeOrderTaps = [];
+      _stepResults[_currentIndex] = null;
+    });
+    Future.delayed(const Duration(milliseconds: 300), () {
+      if (mounted) _speakCurrentQuestion();
+    });
   }
 
   // ── Build ─────────────────────────────────────────────────────────────────
@@ -1086,7 +1270,7 @@ class _EarlyLearnerQuizScreenState extends ConsumerState<EarlyLearnerQuizScreen>
                 ],
               ),
               // Feedback Overlay
-              if (_showFeedback) _buildFeedbackOverlay(),
+              if (_showFeedback || _showRetryChoice) _buildFeedbackOverlay(),
               // Konfetti (von oben Mitte)
               Align(
                 alignment: Alignment.topCenter,
@@ -1574,44 +1758,137 @@ class _EarlyLearnerQuizScreenState extends ConsumerState<EarlyLearnerQuizScreen>
     return AnimatedBuilder(
       animation: _feedbackController,
       builder: (_, __) {
-        final opacity = (_feedbackController.value * 2).clamp(0.0, 1.0);
-        return Container(
-          color: (_wasCorrect ? Colors.green : Colors.deepOrange).withOpacity(
-            opacity * 0.88,
-          ),
-          child: Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Transform.scale(
-                  scale: 0.8 + (_feedbackController.value * 0.4),
-                  child: Container(
-                    width: 130,
-                    height: 130,
-                    decoration: const BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Center(
-                      child: Text(
-                        _wasCorrect ? '🌟' : '💪',
-                        style: const TextStyle(fontSize: 60),
+        final opacity = _showRetryChoice
+            ? 0.92
+            : (_feedbackController.value * 2).clamp(0.0, 1.0);
+        final iconScale = _showRetryChoice
+            ? 1.2
+            : 0.8 + (_feedbackController.value * 0.4);
+
+        return SizedBox.expand(
+          child: ColoredBox(
+            color: (_wasCorrect ? Colors.green : Colors.deepOrange).withOpacity(
+              opacity,
+            ),
+            child: SafeArea(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // ── Emoji-Kreis ───────────────────────────────────────────
+                  Transform.scale(
+                    scale: iconScale,
+                    child: Container(
+                      width: 130,
+                      height: 130,
+                      decoration: const BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Center(
+                        child: Text(
+                          _wasCorrect ? '🌟' : '💪',
+                          style: const TextStyle(fontSize: 60),
+                        ),
                       ),
                     ),
                   ),
-                ),
-                const SizedBox(height: 20),
-                Text(
-                  _feedbackText,
-                  style: const TextStyle(
-                    fontSize: 26,
-                    fontWeight: FontWeight.w900,
-                    color: Colors.white,
-                    shadows: [Shadow(color: Colors.black38, blurRadius: 6)],
+                  const SizedBox(height: 20),
+
+                  // ── Feedback-Text ─────────────────────────────────────────
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 32),
+                    child: Text(
+                      _feedbackText,
+                      style: const TextStyle(
+                        fontSize: 26,
+                        fontWeight: FontWeight.w900,
+                        color: Colors.white,
+                        shadows: [Shadow(color: Colors.black38, blurRadius: 6)],
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
                   ),
-                  textAlign: TextAlign.center,
-                ),
-              ],
+
+                  // ── Retry-Buttons (nur bei falscher Antwort) ─────────────
+                  if (_showRetryChoice) ...[
+                    const SizedBox(height: 40),
+
+                    // 🔄 Nochmal-Button
+                    GestureDetector(
+                      onTap: () {
+                        HapticFeedback.lightImpact();
+                        _retryCurrentQuestion();
+                      },
+                      child: Container(
+                        width: double.infinity,
+                        margin: const EdgeInsets.symmetric(horizontal: 40),
+                        padding: const EdgeInsets.symmetric(vertical: 20),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(28),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.2),
+                              blurRadius: 16,
+                              offset: const Offset(0, 6),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Text('🔄', style: TextStyle(fontSize: 32)),
+                            const SizedBox(width: 12),
+                            Text(
+                              'Nochmal!',
+                              style: TextStyle(
+                                fontSize: 24,
+                                fontWeight: FontWeight.w900,
+                                color: Colors.deepOrange.shade700,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // ➡️ Weiter-Button
+                    GestureDetector(
+                      onTap: () {
+                        HapticFeedback.selectionClick();
+                        _advanceToNext();
+                      },
+                      child: Container(
+                        width: double.infinity,
+                        margin: const EdgeInsets.symmetric(horizontal: 40),
+                        padding: const EdgeInsets.symmetric(vertical: 20),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.25),
+                          borderRadius: BorderRadius.circular(28),
+                          border: Border.all(color: Colors.white60, width: 2),
+                        ),
+                        child: const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text('➡️', style: TextStyle(fontSize: 32)),
+                            SizedBox(width: 12),
+                            Text(
+                              'Weiter',
+                              style: TextStyle(
+                                fontSize: 24,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
             ),
           ),
         );

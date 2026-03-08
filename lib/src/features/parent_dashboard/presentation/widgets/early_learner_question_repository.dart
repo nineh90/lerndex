@@ -352,21 +352,26 @@ Antworte NUR mit einem JSON-Array ohne Markdown-Backticks, kein Text davor oder 
 ]
 
 Erlaubte Typen:
-- "counting": Emojis zählen (questionEmoji hat die gezählten Emojis, options = Zahlen)
-- "imageChoice": Welches Bild passt? (questionEmoji = Suchbegriff, options = 4 Emojis)
-- "anlaut": Welcher Buchstabe beginnt das Wort? (questionEmoji = Emoji des Wortes, options = 4 Buchstaben)
-- "pattern": Was kommt als nächstes? (questionEmoji zeigt das Muster mit ❓, options = 4 Emojis oder Buchstaben)
-- "oddOneOut": Was passt nicht dazu? (questionEmoji = 4 Emojis davon 1 falsch, options = die 4 Emojis, correctAnswer = das nicht passende)
+- "counting": Emojis zählen (questionEmoji hat die gezählten Emojis, options = Zahlen als Text "1","2","3"...)
+- "imageChoice": Welches Bild passt? (questionEmoji = Hinweis-Emoji, options = 4 Emojis)
+- "anlaut": Welcher Buchstabe beginnt das Wort? (questionEmoji = Emoji des Wortes, options = 4 Buchstaben als Großbuchstaben)
+- "pattern": Was kommt als nächstes? (questionEmoji zeigt das Muster MIT ❓ am Ende z.B. "🔴🔵🔴🔵❓", options = 4 mögliche Fortsetzungen, correctAnswer = das Element das als nächstes im Muster kommt)
+- "oddOneOut": Was passt nicht dazu? (questionEmoji = 4 Emojis davon 1 nicht passend, options = dieselben 4 Emojis, correctAnswer = das EINE Emoji das nicht passt)
+
+WICHTIG FÜR PATTERN: 
+- Das Muster ENDET mit ❓
+- correctAnswer ist immer das Element das dem Muster nach als nächstes kommen würde
+- Beispiel: questionEmoji "🔴🔵🔴🔵❓" → correctAnswer "🔴" (weil nach 🔵 kommt 🔴)
+- Beispiel: questionEmoji "🟩🔴🟩🔴🟩❓" → correctAnswer "🔴" (weil nach 🟩 kommt 🔴)
 
 REGELN:
-- Mische alle Typen: je 2 "counting", 2 "anlaut", 2 "imageChoice", 2 "pattern", 2 "oddOneOut"
 - IMMER GENAU 4 options – niemals 2 oder 3, immer exakt 4!
-- correctAnswer muss EXAKT eine der options sein
+- correctAnswer muss EXAKT eine der options sein (Zeichenfolge identisch!)
 - feedbackCorrect, feedbackWrong und questionText IMMER AUF DEUTSCH – keine Ausnahme!
 - feedbackCorrect nennt die richtige Antwort: "🌟 Richtig, das ist K wie Katze!"
 - feedbackWrong gibt einen kleinen Hinweis: "💪 K-K-Katze!"
 - Altersgerecht für 6–8 Jahre
-- NUR deutsche Satzstruktur für alle Texte, auch beim Fach Englisch
+- NUR deutsche Satzstruktur für alle Texte
 - Kontrolliere jede Frage: options.length MUSS 4 sein, sonst füge Distraktoren hinzu
 ''';
   }
@@ -378,22 +383,33 @@ REGELN:
 THEMEN für Mathe Klasse 1–2:
 - Zählen bis 20 (Objekt-Emojis zählen)
 - Grundrechenarten einfach (Emojis dazuzählen/wegnehmen)
-- Größenvergleiche (größer/kleiner mit Tier-Emojis)
-- Muster erkennen (Farbe-Emoji-Folgen: 🔴🔵🔴?)
-- Zahlen vergleichen: Welche Zahl ist größer?
+- Zahlenvergleiche: Welche Zahl ist größer/kleiner?
+- Muster aus Zahlen-Emojis: 1️⃣2️⃣1️⃣2️⃣❓
 Verwende viele Tier- und Obst-Emojis zum Zählen.
+
+NUR diese Typen für Mathe: "counting", "imageChoice", "pattern"
+- counting: Objekt-Emojis zählen, options MÜSSEN Zahlen als Text sein ("1","2","3"...)
+- imageChoice: Fragen über Zahlen/Mengen/Rechnen, options MÜSSEN Zahlen als Text sein
+  Beispiel: questionText "Welche Zahl ist größer?", options ["3","5","7","9"]
+- pattern: NUR Zahlen-Muster! questionEmoji MUSS Zahlen-Emojis enthalten: 1️⃣2️⃣1️⃣2️⃣❓ oder ➕➕➕❓
+  options MÜSSEN Zahlen als Text oder Zahlen-Emojis sein
+  KEIN Tier-Muster, KEIN Farb-Muster bei Mathe!
+- KEIN "anlaut", KEIN "oddOneOut" für Mathe!
+Mischung: 4 "counting", 3 "imageChoice", 3 "pattern"
 ''';
 
       case 'Deutsch':
         return '''
 THEMEN für Deutsch Klasse 1–2:
 - Anlaute: Womit beginnt 🐱 (Katze)? → K
-- Vokale/Konsonanten erkennen
-- Einfache Wortbilder: Welches Bild passt zum Wortanfang?
-- Reimwörter: Was reimt sich auf "Maus"? (🏠 Haus, 🐸 Frosch, 🌊 Meer, 🌸 Blume) → 🏠
-- Silben-Muster (A-B-A-B bei Buchstaben)
-- Odd one out: Welches Tier beginnt NICHT mit B?
+- Anfangsbuchstaben erkennen (Emojis bekannter Wörter)
+- Buchstaben-Muster: A-B-A-B-A-❓ (options = Buchstaben)
+- Odd one out: Welches Tier beginnt NICHT mit B? (🐻🐸🐦🦋 → 🐸 beginnt mit F)
 Nutze nur gut erkennbare Emojis für bekannte Wörter.
+KEINE Reimaufgaben – Reime funktionieren ohne Audio nicht!
+
+NUR diese Typen für Deutsch: "anlaut", "pattern", "oddOneOut"
+Mischung: 4 "anlaut", 3 "pattern", 3 "oddOneOut"
 ''';
 
       case 'FarbenFormen':
@@ -401,13 +417,14 @@ Nutze nur gut erkennbare Emojis für bekannte Wörter.
 THEMEN für Farben & Formen Klasse 1–2:
 - Grundfarben erkennen: Rot, Blau, Gelb, Grün, Orange, Lila
 - Grundformen erkennen: Kreis, Quadrat, Dreieck, Rechteck
-- Was hat diese Farbe? (Welches Objekt ist rot/blau/gelb?)
-- Was hat diese Form? (Was ist rund/eckig/dreieckig?)
+- Was hat diese Farbe? (z.B. questionEmoji "🔴", options = Objekt-Emojis in verschiedenen Farben, correctAnswer = rotes Objekt)
+- Was hat diese Form? (z.B. questionEmoji "⭕", options = 4 Objekte, correctAnswer = rundes Objekt)
 - Farb-Muster: 🔴🔵🔴🔵❓
-- Odd one out nach Farbe: Was ist nicht rot?
+- Odd one out nach Farbe: Was ist nicht rot? (3 rote Emojis + 1 anders → das andere ist correctAnswer)
 - Odd one out nach Form: Was ist nicht rund?
-- Größenvergleiche mit Formen
 
+NUR diese Typen für FarbenFormen: "imageChoice", "pattern", "oddOneOut"
+Mischung: 4 "imageChoice", 3 "pattern", 3 "oddOneOut"
 WICHTIG: Alle questionText und Texte AUF DEUTSCH. Keine englischen Wörter.
 ''';
 

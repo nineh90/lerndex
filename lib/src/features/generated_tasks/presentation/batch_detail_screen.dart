@@ -330,6 +330,8 @@ class _BatchDetailScreenState extends ConsumerState<BatchDetailScreen> {
         return Icons.bolt;
       case Subject.geschichte:
         return Icons.history_edu;
+      case Subject.farbenFormen:
+        return Icons.palette;
     }
   }
 

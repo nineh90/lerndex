@@ -665,6 +665,8 @@ class _TaskGeneratorScreenState extends ConsumerState<TaskGeneratorScreen> {
         return Icons.bolt;
       case Subject.geschichte:
         return Icons.history_edu;
+      case Subject.farbenFormen:
+        return Icons.palette;
     }
   }
 }

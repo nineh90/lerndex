@@ -48,6 +48,7 @@ enum Subject {
   chemie,
   physik,
   geschichte,
+  farbenFormen,
 }
 
 extension SubjectExtension on Subject {
@@ -69,6 +70,8 @@ extension SubjectExtension on Subject {
         return 'Physik';
       case Subject.geschichte:
         return 'Geschichte';
+      case Subject.farbenFormen:
+        return 'Farben & Formen';
     }
   }
 

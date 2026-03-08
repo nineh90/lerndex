@@ -288,6 +288,8 @@ Antworte NUR mit diesem JSON-Objekt (kein Array, kein Text davor/danach):
         return 'FACH: PHYSIK – Themen: Mechanik, Elektrizität, Optik, Energie je nach Klasse.';
       case Subject.geschichte:
         return 'FACH: GESCHICHTE – Themen: Antike, Mittelalter, Neuzeit, Weltkriege je nach Klasse.';
+      case Subject.farbenFormen:
+        return 'FACH: FARBEN & FORMEN – Themen: Grundfarben, geometrische Formen, Muster für Klasse 1–2.';
     }
   }
 }

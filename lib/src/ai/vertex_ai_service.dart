@@ -969,6 +969,8 @@ Antworte NUR mit einem JSON-Array, kein Text oder Markdown davor/danach:
           return 'FACH: PHYSIK — Physikalische Einheiten und Formeln.';
         case Subject.geschichte:
           return 'FACH: GESCHICHTE — Historische Fakten und zeitliche Einordnung.';
+        case Subject.farbenFormen:
+          return 'FACH: FARBEN & FORMEN — Grundfarben, geometrische Formen, kindgerechte Aufgaben für Klasse 1–2.';
       }
     }
 
