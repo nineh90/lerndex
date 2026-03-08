@@ -65,7 +65,7 @@ class AchievementsScreen extends ConsumerWidget {
             // ── Kategorien ───────────────────────────────────────────────
             ..._buildCategorySections(context, systemRewards, activeChild),
 
-            const SliverToBoxAdapter(child: SizedBox(height: 32)),
+            const SliverToBoxAdapter(child: SizedBox(height: 100)),
           ],
         );
       },

@@ -46,7 +46,7 @@ class StatisticsTab extends ConsumerWidget {
         final minutes = (totalSeconds % 3600) ~/ 60;
 
         return SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [

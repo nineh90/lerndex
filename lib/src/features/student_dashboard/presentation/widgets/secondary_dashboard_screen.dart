@@ -101,7 +101,7 @@ class _SecondaryDashboardScreenState
             opacity: _fadeAnim,
             child: _buildBody(theme, user.uid),
           ),
-          floatingActionButton: _currentTab == 0 ? _buildTutorFab(theme) : null,
+          floatingActionButton: _buildTutorFab(theme),
           floatingActionButtonLocation:
               FloatingActionButtonLocation.centerDocked,
           bottomNavigationBar: _buildBottomNav(theme, rewardsCount),

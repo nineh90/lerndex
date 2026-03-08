@@ -68,7 +68,7 @@ class TutorHistoryTab extends ConsumerWidget {
         }
 
         return ListView.builder(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
           itemCount: visibleDocs.length,
           itemBuilder: (context, index) {
             final doc = visibleDocs[index];
