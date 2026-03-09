@@ -125,8 +125,9 @@ class AchievementsScreen extends ConsumerWidget {
           rewards.where((r) => r.trigger == category.trigger).toList()
             ..sort((a, b) => _sortValue(a).compareTo(_sortValue(b)));
 
-      if (categoryRewards.isEmpty)
+      if (categoryRewards.isEmpty) {
         return const SliverToBoxAdapter(child: SizedBox.shrink());
+      }
 
       return SliverToBoxAdapter(
         child: _CategorySection(

@@ -158,17 +158,19 @@ class _EditChildScreenState extends ConsumerState<EditChildScreen> {
                 ),
                 textCapitalization: TextCapitalization.words,
                 validator: (value) {
-                  if (value == null || value.trim().isEmpty)
+                  if (value == null || value.trim().isEmpty) {
                     return 'Bitte gib einen Namen ein';
-                  if (value.trim().length < 2)
+                  }
+                  if (value.trim().length < 2) {
                     return 'Name muss mindestens 2 Zeichen haben';
+                  }
                   return null;
                 },
               ),
               const SizedBox(height: 16),
 
               DropdownButtonFormField<int>(
-                value: _selectedAge,
+                initialValue: _selectedAge,
                 decoration: _inputDecoration(
                   label: 'Alter',
                   hint: '',
@@ -208,8 +210,9 @@ class _EditChildScreenState extends ConsumerState<EditChildScreen> {
                     )
                     .toList(),
                 onChanged: (value) {
-                  if (value != null)
+                  if (value != null) {
                     setState(() => _selectedSchoolType = value);
+                  }
                 },
               ),
               const SizedBox(height: 16),

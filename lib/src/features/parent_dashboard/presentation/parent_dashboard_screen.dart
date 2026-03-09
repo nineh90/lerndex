@@ -24,7 +24,6 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        // ── NEU: Zurück zur Kind-Auswahl ──────────────────────────────────
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios),
           onPressed: () => Navigator.of(context).pop(),

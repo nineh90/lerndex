@@ -796,9 +796,9 @@ Mischung: 4 "imageChoice", 3 "pattern", 3 "oddOneOut"
       }
 
       // IMMER genau 4 options – Distraktoren auffüllen wenn nötig
-      const _fillerNumbers = ['1', '2', '3', '4', '5', '6', '7', '8'];
-      const _fillerLetters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
-      const _fillerEmojis = ['🌟', '🎈', '🌈', '🦄', '🍀', '🌙'];
+      const fillerNumbers = ['1', '2', '3', '4', '5', '6', '7', '8'];
+      const fillerLetters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
+      const fillerEmojis = ['🌟', '🎈', '🌈', '🦄', '🍀', '🌙'];
       while (options.length < 4) {
         // Passenden Distraktor wählen basierend auf vorhandenen Optionen
         final isNumber = options.every((o) => RegExp(r'^\d+$').hasMatch(o));
@@ -806,10 +806,10 @@ Mischung: 4 "imageChoice", 3 "pattern", 3 "oddOneOut"
           (o) => o.length == 1 && RegExp(r'[A-Za-z]').hasMatch(o),
         );
         final pool = isNumber
-            ? _fillerNumbers
+            ? fillerNumbers
             : isLetter
-            ? _fillerLetters
-            : _fillerEmojis;
+            ? fillerLetters
+            : fillerEmojis;
         final candidate = pool.firstWhere(
           (f) => !options.contains(f),
           orElse: () => '❓',

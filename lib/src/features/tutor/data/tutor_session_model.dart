@@ -348,8 +348,9 @@ class TutorSession {
       'nba',
       'nfl',
     ];
-    if (sportEntertainmentKeywords.any((k) => q.contains(k)))
+    if (sportEntertainmentKeywords.any((k) => q.contains(k))) {
       return 'off_topic';
+    }
 
     // Haustiere (Alltag, nicht Biologie)
     if ((q.contains('hund') ||
@@ -390,8 +391,9 @@ class TutorSession {
     // ── MATHEMATIK ───────────────────────────────────────────────────────────
     if (q.contains('mathe') || q.contains('mathematik')) return 'Mathematik';
     if (RegExp(r'\d+\s*[\+\-\*\/×÷]\s*\d+').hasMatch(q)) return 'Mathematik';
-    if (RegExp(r'\d+\s*(mal|durch|plus|minus|geteilt)\s*\d+').hasMatch(q))
+    if (RegExp(r'\d+\s*(mal|durch|plus|minus|geteilt)\s*\d+').hasMatch(q)) {
       return 'Mathematik';
+    }
     if (RegExp(r'wie viel[e]? (ist|sind|macht|ergibt|gibt)').hasMatch(q) &&
         RegExp(r'\d').hasMatch(q)) {
       return 'Mathematik';
@@ -418,8 +420,9 @@ class TutorSession {
         q.contains('kommazahl')) {
       return 'Mathematik';
     }
-    if (q.contains('gleichung') || q.contains('ungleichung'))
+    if (q.contains('gleichung') || q.contains('ungleichung')) {
       return 'Mathematik';
+    }
     if (q.contains('dreieck') ||
         q.contains('kreis') ||
         q.contains('quadrat') ||
@@ -481,8 +484,9 @@ class TutorSession {
                 q.contains('spannung')))) {
       return 'Physik';
     }
-    if (q.contains('magnetfeld') || q.contains('elektromagnet'))
+    if (q.contains('magnetfeld') || q.contains('elektromagnet')) {
       return 'Physik';
+    }
     if (q.contains('licht') &&
         (q.contains('brechung') ||
             q.contains('reflex') ||
@@ -573,8 +577,9 @@ class TutorSession {
       return 'Chemie';
     }
     if (q.contains('verbrennung') && q.contains('sauerstoff')) return 'Chemie';
-    if (q.contains('organisch') || q.contains('kohlenwasserstoff'))
+    if (q.contains('organisch') || q.contains('kohlenwasserstoff')) {
       return 'Chemie';
+    }
 
     // ── BIOLOGIE ─────────────────────────────────────────────────────────────
     if (q.contains('biologie') || q.contains('biologisch')) return 'Biologie';
@@ -613,13 +618,15 @@ class TutorSession {
       return 'Biologie';
     }
     if (q.contains('virus') || q.contains('bakterie')) return 'Biologie';
-    if (q.contains('immunsystem') || q.contains('antikörper'))
+    if (q.contains('immunsystem') || q.contains('antikörper')) {
       return 'Biologie';
+    }
 
     // ── ENGLISCH ─────────────────────────────────────────────────────────────
     if (q.contains('englisch') || q.contains('english')) return 'Englisch';
-    if (q.contains('übersetze') || q.contains('auf englisch'))
+    if (q.contains('übersetze') || q.contains('auf englisch')) {
       return 'Englisch';
+    }
     if (q.contains('past tense') ||
         q.contains('present tense') ||
         q.contains('future tense') ||
@@ -647,8 +654,9 @@ class TutorSession {
     }
 
     // ── DEUTSCH ──────────────────────────────────────────────────────────────
-    if (q.contains('grammatik') || q.contains('rechtschreibung'))
+    if (q.contains('grammatik') || q.contains('rechtschreibung')) {
       return 'Deutsch';
+    }
     if (q.contains('nomen') ||
         q.contains('substantiv') ||
         q.contains('adjektiv') ||
@@ -681,8 +689,9 @@ class TutorSession {
     if (q.contains('komma') && (q.contains('satz') || q.contains('regel'))) {
       return 'Deutsch';
     }
-    if (q.contains('großschreib') || q.contains('kleinschreib'))
+    if (q.contains('großschreib') || q.contains('kleinschreib')) {
       return 'Deutsch';
+    }
     if (q.contains('aufsatz') ||
         q.contains('gedicht') ||
         q.contains('strophe') ||
@@ -715,8 +724,9 @@ class TutorSession {
     if (q.contains('römer') || q.contains('römisch') || q.contains('antike')) {
       return 'Geschichte';
     }
-    if (q.contains('mittelalter') || q.contains('kreuzzug'))
+    if (q.contains('mittelalter') || q.contains('kreuzzug')) {
       return 'Geschichte';
+    }
     if (q.contains('französische revolution')) return 'Geschichte';
     if (q.contains('nationalsozialismu') ||
         q.contains('holocaust') ||
@@ -772,8 +782,9 @@ class TutorSession {
     }
 
     // ── SACHKUNDE ────────────────────────────────────────────────────────────
-    if (q.contains('sachkunde') || q.contains('sachunterricht'))
+    if (q.contains('sachkunde') || q.contains('sachunterricht')) {
       return 'Sachkunde';
+    }
     if (q.contains('pflanze') ||
         q.contains('blume') ||
         (q.contains('baum') && q.contains('wächst'))) {
@@ -807,8 +818,9 @@ class TutorSession {
         q.contains('galaxie')) {
       return 'Sachkunde';
     }
-    if (q.contains('verkehr') || q.contains('verkehrszeichen'))
+    if (q.contains('verkehr') || q.contains('verkehrszeichen')) {
       return 'Sachkunde';
+    }
     if (q.contains('ernährung') ||
         q.contains('vitamin') ||
         q.contains('nährstoff')) {
@@ -839,8 +851,9 @@ class TutorSession {
     }
 
     // ── FRANZÖSISCH ──────────────────────────────────────────────────────────
-    if (q.contains('französisch') && !q.contains('revolution'))
+    if (q.contains('französisch') && !q.contains('revolution')) {
       return 'Französisch';
+    }
 
     // ── SPANISCH ─────────────────────────────────────────────────────────────
     if (q.contains('spanisch')) return 'Spanisch';

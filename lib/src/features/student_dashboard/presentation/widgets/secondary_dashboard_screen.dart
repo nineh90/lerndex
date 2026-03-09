@@ -515,8 +515,9 @@ class _SecondaryHeroHeader extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    if (userId == null)
+    if (userId == null) {
       return _buildContent(child.xp, child.level, child.stars);
+    }
 
     return StreamBuilder<DocumentSnapshot>(
       stream: FirebaseFirestore.instance

@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/generated_task_models.dart';
 import '../data/generated_task_repository.dart';
 import '../../auth/data/auth_repository.dart';
-import 'widgets/info_row.dart';
 import 'widgets/question_card.dart';
 
 /// 📋 BATCH DETAIL SCREEN - Zeigt alle Aufgaben eines Batches

@@ -176,19 +176,57 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   child: Column(
                     children: [
                       const SizedBox(height: 8),
-                      const Icon(Icons.school, size: 60, color: Colors.white),
-                      const SizedBox(height: 12),
-                      const Text(
-                        'Konto erstellen',
-                        style: TextStyle(
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
+                      // Text + Tutor: Stack nur um den Textbereich
+                      SizedBox(
+                        height: 180,
+                        child: Stack(
+                          clipBehavior: Clip.none,
+                          children: [
+                            // Tutor — oben, füllt den Bereich
+                            Positioned(
+                              top: 0,
+                              left: 0,
+                              right: 0,
+                              child: Center(
+                                child: Image.asset(
+                                  'assets/images/lerndex_logo.png',
+                                  width: 180,
+                                  height: 180,
+                                  fit: BoxFit.contain,
+                                  errorBuilder: (_, __, ___) =>
+                                      const SizedBox.shrink(),
+                                ),
+                              ),
+                            ),
+                            // Text — am unteren Rand des Tutors
+                            const Positioned(
+                              bottom: 0,
+                              left: 0,
+                              right: 0,
+                              child: Column(
+                                children: [
+                                  Text(
+                                    'Konto erstellen',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      fontSize: 28,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                  Text(
+                                    'Für Eltern und Erziehungsberechtigte',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: Colors.white70,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
-                      ),
-                      const Text(
-                        'Für Eltern und Erziehungsberechtigte',
-                        style: TextStyle(fontSize: 14, color: Colors.white70),
                       ),
                       const SizedBox(height: 28),
 

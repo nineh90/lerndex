@@ -171,7 +171,7 @@ class _ThemePickerSheetState extends ConsumerState<ThemePickerSheet> {
       // Lokales App-Verzeichnis – kein Internetzugang nötig, keine Rechteprobleme
       final appDir = await getApplicationDocumentsDirectory();
       final ext = p.extension(picked.path);
-      final destPath = p.join(appDir.path, 'bg_${childId}$ext');
+      final destPath = p.join(appDir.path, 'bg_$childId$ext');
 
       // Datei in App-Verzeichnis kopieren
       await File(picked.path).copy(destPath);

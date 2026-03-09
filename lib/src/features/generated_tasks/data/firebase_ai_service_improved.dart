@@ -180,12 +180,13 @@ Antworte NUR mit diesem JSON-Objekt (kein Array, kein Text davor/danach):
   GeneratedQuestion? _parseSingleQuestion(String text) {
     try {
       String cleaned = text.trim();
-      if (cleaned.startsWith('```json'))
+      if (cleaned.startsWith('```json')) {
         cleaned = cleaned.substring(7);
-      else if (cleaned.startsWith('```'))
+      } else if (cleaned.startsWith('```'))
         cleaned = cleaned.substring(3);
-      if (cleaned.endsWith('```'))
+      if (cleaned.endsWith('```')) {
         cleaned = cleaned.substring(0, cleaned.length - 3);
+      }
       cleaned = cleaned.trim();
 
       // JSON-Objekt extrahieren (alles zwischen erstem { und letztem })
@@ -202,10 +203,12 @@ Antworte NUR mit diesem JSON-Objekt (kein Array, kein Text davor/danach):
 
       final json = jsonDecode(cleaned) as Map<String, dynamic>;
 
-      if (json['question'] == null || json['question'].toString().isEmpty)
+      if (json['question'] == null || json['question'].toString().isEmpty) {
         return null;
-      if (json['options'] == null || (json['options'] as List).length != 4)
+      }
+      if (json['options'] == null || (json['options'] as List).length != 4) {
         return null;
+      }
 
       final options = List<String>.from(json['options']);
       final correctAnswer = json['correctAnswer']?.toString() ?? '';

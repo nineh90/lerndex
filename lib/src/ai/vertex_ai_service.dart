@@ -149,7 +149,7 @@ class VertexAIService {
 
     // Sicherheitschecks
     if (!_isAppropriateQuestion(userMessage)) {
-      return TutorResponse(
+      return const TutorResponse(
         text:
             'Diese Frage kann ich leider nicht beantworten. Ich bin Lerndex und helfe dir nur beim Lernen! 📚 Hast du eine Frage zu Mathe, Deutsch, Englisch oder anderen Schulfächern? 🎓',
         subject: 'kein_schulfach',
@@ -165,7 +165,7 @@ class VertexAIService {
     }
 
     if (userMessage.length > 500) {
-      return TutorResponse(
+      return const TutorResponse(
         text:
             'Deine Frage ist etwas zu lang. Kannst du sie kürzer formulieren? 😊',
         subject: 'kein_schulfach',
@@ -228,7 +228,7 @@ class VertexAIService {
         final role = h.role;
         final txt = (h.parts.first as TextPart).text;
         print(
-          '  [$role]: ${txt.length > 80 ? txt.substring(0, 80) + "..." : txt}',
+          '  [$role]: ${txt.length > 80 ? "${txt.substring(0, 80)}..." : txt}',
         );
       }
       print('  [user/neu]: $userMessage');
@@ -238,7 +238,7 @@ class VertexAIService {
       final text = response.text;
 
       if (text == null || text.isEmpty) {
-        return TutorResponse(
+        return const TutorResponse(
           text:
               'Hmm, ich bin mir bei dieser Frage nicht sicher. Kannst du sie anders formulieren? 🤔',
           subject: 'kein_schulfach',
@@ -258,7 +258,7 @@ class VertexAIService {
       );
     } catch (e) {
       print('❌ Tutor-Fehler: $e');
-      return TutorResponse(
+      return const TutorResponse(
         text: 'Ups, da ist etwas schiefgelaufen. Versuch es nochmal! 😅',
         subject: 'kein_schulfach',
       );
@@ -778,8 +778,9 @@ Antworte NUR mit einem JSON-Array, kein Text oder Markdown davor/danach:
       if (questionText.isEmpty) return null;
 
       final rawOptions = json['options'];
-      if (rawOptions == null || rawOptions is! List || rawOptions.length != 4)
+      if (rawOptions == null || rawOptions is! List || rawOptions.length != 4) {
         return null;
+      }
 
       final options = List<String>.from(rawOptions);
       final correctAnswer = json['correctAnswer']?.toString() ?? '';
@@ -875,9 +876,9 @@ Antworte NUR mit einem JSON-Array, kein Text oder Markdown davor/danach:
   /// Bereinigt KI-Output: entfernt Markdown-Fences und fixt Newlines in Strings
   String _cleanJson(String text) {
     String cleaned = text.trim();
-    if (cleaned.startsWith('```json'))
+    if (cleaned.startsWith('```json')) {
       cleaned = cleaned.substring(7);
-    else if (cleaned.startsWith('```'))
+    } else if (cleaned.startsWith('```'))
       cleaned = cleaned.substring(3);
     if (cleaned.endsWith('```')) {
       cleaned = cleaned.substring(0, cleaned.length - 3);

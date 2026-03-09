@@ -2,13 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../../auth/data/auth_repository.dart';
 import '../../auth/data/profile_repository.dart';
 import '../../../../main.dart';
 import '../../auth/presentation/account_deleted_screen.dart';
 import '../data/pin_repository.dart';
-import '../../auth/presentation/onboarding_screen.dart';
 
 /// Einstellungsbereich im Elterndashboard
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -20,17 +18,6 @@ class SettingsScreen extends ConsumerStatefulWidget {
 
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   bool _isDeletingAccount = false;
-
-  Future<void> _launchUrl(String url) async {
-    final uri = Uri.parse(url);
-    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Konnte $url nicht öffnen')));
-      }
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -92,79 +79,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             onTap: _isDeletingAccount
                 ? null
                 : () => _confirmDeleteAccount(context),
-          ),
-
-          const Divider(),
-
-          // ── Abschnitt: Hilfe ────────────────────────────────────────
-          const _SectionHeader(title: 'Hilfe'),
-
-          ListTile(
-            leading: const Icon(Icons.tour_outlined, color: Colors.deepPurple),
-            title: const Text('App-Tour wiederholen'),
-            subtitle: const Text(
-              'Überblick über alle Funktionen von Lerndex',
-              style: TextStyle(fontSize: 12),
-            ),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => const OnboardingScreen(isReplay: true),
-              ),
-            ),
-          ),
-
-          const Divider(indent: 16, endIndent: 16),
-
-          // ── Abschnitt: Rechtliches ──────────────────────────────────
-          const _SectionHeader(title: 'Rechtliches'),
-
-          ListTile(
-            leading: const Icon(
-              Icons.privacy_tip_outlined,
-              color: Colors.deepPurple,
-            ),
-            title: const Text('Datenschutz'),
-            subtitle: const Text(
-              'Datenschutzerklärung von Lerndex',
-              style: TextStyle(fontSize: 12),
-            ),
-            trailing: const Icon(
-              Icons.open_in_new,
-              size: 18,
-              color: Colors.grey,
-            ),
-            onTap: () => _launchUrl('https://www.lerndex.de/datenschutz'),
-          ),
-
-          ListTile(
-            leading: const Icon(
-              Icons.description_outlined,
-              color: Colors.deepPurple,
-            ),
-            title: const Text('AGB'),
-            subtitle: const Text(
-              'Allgemeine Geschäftsbedingungen',
-              style: TextStyle(fontSize: 12),
-            ),
-            trailing: const Icon(
-              Icons.open_in_new,
-              size: 18,
-              color: Colors.grey,
-            ),
-            onTap: () => _launchUrl('https://www.lerndex.de/agb'),
-          ),
-
-          ListTile(
-            leading: const Icon(Icons.info_outline, color: Colors.deepPurple),
-            title: const Text('Impressum'),
-            trailing: const Icon(
-              Icons.open_in_new,
-              size: 18,
-              color: Colors.grey,
-            ),
-            onTap: () => _launchUrl('https://www.lerndex.de/impressum'),
           ),
 
           const Divider(indent: 16, endIndent: 16),

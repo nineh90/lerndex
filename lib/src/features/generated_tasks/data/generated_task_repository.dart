@@ -78,7 +78,7 @@ class GeneratedTaskRepository {
         .asyncMap((snapshot) async {
           final batches = <GeneratedTaskBatch>[];
           for (final doc in snapshot.docs) {
-            final data = doc.data() as Map<String, dynamic>;
+            final data = doc.data();
             final migrated = await _migrateCountersIfNeeded(doc, data, userId);
             batches.add(
               GeneratedTaskBatch.fromFirestore(migrated ?? doc, const []),
@@ -111,7 +111,7 @@ class GeneratedTaskRepository {
         .asyncMap((snapshot) async {
           final batches = <GeneratedTaskBatch>[];
           for (final doc in snapshot.docs) {
-            final data = doc.data() as Map<String, dynamic>;
+            final data = doc.data();
             final migrated = await _migrateCountersIfNeeded(doc, data, userId);
             batches.add(
               GeneratedTaskBatch.fromFirestore(migrated ?? doc, const []),
@@ -139,10 +139,10 @@ class GeneratedTaskRepository {
     final questionsSnapshot = await doc.reference.collection('questions').get();
     int pending = 0, approved = 0, rejected = 0;
     for (final q in questionsSnapshot.docs) {
-      final status = (q.data() as Map<String, dynamic>)['status'] ?? 'pending';
-      if (status == 'approved')
+      final status = (q.data())['status'] ?? 'pending';
+      if (status == 'approved') {
         approved++;
-      else if (status == 'rejected')
+      } else if (status == 'rejected')
         rejected++;
       else
         pending++;
@@ -517,7 +517,7 @@ class GeneratedTaskRepository {
             .get();
 
         for (var qDoc in questionsSnapshot.docs) {
-          final data = qDoc.data() as Map<String, dynamic>;
+          final data = qDoc.data();
           // Clientseitig filtern: Feld fehlt (Altdaten) → noch nicht beantwortet
           // Feld ist false → noch nicht beantwortet
           // Feld ist true → bereits korrekt beantwortet, überspringen

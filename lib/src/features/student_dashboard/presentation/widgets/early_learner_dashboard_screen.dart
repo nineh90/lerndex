@@ -246,7 +246,7 @@ class _EarlyLearnerDashboardScreenState
             _BigNavButton(
               emoji: '🏠',
               isSelected: _currentTab == _EarlyTab.home,
-              color: Color(0xFF7C4DFF),
+              color: const Color(0xFF7C4DFF),
               onTap: () => setState(() => _currentTab = _EarlyTab.home),
             ),
             _BigNavButton(

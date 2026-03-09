@@ -367,10 +367,7 @@ class XPService {
     }
 
     print(
-      '🔥 Firestore: streak=' +
-          data['streak'].toString() +
-          ', lastLearning=' +
-          data['lastLearningDate'].toString(),
+      '🔥 Firestore: streak=${data['streak']}, lastLearning=${data['lastLearningDate']}',
     );
 
     final lastLearning = (data['lastLearningDate'] as Timestamp?)?.toDate();
@@ -403,6 +400,57 @@ class XPService {
 
     print('✅ Streak gespeichert: $newStreak Tage');
     return newStreak;
+  }
+
+  // =========================================================================
+  // STREAK — DASHBOARD-CHECK (nur Reset, kein lastLearningDate-Update)
+  // =========================================================================
+
+  /// Prüft beim Öffnen des Dashboards ob der Streak verfallen ist.
+  ///
+  /// Unterschied zu [updateStreak]:
+  /// - Setzt `lastLearningDate` NICHT — das passiert erst beim echten Lernen.
+  /// - Gibt den aktuell gültigen Streak zurück (0 wenn verfallen, sonst unverändert).
+  /// - Schreibt nur wenn ein Reset nötig ist.
+  Future<int> checkAndResetStreakIfExpired({
+    required String userId,
+    required String childId,
+  }) async {
+    try {
+      final docRef = _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('children')
+          .doc(childId);
+
+      final snapshot = await docRef.get();
+      final data = snapshot.data();
+      if (data == null) return 0;
+
+      final lastLearning = (data['lastLearningDate'] as Timestamp?)?.toDate();
+      final currentStreak = (data['streak'] as int?) ?? 0;
+
+      // Kein Streak vorhanden oder noch kein Lerntag → nichts zu tun
+      if (lastLearning == null || currentStreak <= 0) return currentStreak;
+
+      final now = DateTime.now();
+
+      // Heute oder gestern gelernt → Streak noch gültig
+      if (_isSameDay(lastLearning, now) || _isYesterday(lastLearning, now)) {
+        print('✅ Streak-Check: Streak $currentStreak noch aktiv');
+        return currentStreak;
+      }
+
+      // Pause > 1 Tag → Streak verfallen, auf 0 setzen (nicht 1 – noch nicht gelernt heute)
+      print(
+        '💔 Streak-Check: Pause > 1 Tag → Streak verfallen (war $currentStreak)',
+      );
+      await docRef.update({'streak': 0});
+      return 0;
+    } catch (e) {
+      print('❌ checkAndResetStreakIfExpired Fehler: $e');
+      return 0;
+    }
   }
 
   // =========================================================================

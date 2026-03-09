@@ -150,20 +150,56 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // Logo
-                  const Icon(Icons.school, size: 80, color: Colors.white),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'Lerndex',
-                    style: TextStyle(
-                      fontSize: 48,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
+                  // Text + Tutor: Stack nur um den Textbereich
+                  SizedBox(
+                    height: 180,
+                    child: Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        Positioned(
+                          top: 0,
+                          left: 0,
+                          right: 0,
+                          child: Center(
+                            child: Image.asset(
+                              'assets/images/lerndex_logo.png',
+                              width: 160,
+                              height: 160,
+                              fit: BoxFit.contain,
+                              errorBuilder: (_, __, ___) =>
+                                  const SizedBox.shrink(),
+                            ),
+                          ),
+                        ),
+                        // Text — am unteren Rand des Tutors
+                        const Positioned(
+                          bottom: 0,
+                          left: 0,
+                          right: 0,
+                          child: Column(
+                            children: [
+                              Text(
+                                'Lerndex',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontSize: 48,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              Text(
+                                'Willkommen zurück!',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color: Colors.white70,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                  const Text(
-                    'Willkommen zurück!',
-                    style: TextStyle(fontSize: 16, color: Colors.white70),
                   ),
                   const SizedBox(height: 40),
 

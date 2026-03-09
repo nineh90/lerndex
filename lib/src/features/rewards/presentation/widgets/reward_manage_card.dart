@@ -187,10 +187,7 @@ class RewardManageCard extends StatelessWidget {
                   ),
                   child: Row(
                     children: [
-                      const Icon(
-                        Icons.card_giftcard,
-                        color: const Color(0xFF7C4DFF),
-                      ),
+                      const Icon(Icons.card_giftcard, color: Color(0xFF7C4DFF)),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(

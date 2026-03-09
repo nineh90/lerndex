@@ -1555,7 +1555,9 @@ class _EarlyLearnerQuizScreenState extends ConsumerState<EarlyLearnerQuizScreen>
     } else if (options.length >= 2) {
       // Auffüllen falls weniger als 4
       display = List<String>.from(options);
-      while (display.length < 4) display.add('❓');
+      while (display.length < 4) {
+        display.add('❓');
+      }
     } else {
       // Fallback: emojiString als Ganzes anzeigen
       return Text(emojiString, style: const TextStyle(fontSize: 56));

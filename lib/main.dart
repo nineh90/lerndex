@@ -1,9 +1,11 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'firebase_options.dart';
-
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'src/features/auth/presentation/account_deleted_screen.dart';
 import 'src/features/splash/splash_screen.dart';
 
@@ -16,6 +18,15 @@ void main() async {
   FlutterNativeSplash.preserve(widgetsBinding: binding);
 
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
+  // Alle Flutter-Framework-Fehler an Crashlytics weiterleiten
+  FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
+
+  // Async-Fehler die Flutter nicht selbst fängt (z.B. in Futures/Isolates)
+  PlatformDispatcher.instance.onError = (error, stack) {
+    FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+    return true;
+  };
 
   runApp(const ProviderScope(child: MyApp()));
 

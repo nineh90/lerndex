@@ -317,7 +317,7 @@ class _LerndexSplashScreenState extends ConsumerState<LerndexSplashScreen>
                       ),
                     ),
                   ),
-                  const SizedBox(height: 28),
+                  const SizedBox(height: 8),
                   SlideTransition(
                     position: _textSlide,
                     child: FadeTransition(
@@ -343,23 +343,12 @@ class _LerndexSplashScreenState extends ConsumerState<LerndexSplashScreen>
   Widget _buildLogo() {
     return AnimatedBuilder(
       animation: _twinkleCtrl,
-      builder: (_, __) => Container(
-        width: 130,
-        height: 130,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: Colors.white.withOpacity(0.15),
-          boxShadow: [
-            BoxShadow(
-              color: const Color(
-                0xFFA855F7,
-              ).withOpacity(0.4 + 0.2 * _twinkleCtrl.value),
-              blurRadius: 40 + 20 * _twinkleCtrl.value,
-              spreadRadius: 5,
-            ),
-          ],
-        ),
-        child: const Center(child: Text('🎓', style: TextStyle(fontSize: 68))),
+      builder: (_, __) => Image.asset(
+        'assets/images/lerndex_logo.png',
+        width: 220,
+        height: 220,
+        fit: BoxFit.contain,
+        errorBuilder: (_, __, ___) => const SizedBox.shrink(),
       ),
     );
   }

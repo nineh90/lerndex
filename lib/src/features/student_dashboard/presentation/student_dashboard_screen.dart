@@ -14,12 +14,12 @@ import '../../tutor/presentation/tutor_screen.dart';
 import '../../tutor/presentation/tutor_provider.dart';
 import '../../quiz/data/ai_question_cache_repository.dart';
 import '../../quiz/data/quiz_prefetch_service.dart';
+import '../../rewards/data/xp_service.dart';
 import 'widgets/nav_item.dart';
 import 'widgets/home_tab.dart';
 import 'widgets/tutor_history_tab.dart';
 import 'widgets/statistics_tab.dart';
 import 'widgets/avatar_settings_sheet.dart';
-import 'widgets/rewards_count_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 // ============================================================================
@@ -54,7 +54,36 @@ class _StudentDashboardScreenState
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _ensureCacheReady();
       _checkOnboarding();
+      _checkStreakOnOpen();
     });
+  }
+
+  /// Prüft beim Öffnen des Dashboards ob der Streak verfallen ist.
+  /// So sieht das Kind sofort den korrekten Streak — nicht erst nach dem nächsten Quiz.
+  Future<void> _checkStreakOnOpen() async {
+    final child = ref.read(activeChildProvider);
+    final user = ref.read(authStateChangesProvider).value;
+    if (child == null || user == null) return;
+
+    try {
+      final xpService = ref.read(xpServiceProvider);
+      final validStreak = await xpService.checkAndResetStreakIfExpired(
+        userId: user.uid,
+        childId: child.id,
+      );
+
+      // Nur updaten wenn sich der Streak geändert hat
+      if (validStreak != child.streak && mounted) {
+        ref
+            .read(activeChildProvider.notifier)
+            .update(child.copyWith(streak: validStreak));
+        print(
+          '🔄 Dashboard: Streak korrigiert von ${child.streak} → $validStreak',
+        );
+      }
+    } catch (e) {
+      print('❌ Dashboard: Streak-Check fehlgeschlagen: $e');
+    }
   }
 
   void _ensureCacheReady() {

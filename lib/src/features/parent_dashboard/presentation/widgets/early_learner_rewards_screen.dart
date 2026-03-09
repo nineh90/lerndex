@@ -165,11 +165,11 @@ class EarlyLearnerRewardsScreen extends ConsumerWidget {
                   pendingParentRewards.isEmpty &&
                   claimedRewards.isEmpty &&
                   systemRewards.isEmpty)
-                Center(
+                const Center(
                   child: Padding(
-                    padding: const EdgeInsets.only(top: 60),
+                    padding: EdgeInsets.only(top: 60),
                     child: Column(
-                      children: const [
+                      children: [
                         Text('🎁', style: TextStyle(fontSize: 80)),
                         SizedBox(height: 16),
                         Text(
@@ -915,16 +915,21 @@ class _AchievCard extends StatelessWidget {
     if (_isConditionMet) return 1.0;
     final r = reward;
     final c = child;
-    if (r.requiredLevel != null && r.requiredLevel! > 0)
+    if (r.requiredLevel != null && r.requiredLevel! > 0) {
       return (c.level / r.requiredLevel!).clamp(0.0, 1.0);
-    if (r.requiredXP != null && r.requiredXP! > 0)
+    }
+    if (r.requiredXP != null && r.requiredXP! > 0) {
       return (c.xp / r.requiredXP!).clamp(0.0, 1.0);
-    if (r.requiredStars != null && r.requiredStars! > 0)
+    }
+    if (r.requiredStars != null && r.requiredStars! > 0) {
       return (c.stars / r.requiredStars!).clamp(0.0, 1.0);
-    if (r.requiredStreak != null && r.requiredStreak! > 0)
+    }
+    if (r.requiredStreak != null && r.requiredStreak! > 0) {
       return ((c.streak ?? 0) / r.requiredStreak!).clamp(0.0, 1.0);
-    if (r.requiredQuizCount != null && r.requiredQuizCount! > 0)
+    }
+    if (r.requiredQuizCount != null && r.requiredQuizCount! > 0) {
       return ((c.totalQuizzes ?? 0) / r.requiredQuizCount!).clamp(0.0, 1.0);
+    }
     return 0.0;
   }
 
@@ -935,10 +940,12 @@ class _AchievCard extends StatelessWidget {
     if (r.requiredLevel != null) return '${c.level} / ${r.requiredLevel} 🏆';
     if (r.requiredXP != null) return '${c.xp} / ${r.requiredXP} ⚡';
     if (r.requiredStars != null) return '${c.stars} / ${r.requiredStars} ⭐';
-    if (r.requiredStreak != null)
+    if (r.requiredStreak != null) {
       return '${c.streak ?? 0} / ${r.requiredStreak} 🔥';
-    if (r.requiredQuizCount != null)
+    }
+    if (r.requiredQuizCount != null) {
       return '${c.totalQuizzes ?? 0} / ${r.requiredQuizCount} 📝';
+    }
     return '';
   }
 

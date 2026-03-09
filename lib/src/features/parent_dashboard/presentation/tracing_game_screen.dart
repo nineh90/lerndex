@@ -359,7 +359,7 @@ class _TracingGameScreenState extends ConsumerState<TracingGameScreen>
 
       final prompt = task.isLetter
           ? 'Does this handwritten drawing correctly show the letter "${task.character}"? '
-                '${hint.isNotEmpty ? hint + " " : ""}'
+                '${hint.isNotEmpty ? "$hint " : ""}'
                 'STRICT RULES: orientation and direction MUST be correct. '
                 'A mirrored, flipped, or reversed version is WRONG – answer "no". '
                 'Only answer "yes" if the letter faces the correct direction. '

@@ -8,6 +8,7 @@ import '../../parent_dashboard/data/pin_repository.dart';
 import '../../parent_dashboard/presentation/pin_setup_dialog.dart';
 import '../../parent_dashboard/presentation/pin_input_dialog.dart';
 import '../../parent_dashboard/presentation/parent_dashboard_screen.dart';
+import '../../parent_dashboard/presentation/family_settings_screen.dart';
 import 'widgets/parent_dashboard_button.dart';
 
 class FamilyDashboardScreen extends ConsumerWidget {
@@ -16,17 +17,13 @@ class FamilyDashboardScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final childrenAsync = ref.watch(childrenListProvider);
+    final pendingRewards = ref.watch(totalPendingRewardsProvider);
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Lerndex'),
         backgroundColor: const Color(0xFF6B21A8),
         foregroundColor: Colors.white,
-        actions: [
-          ParentDashboardButton(
-            onTap: () => _openParentDashboard(context, ref),
-          ),
-        ],
       ),
       body: childrenAsync.when(
         data: (children) {
@@ -50,8 +47,8 @@ class FamilyDashboardScreen extends ConsumerWidget {
                   const SizedBox(height: 24),
                   ElevatedButton.icon(
                     onPressed: () => _openParentDashboard(context, ref),
-                    icon: const Icon(Icons.add),
-                    label: const Text('Kind hinzufügen'),
+                    icon: const Icon(Icons.family_restroom),
+                    label: const Text('Eltern-Dashboard öffnen'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF6B21A8),
                       foregroundColor: Colors.white,
@@ -63,7 +60,7 @@ class FamilyDashboardScreen extends ConsumerWidget {
           }
 
           return ListView.builder(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
             itemCount: children.length,
             itemBuilder: (context, index) {
               final child = children[index];
@@ -76,17 +73,13 @@ class FamilyDashboardScreen extends ConsumerWidget {
                 child: InkWell(
                   borderRadius: BorderRadius.circular(16),
                   onTap: () async {
-                    // 1. Kind im Provider setzen
                     ref.read(activeChildProvider.notifier).select(child);
-                    // 2. Per normalem push navigieren → Stack: Family → Student
-                    //    Zurück-Button im StudentDashboard popt korrekt zurück
                     if (context.mounted) {
                       await Navigator.of(context).push(
                         MaterialPageRoute(
                           builder: (_) => const StudentDashboardScreen(),
                         ),
                       );
-                      // Wenn der User zurückkommt: Kind wieder deselektieren
                       if (context.mounted) {
                         ref.read(activeChildProvider.notifier).deselect();
                       }
@@ -129,20 +122,26 @@ class FamilyDashboardScreen extends ConsumerWidget {
                         Row(
                           children: [
                             const Icon(
-                              Icons.stars,
-                              size: 16,
+                              Icons.star,
+                              size: 14,
                               color: Colors.amber,
                             ),
                             const SizedBox(width: 4),
-                            Text('${child.stars}'),
-                            const SizedBox(width: 16),
+                            Text(
+                              '${child.stars} Sterne',
+                              style: const TextStyle(fontSize: 12),
+                            ),
+                            const SizedBox(width: 12),
                             const Icon(
-                              Icons.emoji_events,
-                              size: 16,
+                              Icons.local_fire_department,
+                              size: 14,
                               color: Colors.orange,
                             ),
                             const SizedBox(width: 4),
-                            Text('Level ${child.level}'),
+                            Text(
+                              '${child.streak ?? 0} Tage',
+                              style: const TextStyle(fontSize: 12),
+                            ),
                           ],
                         ),
                       ],
@@ -159,6 +158,51 @@ class FamilyDashboardScreen extends ConsumerWidget {
         },
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, st) => Center(child: Text('Fehler: $e')),
+      ),
+
+      // ── Bottom Bar ────────────────────────────────────────────────────────
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.08),
+              blurRadius: 12,
+              offset: const Offset(0, -2),
+            ),
+          ],
+        ),
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                // ── Eltern-Dashboard Button ──────────────────────────────
+                _BottomBarButton(
+                  onTap: () => _openParentDashboard(context, ref),
+                  badge: pendingRewards,
+                  icon: Icons.family_restroom_rounded,
+                  label: 'Eltern-Dashboard',
+                  color: const Color(0xFF6B21A8),
+                ),
+
+                // ── Einstellungen Button ─────────────────────────────────
+                _BottomBarButton(
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const FamilySettingsScreen(),
+                    ),
+                  ),
+                  icon: Icons.settings_outlined,
+                  label: 'Einstellungen',
+                  color: Colors.grey.shade700,
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -193,5 +237,80 @@ class FamilyDashboardScreen extends ConsumerWidget {
         MaterialPageRoute(builder: (_) => const ParentDashboardScreen()),
       );
     }
+  }
+}
+
+// ── Wiederverwendbarer Bottom-Bar-Button ──────────────────────────────────────
+class _BottomBarButton extends StatelessWidget {
+  final VoidCallback onTap;
+  final IconData icon;
+  final String label;
+  final Color color;
+  final int badge;
+
+  const _BottomBarButton({
+    required this.onTap,
+    required this.icon,
+    required this.label,
+    required this.color,
+    this.badge = 0,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Icon(icon, size: 26, color: color),
+                if (badge > 0)
+                  Positioned(
+                    top: -4,
+                    right: -6,
+                    child: Container(
+                      padding: const EdgeInsets.all(3),
+                      constraints: const BoxConstraints(
+                        minWidth: 16,
+                        minHeight: 16,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.red[700],
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 1.5),
+                      ),
+                      child: Text(
+                        badge > 9 ? '9+' : '$badge',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 9,
+                          fontWeight: FontWeight.bold,
+                          height: 1,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 11,
+                color: color,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

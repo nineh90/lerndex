@@ -1,3 +1,4 @@
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../domain/child_model.dart';
 
@@ -9,11 +10,21 @@ class ActiveChildNotifier extends StateNotifier<ChildModel?> {
   /// Kind auswählen und in Lern-Modus wechseln
   void select(ChildModel child) {
     state = child;
+
+    // Crashlytics-Kontext setzen → bei einem Crash sieht man welches Kind betroffen war
+    FirebaseCrashlytics.instance.setUserIdentifier(child.id);
+    FirebaseCrashlytics.instance.setCustomKey('child_name', child.name);
+    FirebaseCrashlytics.instance.setCustomKey('child_grade', child.grade);
+    FirebaseCrashlytics.instance.setCustomKey('child_level', child.level);
   }
 
   /// Kind abwählen und zurück zur Eltern-Ansicht
   void deselect() {
     state = null;
+
+    // Crashlytics-Kontext zurücksetzen → zurück in Eltern-Ansicht
+    FirebaseCrashlytics.instance.setUserIdentifier('parent_view');
+    FirebaseCrashlytics.instance.setCustomKey('child_name', '-');
   }
 
   /// Kind-Daten aktualisieren (z.B. nach XP-Gewinn)

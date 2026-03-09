@@ -1537,8 +1537,9 @@ class TutorNotifier extends StateNotifier<List<ChatMessage>> {
     }
     if (q.contains('listening') ||
         q.contains('reading comprehension') ||
-        q.contains('writing') && q.contains('english'))
+        q.contains('writing') && q.contains('english')) {
       return 'Englisch';
+    }
 
     // ════════════════════════════════════════════════════════════════════════
     // DEUTSCH
