@@ -10,14 +10,52 @@ import '../../parent_dashboard/presentation/pin_input_dialog.dart';
 import '../../parent_dashboard/presentation/parent_dashboard_screen.dart';
 import '../../parent_dashboard/presentation/family_settings_screen.dart';
 import 'widgets/parent_dashboard_button.dart';
+import '../../../tutorial_provider.dart';
+import '../../../tutorial_overlay.dart';
 
-class FamilyDashboardScreen extends ConsumerWidget {
+class FamilyDashboardScreen extends ConsumerStatefulWidget {
   const FamilyDashboardScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<FamilyDashboardScreen> createState() =>
+      _FamilyDashboardScreenState();
+}
+
+class _FamilyDashboardScreenState extends ConsumerState<FamilyDashboardScreen> {
+  // GlobalKeys für Tutorial-Spotlights
+  final _parentButtonKey = GlobalKey();
+  final _settingsButtonKey = GlobalKey();
+  final _childListKey = GlobalKey();
+
+  @override
+  Widget build(BuildContext context) {
     final childrenAsync = ref.watch(childrenListProvider);
     final pendingRewards = ref.watch(totalPendingRewardsProvider);
+    final tutState = ref.watch(tutorialProvider);
+
+    // Aktiven Spotlight-Key je nach Schritt bestimmen
+    GlobalKey? spotlightKey;
+    TooltipPosition tooltipPos = TooltipPosition.above;
+
+    switch (tutState.step) {
+      case TutorialStep.tapParentButton:
+        spotlightKey = _parentButtonKey;
+        tooltipPos = TooltipPosition.above;
+        break;
+      case TutorialStep.showChildCard:
+        spotlightKey = _childListKey;
+        tooltipPos = TooltipPosition.below;
+        break;
+      default:
+        spotlightKey = null;
+    }
+
+    final bool showOverlay =
+        tutState.isActive &&
+        tutState.isVisible &&
+        (tutState.step == TutorialStep.familyDashboardIntro ||
+            tutState.step == TutorialStep.tapParentButton ||
+            tutState.step == TutorialStep.showChildCard);
 
     return Scaffold(
       appBar: AppBar(
@@ -25,142 +63,164 @@ class FamilyDashboardScreen extends ConsumerWidget {
         backgroundColor: const Color(0xFF6B21A8),
         foregroundColor: Colors.white,
       ),
-      body: childrenAsync.when(
-        data: (children) {
-          if (children.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.child_care, size: 80, color: Colors.grey),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'Noch keine Kinder angelegt',
-                    style: TextStyle(fontSize: 18, color: Colors.grey),
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Öffne das Eltern-Dashboard um ein Kind hinzuzufügen',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: Colors.grey),
-                  ),
-                  const SizedBox(height: 24),
-                  ElevatedButton.icon(
-                    onPressed: () => _openParentDashboard(context, ref),
-                    icon: const Icon(Icons.family_restroom),
-                    label: const Text('Eltern-Dashboard öffnen'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF6B21A8),
-                      foregroundColor: Colors.white,
-                    ),
-                  ),
-                ],
-              ),
-            );
-          }
-
-          return ListView.builder(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
-            itemCount: children.length,
-            itemBuilder: (context, index) {
-              final child = children[index];
-              return Card(
-                margin: const EdgeInsets.only(bottom: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                clipBehavior: Clip.antiAlias,
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(16),
-                  onTap: () async {
-                    ref.read(activeChildProvider.notifier).select(child);
-                    if (context.mounted) {
-                      await Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => const StudentDashboardScreen(),
-                        ),
-                      );
-                      if (context.mounted) {
-                        ref.read(activeChildProvider.notifier).deselect();
-                      }
-                    }
-                  },
-                  child: ListTile(
-                    contentPadding: const EdgeInsets.all(16),
-                    leading: CircleAvatar(
-                      backgroundColor: const Color(0xFF6B21A8),
-                      radius: 24,
-                      backgroundImage: child.selectedAvatar != null
-                          ? AssetImage(
-                              'assets/images/${child.selectedAvatar}.png',
-                            )
-                          : null,
-                      child: child.selectedAvatar == null
-                          ? Text(
-                              child.name[0].toUpperCase(),
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            )
-                          : null,
-                    ),
-                    title: Text(
-                      child.name,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
+      body: Stack(
+        children: [
+          // ── Eigentlicher Inhalt ────────────────────────────────────────
+          childrenAsync.when(
+            data: (children) {
+              if (children.isEmpty) {
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(
+                        Icons.child_care,
+                        size: 80,
+                        color: Colors.grey,
                       ),
+                      const SizedBox(height: 16),
+                      const Text(
+                        'Noch keine Kinder angelegt',
+                        style: TextStyle(fontSize: 18, color: Colors.grey),
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Öffne das Eltern-Dashboard um ein Kind hinzuzufügen',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: Colors.grey),
+                      ),
+                      const SizedBox(height: 24),
+                      ElevatedButton.icon(
+                        onPressed: () => _openParentDashboard(context, ref),
+                        icon: const Icon(Icons.family_restroom),
+                        label: const Text('Eltern-Dashboard öffnen'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF6B21A8),
+                          foregroundColor: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }
+
+              return ListView.builder(
+                key: _childListKey,
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
+                itemCount: children.length,
+                itemBuilder: (context, index) {
+                  final child = children[index];
+                  return Card(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
                     ),
-                    subtitle: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const SizedBox(height: 4),
-                        Text('${child.schoolType} • Klasse ${child.grade}'),
-                        const SizedBox(height: 4),
-                        Row(
+                    clipBehavior: Clip.antiAlias,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(16),
+                      onTap: () async {
+                        ref.read(activeChildProvider.notifier).select(child);
+                        if (context.mounted) {
+                          await Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => const StudentDashboardScreen(),
+                            ),
+                          );
+                          if (context.mounted) {
+                            ref.read(activeChildProvider.notifier).deselect();
+                          }
+                        }
+                      },
+                      child: ListTile(
+                        contentPadding: const EdgeInsets.all(16),
+                        leading: CircleAvatar(
+                          backgroundColor: const Color(0xFF6B21A8),
+                          radius: 24,
+                          backgroundImage: child.selectedAvatar != null
+                              ? AssetImage(
+                                  'assets/images/${child.selectedAvatar}.png',
+                                )
+                              : null,
+                          child: child.selectedAvatar == null
+                              ? Text(
+                                  child.name[0].toUpperCase(),
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                )
+                              : null,
+                        ),
+                        title: Text(
+                          child.name,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Icon(
-                              Icons.star,
-                              size: 14,
-                              color: Colors.amber,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              '${child.stars} Sterne',
-                              style: const TextStyle(fontSize: 12),
-                            ),
-                            const SizedBox(width: 12),
-                            const Icon(
-                              Icons.local_fire_department,
-                              size: 14,
-                              color: Colors.orange,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              '${child.streak ?? 0} Tage',
-                              style: const TextStyle(fontSize: 12),
+                            const SizedBox(height: 4),
+                            Text('${child.schoolType} • Klasse ${child.grade}'),
+                            const SizedBox(height: 4),
+                            Row(
+                              children: [
+                                const Icon(
+                                  Icons.bolt,
+                                  size: 14,
+                                  color: Colors.orange,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  '${child.xp} XP • Lvl ${child.level}',
+                                  style: const TextStyle(fontSize: 12),
+                                ),
+                                const SizedBox(width: 12),
+                                const Icon(
+                                  Icons.local_fire_department,
+                                  size: 14,
+                                  color: Colors.orange,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  '${child.streak ?? 0} Tage',
+                                  style: const TextStyle(fontSize: 12),
+                                ),
+                              ],
                             ),
                           ],
                         ),
-                      ],
+                        trailing: const Icon(
+                          Icons.chevron_right,
+                          color: Color(0xFF6B21A8),
+                        ),
+                      ),
                     ),
-                    trailing: const Icon(
-                      Icons.chevron_right,
-                      color: Color(0xFF6B21A8),
-                    ),
-                  ),
-                ),
+                  );
+                },
               );
             },
-          );
-        },
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, st) => Center(child: Text('Fehler: $e')),
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (e, st) => Center(child: Text('Fehler: $e')),
+          ),
+
+          // ── Tutorial Overlay ───────────────────────────────────────────
+          if (showOverlay)
+            TutorialOverlay(
+              highlightKey: spotlightKey,
+              tooltipPosition:
+                  tutState.step == TutorialStep.familyDashboardIntro
+                  ? TooltipPosition.center
+                  : tooltipPos,
+              onAction: () => _handleTutorialAction(context, ref),
+              onSkip: () => ref.read(tutorialProvider.notifier).skip(),
+            ),
+        ],
       ),
 
-      // ── Bottom Bar ────────────────────────────────────────────────────────
+      // ── Bottom Bar ─────────────────────────────────────────────────────
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: Colors.white,
@@ -178,26 +238,32 @@ class FamilyDashboardScreen extends ConsumerWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                // ── Eltern-Dashboard Button ──────────────────────────────
-                _BottomBarButton(
-                  onTap: () => _openParentDashboard(context, ref),
-                  badge: pendingRewards,
-                  icon: Icons.family_restroom_rounded,
-                  label: 'Eltern-Dashboard',
-                  color: const Color(0xFF6B21A8),
+                // ── Eltern-Dashboard Button ────────────────────────────
+                SizedBox(
+                  key: _parentButtonKey,
+                  child: _BottomBarButton(
+                    onTap: () => _openParentDashboard(context, ref),
+                    badge: pendingRewards,
+                    icon: Icons.family_restroom_rounded,
+                    label: 'Eltern-Dashboard',
+                    color: const Color(0xFF6B21A8),
+                  ),
                 ),
 
-                // ── Einstellungen Button ─────────────────────────────────
-                _BottomBarButton(
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const FamilySettingsScreen(),
+                // ── Einstellungen Button ───────────────────────────────
+                SizedBox(
+                  key: _settingsButtonKey,
+                  child: _BottomBarButton(
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const FamilySettingsScreen(),
+                      ),
                     ),
+                    icon: Icons.settings_outlined,
+                    label: 'Einstellungen',
+                    color: Colors.grey.shade700,
                   ),
-                  icon: Icons.settings_outlined,
-                  label: 'Einstellungen',
-                  color: Colors.grey.shade700,
                 ),
               ],
             ),
@@ -207,9 +273,39 @@ class FamilyDashboardScreen extends ConsumerWidget {
     );
   }
 
+  // ── Tutorial-Aktionen je nach Schritt ────────────────────────────────────
+
+  void _handleTutorialAction(BuildContext context, WidgetRef ref) {
+    final step = ref.read(tutorialProvider).step;
+    switch (step) {
+      case TutorialStep.familyDashboardIntro:
+        ref.read(tutorialProvider.notifier).nextStep();
+        break;
+      case TutorialStep.tapParentButton:
+        _openParentDashboard(context, ref);
+        break;
+      case TutorialStep.showChildCard:
+        ref.read(tutorialProvider.notifier).nextStep();
+        _openParentDashboard(context, ref);
+        break;
+      default:
+        break;
+    }
+  }
+
+  // ── Eltern-Dashboard öffnen ──────────────────────────────────────────────
+
   Future<void> _openParentDashboard(BuildContext context, WidgetRef ref) async {
     final user = ref.read(authStateChangesProvider).value;
     if (user == null) return;
+
+    final tutNotifier = ref.read(tutorialProvider.notifier);
+    final tutStep = ref.read(tutorialProvider).step;
+
+    // Tutorial: Schritt auf enterPin setzen bevor der Dialog kommt
+    if (tutStep == TutorialStep.tapParentButton) {
+      tutNotifier.setStep(TutorialStep.enterPin);
+    }
 
     final hasPin = await ref.read(pinRepositoryProvider).hasPinSet(user.uid);
     if (!context.mounted) return;
@@ -232,10 +328,18 @@ class FamilyDashboardScreen extends ConsumerWidget {
     );
 
     if (verified == true && context.mounted) {
-      Navigator.push(
+      // Tutorial: Nach PIN → Kind hinzufügen
+      final currentStep = ref.read(tutorialProvider).step;
+      if (currentStep == TutorialStep.enterPin) {
+        tutNotifier.setStep(TutorialStep.tapAddChild);
+      }
+
+      await Navigator.push(
         context,
         MaterialPageRoute(builder: (_) => const ParentDashboardScreen()),
       );
+      // showOverlay() wird von parent_dashboard_screen.dart aufgerufen
+      // nachdem das Kind angelegt und zurücknavigiert wurde.
     }
   }
 }

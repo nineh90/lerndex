@@ -5,6 +5,8 @@ import 'live_child_stat_card.dart';
 import '../../auth/data/auth_repository.dart';
 import 'settings_screen.dart';
 import '../../auth/presentation/login_screen.dart';
+import '../../../tutorial_provider.dart';
+import '../../../tutorial_overlay.dart';
 
 /// Haupt-Dashboard für Eltern mit Statistiken & Verwaltung
 class ParentDashboardScreen extends ConsumerStatefulWidget {
@@ -18,9 +20,32 @@ class ParentDashboardScreen extends ConsumerStatefulWidget {
 class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
   int _selectedIndex = 0;
 
+  // GlobalKeys für Tutorial-Spotlights
+  final _addChildNavKey = GlobalKey();
+  final _childCardAreaKey = GlobalKey();
+
   @override
   Widget build(BuildContext context) {
     final childrenAsync = ref.watch(childrenListProvider);
+    final tutState = ref.watch(tutorialProvider);
+
+    // Spotlight-Key je nach Tutorial-Schritt
+    GlobalKey? spotlightKey;
+    TooltipPosition tooltipPos = TooltipPosition.above;
+    if (tutState.step == TutorialStep.tapAddChild) {
+      spotlightKey = _addChildNavKey;
+      tooltipPos = TooltipPosition.above;
+    } else if (tutState.step == TutorialStep.parentDashboardOverview) {
+      spotlightKey = _childCardAreaKey;
+      tooltipPos = TooltipPosition.below;
+    }
+
+    final bool showOverlay =
+        tutState.isActive &&
+        tutState.isVisible &&
+        (tutState.step == TutorialStep.tapAddChild ||
+            tutState.step == TutorialStep.addChild ||
+            tutState.step == TutorialStep.parentDashboardOverview);
 
     return Scaffold(
       appBar: AppBar(
@@ -32,53 +57,78 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
         backgroundColor: Colors.deepPurple,
         foregroundColor: Colors.white,
       ),
-      body: childrenAsync.when(
-        data: (children) {
-          if (children.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.child_care, size: 80, color: Colors.grey[400]),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Noch keine Kinder angelegt',
-                    style: TextStyle(fontSize: 18, color: Colors.grey[600]),
+      body: Stack(
+        children: [
+          // ── Eigentlicher Inhalt ──────────────────────────────────────
+          childrenAsync.when(
+            data: (children) {
+              if (children.isEmpty) {
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.child_care, size: 80, color: Colors.grey[400]),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Noch keine Kinder angelegt',
+                        style: TextStyle(fontSize: 18, color: Colors.grey[600]),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Tippe unten auf „Kind hinzufügen"',
+                        style: TextStyle(fontSize: 14, color: Colors.grey[400]),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Tippe unten auf „Kind hinzufügen"',
-                    style: TextStyle(fontSize: 14, color: Colors.grey[400]),
-                  ),
-                ],
-              ),
-            );
-          }
+                );
+              }
 
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Fortschritte & Verwaltung',
-                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+              return SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Fortschritte & Verwaltung',
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      '${children.length} ${children.length == 1 ? "Kind" : "Kinder"} registriert',
+                      style: TextStyle(color: Colors.grey[600]),
+                    ),
+                    const SizedBox(height: 24),
+                    // Kinder-Karten mit Key für Tutorial-Spotlight
+                    SizedBox(
+                      key: _childCardAreaKey,
+                      child: Column(
+                        children: children
+                            .map(
+                              (child) => LiveChildStatCard(childId: child.id),
+                            )
+                            .toList(),
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  '${children.length} ${children.length == 1 ? "Kind" : "Kinder"} registriert',
-                  style: TextStyle(color: Colors.grey[600]),
-                ),
-                const SizedBox(height: 24),
-                ...children.map(
-                  (child) => LiveChildStatCard(childId: child.id),
-                ),
-              ],
+              );
+            },
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (e, st) => Center(child: Text('Fehler: $e')),
+          ),
+
+          // ── Tutorial Overlay ───────────────────────────────────────
+          if (showOverlay)
+            TutorialOverlay(
+              highlightKey: spotlightKey,
+              tooltipPosition: tooltipPos,
+              onAction: () => _handleTutorialAction(context),
+              onSkip: () => ref.read(tutorialProvider.notifier).skip(),
             ),
-          );
-        },
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, st) => Center(child: Text('Fehler: $e')),
+        ],
       ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
@@ -86,6 +136,13 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
           setState(() => _selectedIndex = index);
           switch (index) {
             case 0:
+              // Tutorial: addChild-Schritt vormerken
+              final tutStep = ref.read(tutorialProvider).step;
+              if (tutStep == TutorialStep.tapAddChild) {
+                ref
+                    .read(tutorialProvider.notifier)
+                    .setStep(TutorialStep.addChild);
+              }
               _showAddChildDialog(context);
               break;
             case 1:
@@ -105,33 +162,65 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
         type: BottomNavigationBarType.fixed,
         selectedItemColor: Colors.deepPurple,
         unselectedItemColor: Colors.grey,
-        items: const [
+        items: [
           BottomNavigationBarItem(
-            icon: Icon(Icons.person_add),
+            icon: SizedBox(
+              key: _addChildNavKey,
+              child: const Icon(Icons.person_add),
+            ),
             label: 'Kind hinzufügen',
           ),
-          BottomNavigationBarItem(icon: Icon(Icons.star_outline), label: 'Abo'),
-          BottomNavigationBarItem(
+          const BottomNavigationBarItem(
+            icon: Icon(Icons.star_outline),
+            label: 'Abo',
+          ),
+          const BottomNavigationBarItem(
             icon: Icon(Icons.settings_outlined),
             label: 'Einstellungen',
           ),
-          BottomNavigationBarItem(icon: Icon(Icons.logout), label: 'Abmelden'),
+          const BottomNavigationBarItem(
+            icon: Icon(Icons.logout),
+            label: 'Abmelden',
+          ),
         ],
       ),
     );
   }
 
+  // ── Tutorial-Aktion ────────────────────────────────────────────────────────
+
+  void _handleTutorialAction(BuildContext context) {
+    final step = ref.read(tutorialProvider).step;
+    switch (step) {
+      case TutorialStep.tapAddChild:
+        // Den echten „Kind hinzufügen" Button antippen
+        ref.read(tutorialProvider.notifier).setStep(TutorialStep.addChild);
+        _showAddChildDialog(context);
+        break;
+      case TutorialStep.addChild:
+        // Nur Info-Schritt, kein aktiver Button-Tap nötig
+        break;
+      case TutorialStep.parentDashboardOverview:
+        // Tutorial abschließen und zurück
+        ref.read(tutorialProvider.notifier).nextStep();
+        Navigator.of(context).pop();
+        break;
+      default:
+        break;
+    }
+  }
+
   // ── Kind hinzufügen ──────────────────────────────────────────────────────
-  void _showAddChildDialog(BuildContext context) {
+  void _showAddChildDialog(BuildContext screenContext) {
     final nameController = TextEditingController();
     int selectedAge = 6;
     int selectedGrade = 1;
     String selectedSchoolType = 'Grundschule';
 
     showDialog(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setState) => AlertDialog(
+      context: screenContext,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) => AlertDialog(
           title: const Text('Neues Kind registrieren'),
           content: SingleChildScrollView(
             child: Column(
@@ -157,7 +246,7 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
                         ),
                       )
                       .toList(),
-                  onChanged: (val) => setState(() => selectedAge = val!),
+                  onChanged: (val) => setDialogState(() => selectedAge = val!),
                 ),
                 const SizedBox(height: 16),
                 DropdownButtonFormField<int>(
@@ -171,7 +260,8 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
                         ),
                       )
                       .toList(),
-                  onChanged: (val) => setState(() => selectedGrade = val!),
+                  onChanged: (val) =>
+                      setDialogState(() => selectedGrade = val!),
                 ),
                 const SizedBox(height: 16),
                 DropdownButtonFormField<String>(
@@ -189,23 +279,24 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
                             (s) => DropdownMenuItem(value: s, child: Text(s)),
                           )
                           .toList(),
-                  onChanged: (val) => setState(() => selectedSchoolType = val!),
+                  onChanged: (val) =>
+                      setDialogState(() => selectedSchoolType = val!),
                 ),
               ],
             ),
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context),
+              onPressed: () => Navigator.pop(dialogContext),
               child: const Text('Abbrechen'),
             ),
             ElevatedButton(
               onPressed: () async {
                 if (nameController.text.isNotEmpty) {
                   showDialog(
-                    context: context,
+                    context: dialogContext,
                     barrierDismissible: false,
-                    builder: (context) =>
+                    builder: (_) =>
                         const Center(child: CircularProgressIndicator()),
                   );
                   try {
@@ -217,21 +308,45 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
                           grade: selectedGrade,
                           schoolType: selectedSchoolType,
                         );
-                    if (context.mounted) {
-                      Navigator.pop(context); // Loading
-                      Navigator.pop(context); // Dialog
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('✅ Kind erfolgreich angelegt!'),
-                          backgroundColor: Colors.green,
-                          duration: Duration(seconds: 3),
-                        ),
-                      );
+                    if (dialogContext.mounted) {
+                      Navigator.pop(dialogContext); // Loading-Dialog
+                      Navigator.pop(dialogContext); // Kind-Dialog
+
+                      // Tutorial: Kind angelegt → Schritt 6 (showChildCard)
+                      final tutStep = ref.read(tutorialProvider).step;
+                      if (tutStep == TutorialStep.addChild ||
+                          tutStep == TutorialStep.tapAddChild) {
+                        final tutNotifier = ref.read(tutorialProvider.notifier);
+                        tutNotifier.setStep(TutorialStep.showChildCard);
+                        tutNotifier.hideOverlay();
+
+                        await Future.delayed(const Duration(milliseconds: 200));
+
+                        if (screenContext.mounted) {
+                          // screenContext gehört zum ParentDashboard → poppt ihn korrekt
+                          Navigator.of(screenContext).pop();
+                          await Future.delayed(
+                            const Duration(milliseconds: 500),
+                          );
+                          tutNotifier.showOverlay();
+                        }
+                        return;
+                      }
+
+                      if (screenContext.mounted) {
+                        ScaffoldMessenger.of(screenContext).showSnackBar(
+                          const SnackBar(
+                            content: Text('✅ Kind erfolgreich angelegt!'),
+                            backgroundColor: Colors.green,
+                            duration: Duration(seconds: 3),
+                          ),
+                        );
+                      }
                     }
                   } catch (e) {
-                    if (context.mounted) {
-                      Navigator.pop(context);
-                      ScaffoldMessenger.of(context).showSnackBar(
+                    if (dialogContext.mounted) {
+                      Navigator.pop(dialogContext);
+                      ScaffoldMessenger.of(screenContext).showSnackBar(
                         SnackBar(
                           content: Text('❌ Fehler: $e'),
                           backgroundColor: Colors.red,

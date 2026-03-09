@@ -15,7 +15,10 @@ enum RewardType {
 enum RewardTrigger {
   level, // Bei bestimmtem Level
   xp, // Bei bestimmten XP
-  stars, // Bei bestimmten Sternen
+  // ignore: unused_field
+  stars, // ⚠️ Reserviert – Sterne werden aktuell nicht vergeben.
+  // Nur für Klasse 1–2 als visuelle XP-Darstellung aktiv.
+  // Trigger löst nie aus bis Sterne wieder eingeführt werden.
   streak, // Bei Streak-Tagen
   perfectQuiz, // Bei perfektem Quiz (10/10)
   quizCount, // Bei X abgeschlossenen Quizzen

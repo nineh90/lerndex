@@ -255,28 +255,7 @@ class _PrimaryDashboardScreenState
           ],
         ),
         body: _buildBody(child),
-        floatingActionButton: SizedBox(
-          width: 68,
-          height: 68,
-          child: FloatingActionButton(
-            heroTag: 'tutor_fab_primary',
-            onPressed: () => _openTutor(context, child),
-            backgroundColor: Colors.deepPurple.shade200,
-            elevation: 6,
-            shape: const CircleBorder(),
-            tooltip: 'KI-Tutor öffnen',
-            child: ClipOval(
-              child: Image.asset(
-                'assets/images/lerndex_logo.png',
-                width: 55,
-                height: 55,
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) =>
-                    const Icon(Icons.school, color: Colors.white, size: 32),
-              ),
-            ),
-          ),
-        ),
+        floatingActionButton: _buildTutorFab(child),
         floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
         bottomNavigationBar: BottomAppBar(
           shape: const CircularNotchedRectangle(),
@@ -367,13 +346,140 @@ class _PrimaryDashboardScreenState
     );
   }
 
+  Widget _buildTutorFab(ChildModel child) {
+    final isLocked = child.level < 2;
+    return SizedBox(
+      width: 68,
+      height: 68,
+      child: FloatingActionButton(
+        heroTag: 'tutor_fab_primary',
+        onPressed: () => _openTutor(context, child),
+        backgroundColor: isLocked
+            ? Colors.grey.shade400
+            : Colors.deepPurple.shade200,
+        elevation: 6,
+        shape: const CircleBorder(),
+        tooltip: isLocked ? 'Tutor ab Level 2 verfügbar' : 'KI-Tutor öffnen',
+        child: isLocked
+            ? const Icon(Icons.lock_rounded, color: Colors.white, size: 28)
+            : ClipOval(
+                child: Image.asset(
+                  'assets/images/lerndex_logo.png',
+                  width: 55,
+                  height: 55,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) =>
+                      const Icon(Icons.school, color: Colors.white, size: 32),
+                ),
+              ),
+      ),
+    );
+  }
+
   Future<void> _openTutor(BuildContext context, ChildModel child) async {
+    if (child.level < 2) {
+      _showTutorLockedDialog(context, child);
+      return;
+    }
     ref.read(tutorFreshChatProvider.notifier).state = true;
     ref.invalidate(tutorProviderFamily(child.id));
 
     await Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => const TutorScreen()),
+    );
+  }
+
+  void _showTutorLockedDialog(BuildContext context, ChildModel child) {
+    final xpForLevel2 = child.xpToNextLevel;
+    showDialog(
+      context: context,
+      builder: (_) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        child: Padding(
+          padding: const EdgeInsets.all(28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  color: Colors.deepPurple.shade50,
+                  shape: BoxShape.circle,
+                ),
+                child: const Center(
+                  child: Text('🔒', style: TextStyle(fontSize: 38)),
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Tutor noch gesperrt',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.deepPurple,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                'Mach noch $xpForLevel2 XP und erreiche Level 2 – dann schaltest du den KI-Tutor frei! 🚀',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 15,
+                  color: Colors.grey.shade700,
+                  height: 1.5,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.deepPurple.shade50,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text('⚡', style: TextStyle(fontSize: 18)),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Noch $xpForLevel2 XP bis Level 2',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.deepPurple,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.deepPurple,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
+                  child: const Text(
+                    'Weiter lernen! 💪',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

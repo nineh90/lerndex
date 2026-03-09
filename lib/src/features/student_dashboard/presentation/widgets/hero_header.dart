@@ -79,7 +79,6 @@ class HeroHeader extends ConsumerWidget {
           children: [
             HeaderBadge(emoji: '🏆', label: 'Level $level'),
             HeaderBadge(emoji: rank.emoji, label: rank.title),
-            HeaderBadge(emoji: '⭐', label: '$stars Sterne'),
           ],
         ),
         const SizedBox(height: 18),

@@ -255,26 +255,32 @@ class _SecondaryDashboardScreenState
   // ── Tutor FAB ─────────────────────────────────────────────────────────────
 
   Widget _buildTutorFab(DashboardThemeData theme) {
+    final isLocked = widget.child.level < 2;
     return SizedBox(
       width: 62,
       height: 62,
       child: FloatingActionButton(
         heroTag: 'tutor_fab_secondary',
         onPressed: () => _openTutor(),
-        backgroundColor: theme.primary,
+        backgroundColor: isLocked ? Colors.grey.shade400 : theme.primary,
         elevation: 8,
         shape: const CircleBorder(),
-        tooltip: 'KI-Tutor',
-        child: ClipOval(
-          child: Image.asset(
-            'assets/images/lerndex_logo.png',
-            width: 48,
-            height: 48,
-            fit: BoxFit.cover,
-            errorBuilder: (_, __, ___) =>
-                Icon(Icons.school_rounded, color: theme.onPrimary, size: 28),
-          ),
-        ),
+        tooltip: isLocked ? 'Tutor ab Level 2 verfügbar' : 'KI-Tutor',
+        child: isLocked
+            ? const Icon(Icons.lock_rounded, color: Colors.white, size: 26)
+            : ClipOval(
+                child: Image.asset(
+                  'assets/images/lerndex_logo.png',
+                  width: 48,
+                  height: 48,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => Icon(
+                    Icons.school_rounded,
+                    color: theme.onPrimary,
+                    size: 28,
+                  ),
+                ),
+              ),
       ),
     );
   }
@@ -397,11 +403,117 @@ class _SecondaryDashboardScreenState
   }
 
   Future<void> _openTutor() async {
+    if (widget.child.level < 2) {
+      _showTutorLockedDialog();
+      return;
+    }
     ref.read(tutorFreshChatProvider.notifier).state = true;
     ref.invalidate(tutorProviderFamily(widget.child.id));
     await Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => const TutorScreen()),
+    );
+  }
+
+  void _showTutorLockedDialog() {
+    final theme = ref
+        .read(
+          dashboardThemeProvider((
+            userId: ref.read(authStateChangesProvider).value?.uid ?? '',
+            childId: widget.child.id,
+          )),
+        )
+        .theme;
+    final xpNeeded = widget.child.xpToNextLevel;
+    showDialog(
+      context: context,
+      builder: (_) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        backgroundColor: theme.surface,
+        child: Padding(
+          padding: const EdgeInsets.all(28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  color: theme.primary.withOpacity(0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: const Center(
+                  child: Text('🔒', style: TextStyle(fontSize: 38)),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Tutor noch gesperrt',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: theme.primary,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                'Erreiche Level 2, um den KI-Tutor freizuschalten. Noch $xpNeeded XP! 🚀',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 15,
+                  color: theme.onSurface.withOpacity(0.7),
+                  height: 1.5,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: theme.primary.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text('⚡', style: TextStyle(fontSize: 18)),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Noch $xpNeeded XP bis Level 2',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: theme.primary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: theme.primary,
+                    foregroundColor: theme.onPrimary,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
+                  child: const Text(
+                    'Weiter lernen! 💪',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -516,7 +628,7 @@ class _SecondaryHeroHeader extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     if (userId == null) {
-      return _buildContent(child.xp, child.level, child.stars);
+      return _buildContent(child.xp, child.level);
     }
 
     return StreamBuilder<DocumentSnapshot>(
@@ -530,13 +642,12 @@ class _SecondaryHeroHeader extends ConsumerWidget {
         final data = snapshot.data?.data() as Map<String, dynamic>?;
         final xp = data?['xp'] as int? ?? child.xp;
         final level = data?['level'] as int? ?? child.level;
-        final stars = data?['stars'] as int? ?? child.stars;
-        return _buildContent(xp, level, stars);
+        return _buildContent(xp, level);
       },
     );
   }
 
-  Widget _buildContent(int xp, int level, int stars) {
+  Widget _buildContent(int xp, int level) {
     final xpForLevel = XPService.calculateXPForLevel(level);
     final xpInLevel = XPService.calculateXPInCurrentLevel(xp, level);
     final progress = (xpInLevel / xpForLevel).clamp(0.0, 1.0);
@@ -603,7 +714,7 @@ class _SecondaryHeroHeader extends ConsumerWidget {
             children: [
               _HeaderStat(label: 'Level', value: '$level', theme: theme),
               const SizedBox(width: 24),
-              _HeaderStat(label: 'Sterne', value: '$stars ⭐', theme: theme),
+              _HeaderStat(label: 'XP', value: '$xp ⚡', theme: theme),
               const SizedBox(width: 24),
               _HeaderStat(
                 label: 'XP',

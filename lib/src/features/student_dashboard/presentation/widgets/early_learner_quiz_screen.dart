@@ -942,10 +942,8 @@ class _EarlyLearnerQuizScreenState extends ConsumerState<EarlyLearnerQuizScreen>
         isPerfect: isPerfect,
       );
 
-      // 4️⃣ Sterne vergeben
-      await ref
-          .read(profileRepositoryProvider)
-          .updateStars(child.id, earnedStars);
+      // Sterne werden nicht mehr separat vergeben — XP ist der einzige Fortschritts-Wert.
+      // Im Early-Learner-Dashboard werden XP als ⭐ dargestellt.
 
       // 5️⃣ Aktuellen Kind-Stand laden + Streak eintragen
       final rewardService = ref.read(rewardServiceProvider);
@@ -1059,9 +1057,11 @@ class _EarlyLearnerQuizScreenState extends ConsumerState<EarlyLearnerQuizScreen>
       final user = ref.read(authStateChangesProvider).value;
       if (child != null && user != null) {
         try {
+          // Early Learner (Klasse 1–2): 3 XP pro richtiger Antwort (statt 5)
+          // → Level 1→2 benötigt ~20 richtige Antworten (~4 Quizze)
           await ref
               .read(xpServiceProvider)
-              .addXP(userId: user.uid, childId: child.id, xpToAdd: 5);
+              .addXP(userId: user.uid, childId: child.id, xpToAdd: 3);
         } catch (_) {}
 
         // Eltern-Aufgabe als beantwortet markieren (falls vorhanden)
@@ -1177,11 +1177,12 @@ class _EarlyLearnerQuizScreenState extends ConsumerState<EarlyLearnerQuizScreen>
 
     // Schatzkiste (vor dem Finish-Screen)
     if (_showTreasureChest) {
-      final earnedStars = _correctAnswers * 2;
+      final earnedXP = _correctAnswers * 3;
       final isPerfect = _correctAnswers == _questions.length;
       return Scaffold(
         body: TreasureChestOverlay(
-          earnedStars: earnedStars,
+          earnedStars:
+              earnedXP, // Wird als ⭐ angezeigt, entspricht den verdienten XP
           isPerfect: isPerfect,
           onDismiss: () {
             setState(() {
@@ -1900,7 +1901,7 @@ class _EarlyLearnerQuizScreenState extends ConsumerState<EarlyLearnerQuizScreen>
 
   Widget _buildFinishScreen() {
     final allCorrect = _correctAnswers == _questions.length;
-    final earnedStars = _correctAnswers * 2;
+    final earnedXP = _correctAnswers * 3; // XP werden als ⭐ dargestellt
     final showConfetti = _correctAnswers >= 4;
 
     return Scaffold(
@@ -1998,7 +1999,7 @@ class _EarlyLearnerQuizScreenState extends ConsumerState<EarlyLearnerQuizScreen>
                               ),
                             ),
                             const SizedBox(height: 20),
-                            // Sterne-Gewinn
+                            // XP-Gewinn als Sterne dargestellt
                             Container(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 20,
@@ -2017,7 +2018,7 @@ class _EarlyLearnerQuizScreenState extends ConsumerState<EarlyLearnerQuizScreen>
                                   ),
                                   const SizedBox(width: 8),
                                   Text(
-                                    '+$earnedStars',
+                                    '+$earnedXP',
                                     style: const TextStyle(
                                       fontSize: 28,
                                       fontWeight: FontWeight.w900,

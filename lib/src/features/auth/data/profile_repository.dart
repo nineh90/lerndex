@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../domain/child_model.dart';
 import '../../rewards/data/system_rewards_initializer.dart';
+import '../../rewards/data/xp_service.dart';
 import '../../quiz/data/quiz_prefetch_service.dart';
 import 'auth_repository.dart';
 
@@ -54,10 +55,9 @@ class ProfileRepository {
       'grade': grade,
       'xp': 0,
       'level': 1,
-      'stars': 0,
       'streak': 0,
       'totalLearningSeconds': 0,
-      'xpToNextLevel': 25,
+      'xpToNextLevel': XPService.calculateXPForLevel(1),
       'createdAt': FieldValue.serverTimestamp(),
     };
 
@@ -120,10 +120,9 @@ class ProfileRepository {
       grade: grade,
       xp: 0,
       level: 1,
-      stars: 0,
       streak: 0,
       totalLearningSeconds: 0,
-      xpToNextLevel: 25,
+      xpToNextLevel: XPService.calculateXPForLevel(1),
     );
 
     print(
@@ -182,7 +181,12 @@ class ProfileRepository {
     print('✅ Migration abgeschlossen');
   }
 
-  /// Aktualisiert die Sterne eines Kindes
+  /// Aktualisiert die Sterne eines Kindes.
+  ///
+  /// ⚠️ HINWEIS: Wird aktuell nicht aufgerufen — Sterne werden nicht mehr
+  /// aktiv vergeben. Bleibt erhalten für eine zukünftige Verwendung.
+  /// Für Klasse 1–2 dienen Sterne nur noch als visuelle XP-Darstellung
+  /// (Early-Learner-Dashboard), werden aber nicht über diese Methode gesetzt.
   Future<void> updateStars(
     String childId,
     int stars, {
@@ -208,57 +212,6 @@ class ProfileRepository {
         .collection('children')
         .doc(childId)
         .update({'totalLearningSeconds': FieldValue.increment(seconds)});
-  }
-
-  /// Fügt XP hinzu und prüft automatisch auf Level-Up
-  /// Gibt true zurück, wenn ein Level-Up stattgefunden hat
-  Future<bool> addXP(String childId, int xpAmount) async {
-    final docRef = _firestore
-        .collection('users')
-        .doc(_uid)
-        .collection('children')
-        .doc(childId);
-
-    return await _firestore.runTransaction<bool>((transaction) async {
-      final snapshot = await transaction.get(docRef);
-      if (!snapshot.exists) return false;
-
-      final data = snapshot.data()!;
-      final currentXP = data['xp'] ?? 0;
-      final currentLevel = data['level'] ?? 1;
-      final xpToNextLevel = data['xpToNextLevel'] ?? 25;
-
-      final newXP = currentXP + xpAmount;
-      bool leveledUp = false;
-
-      if (newXP >= xpToNextLevel) {
-        transaction.update(docRef, {
-          'xp': newXP - xpToNextLevel,
-          'level': currentLevel + 1,
-          'xpToNextLevel': xpToNextLevel + 5,
-        });
-        leveledUp = true;
-      } else {
-        transaction.update(docRef, {'xp': newXP});
-      }
-
-      return leveledUp;
-    });
-  }
-
-  /// Vergibt Belohnungen nach einer Mission
-  Future<bool> awardMissionReward(
-    String childId, {
-    required int correctAnswers,
-    required int totalQuestions,
-  }) async {
-    final stars = correctAnswers * 2;
-    final xp = correctAnswers;
-
-    await updateStars(childId, stars);
-    final leveledUp = await addXP(childId, xp);
-
-    return leveledUp;
   }
 
   /// Aktualisiert die Stammdaten eines Kindes (Name, Alter, Schulform, Klasse)

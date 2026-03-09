@@ -653,9 +653,9 @@ class LiveChildStatCard extends ConsumerWidget {
                     Row(
                       children: [
                         StatChip(
-                          icon: Icons.star,
-                          color: Colors.deepPurple,
-                          label: '${child.stars} Sterne',
+                          icon: Icons.bolt,
+                          color: Colors.orange,
+                          label: '${child.xp} XP',
                         ),
                         const SizedBox(width: 8),
                         StatChip(

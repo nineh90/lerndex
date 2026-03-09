@@ -5,10 +5,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../auth/data/auth_repository.dart';
 import '../auth/domain/child_model.dart';
 import '../auth/presentation/login_screen.dart';
-import '../auth/presentation/onboarding_screen.dart';
+import '../auth/presentation/setup_dialog.dart';
 import '../auth/presentation/family_dashboard_screen.dart';
 import '../quiz/data/ai_question_cache_repository.dart';
 import '../quiz/data/quiz_prefetch_service.dart';
+import '../../tutorial_provider.dart';
 
 // ============================================================================
 // LERNDEX SPLASH SCREEN
@@ -249,20 +250,24 @@ class _LerndexSplashScreenState extends ConsumerState<LerndexSplashScreen>
     });
   }
 
-  void _navigate(String destination) {
+  Future<void> _navigate(String destination) async {
     if (!mounted) return;
     Widget target;
     switch (destination) {
       case 'onboarding':
-        target = const OnboardingScreen();
+        target = const SetupDialog();
         break;
       case 'dashboard':
+        // Tutorial ggf. fortsetzen wenn noch nicht abgeschlossen.
+        // await nötig damit State gesetzt ist bevor FamilyDashboard baut.
+        await ref.read(tutorialProvider.notifier).startTutorial();
         target = const FamilyDashboardScreen();
         break;
       default:
         target = const LoginScreen();
     }
 
+    if (!mounted) return;
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
         pageBuilder: (_, __, ___) => target,

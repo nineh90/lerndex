@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:lerndex/src/features/auth/data/auth_repository.dart';
 import 'package:lerndex/src/features/auth/domain/child_model.dart';
+import 'package:lerndex/src/features/rewards/data/xp_service.dart';
 import 'package:lerndex/src/features/parent_dashboard/presentation/tracing_game_screen.dart';
 import 'package:lerndex/src/features/parent_dashboard/presentation/widgets/early_learner_rewards_screen.dart';
 import 'package:lerndex/src/features/tts/tts_provider.dart';
@@ -1046,7 +1047,7 @@ class _GiftTeaserState extends ConsumerState<_GiftTeaser>
 }
 
 // ============================================================================
-// STARS CONTENT (unverändert aus v1)
+// STARS CONTENT – zeigt XP als ⭐ Sterne (kindgerechte XP-Darstellung)
 // ============================================================================
 
 class _StarsContent extends ConsumerWidget {
@@ -1058,7 +1059,7 @@ class _StarsContent extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(authStateChangesProvider).value;
 
-    if (user == null) return _buildView(child.stars, child.level);
+    if (user == null) return _buildView(child.xp, child.level);
 
     return StreamBuilder<DocumentSnapshot>(
       stream: FirebaseFirestore.instance
@@ -1069,16 +1070,24 @@ class _StarsContent extends ConsumerWidget {
           .snapshots(),
       builder: (context, snapshot) {
         final data = snapshot.data?.data() as Map<String, dynamic>?;
-        final stars = data?['stars'] as int? ?? child.stars;
+        final xp = data?['xp'] as int? ?? child.xp;
         final level = data?['level'] as int? ?? child.level;
-        return _buildView(stars, level);
+        return _buildView(xp, level);
       },
     );
   }
 
-  Widget _buildView(int stars, int level) {
-    const starsPerLevel = 10;
-    final starsForCurrentLevel = stars % starsPerLevel;
+  Widget _buildView(int xp, int level) {
+    final xpForThisLevel = XPService.calculateXPForLevel(level);
+    final xpInLevel = XPService.calculateXPInCurrentLevel(xp, level);
+    final isMaxLevel = level >= XPService.maxLevel;
+    final progress = isMaxLevel
+        ? 1.0
+        : (xpInLevel / xpForThisLevel).clamp(0.0, 1.0);
+    final xpToNext = xpForThisLevel - xpInLevel;
+
+    // 5 Sterne in einer Reihe — je Stern = 20% Fortschritt
+    final filledStars = isMaxLevel ? 5 : (progress * 5).floor().clamp(0, 5);
 
     return Center(
       child: Padding(
@@ -1086,7 +1095,7 @@ class _StarsContent extends ConsumerWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // ── Gesamt-Sterne auf lila Hintergrund ──────────────────
+            // ── Gesamt-XP als große ⭐-Zahl ──────────────────────────
             Container(
               width: double.infinity,
               padding: const EdgeInsets.symmetric(vertical: 28),
@@ -1110,78 +1119,95 @@ class _StarsContent extends ConsumerWidget {
                   const Text('⭐', style: TextStyle(fontSize: 56)),
                   const SizedBox(height: 8),
                   Text(
-                    '$stars',
+                    '$xp',
                     style: const TextStyle(
                       fontSize: 72,
                       fontWeight: FontWeight.w900,
                       color: Colors.white,
                     ),
                   ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Sterne gesammelt',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.white.withOpacity(0.75),
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
                 ],
               ),
             ),
 
-            const SizedBox(height: 40),
+            const SizedBox(height: 32),
 
-            // ── Sterne zum nächsten Level ────────────────────────────
-            // Level Badge
+            // ── Level-Badges ─────────────────────────────────────────
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Text('🏆', style: TextStyle(fontSize: 28)),
-                const SizedBox(width: 8),
-                Text(
-                  '$level',
-                  style: const TextStyle(
-                    fontSize: 32,
-                    fontWeight: FontWeight.w900,
-                    color: Color(0xFF7C4DFF),
-                  ),
-                ),
-                const SizedBox(width: 16),
+                _LevelBadge(level: level, isCurrent: true),
+                const SizedBox(width: 12),
                 const Icon(
                   Icons.arrow_forward_rounded,
                   color: Color(0xFFBDBDBD),
-                  size: 28,
+                  size: 24,
                 ),
-                const SizedBox(width: 16),
-                Text(
-                  '${level + 1}',
-                  style: TextStyle(
-                    fontSize: 32,
-                    fontWeight: FontWeight.w900,
-                    color: Colors.grey.shade400,
+                const SizedBox(width: 12),
+                _LevelBadge(level: level + 1, isCurrent: false),
+              ],
+            ),
+
+            const SizedBox(height: 20),
+
+            // ── Animierter Fortschrittsbalken ────────────────────────
+            Column(
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: TweenAnimationBuilder<double>(
+                    tween: Tween(begin: 0.0, end: progress),
+                    duration: const Duration(milliseconds: 800),
+                    curve: Curves.easeOut,
+                    builder: (_, value, __) => LinearProgressIndicator(
+                      value: value,
+                      minHeight: 22,
+                      backgroundColor: Colors.grey.shade200,
+                      valueColor: const AlwaysStoppedAnimation<Color>(
+                        Color(0xFFFFB300),
+                      ),
+                    ),
                   ),
                 ),
-                const SizedBox(width: 8),
-                Text(
-                  '🏆',
-                  style: TextStyle(fontSize: 28, color: Colors.grey.shade400),
-                ),
+                const SizedBox(height: 8),
+                if (!isMaxLevel)
+                  Text(
+                    'Noch $xpToNext ⭐ bis Level ${level + 1}',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.grey.shade600,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
               ],
             ),
 
             const SizedBox(height: 24),
 
-            // ── 10 Sterne-Icons ──────────────────────────────────────
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              alignment: WrapAlignment.center,
-              children: List.generate(starsPerLevel, (i) {
-                final filled = i < starsForCurrentLevel;
+            // ── 5 Sterne in einer Reihe (je 20% = 1 Stern) ──────────
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: List.generate(5, (i) {
+                final filled = i < filledStars;
                 return TweenAnimationBuilder<double>(
                   tween: Tween(begin: 0.0, end: 1.0),
-                  duration: Duration(
-                    milliseconds: 200 + (i * 80).clamp(0, 900),
-                  ),
+                  duration: Duration(milliseconds: 300 + i * 120),
                   curve: Curves.elasticOut,
                   builder: (_, v, __) => Transform.scale(
-                    scale: v,
+                    scale: filled ? v : 1.0,
                     child: Text(
                       filled ? '⭐' : '☆',
                       style: TextStyle(
-                        fontSize: 38,
+                        fontSize: 44,
                         color: filled ? Colors.amber : Colors.grey.shade300,
                       ),
                     ),
@@ -1191,6 +1217,50 @@ class _StarsContent extends ConsumerWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// ── Kleines Level-Badge Widget ────────────────────────────────────────────────
+
+class _LevelBadge extends StatelessWidget {
+  final int level;
+  final bool isCurrent;
+
+  const _LevelBadge({required this.level, required this.isCurrent});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+      decoration: BoxDecoration(
+        color: isCurrent ? const Color(0xFF7C4DFF) : Colors.grey.shade200,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: isCurrent
+            ? [
+                BoxShadow(
+                  color: const Color(0xFF7C4DFF).withOpacity(0.3),
+                  blurRadius: 8,
+                  offset: const Offset(0, 4),
+                ),
+              ]
+            : [],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text('🏆', style: TextStyle(fontSize: isCurrent ? 20 : 16)),
+          const SizedBox(width: 6),
+          Text(
+            'Level $level',
+            style: TextStyle(
+              fontSize: isCurrent ? 18 : 15,
+              fontWeight: FontWeight.w800,
+              color: isCurrent ? Colors.white : Colors.grey.shade500,
+            ),
+          ),
+        ],
       ),
     );
   }

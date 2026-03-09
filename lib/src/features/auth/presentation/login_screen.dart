@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/auth_repository.dart';
 import 'register_screen.dart';
-import 'onboarding_screen.dart';
+import 'setup_dialog.dart';
 import 'family_dashboard_screen.dart';
 
 /// Login-Screen für bestehende Nutzer
@@ -53,7 +53,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
       if (!onboardingDone) {
         Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const OnboardingScreen()),
+          MaterialPageRoute(builder: (_) => const SetupDialog()),
         );
       } else {
         Navigator.of(context).pushReplacement(
@@ -78,7 +78,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       // Neuer Google-User → Onboarding
       if (result.isNewUser) {
         Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const OnboardingScreen()),
+          MaterialPageRoute(builder: (_) => const SetupDialog()),
         );
         return;
       }
@@ -91,7 +91,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
       if (!onboardingDone) {
         Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const OnboardingScreen()),
+          MaterialPageRoute(builder: (_) => const SetupDialog()),
         );
       } else {
         Navigator.of(context).pushReplacement(

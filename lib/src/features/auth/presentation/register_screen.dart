@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../data/auth_repository.dart';
 import 'email_verification_screen.dart';
-import 'onboarding_screen.dart';
+import 'setup_dialog.dart';
 
 /// Registrierungs-Screen — Name + E-Mail + Passwort ODER Google
 class RegisterScreen extends ConsumerStatefulWidget {
@@ -133,9 +133,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     try {
       await ref.read(authRepositoryProvider).signInWithGoogle();
       if (!mounted) return;
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const OnboardingScreen()),
-      );
+      Navigator.of(
+        context,
+      ).pushReplacement(MaterialPageRoute(builder: (_) => const SetupDialog()));
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

@@ -59,15 +59,6 @@ class StatisticsTab extends ConsumerWidget {
                 children: [
                   Expanded(
                     child: StatCard(
-                      icon: Icons.star,
-                      color: Colors.amber,
-                      value: '$stars',
-                      label: 'Sterne',
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: StatCard(
                       icon: Icons.emoji_events,
                       color: Colors.deepPurple,
                       value: 'Lvl $level',

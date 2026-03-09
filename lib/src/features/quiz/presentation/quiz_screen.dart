@@ -244,6 +244,18 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
         ),
       );
 
+      // 🎉 Tutor-Freischaltung feiern wenn Level 2 erreicht (Klasse 3+)
+      if (newLevel == 2 && mounted) {
+        final child = ref.read(activeChildProvider);
+        if (child != null && child.grade >= 3) {
+          await showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (_) => _TutorUnlockedDialog(childName: childName),
+          );
+        }
+      }
+
       print('✅ Dialog geschlossen');
     } catch (e, stackTrace) {
       print('❌ Fehler in _showLevelUpDialogImmediate: $e');
@@ -306,11 +318,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
         );
         print('✅ Quiz-Statistiken aktualisiert (Perfect: $isPerfect)');
 
-        // 4️⃣ Sterne vergeben
-        await ref
-            .read(profileRepositoryProvider)
-            .updateStars(child.id, _correctAnswers * 2);
-        print('✅ Sterne vergeben: ${_correctAnswers * 2}');
+        // Sterne werden nicht mehr separat vergeben (XP ist das einzige Fortschritts-System)
 
         // 5️⃣ Kind-Daten laden und Streak-Wert überschreiben
         final rewardService = ref.read(rewardServiceProvider);
@@ -608,7 +616,6 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
   Widget _buildSuccessScreen() {
     final percentage = (_correctAnswers / _questions.length * 100).round();
     final earnedXP = _correctAnswers * 5;
-    final earnedStars = _correctAnswers * 2;
 
     return Scaffold(
       body: Container(
@@ -663,12 +670,6 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
                       ),
                       const Divider(height: 40),
                       RewardRow(
-                        icon: Icons.star,
-                        text: '+$earnedStars Sterne',
-                        color: Colors.amber,
-                      ),
-                      const SizedBox(height: 12),
-                      RewardRow(
                         icon: Icons.flash_on,
                         text: '+$earnedXP XP',
                         color: Colors.orange,
@@ -716,5 +717,126 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
       default:
         return Colors.deepPurple;
     }
+  }
+}
+
+// ============================================================================
+// TUTOR FREIGESCHALTET DIALOG
+// Wird nach dem Level-2-Up für Klasse 3+ gezeigt.
+// ============================================================================
+
+class _TutorUnlockedDialog extends StatelessWidget {
+  final String childName;
+
+  const _TutorUnlockedDialog({required this.childName});
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(28),
+          gradient: const LinearGradient(
+            colors: [Color(0xFF6A1B9A), Color(0xFF9C27B0)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Animiertes Icon
+              Container(
+                width: 90,
+                height: 90,
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.15),
+                  shape: BoxShape.circle,
+                ),
+                child: const Center(
+                  child: Text('🤖', style: TextStyle(fontSize: 46)),
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // Titel
+              const Text(
+                '✨ KI-Tutor freigeschaltet!',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 12),
+
+              // Beschreibung
+              Text(
+                'Super gemacht, $childName! 🎉\n\nDein KI-Tutor wartet auf dich! Du kannst ihm jetzt Fragen zu allen Schulfächern stellen – er erklärt alles auf deine Art.',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.white.withOpacity(0.9),
+                  height: 1.6,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+
+              // Hinweis wo der Tutor ist
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 10,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: const [
+                    Text('👇', style: TextStyle(fontSize: 18)),
+                    SizedBox(width: 8),
+                    Text(
+                      'Tippe auf den Kreis-Button unten!',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+
+              // Button
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    foregroundColor: const Color(0xFF6A1B9A),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
+                  child: const Text(
+                    'Zum Tutor! 🚀',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }

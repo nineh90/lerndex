@@ -24,17 +24,18 @@ class XPService {
   static const int maxLevel = 50;
 
   /// Berechnet benötigte XP um ein bestimmtes Level zu erreichen.
-  /// Progressive Kurve — frühe Level schnell, spätere Level dauern länger.
-  /// Level  1 →   30 XP   Level 10 →  110 XP   (Gesamt ~525 XP)
-  /// Level 20 →  310 XP   Level 30 →  630 XP   (Gesamt ~6.855 XP)
-  /// Level 40 → 1070 XP   Level 50 → 1630 XP   (Gesamt ~28.155 XP)
-  /// Bei ~100 XP/Tag erreichbar in ca. 280 Lerntagen.
+  /// Progressive Kurve — frühe Level dauern mehrere Quizze, spätere Level viel länger.
+  /// Level  1 →   60 XP   Level 10 →  260 XP   (Gesamt ~1.300 XP)
+  /// Level 20 →  760 XP   Level 30 → 1.560 XP  (Gesamt ~15.000 XP)
+  /// Level 40 → 2.760 XP  Level 50 → 4.310 XP  (Gesamt ~70.000 XP)
+  /// Bei ~50 XP/Tag (10 richtige Antworten) erreichbar:
+  ///   Level  5 nach ~30 Tagen, Level 10 nach ~75 Tagen.
   static int calculateXPForLevel(int level) {
     if (level <= 0) return 0;
     if (level > maxLevel) return calculateXPForLevel(maxLevel);
-    // Formel: 30 + 2*level + 0.6*level²  (gerundet auf 5er-Schritte)
-    final raw = 30 + (2 * level) + (level * level * 0.6).toInt();
-    return (raw / 5).round() * 5;
+    // Formel: 50 + 10*level + 1.5*level²  (gerundet auf 10er-Schritte)
+    final raw = 50 + (10 * level) + (level * level * 1.5).toInt();
+    return (raw / 10).round() * 10;
   }
 
   /// Rang-Titel und Emoji für ein gegebenes Level

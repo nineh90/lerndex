@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:lerndex/src/features/auth/presentation/onboarding_screen.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../../tutorial_provider.dart';
 
 /// Einstellungen im Family-Dashboard (für alle sichtbar – auch Kinder).
 /// Enthält nur unkritische Optionen: App-Tour & Rechtliches.
 /// Passwort, PIN und Konto-Löschung sind im Eltern-Dashboard (hinter PIN-Sperre).
-class FamilySettingsScreen extends StatelessWidget {
+class FamilySettingsScreen extends ConsumerWidget {
   const FamilySettingsScreen({super.key});
 
   Future<void> _launchUrl(BuildContext context, String url) async {
@@ -20,7 +21,7 @@ class FamilySettingsScreen extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Einstellungen'),
@@ -36,16 +37,18 @@ class FamilySettingsScreen extends StatelessWidget {
             leading: const Icon(Icons.tour_outlined, color: Color(0xFF6B21A8)),
             title: const Text('App-Tour wiederholen'),
             subtitle: const Text(
-              'Überblick über alle Funktionen von Lerndex',
+              'Interaktives Tutorial durch die wichtigsten Funktionen',
               style: TextStyle(fontSize: 12),
             ),
             trailing: const Icon(Icons.chevron_right),
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => const OnboardingScreen(isReplay: true),
-              ),
-            ),
+            onTap: () async {
+              // Tutorial zurücksetzen und direkt starten
+              await ref.read(tutorialProvider.notifier).resetAndStart();
+              if (context.mounted) {
+                // Einstellungen schließen → zurück zum FamilyDashboard wo das Tutorial läuft
+                Navigator.of(context).pop();
+              }
+            },
           ),
 
           const Divider(indent: 16, endIndent: 16),
@@ -68,18 +71,14 @@ class FamilySettingsScreen extends StatelessWidget {
               size: 18,
               color: Colors.grey,
             ),
-            onTap: () =>
-                _launchUrl(context, 'https://www.lerndex.de/datenschutz'),
+            onTap: () => _launchUrl(context, 'https://lerndex.app/datenschutz'),
           ),
 
           ListTile(
-            leading: const Icon(
-              Icons.description_outlined,
-              color: Color(0xFF6B21A8),
-            ),
-            title: const Text('AGB'),
+            leading: const Icon(Icons.gavel_outlined, color: Color(0xFF6B21A8)),
+            title: const Text('Nutzungsbedingungen'),
             subtitle: const Text(
-              'Allgemeine Geschäftsbedingungen',
+              'AGB von Lerndex',
               style: TextStyle(fontSize: 12),
             ),
             trailing: const Icon(
@@ -87,22 +86,23 @@ class FamilySettingsScreen extends StatelessWidget {
               size: 18,
               color: Colors.grey,
             ),
-            onTap: () => _launchUrl(context, 'https://www.lerndex.de/agb'),
+            onTap: () => _launchUrl(context, 'https://lerndex.app/agb'),
           ),
 
           ListTile(
             leading: const Icon(Icons.info_outline, color: Color(0xFF6B21A8)),
             title: const Text('Impressum'),
+            subtitle: const Text(
+              'Angaben gemäß § 5 TMG',
+              style: TextStyle(fontSize: 12),
+            ),
             trailing: const Icon(
               Icons.open_in_new,
               size: 18,
               color: Colors.grey,
             ),
-            onTap: () =>
-                _launchUrl(context, 'https://www.lerndex.de/impressum'),
+            onTap: () => _launchUrl(context, 'https://lerndex.app/impressum'),
           ),
-
-          const Divider(indent: 16, endIndent: 16),
         ],
       ),
     );
@@ -120,9 +120,9 @@ class _SectionHeader extends StatelessWidget {
       child: Text(
         title.toUpperCase(),
         style: TextStyle(
-          fontSize: 12,
+          fontSize: 11,
           fontWeight: FontWeight.bold,
-          color: Colors.deepPurple[700],
+          color: Colors.grey[500],
           letterSpacing: 1.2,
         ),
       ),
