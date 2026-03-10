@@ -59,7 +59,9 @@ class RewardService {
     }
   }
 
-  /// Prüft alle pending Belohnungen und aktiviert getriggerte
+  /// Prüft alle pending Belohnungen und aktiviert getriggerte.
+  /// Nach Bonus-XP-Vergabe wird automatisch ein zweiter Durchlauf gemacht,
+  /// damit z.B. ein Level-Up durch Bonus-XP sofort weitere Rewards triggert.
   Future<List<RewardModel>> checkAndApproveRewards({
     required String userId,
     required ChildModel child,
@@ -68,98 +70,127 @@ class RewardService {
     try {
       print('🔍 Prüfe Belohnungen für ${child.name}...');
 
-      final snapshot = await _firestore
-          .collection('users')
-          .doc(userId)
-          .collection('children')
-          .doc(child.id)
-          .collection('rewards')
-          .where('status', isEqualTo: 'pending')
-          .get();
+      final allApproved = <RewardModel>[];
 
-      final List<RewardModel> approvedRewards = [];
+      // Maximal 2 Durchläufe: erster mit dem übergebenen Kind,
+      // zweiter (falls Bonus-XP Level/XP verändert haben) mit frisch
+      // geladenem Kind aus Firestore.
+      ChildModel currentChild = child;
 
-      for (var doc in snapshot.docs) {
-        final reward = RewardModel.fromFirestore(doc.data(), doc.id);
+      for (int pass = 0; pass < 2; pass++) {
+        final snapshot = await _firestore
+            .collection('users')
+            .doc(userId)
+            .collection('children')
+            .doc(currentChild.id)
+            .collection('rewards')
+            .where('status', isEqualTo: 'pending')
+            .get();
 
-        final isTriggered = reward.isTriggeredBy(
-          currentLevel: child.level,
-          currentXP: child.xp,
-          currentStars: child.stars,
-          currentStreak: child.streak ?? 0,
-          currentQuizCount: child.totalQuizzes ?? 0,
-          isPerfectQuiz: isPerfectQuiz,
-        );
+        if (snapshot.docs.isEmpty) break;
 
-        if (isTriggered) {
-          await doc.reference.update({
-            'status': 'approved',
-            'approvedAt': FieldValue.serverTimestamp(),
-          });
+        bool bonusXpAwarded = false;
 
-          print('✅ Belohnung freigeschaltet: ${reward.title}');
+        for (var doc in snapshot.docs) {
+          final reward = RewardModel.fromFirestore(doc.data(), doc.id);
 
-          // ⚡ Bonus-XP automatisch vergeben
-          if (reward.bonusXP != null && reward.bonusXP! > 0) {
-            try {
-              final xpService = XPService(_firestore);
-              await xpService.addXP(
-                userId: userId,
-                childId: child.id,
-                xpToAdd: reward.bonusXP!,
-              );
-              print('⚡ +${reward.bonusXP} Bonus-XP vergeben');
-            } catch (e) {
-              print('❌ Fehler beim Vergeben von Bonus-XP: $e');
-            }
-          }
-
-          // 🎭 Avatar automatisch freischalten
-          if (reward.avatarUnlockId != null) {
-            try {
-              await _firestore
-                  .collection('users')
-                  .doc(userId)
-                  .collection('children')
-                  .doc(child.id)
-                  .update({
-                    'unlockedAvatars': FieldValue.arrayUnion([
-                      reward.avatarUnlockId!,
-                    ]),
-                  });
-              print('🎭 Avatar freigeschaltet: ${reward.avatarUnlockId}');
-            } catch (e) {
-              print('❌ Fehler beim Freischalten des Avatars: $e');
-            }
-          }
-
-          approvedRewards.add(
-            reward.copyWith(
-              status: RewardStatus.approved,
-              approvedAt: DateTime.now(),
-            ),
+          final isTriggered = reward.isTriggeredBy(
+            currentLevel: currentChild.level,
+            currentXP: currentChild.xp,
+            currentStars: currentChild.stars,
+            currentStreak: currentChild.streak ?? 0,
+            currentQuizCount: currentChild.totalQuizzes ?? 0,
+            isPerfectQuiz: isPerfectQuiz && pass == 0,
           );
+
+          if (isTriggered) {
+            await doc.reference.update({
+              'status': 'approved',
+              'approvedAt': FieldValue.serverTimestamp(),
+            });
+
+            print('✅ Belohnung freigeschaltet: ${reward.title}');
+
+            // ⚡ Bonus-XP automatisch vergeben
+            if (reward.bonusXP != null && reward.bonusXP! > 0) {
+              try {
+                final xpService = XPService(_firestore);
+                await xpService.addXP(
+                  userId: userId,
+                  childId: currentChild.id,
+                  xpToAdd: reward.bonusXP!,
+                );
+                print('⚡ +${reward.bonusXP} Bonus-XP vergeben');
+                bonusXpAwarded = true;
+              } catch (e) {
+                print('❌ Fehler beim Vergeben von Bonus-XP: $e');
+              }
+            }
+
+            // 🎭 Avatar automatisch freischalten
+            if (reward.avatarUnlockId != null) {
+              try {
+                await _firestore
+                    .collection('users')
+                    .doc(userId)
+                    .collection('children')
+                    .doc(currentChild.id)
+                    .update({
+                      'unlockedAvatars': FieldValue.arrayUnion([
+                        reward.avatarUnlockId!,
+                      ]),
+                    });
+                print('🎭 Avatar freigeschaltet: ${reward.avatarUnlockId}');
+              } catch (e) {
+                print('❌ Fehler beim Freischalten des Avatars: $e');
+              }
+            }
+
+            allApproved.add(
+              reward.copyWith(
+                status: RewardStatus.approved,
+                approvedAt: DateTime.now(),
+              ),
+            );
+          }
         }
+
+        // Zweiter Durchlauf nur wenn Bonus-XP vergeben wurden
+        // (könnte Level/XP-Schwelle für weitere Rewards überschritten haben)
+        if (!bonusXpAwarded) break;
+
+        // Kind neu laden mit aktualisierten XP/Level-Werten
+        final refreshed = await XPService(
+          _firestore,
+        ).getChild(userId: userId, childId: currentChild.id);
+        if (refreshed == null) break;
+        currentChild = refreshed;
+        print(
+          '🔄 Zweiter Reward-Check nach Bonus-XP '
+          '(Level ${currentChild.level}, ${currentChild.xp} XP)',
+        );
       }
 
-      return approvedRewards;
+      return allApproved;
     } catch (e) {
       print('❌ Fehler beim Prüfen der Belohnungen: $e');
       return [];
     }
   }
 
-  /// Erstellt eine dynamische Level-Up Systembelohnung (für Level die nicht
-  /// im SystemRewardsInitializer vordefiniert sind, z.B. Level 4, 6, 8...).
-  /// Für vordefinierte Level-Achievements (2, 3, 5, 7, 10, 15, 20) greift
-  /// der SystemRewardsInitializer – diese Methode greift nur als Fallback.
+  /// Schaltet die Level-Up-Belohnung für ein bestimmtes Level frei.
+  ///
+  /// • Existiert bereits ein `pending`-Reward → wird direkt approved + zurückgegeben.
+  /// • Existiert bereits ein `approved`/`claimed`-Reward → kein Duplikat, null.
+  /// • Existiert noch keiner → neuer Reward wird erstellt (Fallback für nicht
+  ///   vordefinierte Level wie 4, 6, 8 …).
   Future<RewardModel?> createLevelUpReward({
     required String userId,
     required String childId,
     required int level,
   }) async {
     try {
-      final existing = await _firestore
+      final snapshot = await _firestore
           .collection('users')
           .doc(userId)
           .collection('children')
@@ -171,13 +202,45 @@ class RewardService {
           .limit(1)
           .get();
 
-      if (existing.docs.isNotEmpty) {
-        print('ℹ️ Level-Up Belohnung existiert bereits');
-        return null;
+      if (snapshot.docs.isNotEmpty) {
+        final doc = snapshot.docs.first;
+        final existing = RewardModel.fromFirestore(doc.data(), doc.id);
+
+        // Bereits approved oder claimed → nichts tun
+        if (existing.status != RewardStatus.pending) {
+          print('ℹ️ Level-$level-Belohnung bereits freigeschaltet');
+          return null;
+        }
+
+        // Pending → jetzt approven + Bonus-XP vergeben
+        await doc.reference.update({
+          'status': 'approved',
+          'approvedAt': FieldValue.serverTimestamp(),
+        });
+
+        if (existing.bonusXP != null && existing.bonusXP! > 0) {
+          try {
+            final xpService = XPService(_firestore);
+            await xpService.addXP(
+              userId: userId,
+              childId: childId,
+              xpToAdd: existing.bonusXP!,
+            );
+            print('⚡ +${existing.bonusXP} Bonus-XP für Level $level vergeben');
+          } catch (e) {
+            print('❌ Fehler beim Vergeben von Bonus-XP: $e');
+          }
+        }
+
+        print('✅ Level-$level-Belohnung aus pending approved');
+        return existing.copyWith(
+          status: RewardStatus.approved,
+          approvedAt: DateTime.now(),
+        );
       }
 
+      // Kein Reward vorhanden → dynamisch erstellen (z.B. Level 4, 6, 8 …)
       final xpBonus = _getLevelUpBonusXP(level);
-
       return await createSystemReward(
         userId: userId,
         childId: childId,
@@ -190,7 +253,7 @@ class RewardService {
         badgeId: 'badge-level-$level',
       );
     } catch (e) {
-      print('❌ Fehler beim Erstellen der Level-Up Belohnung: $e');
+      print('❌ Fehler beim Freischalten der Level-Up Belohnung: $e');
       return null;
     }
   }

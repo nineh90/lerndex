@@ -5,6 +5,7 @@ import '../../rewards/data/reward_service.dart';
 import '../../rewards/presentation/student_notification_popup.dart';
 import '../../student_dashboard/presentation/widgets/rewards_count_provider.dart';
 import '../../learning_time/learning_time_tracker.dart';
+import '../../auth/presentation/active_child_provider.dart';
 
 // ============================================================================
 // QUIZ FINISH SERVICE
@@ -79,6 +80,10 @@ class QuizFinishService {
       // KRITISCH: Streak aus updateStreak() nehmen, nicht aus getChild()
       // (Firestore-Lese-Latenz kann alten Wert zurückgeben)
       updatedChild = updatedChild.copyWith(streak: newStreak);
+
+      // ✅ FIX: activeChildProvider aktualisieren damit Dashboard-FAB
+      // sofort das neue Level anzeigt (Tutor-Freischaltung bei Level 2)
+      ref.read(activeChildProvider.notifier).update(updatedChild);
 
       // 5. Rewards prüfen
       final unlockedRewards = await rewardService.checkAndApproveRewards(

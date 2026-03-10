@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../auth/domain/child_model.dart';
 import '../domain/question_model.dart';
@@ -133,8 +134,31 @@ class QuizEngine extends StateNotifier<QuizState> {
   LearningTimeTracker? _timeTracker;
   bool _finishCalled = false;
 
+  /// Completer der finish() blockiert bis der Level-Up-Dialog geschlossen wurde.
+  /// Wird von notifyLevelUpDone() aufgelöst (aus quiz_screen nach Dialog-Dismiss).
+  Completer<void>? _levelUpCompleter;
+
   /// Callback: wird nach Level-Up aufgerufen damit der Screen den Dialog zeigt.
   void Function(int newLevel)? onLevelUp;
+
+  /// Callback: wird nach Quiz-Abschluss aufgerufen mit dem finalen Kind-Stand
+  /// (nach allen Bonus-XP). Der Screen nutzt dies um activeChildProvider zu
+  /// aktualisieren und ggf. einen Level-Up-Dialog für Bonus-XP-Level-Ups zu zeigen.
+  /// Der [done] Completer muss vom Screen nach Abschluss aller Aktionen completed werden.
+  void Function(
+    ChildModel updatedChild,
+    int previousLevel,
+    Completer<void> done,
+  )?
+  onChildUpdated;
+
+  /// Muss vom Screen aufgerufen werden nachdem der Level-Up-Dialog geschlossen
+  /// wurde – gibt finish() frei, sodass Reward-Popups danach erscheinen.
+  void notifyLevelUpDone() {
+    if (_levelUpCompleter != null && !_levelUpCompleter!.isCompleted) {
+      _levelUpCompleter!.complete();
+    }
+  }
 
   /// Callback: wird nach Quiz-Abschluss mit freigeschalteten Rewards aufgerufen.
   void Function(List<RewardModel> rewards)? onRewardsUnlocked;
@@ -269,6 +293,8 @@ class QuizEngine extends StateNotifier<QuizState> {
     );
 
     if (leveledUp) {
+      // Completer aufsetzen bevor der Callback feuert – finish() wartet darauf
+      _levelUpCompleter = Completer<void>();
       onLevelUp?.call(newLevel);
     }
 
@@ -360,13 +386,42 @@ class QuizEngine extends StateNotifier<QuizState> {
       );
 
       if (updatedChild != null) {
+        final levelBeforeBonus = updatedChild.level;
         updatedChild = updatedChild.copyWith(streak: newStreak);
+
+        // ✅ FIX: Warten bis Level-Up-Dialog geschlossen wurde bevor
+        // Reward-Popups gezeigt werden (verhindert überlagerte Dialoge).
+        if (_levelUpCompleter != null) {
+          await _levelUpCompleter!.future.timeout(
+            const Duration(seconds: 30),
+            onTimeout: () {},
+          );
+        }
 
         final unlockedRewards = await _rewardService.checkAndApproveRewards(
           userId: userId,
           child: updatedChild,
           isPerfectQuiz: state.isPerfect,
         );
+
+        // Kind nochmal laden – Bonus-XP könnten Level verändert haben
+        final finalChild = await _xpService.getChild(
+          userId: userId,
+          childId: child.id,
+        );
+        if (finalChild != null) {
+          final childUpdateCompleter = Completer<void>();
+          onChildUpdated?.call(
+            finalChild,
+            levelBeforeBonus,
+            childUpdateCompleter,
+          );
+          // Warten bis _handleChildUpdated (inkl. Level-Up-Dialog) fertig ist
+          await childUpdateCompleter.future.timeout(
+            const Duration(seconds: 30),
+            onTimeout: () {},
+          );
+        }
 
         if (unlockedRewards.isNotEmpty) {
           print('🎁 ${unlockedRewards.length} Rewards freigeschaltet');

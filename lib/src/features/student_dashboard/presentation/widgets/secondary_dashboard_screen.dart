@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:lerndex/src/features/auth/data/auth_repository.dart';
 import 'package:lerndex/src/features/auth/domain/child_model.dart';
+import 'package:lerndex/src/features/auth/presentation/active_child_provider.dart';
 import 'package:lerndex/src/features/quiz/presentation/quiz_screen.dart';
 import 'package:lerndex/src/features/rewards/data/xp_service.dart';
 import 'package:lerndex/src/features/rewards/presentation/rewards_screen.dart';
@@ -72,6 +73,12 @@ class _SecondaryDashboardScreenState
     final user = ref.watch(authStateChangesProvider).value;
     if (user == null) return const SizedBox.shrink();
 
+    // ✅ FIX: activeChildProvider watchen damit Level-Änderungen (z.B. Tutor-
+    // Freischaltung bei Level 2) sofort im FAB und _openTutor() ankommen.
+    // Falls der Provider null ist (Eltern-View), auf widget.child zurückfallen.
+    final activeChild = ref.watch(activeChildProvider);
+    final child = activeChild ?? widget.child;
+
     final themeIds = (userId: user.uid, childId: widget.child.id);
     final themeState = ref.watch(dashboardThemeProvider(themeIds));
     final theme = themeState.theme;
@@ -101,7 +108,7 @@ class _SecondaryDashboardScreenState
             opacity: _fadeAnim,
             child: _buildBody(theme, user.uid),
           ),
-          floatingActionButton: _buildTutorFab(theme),
+          floatingActionButton: _buildTutorFab(theme, child),
           floatingActionButtonLocation:
               FloatingActionButtonLocation.centerDocked,
           bottomNavigationBar: _buildBottomNav(theme, rewardsCount),
@@ -254,14 +261,14 @@ class _SecondaryDashboardScreenState
 
   // ── Tutor FAB ─────────────────────────────────────────────────────────────
 
-  Widget _buildTutorFab(DashboardThemeData theme) {
-    final isLocked = widget.child.level < 2;
+  Widget _buildTutorFab(DashboardThemeData theme, ChildModel child) {
+    final isLocked = child.level < 2;
     return SizedBox(
       width: 62,
       height: 62,
       child: FloatingActionButton(
         heroTag: 'tutor_fab_secondary',
-        onPressed: () => _openTutor(),
+        onPressed: () => _openTutor(child),
         backgroundColor: isLocked ? Colors.grey.shade400 : theme.primary,
         elevation: 8,
         shape: const CircleBorder(),
@@ -402,20 +409,20 @@ class _SecondaryDashboardScreenState
     );
   }
 
-  Future<void> _openTutor() async {
-    if (widget.child.level < 2) {
-      _showTutorLockedDialog();
+  Future<void> _openTutor(ChildModel child) async {
+    if (child.level < 2) {
+      _showTutorLockedDialog(child);
       return;
     }
     ref.read(tutorFreshChatProvider.notifier).state = true;
-    ref.invalidate(tutorProviderFamily(widget.child.id));
+    ref.invalidate(tutorProviderFamily(child.id));
     await Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => const TutorScreen()),
     );
   }
 
-  void _showTutorLockedDialog() {
+  void _showTutorLockedDialog(ChildModel child) {
     final theme = ref
         .read(
           dashboardThemeProvider((
@@ -424,7 +431,7 @@ class _SecondaryDashboardScreenState
           )),
         )
         .theme;
-    final xpNeeded = widget.child.xpToNextLevel;
+    final xpNeeded = child.xpToNextLevel;
     showDialog(
       context: context,
       builder: (_) => Dialog(

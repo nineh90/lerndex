@@ -36,6 +36,9 @@ class _TutorScreenState extends ConsumerState<TutorScreen> {
   ChildModel? _child;
   String? _userId;
 
+  // Verhindert gleichzeitige parallele Reward-Checks (Debounce)
+  bool _isCheckingRewards = false;
+
   @override
   void initState() {
     super.initState();
@@ -87,21 +90,38 @@ class _TutorScreenState extends ConsumerState<TutorScreen> {
   }
 
   Future<void> _checkRewardsAfterXp(dynamic child) async {
+    // Verhindert parallele/gespammte Checks nach jeder einzelnen Nachricht
+    if (_isCheckingRewards) return;
+    _isCheckingRewards = true;
+
     final user = ref.read(authStateChangesProvider).value;
     final xpService = _xpService;
     final rewardService = _rewardService;
-    if (user == null || xpService == null || rewardService == null) return;
+    if (user == null || xpService == null || rewardService == null) {
+      _isCheckingRewards = false;
+      return;
+    }
 
     try {
       // Kurz warten damit Firestore den XP-Write abgeschlossen hat
       await Future.delayed(const Duration(milliseconds: 800));
-      if (!mounted) return;
+      if (!mounted) {
+        _isCheckingRewards = false;
+        return;
+      }
 
       ChildModel? updatedChild = await xpService.getChild(
         userId: user.uid,
         childId: child.id,
       );
-      if (updatedChild == null || !mounted) return;
+      if (updatedChild == null || !mounted) {
+        _isCheckingRewards = false;
+        return;
+      }
+
+      // ✅ FIX: activeChildProvider aktualisieren damit Dashboard-FAB
+      // sofort das neue Level anzeigt (Tutor-Freischaltung bei Level 2)
+      ref.read(activeChildProvider.notifier).update(updatedChild);
 
       final unlockedRewards = await rewardService.checkAndApproveRewards(
         userId: user.uid,
@@ -120,6 +140,8 @@ class _TutorScreenState extends ConsumerState<TutorScreen> {
       }
     } catch (e) {
       print('❌ Tutor: Reward-Check fehlgeschlagen: $e');
+    } finally {
+      _isCheckingRewards = false;
     }
   }
 

@@ -1,11 +1,14 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lerndex/src/features/auth/domain/child_model.dart';
 import 'package:lerndex/src/features/quiz/presentation/quiz_engine.dart';
 import 'package:lerndex/src/features/student_dashboard/presentation/widgets/dashboard_theme_provider.dart';
 import '../domain/question_model.dart';
 import '../../auth/presentation/active_child_provider.dart';
 import '../../auth/data/auth_repository.dart';
 import '../../rewards/data/reward_service.dart';
+import '../../rewards/data/xp_service.dart';
 import '../../rewards/domain/reward_model.dart';
 import '../../rewards/presentation/reward_unlocked_dialog.dart';
 import '../../rewards/presentation/student_notification_popup.dart';
@@ -69,6 +72,8 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
 
     // Callbacks setzen (Screen-spezifische Dialoge)
     engine.onLevelUp = (newLevel) => _handleLevelUp(newLevel);
+    engine.onChildUpdated = (updatedChild, previousLevel, done) =>
+        _handleChildUpdated(updatedChild, previousLevel, done);
     engine.onRewardsUnlocked = (rewards) => _handleRewards(rewards);
     engine.onStreakUpdated = (streak) => _handleStreak(streak);
 
@@ -77,11 +82,15 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
 
   // ── Engine-Callbacks ───────────────────────────────────────────────────────
 
-  Future<void> _handleLevelUp(int newLevel) async {
+  Future<void> _handleLevelUp(int newLevel, {int? previousLevel}) async {
     if (!mounted) return;
     final child = ref.read(activeChildProvider);
     final user = ref.read(authStateChangesProvider).value;
     if (child == null || user == null) return;
+
+    // previousLevel: entweder explizit übergeben (Bonus-XP-Fall)
+    // oder aus dem aktuellen activeChildProvider lesen (answerQuestion-Fall)
+    final levelBefore = previousLevel ?? child.level;
 
     // Session-Guard zurücksetzen damit neue Level-Fragen sofort
     // beim nächsten Prefetch (Dashboard-Reload) nachgeladen werden.
@@ -89,6 +98,19 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
 
     // Kurz warten damit Feedback-Overlay sichtbar bleibt
     await Future.delayed(const Duration(milliseconds: 500));
+    if (!mounted) return;
+
+    // ✅ FIX: activeChildProvider sofort aktualisieren damit der Tutor-FAB
+    // im Dashboard das neue Level anzeigt, ohne App-Neustart.
+    final xpService = ref.read(xpServiceProvider);
+    final updatedChild = await xpService.getChild(
+      userId: user.uid,
+      childId: child.id,
+    );
+    if (updatedChild != null && mounted) {
+      ref.read(activeChildProvider.notifier).update(updatedChild);
+    }
+
     if (!mounted) return;
 
     try {
@@ -111,8 +133,8 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
         ),
       );
 
-      // Tutor-Freischaltung bei Level 2 (Klasse 3+)
-      if (newLevel == 2 && mounted && child.grade >= 3) {
+      // Tutor-Freischaltungs-Dialog: wenn Level-Schwelle 2 erstmalig überschritten
+      if (newLevel >= 2 && levelBefore < 2 && mounted && child.grade >= 3) {
         await showDialog(
           context: context,
           barrierDismissible: false,
@@ -135,6 +157,9 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
           ),
         );
       }
+    } finally {
+      // ✅ finish() freigeben damit Reward-Popups nach dem Dialog erscheinen
+      ref.read(quizEngineProvider(widget.subject).notifier).notifyLevelUpDone();
     }
   }
 
@@ -151,6 +176,29 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
         },
       );
     });
+  }
+
+  /// Wird von der Engine nach finish() aufgerufen mit dem finalen Kind-Stand.
+  /// Aktualisiert activeChildProvider und zeigt Level-Up-Dialog wenn der
+  /// Level-Up durch Bonus-XP (nicht durch answerQuestion) ausgelöst wurde.
+  Future<void> _handleChildUpdated(
+    ChildModel updatedChild,
+    int previousLevel,
+    Completer<void> done,
+  ) async {
+    try {
+      // activeChildProvider immer aktualisieren (Tutor-FAB, Dashboard)
+      if (mounted) {
+        ref.read(activeChildProvider.notifier).update(updatedChild);
+      }
+
+      // Level-Up durch Bonus-XP? → onLevelUp hat das nicht erkannt, also hier
+      if (updatedChild.level > previousLevel && mounted) {
+        await _handleLevelUp(updatedChild.level, previousLevel: previousLevel);
+      }
+    } finally {
+      if (!done.isCompleted) done.complete();
+    }
   }
 
   void _handleStreak(int streak) {
