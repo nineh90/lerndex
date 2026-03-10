@@ -3,7 +3,11 @@ import '../../auth/domain/child_model.dart';
 
 // ============================================================================
 // DYNAMISCHE FÄCHER-KONFIGURATION
-// Basierend auf schoolType + grade des Kindes – einfach erweiterbar
+//
+// Klasse 1–2 (Early Learner): Zahlen, Buchstaben, Farben, Formen
+// Klasse 3–4 (Grundschule):   Mathe, Deutsch, Englisch, Sachkunde
+// Klasse 5–10 (Mittelstufe):  + Biologie, Chemie, Physik, Geschichte
+// Klasse 11–13 (Oberstufe):   ohne Sachkunde/Biologie, dafür breiter
 // ============================================================================
 
 class SubjectConfig {
@@ -22,13 +26,43 @@ class SubjectConfig {
   });
 }
 
-/// Gibt die passenden Fächer für ein Kind zurück
-/// Basiert auf schoolType und grade aus ChildModel
+/// Gibt die passenden Fächer für ein Kind zurück.
+/// Basiert auf schoolType und grade aus ChildModel.
 List<SubjectConfig> getSubjectsForChild(ChildModel child) {
   final grade = child.grade;
   final schoolType = child.schoolType;
 
-  // ── Grundschule (Klasse 1–4) ─────────────────────────────────────────────
+  // ── Klasse 1–2 (Early Learner) ────────────────────────────────────────────
+  // Quiz-Faecher: Zahlen, Buchstaben, Farben & Formen.
+  // Malen (Buchstaben/Zahlen) ist kein Quiz -> wird im Dashboard direkt
+  // als TracingGame geoeffnet, taucht hier nicht auf.
+  if (grade <= 2) {
+    return const [
+      SubjectConfig(
+        title: 'Zahlen',
+        emoji: '🔢',
+        icon: Icons.numbers_rounded,
+        gradientColors: [Color(0xFF7E57C2), Color(0xFF512DA8)],
+        subject: 'Zahlen',
+      ),
+      SubjectConfig(
+        title: 'Buchstaben',
+        emoji: '🔤',
+        icon: Icons.abc_rounded,
+        gradientColors: [Color(0xFFEC407A), Color(0xFF8E24AA)],
+        subject: 'Buchstaben',
+      ),
+      SubjectConfig(
+        title: 'Farben & Formen',
+        emoji: '🎨',
+        icon: Icons.palette_rounded,
+        gradientColors: [Color(0xFF1E88E5), Color(0xFF00897B)],
+        subject: 'FarbenFormen',
+      ),
+    ];
+  }
+
+  // ── Klasse 3–4 (Grundschule) ──────────────────────────────────────────────
   if (schoolType == 'Grundschule' || grade <= 4) {
     return const [
       SubjectConfig(

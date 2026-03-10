@@ -1,0 +1,406 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../auth/domain/child_model.dart';
+import '../domain/question_model.dart';
+import '../data/extended_quiz_repository.dart';
+import '../../rewards/data/xp_service.dart';
+import '../../rewards/data/reward_service.dart';
+import '../../rewards/domain/reward_model.dart';
+import '../../generated_tasks/data/generated_task_repository.dart';
+import '../../learning_time/learning_time_tracker.dart';
+
+// ============================================================================
+// QUIZ ENGINE v1
+//
+// Zentrale State-Maschine für alle Quiz-Typen (Klasse 1–2, 3–4, 5–8+).
+// Ersetzt den duplizierten State in quiz_screen.dart und
+// early_learner_quiz_screen.dart.
+//
+// Zuständigkeiten:
+//   - Fragen laden (via ExtendedQuizRepository)
+//   - Antworten prüfen + Retry-Logik für ALLE Klassen
+//   - XP vergeben pro richtiger Antwort (5 XP normal, 2 XP bei Retry)
+//   - Quiz beenden: Streak, Lernzeit, Quiz-Stats, Rewards
+//   - Falsch beantwortete Fragen tracken für Endscreen
+//
+// Die Screens sind nur noch UI — sie rufen Engine-Methoden auf und
+// beobachten QuizState über den quizEngineProvider.
+// ============================================================================
+
+// ── Phasen ───────────────────────────────────────────────────────────────────
+
+enum QuizPhase {
+  loading, // Fragen werden geladen
+  question, // Aktuelle Frage wird angezeigt
+  feedback, // Richtig/Falsch-Feedback (kurze Einblendung)
+  retryPrompt, // Kind kann nochmal versuchen oder überspringen
+  finished, // Quiz beendet, Zusammenfassung anzeigen
+  error, // Ladefehler
+}
+
+// ── State ────────────────────────────────────────────────────────────────────
+
+class QuizState {
+  final QuizPhase phase;
+  final List<Question> questions;
+  final int currentIndex;
+  final bool wasCorrect;
+  final bool isRetry; // Aktuelle Frage ist ein Retry-Versuch
+
+  /// Fragen die endgültig falsch blieben (kein Retry oder Retry auch falsch).
+  final List<Question> wrongQuestions;
+
+  /// Fragen die beim ersten Versuch falsch waren, aber im Retry richtig.
+  final List<Question> retriedCorrectly;
+
+  final int correctAnswers;
+  final int earnedXP;
+  final bool leveledUp;
+  final int newLevel;
+  final String? errorMessage;
+
+  const QuizState({
+    this.phase = QuizPhase.loading,
+    this.questions = const [],
+    this.currentIndex = 0,
+    this.wasCorrect = false,
+    this.isRetry = false,
+    this.wrongQuestions = const [],
+    this.retriedCorrectly = const [],
+    this.correctAnswers = 0,
+    this.earnedXP = 0,
+    this.leveledUp = false,
+    this.newLevel = 1,
+    this.errorMessage,
+  });
+
+  Question? get currentQuestion =>
+      questions.isNotEmpty && currentIndex < questions.length
+      ? questions[currentIndex]
+      : null;
+
+  bool get isLastQuestion => currentIndex >= questions.length - 1;
+
+  double get progress =>
+      questions.isEmpty ? 0.0 : (currentIndex + 1) / questions.length;
+
+  /// Perfektes Quiz: alle Fragen beim ersten Versuch richtig, kein Retry nötig.
+  bool get isPerfect =>
+      questions.isNotEmpty &&
+      wrongQuestions.isEmpty &&
+      retriedCorrectly.isEmpty;
+
+  QuizState copyWith({
+    QuizPhase? phase,
+    List<Question>? questions,
+    int? currentIndex,
+    bool? wasCorrect,
+    bool? isRetry,
+    List<Question>? wrongQuestions,
+    List<Question>? retriedCorrectly,
+    int? correctAnswers,
+    int? earnedXP,
+    bool? leveledUp,
+    int? newLevel,
+    String? errorMessage,
+  }) {
+    return QuizState(
+      phase: phase ?? this.phase,
+      questions: questions ?? this.questions,
+      currentIndex: currentIndex ?? this.currentIndex,
+      wasCorrect: wasCorrect ?? this.wasCorrect,
+      isRetry: isRetry ?? this.isRetry,
+      wrongQuestions: wrongQuestions ?? this.wrongQuestions,
+      retriedCorrectly: retriedCorrectly ?? this.retriedCorrectly,
+      correctAnswers: correctAnswers ?? this.correctAnswers,
+      earnedXP: earnedXP ?? this.earnedXP,
+      leveledUp: leveledUp ?? this.leveledUp,
+      newLevel: newLevel ?? this.newLevel,
+      errorMessage: errorMessage,
+    );
+  }
+}
+
+// ── Engine ───────────────────────────────────────────────────────────────────
+
+class QuizEngine extends StateNotifier<QuizState> {
+  final ExtendedQuizRepository _quizRepo;
+  final XPService _xpService;
+  final RewardService _rewardService;
+  final GeneratedTaskRepository _taskRepo;
+
+  String? _userId;
+  ChildModel? _child;
+  LearningTimeTracker? _timeTracker;
+  bool _finishCalled = false;
+
+  /// Callback: wird nach Level-Up aufgerufen damit der Screen den Dialog zeigt.
+  void Function(int newLevel)? onLevelUp;
+
+  /// Callback: wird nach Quiz-Abschluss mit freigeschalteten Rewards aufgerufen.
+  void Function(List<RewardModel> rewards)? onRewardsUnlocked;
+
+  /// Callback: wird nach Quiz-Abschluss aufgerufen wenn der Streak sich
+  /// tatsächlich erhöht hat (nicht bei "heute bereits gelernt").
+  void Function(int streak)? onStreakUpdated;
+
+  QuizEngine(
+    this._quizRepo,
+    this._xpService,
+    this._rewardService,
+    this._taskRepo,
+  ) : super(const QuizState());
+
+  // ── Öffentliche API ────────────────────────────────────────────────────────
+
+  /// Startet ein neues Quiz. Lädt Fragen und beginnt Lernzeit-Tracking.
+  Future<void> start({
+    required String userId,
+    required ChildModel child,
+    required String subject,
+    int questionCount = 5,
+  }) async {
+    _userId = userId;
+    _child = child;
+    _finishCalled = false;
+
+    state = const QuizState(phase: QuizPhase.loading);
+
+    _timeTracker = LearningTimeTracker(userId: userId, childId: child.id);
+    _timeTracker!.startTracking();
+
+    try {
+      final questions = await _quizRepo.loadQuizForChild(
+        userId: userId,
+        childId: child.id,
+        child: child,
+        subject: subject,
+        questionCount: questionCount,
+      );
+
+      if (questions.isEmpty) {
+        state = const QuizState(
+          phase: QuizPhase.error,
+          errorMessage: 'Keine Fragen verfügbar. Bitte versuche es später.',
+        );
+        return;
+      }
+
+      state = QuizState(phase: QuizPhase.question, questions: questions);
+
+      print(
+        '✅ QuizEngine: ${questions.length} Fragen geladen für $subject '
+        '(${child.name}, Kl. ${child.grade}, Lv. ${child.level})',
+      );
+    } catch (e) {
+      print('❌ QuizEngine.start Fehler: $e');
+      state = QuizState(
+        phase: QuizPhase.error,
+        errorMessage: 'Fragen konnten nicht geladen werden.',
+      );
+    }
+  }
+
+  /// Verarbeitet eine Antwort des Kindes.
+  /// Gibt zurück ob die Antwort korrekt war (für sofortige UI-Reaktion).
+  Future<bool> answerQuestion(String selectedAnswer) async {
+    final current = state.currentQuestion;
+    if (current == null || state.phase != QuizPhase.question) return false;
+
+    final isCorrect = current.isCorrect(selectedAnswer);
+    final isRetry = state.isRetry;
+
+    int xpGained = 0;
+    bool leveledUp = false;
+    int newLevel = state.newLevel;
+
+    if (isCorrect) {
+      // Erster Versuch: 5 XP, Retry: 2 XP
+      final xpToAdd = isRetry ? 2 : 5;
+
+      try {
+        final xpResult = await _xpService.addXP(
+          userId: _userId!,
+          childId: _child!.id,
+          xpToAdd: xpToAdd,
+        );
+        xpGained = xpToAdd;
+        leveledUp = xpResult.leveledUp;
+        newLevel = xpResult.newLevel;
+      } catch (e) {
+        print('⚠️ QuizEngine: XP-Vergabe fehlgeschlagen: $e');
+      }
+
+      // Eltern-Aufgabe als korrekt beantwortet markieren
+      if (current.isParentTask) {
+        try {
+          await _taskRepo.markQuestionAnsweredCorrectly(
+            userId: _userId!,
+            parentTaskRef: current.parentTaskRef!,
+          );
+        } catch (e) {
+          print('⚠️ QuizEngine: Eltern-Aufgabe Markierung fehlgeschlagen: $e');
+        }
+      }
+    }
+
+    // Wrong-Listen aktualisieren
+    final updatedWrong = List<Question>.from(state.wrongQuestions);
+    final updatedRetriedCorrectly = List<Question>.from(state.retriedCorrectly);
+
+    if (isRetry && isCorrect) {
+      // Retry erfolgreich → aus wrongQuestions raus
+      updatedWrong.removeWhere((q) => q.question == current.question);
+      if (!updatedRetriedCorrectly.any((q) => q.question == current.question)) {
+        updatedRetriedCorrectly.add(current);
+      }
+    }
+
+    state = state.copyWith(
+      phase: QuizPhase.feedback,
+      wasCorrect: isCorrect,
+      correctAnswers: isCorrect
+          ? state.correctAnswers + 1
+          : state.correctAnswers,
+      earnedXP: state.earnedXP + xpGained,
+      leveledUp: leveledUp,
+      newLevel: newLevel,
+      wrongQuestions: updatedWrong,
+      retriedCorrectly: updatedRetriedCorrectly,
+    );
+
+    if (leveledUp) {
+      onLevelUp?.call(newLevel);
+    }
+
+    return isCorrect;
+  }
+
+  /// Wechselt nach falscher Antwort in den Retry-Prompt.
+  /// Wird nach dem Feedback-Delay aufgerufen.
+  void showRetryPrompt() {
+    if (state.phase != QuizPhase.feedback || state.wasCorrect) return;
+    state = state.copyWith(phase: QuizPhase.retryPrompt);
+  }
+
+  /// Kind möchte die falsch beantwortete Frage nochmal versuchen.
+  void retryQuestion() {
+    state = state.copyWith(phase: QuizPhase.question, isRetry: true);
+  }
+
+  /// Kind überspringt den Retry → Frage bleibt in wrongQuestions.
+  void skipRetry() {
+    final current = state.currentQuestion;
+    if (current == null) return;
+
+    final updatedWrong = List<Question>.from(state.wrongQuestions);
+    if (!updatedWrong.any((q) => q.question == current.question)) {
+      updatedWrong.add(current);
+    }
+
+    state = state.copyWith(wrongQuestions: updatedWrong);
+    _advance();
+  }
+
+  /// Weiter nach richtiger Antwort oder nach Retry-Entscheidung.
+  void advance() => _advance();
+
+  void _advance() {
+    if (state.isLastQuestion) {
+      finish();
+      return;
+    }
+    state = state.copyWith(
+      phase: QuizPhase.question,
+      currentIndex: state.currentIndex + 1,
+      isRetry: false,
+      leveledUp: false, // Level-Up-Flag zurücksetzen nach Advance
+    );
+  }
+
+  /// Beendet das Quiz und speichert alle Daten.
+  Future<void> finish() async {
+    if (_finishCalled) return;
+    _finishCalled = true;
+
+    state = state.copyWith(phase: QuizPhase.finished);
+
+    final userId = _userId;
+    final child = _child;
+    if (userId == null || child == null) return;
+
+    try {
+      // 1. Streak (MUSS vor saveTime kommen)
+      final streakBefore = child.streak ?? 0;
+      final newStreak = await _xpService.updateStreak(
+        userId: userId,
+        childId: child.id,
+      );
+      print('✅ Streak: $newStreak Tage (vorher: $streakBefore)');
+      // Nur feuern wenn Streak sich tatsächlich erhöht hat — nicht bei
+      // "heute bereits gelernt" (würde sonst Milestone-Popup doppelt zeigen)
+      if (newStreak > streakBefore) {
+        onStreakUpdated?.call(newStreak);
+      }
+
+      // 2. Lernzeit
+      _timeTracker?.stopTracking();
+      await _timeTracker?.saveTime();
+
+      // 3. Quiz-Statistiken
+      await _xpService.updateQuizStats(
+        userId: userId,
+        childId: child.id,
+        isPerfect: state.isPerfect,
+      );
+
+      // 4. Kind neu laden (mit aktuellem Streak) + Rewards prüfen
+      ChildModel? updatedChild = await _xpService.getChild(
+        userId: userId,
+        childId: child.id,
+      );
+
+      if (updatedChild != null) {
+        updatedChild = updatedChild.copyWith(streak: newStreak);
+
+        final unlockedRewards = await _rewardService.checkAndApproveRewards(
+          userId: userId,
+          child: updatedChild,
+          isPerfectQuiz: state.isPerfect,
+        );
+
+        if (unlockedRewards.isNotEmpty) {
+          print('🎁 ${unlockedRewards.length} Rewards freigeschaltet');
+          onRewardsUnlocked?.call(unlockedRewards);
+        }
+      }
+
+      print(
+        '✅ Quiz abgeschlossen: ${state.correctAnswers}/${state.questions.length} '
+        'richtig | ${state.earnedXP} XP | '
+        '${state.wrongQuestions.length} endgültig falsch',
+      );
+    } catch (e, st) {
+      print('❌ QuizEngine.finish Fehler: $e\n$st');
+    }
+  }
+
+  @override
+  void dispose() {
+    _timeTracker?.dispose();
+    super.dispose();
+  }
+}
+
+// ── Provider ──────────────────────────────────────────────────────────────────
+
+/// Family-Provider nach Subject — ein Engine-Slot pro offenem Quiz-Screen.
+/// autoDispose: Engine wird beim Verlassen des Screens automatisch aufgeräumt.
+final quizEngineProvider = StateNotifierProvider.family
+    .autoDispose<QuizEngine, QuizState, String>((ref, subject) {
+      return QuizEngine(
+        ref.watch(extendedQuizRepositoryProvider),
+        ref.watch(xpServiceProvider),
+        ref.watch(rewardServiceProvider),
+        ref.watch(generatedTaskRepositoryProvider),
+      );
+    });

@@ -1,7 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 export 'generated_task_batch.dart';
-export 'quiz_question.dart';
+// quiz_question.dart wurde entfernt — Question aus question_model.dart verwenden.
 
 /// 🎯 STATUS EINER GENERIERTEN AUFGABE
 enum TaskApprovalStatus {
@@ -79,7 +79,9 @@ extension SubjectExtension on Subject {
     return toString().split('.').last;
   }
 
-  /// Verfügbare Klassen je Fach – abgeleitet aus den assets/questions/*.json
+  /// Verfügbare Klassen je Fach.
+  /// farbenFormen = Early-Learner-Bereich (Zahlen, Buchstaben, Farben, Formen)
+  /// → nur für Klasse 1–2 im Eltern-Task-Generator sichtbar.
   static const Map<Subject, List<int>> availableGrades = {
     Subject.mathe: [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13],
     Subject.deutsch: [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13],
@@ -89,11 +91,19 @@ extension SubjectExtension on Subject {
     Subject.chemie: [5, 6, 7, 8, 9, 10, 11, 12, 13],
     Subject.physik: [5, 6, 7, 8, 9, 10, 11, 12, 13],
     Subject.geschichte: [5, 6, 7, 8, 9, 10, 11, 12, 13],
+    Subject.farbenFormen: [1, 2],
   };
 
-  /// Prüft ob das Fach für die angegebene Klasse Fragen enthält
+  /// Prüft ob das Fach für die angegebene Klasse verfügbar ist.
   bool isAvailableForGrade(int grade) {
     return availableGrades[this]?.contains(grade) ?? false;
+  }
+
+  /// Gibt alle Fächer zurück die für eine bestimmte Klasse verfügbar sind.
+  static List<Subject> forGrade(int grade) {
+    return Subject.values
+        .where((s) => availableGrades[s]?.contains(grade) ?? false)
+        .toList();
   }
 
   static Subject fromString(String value) {
@@ -112,6 +122,16 @@ extension SubjectExtension on Subject {
         return Subject.physik;
       case 'geschichte':
         return Subject.geschichte;
+      case 'farbenformen':
+      case 'farben & formen':
+      case 'farben_formen':
+      case 'farben':
+      case 'formen':
+        return Subject.farbenFormen;
+      case 'zahlen':
+        return Subject.mathe; // Early Learner 'Zahlen' -> mathe enum
+      case 'buchstaben':
+        return Subject.deutsch; // Early Learner 'Buchstaben' -> deutsch enum
       default:
         return Subject.mathe;
     }

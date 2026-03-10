@@ -1,6 +1,14 @@
 export 'quiz_data.dart';
 
-/// Repräsentiert eine Quiz-Frage
+/// Repräsentiert eine Quiz-Frage.
+///
+/// Diese Klasse ist die EINZIGE Question-Klasse im gesamten Projekt.
+/// Sie ersetzt die frühere QuizQuestion-Klasse vollständig.
+///
+/// Quellen:
+///   - KI-generierte Fragen (via VertexAIService / AiQuestionCacheRepository)
+///   - Von Eltern freigegebene Aufgaben (parentTaskRef != null)
+///   - Statische JSON-Fallback-Fragen
 class Question {
   final int grade;
   final String question;
@@ -14,7 +22,11 @@ class Question {
   /// Wird beim korrekten Beantworten in Firestore markiert.
   final String? parentTaskRef;
 
-  Question({
+  /// Optionale Referenz zur ursprünglichen generierten Aufgaben-ID.
+  /// Entspricht GeneratedQuestion.id — wird für Task-Tracking genutzt.
+  final String? generatedTaskId;
+
+  const Question({
     required this.grade,
     required this.question,
     required this.options,
@@ -22,49 +34,80 @@ class Question {
     required this.difficulty,
     this.topic = '',
     this.parentTaskRef,
+    this.generatedTaskId,
   });
+
+  // ── Factories ──────────────────────────────────────────────────────────────
 
   factory Question.fromJson(Map<String, dynamic> json) {
     return Question(
-      grade: json['grade'] as int,
+      grade: json['grade'] as int? ?? 1,
       question: json['question'] as String,
       options: List<String>.from(json['options']),
       answer: json['answer'] as String,
-      difficulty: json['difficulty'] as String,
+      difficulty: json['difficulty'] as String? ?? 'medium',
       topic: json['topic'] as String? ?? '',
+      parentTaskRef: json['parentTaskRef'] as String?,
+      generatedTaskId: json['generatedTaskId'] as String?,
     );
   }
+
+  // ── Methoden ───────────────────────────────────────────────────────────────
 
   bool isCorrect(String selectedAnswer) => selectedAnswer == answer;
 
   /// True wenn diese Frage von Eltern gepflegt wurde
   bool get isParentTask => parentTaskRef != null;
-}
 
-/// Repräsentiert ein komplettes Quiz mit mehreren Fragen
-class QuizData {
-  final String subject;
-  final List<Question> questions;
+  Map<String, dynamic> toJson() {
+    return {
+      'grade': grade,
+      'question': question,
+      'options': options,
+      'answer': answer,
+      'difficulty': difficulty,
+      'topic': topic,
+      if (parentTaskRef != null) 'parentTaskRef': parentTaskRef,
+      if (generatedTaskId != null) 'generatedTaskId': generatedTaskId,
+    };
+  }
 
-  QuizData({required this.subject, required this.questions});
-
-  factory QuizData.fromJson(Map<String, dynamic> json) {
-    return QuizData(
-      subject: json['subject'] as String,
-      questions: (json['questions'] as List)
-          .map((q) => Question.fromJson(q))
-          .toList(),
+  Question copyWith({
+    int? grade,
+    String? question,
+    List<String>? options,
+    String? answer,
+    String? difficulty,
+    String? topic,
+    String? parentTaskRef,
+    String? generatedTaskId,
+  }) {
+    return Question(
+      grade: grade ?? this.grade,
+      question: question ?? this.question,
+      options: options ?? List<String>.from(this.options),
+      answer: answer ?? this.answer,
+      difficulty: difficulty ?? this.difficulty,
+      topic: topic ?? this.topic,
+      parentTaskRef: parentTaskRef ?? this.parentTaskRef,
+      generatedTaskId: generatedTaskId ?? this.generatedTaskId,
     );
   }
 
-  List<Question> getQuestionsForGrade(int grade, {int count = 5}) {
-    var filtered = questions.where((q) => q.grade == grade).toList();
-    if (filtered.length < count) {
-      filtered.addAll(
-        questions.where((q) => q.grade == grade - 1 || q.grade == grade + 1),
-      );
-    }
-    filtered.shuffle();
-    return filtered.take(count).toList();
-  }
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is Question &&
+          runtimeType == other.runtimeType &&
+          question == other.question &&
+          answer == other.answer &&
+          grade == other.grade;
+
+  @override
+  int get hashCode => Object.hash(question, answer, grade);
+
+  @override
+  String toString() =>
+      'Question(grade: $grade, topic: $topic, difficulty: $difficulty, '
+      'q: "${question.length > 50 ? "${question.substring(0, 50)}..." : question}")';
 }

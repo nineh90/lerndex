@@ -51,25 +51,31 @@ const _earlySubjects = [
     emoji: '🔢',
     label: 'Zahlen',
     colors: [Color(0xFF7E57C2), Color(0xFF512DA8)],
-    subject: 'Mathe',
+    subject: 'Zahlen',
   ),
   _EarlySubject(
     emoji: '🔤',
     label: 'Buchstaben',
     colors: [Color(0xFFEC407A), Color(0xFF8E24AA)],
-    subject: 'Deutsch',
+    subject: 'Buchstaben',
   ),
   _EarlySubject(
-    emoji: '🔴',
+    emoji: '🎨',
     label: 'Farben & Formen',
     colors: [Color(0xFF1E88E5), Color(0xFF00897B)],
     subject: 'FarbenFormen',
   ),
   _EarlySubject(
     emoji: '✏️',
-    label: 'Malen',
+    label: 'Malen Buchstaben',
     colors: [Color(0xFFFF7043), Color(0xFFBF360C)],
-    subject: 'Malen',
+    subject: 'MalenBuchstaben',
+  ),
+  _EarlySubject(
+    emoji: '🖊️',
+    label: 'Malen Zahlen',
+    colors: [Color(0xFF26A69A), Color(0xFF00695C)],
+    subject: 'MalenZahlen',
   ),
 ];
 
@@ -178,15 +184,17 @@ class _EarlyLearnerDashboardScreenState
     // TTS stoppen bevor wir navigieren
     ref.read(ttsControllerProvider.notifier).stop();
 
-    // Sonderfall: Mal-Spiel
-    if (subject.subject == 'Malen') {
+    // Sonderfall: Mal-Spiele (Buchstaben oder Zahlen malen)
+    if (subject.subject == 'MalenBuchstaben' ||
+        subject.subject == 'MalenZahlen') {
+      final mode = subject.subject == 'MalenBuchstaben'
+          ? TracingMode.letters
+          : TracingMode.numbers;
       Navigator.push(
         context,
         PageRouteBuilder(
-          pageBuilder: (_, animation, __) => TracingGameScreen(
-            subjectColors: subject.colors,
-            mode: TracingMode.mixed,
-          ),
+          pageBuilder: (_, animation, __) =>
+              TracingGameScreen(subjectColors: subject.colors, mode: mode),
           transitionsBuilder: (_, animation, __, child) {
             return ScaleTransition(
               scale: CurvedAnimation(

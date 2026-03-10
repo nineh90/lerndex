@@ -275,6 +275,7 @@ class VertexAIService {
     required String userId,
     required Subject subject,
     int numberOfTasks = 5,
+    String? earlyLearnerTopic,
   }) async {
     await _ensureTaskInitialized();
 
@@ -298,6 +299,7 @@ class VertexAIService {
         child: child,
         subject: subject,
         numberOfTasks: numberOfTasks,
+        earlyLearnerTopic: earlyLearnerTopic,
       );
 
       final content = [
@@ -369,7 +371,7 @@ class VertexAIService {
       ]);
       final text = response.text ?? '';
 
-      return _parseQuizResponse(text, child.grade);
+      return _parseQuizResponse(text, child.grade, subject: subject);
     } catch (e) {
       print('❌ Quiz-Generierung fehlgeschlagen: $e');
       return [];
@@ -562,6 +564,7 @@ Füge als ALLERLETZTE Zeile exakt diese zwei Tags an (werden automatisch entfern
     required ChildModel child,
     required Subject subject,
     required int numberOfTasks,
+    String? earlyLearnerTopic,
   }) {
     final curriculumContext = CurriculumData.buildCurriculumContext(
       schoolType: child.schoolType,
@@ -602,6 +605,13 @@ ${child.schoolType == 'Hauptschule' || (child.schoolType == 'Gesamtschule' && ch
 - Keine formalen Beweise oder komplexe Fachsprache
 ''' : ''}
 
+${earlyLearnerTopic != null ? '''
+FRUEHE LERNPHASE (Klasse 1-2) - PFLICHT:
+- Thema: $earlyLearnerTopic
+- Aufgaben NUR zu "$earlyLearnerTopic" - keine anderen Themen!
+- Sprache: sehr einfach, kurze Saetze, kindgerecht (6-8 Jahre)
+- Antworten: einzelne Woerter oder Zahlen, keine langen Saetze
+''' : ''}
 AUFGABE:
 Schau auf das Foto und erstelle GENAU $numberOfTasks neue Multiple-Choice-Aufgaben zu ähnlichen Themen.
 
@@ -709,6 +719,13 @@ REGELN:
 
 $exampleQuestions
 
+⚠️ FACH-BINDUNG (KRITISCH):
+Du generierst AUSSCHLIESSLICH Fragen zum Fach $subjectDisplay.
+- KEINE Fragen aus anderen Fächern (nicht Mathe wenn Deutsch angefragt, etc.)
+- KEINE fächerübergreifenden Fragen
+- Jede Frage MUSS eindeutig dem Fach $subjectDisplay zuzuordnen sein
+- Das Feld "topic" MUSS ein Unterthema von $subjectDisplay enthalten (z.B. "Bruchrechnung", "Groß- und Kleinschreibung", "Simple Past")
+
 Antworte NUR mit einem JSON-Array, kein Text oder Markdown davor/danach:
 [
   {
@@ -716,7 +733,7 @@ Antworte NUR mit einem JSON-Array, kein Text oder Markdown davor/danach:
     "options": ["A", "B", "C", "D"],
     "answer": "Richtige Option exakt wie oben",
     "difficulty": "easy|medium|hard",
-    "topic": "Thema"
+    "topic": "Spezifisches Unterthema von $subjectDisplay"
   }
 ]
 ''';
@@ -806,8 +823,14 @@ Antworte NUR mit einem JSON-Array, kein Text oder Markdown davor/danach:
     }
   }
 
-  /// Parst Quiz-Fragen (Question-Format für Schüler-Dashboard)
-  List<Question> _parseQuizResponse(String rawText, int grade) {
+  /// Parst Quiz-Fragen (Question-Format für Schüler-Dashboard).
+  /// Führt nach dem Parsen eine Fach-Validierung durch:
+  /// Fragen die eindeutig zum falschen Fach gehören werden herausgefiltert.
+  List<Question> _parseQuizResponse(
+    String rawText,
+    int grade, {
+    String subject = '',
+  }) {
     try {
       String cleaned = _cleanJson(rawText);
 
@@ -823,6 +846,7 @@ Antworte NUR mit einem JSON-Array, kein Text oder Markdown davor/danach:
 
       final questions = <Question>[];
       final seenQuestions = <String>{};
+      int filteredOut = 0;
 
       for (final item in jsonList) {
         try {
@@ -831,6 +855,15 @@ Antworte NUR mit einem JSON-Array, kein Text oder Markdown davor/danach:
             grade,
           );
           if (q == null) continue;
+
+          // Fach-Validierung: Frage muss zum angeforderten Fach passen
+          if (subject.isNotEmpty && !_questionMatchesSubject(q, subject)) {
+            filteredOut++;
+            print(
+              '🚫 Fach-Mismatch gefiltert: "${q.question.length > 60 ? q.question.substring(0, 60) : q.question}..." (topic: ${q.topic})',
+            );
+            continue;
+          }
 
           final normalized = q.question.toLowerCase().trim();
           if (seenQuestions.contains(normalized)) continue;
@@ -841,12 +874,273 @@ Antworte NUR mit einem JSON-Array, kein Text oder Markdown davor/danach:
         }
       }
 
-      print('✅ ${questions.length} Quiz-Fragen geparst');
+      if (filteredOut > 0) {
+        print('🚫 $filteredOut Fragen wegen Fach-Mismatch gefiltert');
+      }
+      print('✅ ${questions.length} Quiz-Fragen geparst (Fach: $subject)');
       return questions;
     } catch (e) {
       print('❌ JSON-Parsing (Quiz) fehlgeschlagen: $e');
       return [];
     }
+  }
+
+  /// Prüft ob eine Frage wirklich zum angeforderten Fach gehört.
+  /// Erkennt offensichtliche Fach-Mismatches anhand von Schlüsselwörtern
+  /// im Fragetext und im topic-Feld.
+  bool _questionMatchesSubject(Question q, String subject) {
+    final subjectLower = subject.toLowerCase();
+    final questionLower = q.question.toLowerCase();
+    final topicLower = q.topic.toLowerCase();
+    final combined = '$questionLower $topicLower';
+
+    // Schlüsselwörter die auf ein bestimmtes Fach hindeuten
+    const subjectKeywords = <String, List<String>>{
+      'mathe': [
+        'rechne',
+        'berechne',
+        'zahl',
+        'summe',
+        'differenz',
+        'produkt',
+        'quotient',
+        'gleichung',
+        'prozent',
+        'bruch',
+        'fläche',
+        'volumen',
+        'winkel',
+        'dreieck',
+        'viereck',
+        'kreis',
+        'addition',
+        'subtraktion',
+        'multiplikation',
+        'division',
+        'dezimal',
+        'komma',
+        'meter',
+        'kilometer',
+        'kilogramm',
+        'liter',
+        'euro',
+        'cent',
+        'primzahl',
+        'teiler',
+        'algebra',
+        'geometrie',
+        'statistik',
+        'wahrscheinlichkeit',
+      ],
+      'deutsch': [
+        'satz',
+        'wort',
+        'artikel',
+        'nomen',
+        'verb',
+        'adjektiv',
+        'adverb',
+        'grammatik',
+        'rechtschreibung',
+        'komma',
+        'gedicht',
+        'text',
+        'präteritum',
+        'perfekt',
+        'nominativ',
+        'akkusativ',
+        'dativ',
+        'genitiv',
+        'konjunktion',
+        'pronomen',
+        'silbe',
+        'umlaut',
+        'substantiv',
+        'präposition',
+        'synonym',
+        'antonym',
+        'leseverstehen',
+      ],
+      'englisch': [
+        'english',
+        'translate',
+        'übersetz',
+        'present',
+        'past',
+        'future',
+        'tense',
+        'verb',
+        'noun',
+        'adjective',
+        'article',
+        'plural',
+        'singular',
+        'sentence',
+        'vocabulary',
+        'grammar',
+        'spelling',
+        'simple past',
+        'present perfect',
+        'will',
+        'going to',
+        'modal',
+        'irregular',
+        'listening',
+        'reading',
+      ],
+      'biologie': [
+        'zelle',
+        'organ',
+        'tier',
+        'pflanze',
+        'fotosynthese',
+        'evolution',
+        'genetik',
+        'dna',
+        'chromosom',
+        'protein',
+        'ökosystem',
+        'nahrungskette',
+        'bakterie',
+        'virus',
+        'säugetier',
+        'wirbeltier',
+        'blüte',
+        'wurzel',
+        'blatt',
+        'stamm',
+        'atmung',
+        'verdauung',
+        'blutkreislauf',
+        'nervensystem',
+        'hormon',
+        'mitose',
+        'meiose',
+      ],
+      'chemie': [
+        'atom',
+        'molekül',
+        'element',
+        'verbindung',
+        'reaktion',
+        'säure',
+        'base',
+        'salz',
+        'oxidation',
+        'reduktion',
+        'bindung',
+        'elektron',
+        'proton',
+        'neutron',
+        'periodensystem',
+        'formel',
+        'mol',
+        'masse',
+        'konzentration',
+        'lösung',
+        'titration',
+        'elektrolyse',
+        'verbrennung',
+        'katalysator',
+      ],
+      'physik': [
+        'kraft',
+        'energie',
+        'arbeit',
+        'leistung',
+        'geschwindigkeit',
+        'beschleunigung',
+        'masse',
+        'gewicht',
+        'dichte',
+        'druck',
+        'welle',
+        'frequenz',
+        'wellenlänge',
+        'spannung',
+        'strom',
+        'widerstand',
+        'magnet',
+        'licht',
+        'optik',
+        'linse',
+        'spiegel',
+        'wärme',
+        'temperatur',
+        'newton',
+        'joule',
+        'watt',
+      ],
+      'sachkunde': [
+        'tier',
+        'pflanze',
+        'jahreszeit',
+        'wetter',
+        'körper',
+        'sinne',
+        'familie',
+        'berufe',
+        'verkehr',
+        'umwelt',
+        'natur',
+        'wald',
+        'wasser',
+        'luft',
+        'boden',
+        'heimat',
+        'gemeinde',
+        'gesundheit',
+      ],
+      'geschichte': [
+        'jahr',
+        'jahrhundert',
+        'jahrtausend',
+        'krieg',
+        'frieden',
+        'kaiser',
+        'könig',
+        'revolution',
+        'republik',
+        'demokratie',
+        'antike',
+        'mittelalter',
+        'neuzeit',
+        'römisch',
+        'griechisch',
+        'ägypten',
+        'weltkrieg',
+        'nazi',
+        'weimar',
+        'ddr',
+        'brd',
+        'reformation',
+        'aufklärung',
+        'industrialisierung',
+      ],
+    };
+
+    // Schlüsselwörter anderer Fächer (nicht das angeforderte)
+    final otherSubjects = subjectKeywords.entries
+        .where((e) => e.key != subjectLower)
+        .toList();
+
+    // Prüfe ob das topic eines ANDEREN Fachs eindeutig zutrifft
+    // und KEIN einziges Keyword des richtigen Fachs vorkommt
+    final ownKeywords = subjectKeywords[subjectLower] ?? [];
+    final hasOwnKeyword = ownKeywords.any((kw) => combined.contains(kw));
+
+    for (final entry in otherSubjects) {
+      final foreignKeywords = entry.value;
+      // Mind. 2 fremde Keywords + kein eigenes Keyword → Mismatch
+      final foreignMatches = foreignKeywords
+          .where((kw) => combined.contains(kw))
+          .length;
+      if (foreignMatches >= 2 && !hasOwnKeyword) {
+        return false;
+      }
+    }
+
+    return true;
   }
 
   Question? _parseQuizQuestionFromMap(Map<String, dynamic> item, int grade) {

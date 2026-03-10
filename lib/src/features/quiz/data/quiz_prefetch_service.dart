@@ -6,34 +6,55 @@ import 'package:lerndex/src/features/parent_dashboard/presentation/widgets/early
 import 'package:lerndex/src/features/quiz/data/ai_question_cache_repository.dart';
 import 'package:lerndex/src/features/student_dashboard/presentation/subject_config.dart';
 
-/// Pre-Fetch Service fuer Quiz-Fragen.
+/// Pre-Fetch Service für Quiz-Fragen.
 ///
 /// Wird aufgerufen beim App-Start (Splash-Screen):
 ///   → Alle Kinder parallel
-///   → Pro Kind: alle Faecher parallel (mit Concurrency-Limit)
+///   → Pro Kind: alle Fächer parallel (mit Concurrency-Limit)
 ///
 /// Auch aufgerufen bei:
-///   1. Kind-Erstellung -> sofort alle Faecher vorbereiten
-///   2. Dashboard-Laden -> Sicherheitsnetz fuer existierende Kinder
+///   1. Kind-Erstellung  → sofort alle Fächer vorbereiten
+///   2. Dashboard-Laden  → Sicherheitsnetz für existierende Kinder
 ///
-/// Nutzt prefillIfEmpty():
-///   - Generiert NUR wenn Cache leer ist (< 5 Fragen)
-///   - Markiert keine Fragen als gespielt
+/// Guard-Logik (verhindert unnötige KI-Calls):
+///   - prefillIfEmpty() in AiQuestionCacheRepository prüft ob >= 5 Fragen
+///     für das aktuelle Level vorhanden sind → kein Firestore-Write nötig
+///   - _sessionPrefetchDone (In-Memory): merkt sich pro childId+subject ob
+///     dieser App-Start bereits einen erfolgreichen Prefetch abgeschlossen hat
+///     → verhindert Doppel-Calls wenn Dashboard + Splash beide prefetchen
 class QuizPrefetchService {
   // Maximale parallele Vertex-AI-Anfragen pro Kind.
-  // Zu viele parallele Requests koennen Rate-Limits triggern.
   static const int _subjectConcurrency = 3;
 
-  /// Gibt die Anzahl der Fächer für ein Kind zurück.
-  /// Wird im Splash verwendet um den Gesamtfortschritt zu berechnen.
-  /// Für Klasse 1–2 werden auch die Early-Learner-Fächer mitgezählt.
+  /// In-Memory: welche "childId|subject"-Kombinationen wurden in dieser
+  /// App-Session bereits erfolgreich geprefetcht.
+  /// Wird NIE persistiert — reset bei App-Neustart ist gewünscht, da
+  /// ein Neustart oft bedeutet dass Zeit vergangen ist.
+  static final Set<String> _sessionPrefetchDone = {};
+
+  // ============================================================
+  // HILFSMETHODEN
+  // ============================================================
+
+  /// Anzahl der Quiz-Fächer für ein Kind (für Splash-Fortschrittsanzeige).
   static int subjectCountForChild(ChildModel child) {
     return getSubjectsForChild(child).length + earlyLearnerSubjectCount(child);
   }
 
-  /// Faecher-Reihenfolge: Mathe und Deutsch zuerst.
+  static int earlyLearnerSubjectCount(ChildModel child) {
+    // Zahlen, Buchstaben, FarbenFormen — die 3 Quiz-fähigen Early-Learner-Fächer
+    return child.grade <= 2 ? 3 : 0;
+  }
+
+  /// Fächer-Reihenfolge: Prioritäts-Fächer zuerst laden.
   static List<SubjectConfig> _prioritized(List<SubjectConfig> subjects) {
-    const priority = ['Mathe', 'Deutsch', 'FarbenFormen'];
+    const priority = [
+      'Mathe',
+      'Deutsch',
+      'Zahlen',
+      'Buchstaben',
+      'FarbenFormen',
+    ];
     final sorted = List<SubjectConfig>.from(subjects);
     sorted.sort((a, b) {
       final aIdx = priority.indexOf(a.subject);
@@ -44,15 +65,16 @@ class QuizPrefetchService {
   }
 
   // ============================================================
-  // NEU: Alle Kinder parallel prefetchen (fuer Splash-Screen)
+  // ALLE KINDER PREFETCHEN (für Splash-Screen)
   // ============================================================
 
-  /// Laed fuer ALLE uebergebenen Kinder alle Faecher vor.
+  /// Lädt für ALLE übergebenen Kinder alle Fächer vor.
   ///
   /// Strategie:
-  /// - Kinder werden parallel gestartet (Future.wait)
-  /// - Pro Kind laufen bis zu [_subjectConcurrency] Faecher gleichzeitig
-  /// - Fehler eines Kindes/Fachs brechen nicht die anderen ab
+  ///   - Kinder parallel (Future.wait)
+  ///   - Pro Kind: bis zu [_subjectConcurrency] Fächer gleichzeitig
+  ///   - Session-Guard: bereits geprefetchte Fächer werden übersprungen
+  ///   - Fehler eines Kindes/Fachs brechen nicht die anderen ab
   static Future<void> prefetchAllChildren({
     required String userId,
     required List<ChildModel> children,
@@ -69,10 +91,9 @@ class QuizPrefetchService {
         );
 
     print(
-      '🚀 Splash-Prefetch: Starte fuer ${children.length} Kinder parallel...',
+      '🚀 Splash-Prefetch: Starte für ${children.length} Kinder parallel...',
     );
 
-    // Alle Kinder gleichzeitig starten
     await Future.wait(
       children.map(
         (child) => _prefetchChildParallel(
@@ -84,10 +105,10 @@ class QuizPrefetchService {
       ),
     );
 
-    print('✅ Splash-Prefetch abgeschlossen fuer alle Kinder');
+    print('✅ Splash-Prefetch abgeschlossen');
   }
 
-  /// Prefetch fuer ein einzelnes Kind mit parallelen Fach-Requests.
+  /// Prefetch für ein einzelnes Kind.
   static Future<void> _prefetchChildParallel({
     required String userId,
     required ChildModel child,
@@ -96,17 +117,19 @@ class QuizPrefetchService {
   }) async {
     final subjects = _prioritized(getSubjectsForChild(child));
 
-    print(
-      '🔮 ${child.name}: ${subjects.length} Faecher werden geladen '
-      '(max $_subjectConcurrency parallel)...',
-    );
-
-    // Faecher in Gruppen aufteilen fuer kontrollierten Parallelismus
+    // Quiz-Fächer in Concurrency-Batches laden
     for (int i = 0; i < subjects.length; i += _subjectConcurrency) {
       final batch = subjects.skip(i).take(_subjectConcurrency).toList();
-
       await Future.wait(
         batch.map((subjectConfig) async {
+          final guardKey = '${child.id}|${subjectConfig.subject}';
+
+          // Session-Guard: Schon mal gemacht? Überspringen.
+          if (_sessionPrefetchDone.contains(guardKey)) {
+            onSubjectDone?.call(child.name, subjectConfig.subject);
+            return;
+          }
+
           try {
             await cache.prefillIfEmpty(
               userId: userId,
@@ -114,6 +137,7 @@ class QuizPrefetchService {
               child: child,
               subject: subjectConfig.subject,
             );
+            _sessionPrefetchDone.add(guardKey);
             onSubjectDone?.call(child.name, subjectConfig.subject);
           } catch (e) {
             print('⚠️ ${child.name} / ${subjectConfig.title}: $e');
@@ -122,10 +146,9 @@ class QuizPrefetchService {
       );
     }
 
-    print('✅ ${child.name}: alle Faecher bereit');
+    print('✅ ${child.name}: Quiz-Fächer bereit');
 
-    // Extra: Für Klasse 1–2 auch Early-Learner-Fragen vorladen
-    // WICHTIG: await damit der Splash-Screen darauf wartet!
+    // Klasse 1–2: Early-Learner-Fragen separat vorladen
     if (child.grade <= 2) {
       await _prefetchEarlyLearnerQuestions(
         userId: userId,
@@ -137,52 +160,53 @@ class QuizPrefetchService {
 
   // ============================================================
   // EARLY LEARNER: KI-Fragen für Klasse 1–2 vorladen
-  //
-  // Generiert pro Fach GENUG Fragen damit nach dem Client-Filter
-  // mindestens 5 gute Fragen für ein Quiz übrig bleiben.
-  // Ziel: 20 Fragen pro Fach im Cache (bei ~50% Filterrate → 10 gute)
   // ============================================================
-
-  /// Anzahl der Early-Learner-Fächer (für Fortschrittsberechnung im Splash)
-  static int earlyLearnerSubjectCount(ChildModel child) {
-    return child.grade <= 2 ? 3 : 0; // Mathe, Deutsch, FarbenFormen
-  }
 
   static Future<void> _prefetchEarlyLearnerQuestions({
     required String userId,
     required ChildModel child,
     void Function(String childName, String subject)? onSubjectDone,
   }) async {
-    const earlySubjects = ['Mathe', 'Deutsch', 'FarbenFormen'];
+    // Die 3 Quiz-fähigen Early-Learner-Fächer (Malen ist kein Quiz)
+    const earlySubjects = ['Zahlen', 'Buchstaben', 'FarbenFormen'];
     final repo = EarlyLearnerQuestionRepository(FirebaseFirestore.instance);
+
     print(
-      '🧒 ${child.name} (Klasse ${child.grade}): Early-Learner-Fragen vorladen...',
+      '🧒 ${child.name} (Kl. ${child.grade}): Early-Learner-Fragen vorladen...',
     );
+
     for (final subject in earlySubjects) {
+      final guardKey = '${child.id}|early|$subject';
+      if (_sessionPrefetchDone.contains(guardKey)) {
+        onSubjectDone?.call(child.name, '$subject 🧒');
+        continue;
+      }
+
       try {
-        // prefillForQuiz generiert genug Fragen damit nach dem Filter
-        // mindestens 15 übrig bleiben (= 3 volle Quiz-Runden)
+        // 20 Fragen generieren → nach ~50% Filter bleiben ~10 (= 2 Quiz-Runden)
         await repo.prefillForQuiz(
           userId: userId,
           childId: child.id,
           child: child,
           subject: subject,
-          targetCount: 20, // 20 Fragen → nach ~50% Filter bleiben ~10
+          targetCount: 20,
         );
+        _sessionPrefetchDone.add(guardKey);
         onSubjectDone?.call(child.name, '$subject 🧒');
       } catch (e) {
         print('⚠️ Early-Prefill Fehler $subject: $e');
       }
     }
+
     print('✅ ${child.name}: Early-Learner-Fragen bereit');
   }
 
   // ============================================================
-  // BESTEHEND: Ein Kind prefetchen (sequenziell, fuer Fallback)
+  // EINZELNES KIND (für Dashboard-Fallback und Kind-Erstellung)
   // ============================================================
 
-  /// Generiert Fragen fuer alle Faecher eines einzelnen Kindes.
-  /// Fuer Rueckwaertskompatibilitaet und den StudentDashboard-Fallback.
+  /// Prefetch für ein einzelnes Kind.
+  /// Nutzt denselben Session-Guard wie prefetchAllChildren.
   static Future<void> prefetchAllSubjects({
     required String userId,
     required ChildModel child,
@@ -195,11 +219,25 @@ class QuizPrefetchService {
           VertexAIService(),
         );
 
-    // Direkt die parallele Variante nutzen
     await _prefetchChildParallel(
       userId: userId,
       child: child,
       cache: effectiveCache,
+    );
+  }
+
+  /// Session-Guard manuell zurücksetzen — z.B. nach einem Level-Up damit
+  /// die neuen Level-Fragen sofort nachgeladen werden.
+  static void invalidateSessionGuard(String childId, [String? subject]) {
+    if (subject != null) {
+      _sessionPrefetchDone.removeWhere(
+        (k) => k.startsWith('$childId|$subject'),
+      );
+    } else {
+      _sessionPrefetchDone.removeWhere((k) => k.startsWith('$childId|'));
+    }
+    print(
+      '🔄 Session-Guard invalidiert: $childId ${subject ?? "(alle Fächer)"}',
     );
   }
 }

@@ -1,20 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:lerndex/src/features/generated_tasks/data/generated_task_repository.dart';
+import 'package:lerndex/src/features/quiz/presentation/quiz_engine.dart';
+import 'package:lerndex/src/features/student_dashboard/presentation/widgets/dashboard_theme_provider.dart';
 import '../domain/question_model.dart';
 import '../../auth/presentation/active_child_provider.dart';
-import '../../auth/data/profile_repository.dart';
-import '../../rewards/data/xp_service.dart';
+import '../../auth/data/auth_repository.dart';
 import '../../rewards/data/reward_service.dart';
+import '../../rewards/domain/reward_model.dart';
 import '../../rewards/presentation/reward_unlocked_dialog.dart';
 import '../../rewards/presentation/student_notification_popup.dart';
 import '../../student_dashboard/presentation/widgets/rewards_count_provider.dart';
-import '../../auth/domain/child_model.dart';
-import '../../auth/data/auth_repository.dart';
-import '../../learning_time/learning_time_tracker.dart';
-import '../data/extended_quiz_repository.dart';
 import 'widgets/answer_button.dart';
-import 'widgets/reward_row.dart';
+import '../data/quiz_prefetch_service.dart';
+
+// ============================================================================
+// QUIZ SCREEN – Klasse 3+ (v2)
+//
+// State-Logik vollständig in QuizEngine ausgelagert.
+// Design: identisch zu v1, erweitert um:
+//   • Retry-Prompt nach falscher Antwort (für alle Klassen)
+//   • Falsch-beantwortete Fragen im Endscreen
+//   • Theme-Unterstützung für Klasse 5+ (DashboardTheme)
+// ============================================================================
 
 class QuizScreen extends ConsumerStatefulWidget {
   final String subject;
@@ -27,37 +34,17 @@ class QuizScreen extends ConsumerStatefulWidget {
 
 class _QuizScreenState extends ConsumerState<QuizScreen>
     with SingleTickerProviderStateMixin {
-  // Variablen
-  List<Question> _questions = [];
-  int _currentIndex = 0;
-  int _correctAnswers = 0;
-  bool _isLoading = true;
-  bool _showingFeedback = false;
-  bool _wasCorrect = false;
-  bool _isFinished = false;
-  bool _finishQuizCalled = false; // Guard gegen Doppelaufruf
-
   late AnimationController _feedbackController;
   late Animation<double> _scaleAnimation;
   late Animation<double> _fadeAnimation;
 
-  LearningTimeTracker? _timeTracker;
-
   @override
   void initState() {
     super.initState();
-
-    // ⏱️ ZEIT-TRACKER INITIALISIEREN
-    final child = ref.read(activeChildProvider);
-    final user = ref.read(authStateChangesProvider).value;
-
-    if (child != null && user != null) {
-      _timeTracker = LearningTimeTracker(userId: user.uid, childId: child.id);
-      _timeTracker!.startTracking();
-    }
-
     _setupAnimations();
-    _loadQuestions();
+
+    // Engine nach dem ersten Frame starten
+    WidgetsBinding.instance.addPostFrameCallback((_) => _startQuiz());
   }
 
   void _setupAnimations() {
@@ -65,175 +52,55 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
       vsync: this,
       duration: const Duration(milliseconds: 800),
     );
-
     _scaleAnimation = Tween<double>(begin: 0.0, end: 1.2).animate(
       CurvedAnimation(parent: _feedbackController, curve: Curves.elasticOut),
     );
-
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _feedbackController, curve: Curves.easeIn),
     );
   }
 
-  Future<void> _loadQuestions() async {
+  Future<void> _startQuiz() async {
     final child = ref.read(activeChildProvider);
-    if (child == null) return;
-
     final user = ref.read(authStateChangesProvider).value;
-    final userId = user?.uid ?? '';
+    if (child == null || user == null) return;
 
-    final questions = await ref
-        .read(extendedQuizRepositoryProvider)
-        .loadQuizForChild(
-          userId: userId,
-          childId: child.id,
-          child: child,
-          subject: widget.subject,
-          questionCount: 5,
-        );
+    final engine = ref.read(quizEngineProvider(widget.subject).notifier);
 
-    if (mounted) {
-      setState(() {
-        _questions = questions;
-        _isLoading = false;
-      });
-    }
+    // Callbacks setzen (Screen-spezifische Dialoge)
+    engine.onLevelUp = (newLevel) => _handleLevelUp(newLevel);
+    engine.onRewardsUnlocked = (rewards) => _handleRewards(rewards);
+    engine.onStreakUpdated = (streak) => _handleStreak(streak);
+
+    await engine.start(userId: user.uid, child: child, subject: widget.subject);
   }
 
-  void _checkAnswer(String selected) async {
-    if (_showingFeedback) return;
+  // ── Engine-Callbacks ───────────────────────────────────────────────────────
 
-    final isCorrect = _questions[_currentIndex].isCorrect(selected);
-
-    setState(() {
-      _showingFeedback = true;
-      _wasCorrect = isCorrect;
-    });
-
-    if (isCorrect) {
-      _correctAnswers++;
-
-      final xpService = ref.read(xpServiceProvider);
-      final activeChild = ref.read(activeChildProvider);
-      final user = ref.read(authStateChangesProvider).value;
-
-      final currentQuestion = _questions[_currentIndex];
-      if (currentQuestion.isParentTask) {
-        final user = ref.read(authStateChangesProvider).value;
-        if (user != null) {
-          ref
-              .read(generatedTaskRepositoryProvider)
-              .markQuestionAnsweredCorrectly(
-                userId: user.uid,
-                parentTaskRef: currentQuestion.parentTaskRef!,
-              );
-          print(
-            '✅ Eltern-Aufgabe als beantwortet markiert: ${currentQuestion.parentTaskRef}',
-          );
-        }
-      }
-
-      if (activeChild != null && user != null) {
-        try {
-          print('🔄 Speichere XP für Kind: ${activeChild.name}...');
-
-          final xpResult = await xpService.addXP(
-            userId: user.uid,
-            childId: activeChild.id,
-            xpToAdd: 5,
-          );
-
-          print(
-            '✅ XP gespeichert: ${xpResult.newXP} XP, Level: ${xpResult.newLevel}',
-          );
-
-          if (xpResult.leveledUp && mounted) {
-            print('🎉 LEVEL UP zu Level ${xpResult.newLevel}');
-
-            _feedbackController.forward().then((_) {
-              _feedbackController.reverse();
-            });
-
-            await Future.delayed(const Duration(milliseconds: 500));
-
-            if (!mounted) return;
-
-            setState(() => _showingFeedback = false);
-
-            await _showLevelUpDialogImmediate(
-              newLevel: xpResult.newLevel,
-              childName: activeChild.name,
-              userId: user.uid,
-              childId: activeChild.id,
-            );
-
-            if (!mounted) return;
-
-            if (_currentIndex < _questions.length - 1) {
-              setState(() => _currentIndex++);
-            } else {
-              _finishQuiz();
-            }
-
-            return;
-          }
-        } catch (e, stackTrace) {
-          print('❌ Fehler beim Speichern von XP: $e');
-          print('Stack: $stackTrace');
-
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('XP konnten nicht gespeichert werden'),
-                backgroundColor: Colors.red,
-              ),
-            );
-          }
-        }
-      }
-    }
-
-    // Normaler Feedback-Flow
-    _feedbackController.forward().then((_) {
-      _feedbackController.reverse();
-    });
-
-    await Future.delayed(const Duration(milliseconds: 1500));
-
+  Future<void> _handleLevelUp(int newLevel) async {
     if (!mounted) return;
+    final child = ref.read(activeChildProvider);
+    final user = ref.read(authStateChangesProvider).value;
+    if (child == null || user == null) return;
 
-    setState(() => _showingFeedback = false);
+    // Session-Guard zurücksetzen damit neue Level-Fragen sofort
+    // beim nächsten Prefetch (Dashboard-Reload) nachgeladen werden.
+    QuizPrefetchService.invalidateSessionGuard(child.id, widget.subject);
 
-    if (_currentIndex < _questions.length - 1) {
-      setState(() => _currentIndex++);
-    } else {
-      _finishQuiz();
-    }
-  }
-
-  Future<void> _showLevelUpDialogImmediate({
-    required int newLevel,
-    required String childName,
-    required String userId,
-    required String childId,
-  }) async {
-    print('🎯 _showLevelUpDialogImmediate aufgerufen');
-
+    // Kurz warten damit Feedback-Overlay sichtbar bleibt
+    await Future.delayed(const Duration(milliseconds: 500));
     if (!mounted) return;
 
     try {
+      // Belohnung erstellen
       final rewardService = ref.read(rewardServiceProvider);
-
       final reward = await rewardService.createLevelUpReward(
-        userId: userId,
-        childId: childId,
+        userId: user.uid,
+        childId: child.id,
         level: newLevel,
       );
 
-      print('✅ Belohnung erstellt: ${reward?.title ?? "null"}');
-
       if (!mounted) return;
-
       await showDialog(
         context: context,
         barrierDismissible: false,
@@ -244,29 +111,21 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
         ),
       );
 
-      // 🎉 Tutor-Freischaltung feiern wenn Level 2 erreicht (Klasse 3+)
-      if (newLevel == 2 && mounted) {
-        final child = ref.read(activeChildProvider);
-        if (child != null && child.grade >= 3) {
-          await showDialog(
-            context: context,
-            barrierDismissible: false,
-            builder: (_) => _TutorUnlockedDialog(childName: childName),
-          );
-        }
+      // Tutor-Freischaltung bei Level 2 (Klasse 3+)
+      if (newLevel == 2 && mounted && child.grade >= 3) {
+        await showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (_) => _TutorUnlockedDialog(childName: child.name),
+        );
       }
-
-      print('✅ Dialog geschlossen');
-    } catch (e, stackTrace) {
-      print('❌ Fehler in _showLevelUpDialogImmediate: $e');
-      print('Stack: $stackTrace');
-
+    } catch (e) {
       if (mounted) {
         await showDialog(
           context: context,
           builder: (_) => AlertDialog(
             title: const Text('🎉 Level Up!'),
-            content: Text('Du hast Level $newLevel erreicht!\n\n($e)'),
+            content: Text('Du hast Level $newLevel erreicht!'),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context),
@@ -279,130 +138,124 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
     }
   }
 
-  void _finishQuiz() async {
-    if (_finishQuizCalled) return;
-    _finishQuizCalled = true;
-    setState(() => _isFinished = true);
+  void _handleRewards(List<RewardModel> rewards) {
+    if (!mounted) return;
+    Future.delayed(const Duration(milliseconds: 500), () {
+      if (!mounted) return;
+      showRewardNotifications(
+        context,
+        rewards: rewards,
+        onGoToRewards: () {
+          ref.read(navigateToRewardsTabProvider.notifier).state = true;
+          if (mounted) Navigator.of(context).pop();
+        },
+      );
+    });
+  }
 
-    final child = ref.read(activeChildProvider);
-    final user = ref.read(authStateChangesProvider).value;
-
-    if (child != null && user != null) {
-      try {
-        print('📊 Quiz beendet - speichere Daten...');
-
-        final xpService = ref.read(xpServiceProvider);
-        final isPerfect = _correctAnswers == _questions.length;
-
-        // 1️⃣ Streak aktualisieren — ZUERST, bevor lastLearningDate
-        // durch saveTime() überschrieben wird! Sonst würde der erste
-        // Lerntag nie auf Streak=1 gesetzt werden.
-        final newStreak = await xpService.updateStreak(
-          userId: user.uid,
-          childId: child.id,
-        );
-        print('✅ Streak aktualisiert: $newStreak Tage');
-
-        // 2️⃣ Zeit speichern
-        if (_timeTracker != null) {
-          _timeTracker!.stopTracking();
-          await _timeTracker!.saveTime();
-          print('✅ Lernzeit gespeichert: ${_timeTracker!.formattedTime}');
-        }
-
-        // 3️⃣ Quiz-Stats aktualisieren
-        await xpService.updateQuizStats(
-          userId: user.uid,
-          childId: child.id,
-          isPerfect: isPerfect,
-        );
-        print('✅ Quiz-Statistiken aktualisiert (Perfect: $isPerfect)');
-
-        // Sterne werden nicht mehr separat vergeben (XP ist das einzige Fortschritts-System)
-
-        // 5️⃣ Kind-Daten laden und Streak-Wert überschreiben
-        final rewardService = ref.read(rewardServiceProvider);
-        ChildModel? updatedChild = await xpService.getChild(
-          userId: user.uid,
-          childId: child.id,
-        );
-
-        if (updatedChild != null) {
-          // ✅ KRITISCH: Streak-Wert aus updateStreak() nehmen, nicht aus getChild()
-          updatedChild = updatedChild.copyWith(streak: newStreak);
-
-          // 6️⃣ Belohnungs-Check mit korrektem Streak-Wert
-          final unlockedRewards = await rewardService.checkAndApproveRewards(
-            userId: user.uid,
-            child: updatedChild,
-            isPerfectQuiz: isPerfect,
+  void _handleStreak(int streak) {
+    if (!mounted) return;
+    final quizState = ref.read(quizEngineProvider(widget.subject));
+    if (_isStreakMilestone(streak) && !quizState.leveledUp) {
+      Future.delayed(const Duration(milliseconds: 800), () {
+        if (mounted) {
+          StudentNotificationPopup.show(
+            context,
+            type: StudentNotificationType.streakMilestone,
           );
-
-          if (unlockedRewards.isNotEmpty && mounted) {
-            print('🎁 ${unlockedRewards.length} Belohnungen freigeschaltet!');
-
-            Future.delayed(const Duration(milliseconds: 500), () {
-              if (mounted) {
-                showRewardNotifications(
-                  context,
-                  rewards: unlockedRewards,
-                  onGoToRewards: () {
-                    // Signal ans Dashboard: zum Belohnungs-Tab wechseln
-                    ref.read(navigateToRewardsTabProvider.notifier).state =
-                        true;
-                    // Quiz-Screen schließen (Dialog hat sich bereits selbst geschlossen)
-                    if (mounted) Navigator.of(context).pop();
-                  },
-                );
-              }
-            });
-          }
-
-          // 7️⃣ Streak-Meilenstein-Feedback (nur wenn kein reward popup kommt)
-          if (mounted &&
-              _isStreakMilestone(newStreak) &&
-              unlockedRewards.isEmpty) {
-            Future.delayed(const Duration(milliseconds: 800), () {
-              if (mounted) {
-                StudentNotificationPopup.show(
-                  context,
-                  type: StudentNotificationType.streakMilestone,
-                );
-              }
-            });
-          }
         }
-      } catch (e, stackTrace) {
-        print('❌ Fehler beim Speichern der Quiz-Daten: $e');
-        print('Stack: $stackTrace');
-      }
+      });
     }
   }
 
-  bool _isStreakMilestone(int streak) {
-    return streak == 3 ||
-        streak == 7 ||
-        streak == 14 ||
-        streak == 30 ||
-        streak == 50 ||
-        streak == 100;
+  bool _isStreakMilestone(int streak) =>
+      streak == 3 ||
+      streak == 7 ||
+      streak == 14 ||
+      streak == 30 ||
+      streak == 50 ||
+      streak == 100;
+
+  // ── Antwort-Verarbeitung ───────────────────────────────────────────────────
+
+  Future<void> _checkAnswer(String selected) async {
+    final quizState = ref.read(quizEngineProvider(widget.subject));
+    if (quizState.phase != QuizPhase.question) return;
+
+    final engine = ref.read(quizEngineProvider(widget.subject).notifier);
+    final isCorrect = await engine.answerQuestion(selected);
+
+    // Feedback-Animation abspielen
+    _feedbackController.forward().then((_) => _feedbackController.reverse());
+
+    await Future.delayed(const Duration(milliseconds: 1500));
+    if (!mounted) return;
+
+    if (!isCorrect) {
+      // Retry-Prompt anzeigen
+      engine.showRetryPrompt();
+    } else {
+      // Richtig → direkt zur nächsten Frage
+      engine.advance();
+    }
   }
 
-  @override
-  void dispose() {
-    // ⏱️ Zeit wurde bereits in _finishQuiz gespeichert — nur cleanup
-    _timeTracker?.dispose();
-    _feedbackController.dispose();
-    super.dispose();
+  // ── Theme ──────────────────────────────────────────────────────────────────
+
+  /// Gibt die Fachfarbe zurück. Für Klasse 5+ wird zusätzlich das
+  /// DashboardTheme berücksichtigt (primary-Farbe des gewählten Themes).
+  Color _getSubjectColor() {
+    final child = ref.read(activeChildProvider);
+    final user = ref.read(authStateChangesProvider).value;
+
+    // Klasse 5+: Theme-Farbe verwenden wenn vorhanden
+    if (child != null && user != null && child.grade >= 5) {
+      final themeState = ref.read(
+        dashboardThemeProvider((userId: user.uid, childId: child.id)),
+      );
+      return themeState.theme.primary;
+    }
+
+    // Klasse 3-4: klassische Fachfarben
+    switch (widget.subject.toLowerCase()) {
+      case 'mathe':
+        return Colors.deepPurple;
+      case 'deutsch':
+        return Colors.redAccent;
+      case 'englisch':
+        return Colors.blue;
+      case 'sachkunde':
+        return Colors.green;
+      case 'biologie':
+        return const Color(0xFF26A69A);
+      case 'chemie':
+        return const Color(0xFFAB47BC);
+      case 'physik':
+        return const Color(0xFF5C6BC0);
+      case 'geschichte':
+        return const Color(0xFF8D6E63);
+      default:
+        return Colors.deepPurple;
+    }
   }
+
+  // ── Build ──────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) return _buildLoadingScreen();
-    if (_questions.isEmpty) return _buildNoQuestionsScreen();
-    if (_isFinished) return _buildSuccessScreen();
+    final quizState = ref.watch(quizEngineProvider(widget.subject));
 
-    final currentQuestion = _questions[_currentIndex];
+    return switch (quizState.phase) {
+      QuizPhase.loading => _buildLoadingScreen(),
+      QuizPhase.error => _buildNoQuestionsScreen(quizState.errorMessage),
+      QuizPhase.finished => _buildSuccessScreen(quizState),
+      _ => _buildQuizScreen(quizState),
+    };
+  }
+
+  Widget _buildQuizScreen(QuizState quizState) {
+    final currentQuestion = quizState.currentQuestion;
+    if (currentQuestion == null) return _buildLoadingScreen();
 
     return Scaffold(
       backgroundColor: Colors.grey[100],
@@ -417,23 +270,69 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
         children: [
           Column(
             children: [
-              _buildProgressHeader(),
+              _buildProgressHeader(quizState),
               Expanded(
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(24),
+                  padding: EdgeInsets.fromLTRB(
+                    24,
+                    24,
+                    24,
+                    24 + MediaQuery.of(context).padding.bottom,
+                  ),
                   child: Column(
                     children: [
                       const SizedBox(height: 20),
+                      // Retry-Badge wenn es ein Wiederholungsversuch ist
+                      if (quizState.isRetry) ...[
+                        Container(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 8,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.orange.shade100,
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: Colors.orange.shade300),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.refresh,
+                                size: 16,
+                                color: Colors.orange.shade700,
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                'Nochmal versuchen',
+                                style: TextStyle(
+                                  color: Colors.orange.shade700,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                       _buildQuestionCard(currentQuestion),
                       const SizedBox(height: 40),
-                      ..._buildAnswerButtons(currentQuestion),
+                      ..._buildAnswerButtons(
+                        currentQuestion,
+                        disabled: quizState.phase != QuizPhase.question,
+                      ),
                     ],
                   ),
                 ),
               ),
             ],
           ),
-          if (_showingFeedback) _buildFeedbackOverlay(),
+          // Feedback-Overlay (Richtig/Falsch)
+          if (quizState.phase == QuizPhase.feedback)
+            _buildFeedbackOverlay(quizState.wasCorrect),
+          // Retry-Prompt
+          if (quizState.phase == QuizPhase.retryPrompt) _buildRetryPrompt(),
         ],
       ),
     );
@@ -467,7 +366,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
     );
   }
 
-  Widget _buildNoQuestionsScreen() {
+  Widget _buildNoQuestionsScreen([String? message]) {
     return Scaffold(
       appBar: AppBar(
         title: Text('${widget.subject} Quiz'),
@@ -486,8 +385,9 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
             ),
             const SizedBox(height: 10),
             Text(
-              'Für ${widget.subject} gibt es noch keine Fragen.',
+              message ?? 'Für ${widget.subject} gibt es noch keine Fragen.',
               style: const TextStyle(color: Colors.grey),
+              textAlign: TextAlign.center,
             ),
             const SizedBox(height: 30),
             ElevatedButton(
@@ -500,7 +400,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
     );
   }
 
-  Widget _buildProgressHeader() {
+  Widget _buildProgressHeader(QuizState quizState) {
     return Container(
       color: _getSubjectColor(),
       padding: const EdgeInsets.all(16),
@@ -510,14 +410,14 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Frage ${_currentIndex + 1} von ${_questions.length}',
+                'Frage ${quizState.currentIndex + 1} von ${quizState.questions.length}',
                 style: const TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
                 ),
               ),
               Text(
-                '$_correctAnswers richtig',
+                '${quizState.correctAnswers} richtig',
                 style: const TextStyle(
                   color: Colors.amber,
                   fontWeight: FontWeight.bold,
@@ -527,7 +427,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
           ),
           const SizedBox(height: 8),
           LinearProgressIndicator(
-            value: (_currentIndex + 1) / _questions.length,
+            value: quizState.progress,
             backgroundColor: Colors.white24,
             valueColor: const AlwaysStoppedAnimation<Color>(Colors.amber),
             minHeight: 8,
@@ -564,25 +464,25 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
     );
   }
 
-  List<Widget> _buildAnswerButtons(Question question) {
+  List<Widget> _buildAnswerButtons(Question question, {bool disabled = false}) {
     return question.options.map((option) {
       return Padding(
         padding: const EdgeInsets.only(bottom: 16),
         child: AnswerButton(
           text: option,
-          onPressed: _showingFeedback ? null : () => _checkAnswer(option),
+          onPressed: disabled ? null : () => _checkAnswer(option),
           color: _getSubjectColor(),
         ),
       );
     }).toList();
   }
 
-  Widget _buildFeedbackOverlay() {
+  Widget _buildFeedbackOverlay(bool wasCorrect) {
     return AnimatedBuilder(
       animation: _feedbackController,
       builder: (context, child) {
         return Container(
-          color: (_wasCorrect ? Colors.green : Colors.red).withOpacity(
+          color: (wasCorrect ? Colors.green : Colors.red).withOpacity(
             _fadeAnimation.value * 0.9,
           ),
           child: Center(
@@ -601,9 +501,9 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
                   ],
                 ),
                 child: Icon(
-                  _wasCorrect ? Icons.check : Icons.close,
+                  wasCorrect ? Icons.check : Icons.close,
                   size: 80,
-                  color: _wasCorrect ? Colors.green : Colors.red,
+                  color: wasCorrect ? Colors.green : Colors.red,
                 ),
               ),
             ),
@@ -613,87 +513,387 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
     );
   }
 
-  Widget _buildSuccessScreen() {
-    final percentage = (_correctAnswers / _questions.length * 100).round();
-    final earnedXP = _correctAnswers * 5;
+  /// Retry-Prompt: erscheint nach falscher Antwort als Bottom-Sheet-artiges Panel.
+  /// Design: dezent, passt zum bestehenden Screen — kein Pop-up.
+  Widget _buildRetryPrompt() {
+    final bottomInset = MediaQuery.of(context).padding.bottom;
+    return Positioned(
+      bottom: 0,
+      left: 0,
+      right: 0,
+      child: Container(
+        padding: EdgeInsets.fromLTRB(24, 20, 24, 24 + bottomInset),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.15),
+              blurRadius: 20,
+              offset: const Offset(0, -4),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Handle
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey[300],
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              '💪 Noch nicht ganz richtig',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'Möchtest du es nochmal versuchen?',
+              style: TextStyle(color: Colors.grey, fontSize: 14),
+            ),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                // Nochmal-Button
+                Expanded(
+                  flex: 3,
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      ref
+                          .read(quizEngineProvider(widget.subject).notifier)
+                          .retryQuestion();
+                    },
+                    icon: const Icon(Icons.refresh),
+                    label: const Text(
+                      'Nochmal!',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _getSubjectColor(),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                // Weiter-Button (überspringen)
+                Expanded(
+                  flex: 2,
+                  child: OutlinedButton(
+                    onPressed: () {
+                      ref
+                          .read(quizEngineProvider(widget.subject).notifier)
+                          .skipRetry();
+                    },
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.grey[600],
+                      side: BorderSide(color: Colors.grey[300]!),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                    child: const Text('Weiter', style: TextStyle(fontSize: 14)),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── Endscreen ──────────────────────────────────────────────────────────────
+
+  Widget _buildSuccessScreen(QuizState quizState) {
+    final total = quizState.questions.length;
+    final correct = quizState.correctAnswers;
+    final percentage = total > 0 ? (correct / total * 100).round() : 0;
+    final earnedXP = quizState.earnedXP;
+    final wrongQuestions = quizState.wrongQuestions;
+    final retriedCorrectly = quizState.retriedCorrectly;
+    final subjectColor = _getSubjectColor();
+
+    final String headline;
+    final String tutorEmoji;
+    if (quizState.isPerfect) {
+      headline = 'Perfekt! 🌟';
+      tutorEmoji = '🤩';
+    } else if (percentage >= 80) {
+      headline = 'Super gemacht! 🎉';
+      tutorEmoji = '😄';
+    } else if (percentage >= 60) {
+      headline = 'Gut gemacht! 👍';
+      tutorEmoji = '🙂';
+    } else {
+      headline = 'Weiter üben! 💪';
+      tutorEmoji = '🤔';
+    }
 
     return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [_getSubjectColor(), _getSubjectColor().withOpacity(0.7)],
+      body: SizedBox.expand(
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [subjectColor, subjectColor.withOpacity(0.75)],
+            ),
           ),
-        ),
-        child: SafeArea(
-          child: Center(
+          child: SafeArea(
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(Icons.emoji_events, size: 120, color: Colors.amber),
-                const SizedBox(height: 20),
-                const Text(
-                  'Super gemacht!',
-                  style: TextStyle(
-                    fontSize: 36,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
+                // ── Scrollbarer Inhalt ──────────────────────────────────────
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(24, 32, 24, 0),
+                    child: Column(
+                      children: [
+                        // Tutor-Avatar mit Emoji-Reaktion
+                        Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            Container(
+                              width: 120,
+                              height: 120,
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.2),
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            ClipOval(
+                              child: Image.asset(
+                                'assets/images/tutor_avatar.png',
+                                width: 100,
+                                height: 100,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => Text(
+                                  tutorEmoji,
+                                  style: const TextStyle(fontSize: 64),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          headline,
+                          style: const TextStyle(
+                            fontSize: 30,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                            letterSpacing: 0.3,
+                          ),
+                        ),
+                        const SizedBox(height: 28),
+
+                        // ── Ergebnis-Karte ──────────────────────────────────
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(24),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(24),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.12),
+                                blurRadius: 20,
+                                offset: const Offset(0, 6),
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            children: [
+                              Text(
+                                '$percentage%',
+                                style: TextStyle(
+                                  fontSize: 60,
+                                  fontWeight: FontWeight.bold,
+                                  color: percentage >= 80
+                                      ? const Color(0xFF2E7D32)
+                                      : (percentage >= 60
+                                            ? Colors.orange[700]
+                                            : Colors.red[600]),
+                                ),
+                              ),
+                              Text(
+                                '$correct von $total richtig',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color: Colors.grey[600],
+                                ),
+                              ),
+                              if (retriedCorrectly.isNotEmpty) ...[
+                                const SizedBox(height: 6),
+                                Text(
+                                  '${retriedCorrectly.length}× beim Nochmal-Versuch geschafft 🔄',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: Colors.orange[700],
+                                  ),
+                                ),
+                              ],
+                              Divider(height: 28, color: Colors.grey[200]),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.bolt_rounded,
+                                    color: Colors.amber[600],
+                                    size: 22,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    '+$earnedXP XP',
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.amber[700],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        // ── Falsch-beantwortete Fragen ──────────────────────
+                        if (wrongQuestions.isNotEmpty) ...[
+                          const SizedBox(height: 20),
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(20),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(24),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.08),
+                                  blurRadius: 16,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    const Text(
+                                      '📚',
+                                      style: TextStyle(fontSize: 18),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      'Noch zu üben (${wrongQuestions.length})',
+                                      style: const TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 12),
+                                ...wrongQuestions.map(
+                                  (q) => Padding(
+                                    padding: const EdgeInsets.only(bottom: 10),
+                                    child: Container(
+                                      padding: const EdgeInsets.all(14),
+                                      decoration: BoxDecoration(
+                                        color: Colors.red.shade50,
+                                        borderRadius: BorderRadius.circular(14),
+                                        border: Border.all(
+                                          color: Colors.red.shade100,
+                                        ),
+                                      ),
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            q.question,
+                                            style: const TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 6),
+                                          Row(
+                                            children: [
+                                              const Icon(
+                                                Icons.check_circle,
+                                                size: 14,
+                                                color: Colors.green,
+                                              ),
+                                              const SizedBox(width: 4),
+                                              Expanded(
+                                                child: Text(
+                                                  'Richtig: ${q.answer}',
+                                                  style: const TextStyle(
+                                                    fontSize: 13,
+                                                    color: Colors.green,
+                                                    fontWeight: FontWeight.w500,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                        const SizedBox(height: 24),
+                      ],
+                    ),
                   ),
                 ),
-                const SizedBox(height: 40),
-                Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 40),
-                  padding: const EdgeInsets.all(30),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(20),
+
+                // ── Fixierter Button am unteren Rand ────────────────────────
+                Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    24,
+                    12,
+                    24,
+                    24 + MediaQuery.of(context).padding.bottom,
                   ),
-                  child: Column(
-                    children: [
-                      Text(
-                        '$percentage%',
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.pop(context),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        foregroundColor: subjectColor,
+                        padding: const EdgeInsets.symmetric(vertical: 18),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(30),
+                        ),
+                        elevation: 4,
+                      ),
+                      child: const Text(
+                        'Zurück zum Dashboard',
                         style: TextStyle(
-                          fontSize: 60,
+                          fontSize: 17,
                           fontWeight: FontWeight.bold,
-                          color: percentage >= 80
-                              ? Colors.green
-                              : Colors.orange,
                         ),
                       ),
-                      Text(
-                        '$_correctAnswers von ${_questions.length} richtig',
-                        style: const TextStyle(
-                          fontSize: 18,
-                          color: Colors.grey,
-                        ),
-                      ),
-                      const Divider(height: 40),
-                      RewardRow(
-                        icon: Icons.flash_on,
-                        text: '+$earnedXP XP',
-                        color: Colors.orange,
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 40),
-                ElevatedButton(
-                  onPressed: () => Navigator.pop(context),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    foregroundColor: _getSubjectColor(),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 50,
-                      vertical: 18,
                     ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(30),
-                    ),
-                  ),
-                  child: const Text(
-                    'Zurück zum Dashboard',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                 ),
               ],
@@ -704,30 +904,19 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
     );
   }
 
-  Color _getSubjectColor() {
-    switch (widget.subject.toLowerCase()) {
-      case 'mathe':
-        return Colors.deepPurple;
-      case 'deutsch':
-        return Colors.redAccent;
-      case 'englisch':
-        return Colors.blue;
-      case 'sachkunde':
-        return Colors.green;
-      default:
-        return Colors.deepPurple;
-    }
+  @override
+  void dispose() {
+    _feedbackController.dispose();
+    super.dispose();
   }
 }
 
 // ============================================================================
 // TUTOR FREIGESCHALTET DIALOG
-// Wird nach dem Level-2-Up für Klasse 3+ gezeigt.
 // ============================================================================
 
 class _TutorUnlockedDialog extends StatelessWidget {
   final String childName;
-
   const _TutorUnlockedDialog({required this.childName});
 
   @override
@@ -748,7 +937,6 @@ class _TutorUnlockedDialog extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Animiertes Icon
               Container(
                 width: 90,
                 height: 90,
@@ -761,8 +949,6 @@ class _TutorUnlockedDialog extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 20),
-
-              // Titel
               const Text(
                 '✨ KI-Tutor freigeschaltet!',
                 style: TextStyle(
@@ -773,10 +959,10 @@ class _TutorUnlockedDialog extends StatelessWidget {
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 12),
-
-              // Beschreibung
               Text(
-                'Super gemacht, $childName! 🎉\n\nDein KI-Tutor wartet auf dich! Du kannst ihm jetzt Fragen zu allen Schulfächern stellen – er erklärt alles auf deine Art.',
+                'Super gemacht, $childName! 🎉\n\nDein KI-Tutor wartet auf dich! '
+                'Du kannst ihm jetzt Fragen zu allen Schulfächern stellen – '
+                'er erklärt alles auf deine Art.',
                 style: TextStyle(
                   fontSize: 14,
                   color: Colors.white.withOpacity(0.9),
@@ -785,8 +971,6 @@ class _TutorUnlockedDialog extends StatelessWidget {
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 8),
-
-              // Hinweis wo der Tutor ist
               Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 16,
@@ -796,25 +980,26 @@ class _TutorUnlockedDialog extends StatelessWidget {
                   color: Colors.white.withOpacity(0.15),
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: const [
+                child: const Row(
+                  mainAxisSize: MainAxisSize.max,
+                  children: [
                     Text('👇', style: TextStyle(fontSize: 18)),
                     SizedBox(width: 8),
-                    Text(
-                      'Tippe auf den Kreis-Button unten!',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white,
+                    Expanded(
+                      child: Text(
+                        'Tippe auf den Kreis-Button unten!',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                        softWrap: true,
                       ),
                     ),
                   ],
                 ),
               ),
               const SizedBox(height: 24),
-
-              // Button
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(

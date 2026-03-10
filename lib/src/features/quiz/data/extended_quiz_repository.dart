@@ -8,16 +8,17 @@ import '../../generated_tasks/data/generated_task_models.dart';
 import 'ai_question_cache_repository.dart';
 import 'combined_quiz_params.dart';
 
-/// 📚 ERWEITERTER QUIZ REPOSITORY v3
+/// 📚 ERWEITERTER QUIZ REPOSITORY v4
 ///
 /// Laedt Quiz-Fragen mit klarer Prioritaet:
-///   1. Von Eltern gepflegte & freigegebene Aufgaben (noch nicht korrekt beantwortet)
-///   2. KI-generierte Fragen aus dem Cache (personalisiert, schulformgerecht)
-///   3. Statische JSON-Fragen NUR als Notfall-Fallback
+///   1. Von Eltern freigegebene Aufgaben (noch nicht beantwortet) → immer zuerst
+///   2. Restliche Plaetze (bis questionCount) mit KI-Cache-Fragen auffuellen
+///   3. Wenn KI-Cache leer: statische JSON-Fragen als Fallback
 ///
-/// Logik: Solange noch unbeantwortete Eltern-Aufgaben vorhanden sind,
-/// werden ausschließlich diese gezeigt. KI-Fragen kommen erst wenn
-/// alle Eltern-Aufgaben korrekt beantwortet wurden.
+/// Beispiel bei questionCount = 5:
+///   2 Eltern-Aufgaben  → 2 Eltern + 3 KI-Fragen
+///   5+ Eltern-Aufgaben → 5 Eltern (keine KI noetig)
+///   0 Eltern-Aufgaben  → 5 KI-Fragen
 class ExtendedQuizRepository {
   final AiQuestionCacheRepository _cache;
   final GeneratedTaskRepository _taskRepo;
@@ -26,12 +27,6 @@ class ExtendedQuizRepository {
 
   // == Oeffentliche API ==
 
-  /// Laedt eine Quiz-Session mit Prioritaet fuer Eltern-Aufgaben.
-  ///
-  /// Strategie:
-  /// 1. Eltern-Aufgaben (approved, noch nicht korrekt beantwortet) → hoechste Prioritaet
-  /// 2. Wenn keine Eltern-Aufgaben mehr: KI-Cache-Fragen
-  /// 3. Wenn KI-Cache leer: statische JSON-Fragen als Fallback
   Future<List<Question>> loadQuizForChild({
     required String userId,
     required String childId,
@@ -39,9 +34,11 @@ class ExtendedQuizRepository {
     required String subject,
     int questionCount = 5,
   }) async {
-    // -----------------------------------------------------------------------
-    // 1. Eltern-gepflegte Aufgaben mit hoechster Prioritaet
-    // -----------------------------------------------------------------------
+    final result = <Question>[];
+
+    // -------------------------------------------------------------------------
+    // 1. Eltern-Aufgaben laden (hoechste Prioritaet)
+    // -------------------------------------------------------------------------
     try {
       final subjectEnum = SubjectExtension.fromString(subject);
       final parentQuestions = await _taskRepo.getUnansweredApprovedQuestions(
@@ -51,109 +48,114 @@ class ExtendedQuizRepository {
       );
 
       if (parentQuestions.isNotEmpty) {
-        print(
-          '👨‍👩‍👧 ${parentQuestions.length} Eltern-Aufgaben vorhanden – '
-          'KI-Fragen werden nicht genutzt bis alle beantwortet sind.',
-        );
+        final converted =
+            parentQuestions
+                .map(
+                  (gq) => Question(
+                    grade: child.grade,
+                    question: gq.question,
+                    options: gq.options,
+                    answer: gq.correctAnswer,
+                    difficulty: gq.difficulty,
+                    topic: gq.topic,
+                    parentTaskRef: gq.batchId != null
+                        ? '${gq.batchId}/${gq.id}'
+                        : null,
+                    generatedTaskId: gq.id,
+                  ),
+                )
+                .toList()
+              ..shuffle();
 
-        // In Question-Objekte umwandeln mit parentTaskRef für Tracking
-        final questions = parentQuestions.map((gq) {
-          // Batch-ID aus dem approvedBy-Feld ist nicht verfügbar hier,
-          // daher suchen wir den batchId über den parentTaskRef-Mechanismus.
-          // Die batchId wird beim Laden mitgegeben über das id-Feld des Batch.
-          // Wir codieren: "batchId/questionId" als parentTaskRef
-          // Das batchId muss aus den Batches kommen – wir holen es über
-          // eine erweiterte Version der Methode.
-          return Question(
-            grade: child.grade,
-            question: gq.question,
-            options: gq.options,
-            answer: gq.correctAnswer,
-            difficulty: gq.difficulty,
-            topic: gq.topic,
-            parentTaskRef: gq.batchId != null ? '${gq.batchId}/${gq.id}' : null,
-          );
-        }).toList();
-
-        questions.shuffle();
-        final result = questions.take(questionCount).toList();
-
-        print('✅ ${result.length} Eltern-Aufgaben als Quiz geladen');
-        return result;
+        result.addAll(converted.take(questionCount));
+        print('👨‍👩‍👧 ${result.length} Eltern-Aufgaben eingebaut');
       }
-
-      print('ℹ️ Keine offenen Eltern-Aufgaben – lade KI-Fragen');
     } catch (e) {
-      print(
-        '⚠️ Eltern-Aufgaben nicht verfuegbar: $e – falle auf KI-Fragen zurueck',
-      );
+      print('⚠️ Eltern-Aufgaben nicht verfuegbar: $e');
     }
 
-    // -----------------------------------------------------------------------
-    // 2. KI-Fragen aus Cache
-    // -----------------------------------------------------------------------
+    // Bereits genug Fragen durch Eltern-Aufgaben?
+    if (result.length >= questionCount) {
+      return result.take(questionCount).toList();
+    }
+
+    final remaining = questionCount - result.length;
+    final parentTexts = result
+        .map((q) => q.question.toLowerCase().trim())
+        .toSet();
+
+    // -------------------------------------------------------------------------
+    // 2. KI-Fragen auffuellen
+    // -------------------------------------------------------------------------
     try {
       final aiQuestions = await _cache.getQuestions(
         userId: userId,
         childId: childId,
         child: child,
         subject: subject,
-        count: questionCount,
+        count: remaining + 5, // Etwas mehr holen fuer Deduplizierung
       );
 
       if (aiQuestions.isNotEmpty) {
+        final deduped =
+            _deduplicate(aiQuestions)
+                .where(
+                  (q) => !parentTexts.contains(q.question.toLowerCase().trim()),
+                )
+                .toList()
+              ..shuffle();
+
+        result.addAll(deduped.take(remaining));
+
         print(
-          '✅ ${aiQuestions.length} KI-Fragen geladen '
-          '(${child.schoolType}, Kl. ${child.grade}, Lv. ${child.level})',
+          '✅ ${result.length}/$questionCount Fragen geladen '
+          '(${result.where((q) => q.isParentTask).length} Eltern, '
+          '${result.where((q) => !q.isParentTask).length} KI)',
         );
 
-        final deduped = _deduplicate(aiQuestions);
-        deduped.shuffle();
-
-        if (deduped.length >= questionCount) {
-          return deduped.take(questionCount).toList();
+        if (result.length >= questionCount) {
+          return result;
         }
-
-        // Zu wenig KI-Fragen: mit statischen auffuellen
-        print(
-          '⚠️ Nur ${deduped.length} KI-Fragen, fuelle mit statischen auf...',
-        );
-        final staticQuestions = await _loadStaticQuestions(
-          subject,
-          child.grade,
-        );
-        final existingTexts = deduped
-            .map((q) => q.question.toLowerCase().trim())
-            .toSet();
-        final extraStatic = staticQuestions
-            .where(
-              (q) => !existingTexts.contains(q.question.toLowerCase().trim()),
-            )
-            .toList();
-        extraStatic.shuffle();
-
-        deduped.addAll(extraStatic.take(questionCount - deduped.length));
-        return deduped.take(questionCount).toList();
       }
     } catch (e) {
       print('⚠️ KI-Cache nicht verfuegbar: $e');
     }
 
-    // -----------------------------------------------------------------------
-    // 3. Komplett-Fallback: Nur statische Fragen
-    // -----------------------------------------------------------------------
-    print('⚠️ Keine KI-Fragen verfuegbar, nutze statische Fragen als Fallback');
-    final staticQuestions = await _loadStaticQuestions(subject, child.grade);
+    // -------------------------------------------------------------------------
+    // 3. Statische Fragen als Fallback fuer verbleibende Plaetze
+    // -------------------------------------------------------------------------
+    final stillNeeded = questionCount - result.length;
+    if (stillNeeded > 0) {
+      print('⚠️ Fuelle $stillNeeded Plaetze mit statischen Fragen auf...');
+      try {
+        final staticQuestions = await _loadStaticQuestions(
+          subject,
+          child.grade,
+        );
+        final existingTexts = result
+            .map((q) => q.question.toLowerCase().trim())
+            .toSet();
 
-    if (staticQuestions.isEmpty) {
-      print(
-        '❌ Auch keine statischen Fragen fuer $subject Klasse ${child.grade}',
-      );
-      return [];
+        final filtered =
+            staticQuestions
+                .where(
+                  (q) =>
+                      !existingTexts.contains(q.question.toLowerCase().trim()),
+                )
+                .toList()
+              ..shuffle();
+
+        result.addAll(filtered.take(stillNeeded));
+      } catch (e) {
+        print('⚠️ Statische Fragen nicht verfuegbar: $e');
+      }
     }
 
-    staticQuestions.shuffle();
-    return staticQuestions.take(questionCount).toList();
+    if (result.isEmpty) {
+      print('❌ Keine Fragen fuer $subject Klasse ${child.grade} gefunden');
+    }
+
+    return result.take(questionCount).toList();
   }
 
   /// Laedt statische JSON-Fragen fuer ein Fach (Fallback).
