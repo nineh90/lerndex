@@ -71,7 +71,8 @@ class FamilySettingsScreen extends ConsumerWidget {
               size: 18,
               color: Colors.grey,
             ),
-            onTap: () => _launchUrl(context, 'https://lerndex.app/datenschutz'),
+            onTap: () =>
+                _launchUrl(context, 'https://lerndex.app/datenschutz.php'),
           ),
 
           ListTile(
@@ -86,7 +87,7 @@ class FamilySettingsScreen extends ConsumerWidget {
               size: 18,
               color: Colors.grey,
             ),
-            onTap: () => _launchUrl(context, 'https://lerndex.app/agb'),
+            onTap: () => _launchUrl(context, 'https://lerndex.app/agb.php'),
           ),
 
           ListTile(
@@ -101,7 +102,8 @@ class FamilySettingsScreen extends ConsumerWidget {
               size: 18,
               color: Colors.grey,
             ),
-            onTap: () => _launchUrl(context, 'https://lerndex.app/impressum'),
+            onTap: () =>
+                _launchUrl(context, 'https://lerndex.app/impressum.php'),
           ),
         ],
       ),

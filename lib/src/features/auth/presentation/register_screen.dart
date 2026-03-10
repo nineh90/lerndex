@@ -470,7 +470,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                                               recognizer: TapGestureRecognizer()
                                                 ..onTap = () => launchUrl(
                                                   Uri.parse(
-                                                    'https://www.lerndex.de/datenschutz',
+                                                    'https://www.lerndex.de/datenschutz.php',
                                                   ),
                                                   mode: LaunchMode
                                                       .externalApplication,
