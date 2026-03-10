@@ -392,21 +392,26 @@ class TutorNotifier extends StateNotifier<List<ChatMessage>> {
 
         final sessionData = sessionDoc.data();
         final hasFirstQuestion = sessionData?['firstQuestion'] != null;
+        final alreadyCritical = sessionData?['contentFlag'] == 'critical';
 
+        final updates = <String, dynamic>{};
+
+        // firstQuestion + detectedTopic nur beim ersten Mal setzen
         if (!hasFirstQuestion) {
-          // firstQuestion speichern; detectedTopic wird separat via _setSessionTopic gesetzt
-          final contentFlag = TutorSession.detectContentFlag(message.text);
+          updates['firstQuestion'] = message.text;
+          updates['detectedTopic'] = 'Allgemein';
+        }
 
-          final updates = <String, dynamic>{
-            'firstQuestion': message.text,
-            'detectedTopic':
-                'Allgemein', // Platzhalter – wird nach KI-Antwort überschrieben
-          };
-
-          if (contentFlag != null) {
-            updates['contentFlag'] = contentFlag;
+        // contentFlag bei JEDER Nachricht prüfen –
+        // aber 'critical' nie durch schwächeres Flag überschreiben
+        if (!alreadyCritical) {
+          final newFlag = TutorSession.detectContentFlag(message.text);
+          if (newFlag != null) {
+            updates['contentFlag'] = newFlag;
           }
+        }
 
+        if (updates.isNotEmpty) {
           await _firestore
               .collection('users')
               .doc(_userId)
@@ -416,7 +421,7 @@ class TutorNotifier extends StateNotifier<List<ChatMessage>> {
               .doc(sessionId)
               .update(updates);
         }
-        // Kein else: Topic-Update erfolgt einmalig über _setSessionTopic nach KI-Antwort
+        // Topic-Update erfolgt einmalig über _setSessionTopic nach KI-Antwort
       }
     } catch (e) {
       // ⚠️ Fehler beim Speichern: $e
@@ -2009,16 +2014,29 @@ class TutorNotifier extends StateNotifier<List<ChatMessage>> {
 
     try {
       if (!_hasUserSentMessage) {
-        await _firestore
+        final sessionDoc = await _firestore
             .collection('users')
             .doc(_userId)
             .collection('children')
             .doc(_childId)
             .collection('tutor_sessions')
             .doc(_currentSessionId)
-            .delete();
-        _currentSessionId = null;
-        return;
+            .get();
+
+        final hasFlag = sessionDoc.data()?['contentFlag'] != null;
+
+        if (!hasFlag) {
+          await _firestore
+              .collection('users')
+              .doc(_userId)
+              .collection('children')
+              .doc(_childId)
+              .collection('tutor_sessions')
+              .doc(_currentSessionId)
+              .delete();
+          _currentSessionId = null;
+          return;
+        }
       }
 
       await _firestore

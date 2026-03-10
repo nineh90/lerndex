@@ -229,7 +229,9 @@ class _TutorHistoryScreenState extends ConsumerState<TutorHistoryScreen> {
         final allDocs = (snapshot.data?.docs ?? []).where((doc) {
           if (_deletedIds.contains(doc.id)) return false;
           final data = doc.data() as Map<String, dynamic>;
-          return (data['messageCount'] as int? ?? 0) > 1;
+          final msgCount = (data['messageCount'] as int? ?? 0);
+          final hasFlag = data['contentFlag'] != null;
+          return msgCount > 1 || hasFlag;
         }).toList();
 
         // Prüfen ob es irgendwelche flagged Sessions gibt

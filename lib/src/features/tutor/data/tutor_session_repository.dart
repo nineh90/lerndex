@@ -66,7 +66,9 @@ class TutorSessionRepository {
       final timeSinceStart = now.difference(session.startedAt);
 
       if (timeSinceStart.inMinutes > 30) {
-        print('⏰ Session zu alt (${timeSinceStart.inMinutes} Min), schließe ab');
+        print(
+          '⏰ Session zu alt (${timeSinceStart.inMinutes} Min), schließe ab',
+        );
         await completeSession(
           userId: userId,
           childId: childId,
@@ -148,10 +150,10 @@ class TutorSessionRepository {
         .collection('tutor_sessions')
         .doc(sessionId)
         .update({
-      'status': 'completed',
-      'endedAt': Timestamp.fromDate(now),
-      'durationSeconds': duration.inSeconds,
-    });
+          'status': 'completed',
+          'endedAt': Timestamp.fromDate(now),
+          'durationSeconds': duration.inSeconds,
+        });
 
     print('✅ Session abgeschlossen. Dauer: ${duration.inMinutes} Min');
   }
@@ -203,41 +205,83 @@ class TutorSessionRepository {
         .doc(childId)
         .collection('tutor_sessions')
         .doc(sessionId)
-        .update({
-      'messageCount': FieldValue.increment(1),
-    });
+        .update({'messageCount': FieldValue.increment(1)});
 
-    // 4. Wenn erste User-Nachricht: Thema + Content-Flag erkennen
+    // 4. Jede User-Nachricht auf Thema + Content-Flag prüfen
     if (message.isUser) {
-      final sessionDoc = await _firestore
+      await _analyzeUserMessage(
+        userId: userId,
+        childId: childId,
+        sessionId: sessionId,
+        messageText: message.text,
+      );
+    }
+  }
+
+  // ========================================================================
+  // CONTENT ANALYSE
+  // ========================================================================
+
+  /// Analysiert eine User-Nachricht und aktualisiert Thema + Content-Flag.
+  ///
+  /// Regeln:
+  /// - Thema + firstQuestion werden nur beim ERSTEN Mal gesetzt
+  /// - contentFlag wird bei JEDER Nachricht geprüft
+  /// - 'critical' überschreibt 'off_topic', aber nie umgekehrt
+  ///   → einmal critical = immer critical für diese Session
+  Future<void> _analyzeUserMessage({
+    required String userId,
+    required String childId,
+    required String sessionId,
+    required String messageText,
+  }) async {
+    // Aktuelle Session laden um bestehenden Flag + firstQuestion zu kennen
+    final sessionDoc = await _firestore
+        .collection('users')
+        .doc(userId)
+        .collection('children')
+        .doc(childId)
+        .collection('tutor_sessions')
+        .doc(sessionId)
+        .get();
+
+    final session = TutorSession.fromFirestore(
+      sessionDoc.data()!,
+      sessionDoc.id,
+    );
+
+    final updates = <String, dynamic>{};
+
+    // Thema + firstQuestion nur beim ersten Mal setzen
+    if (session.firstQuestion == null) {
+      final topic = TutorSession.detectTopic(messageText);
+      updates['firstQuestion'] = messageText;
+      updates['detectedTopic'] = topic;
+      print('🎯 Thema erkannt: $topic');
+    }
+
+    // Content-Flag bei JEDER Nachricht neu prüfen –
+    // aber 'critical' nie durch ein schwächeres Flag überschreiben
+    final alreadyCritical = session.contentFlag == 'critical';
+
+    if (!alreadyCritical) {
+      final newFlag = TutorSession.detectContentFlag(messageText);
+
+      if (newFlag != null && newFlag != session.contentFlag) {
+        updates['contentFlag'] = newFlag;
+        print('🚩 Content-Flag gesetzt: $newFlag');
+      }
+    }
+
+    if (updates.isNotEmpty) {
+      await _firestore
           .collection('users')
           .doc(userId)
           .collection('children')
           .doc(childId)
           .collection('tutor_sessions')
           .doc(sessionId)
-          .get();
-
-      final session = TutorSession.fromFirestore(
-        sessionDoc.data()!,
-        sessionDoc.id,
-      );
-
-      if (session.firstQuestion == null) {
-        final topic = TutorSession.detectTopic(message.text);
-        final contentFlag = TutorSession.detectContentFlag(message.text);
-
-        await updateSession(
-          userId: userId,
-          childId: childId,
-          sessionId: sessionId,
-          firstQuestion: message.text,
-          detectedTopic: topic,
-          contentFlag: contentFlag,
-        );
-
-        print('🎯 Thema erkannt: $topic${contentFlag != null ? ' | 🚩 Flag: $contentFlag' : ''}');
-      }
+          .update(updates);
     }
   }
 
@@ -340,10 +384,10 @@ class TutorSessionRepository {
         .orderBy('startedAt', descending: true)
         .snapshots()
         .map((snapshot) {
-      return snapshot.docs.map((doc) {
-        return TutorSession.fromFirestore(doc.data(), doc.id);
-      }).toList();
-    });
+          return snapshot.docs.map((doc) {
+            return TutorSession.fromFirestore(doc.data(), doc.id);
+          }).toList();
+        });
   }
 
   /// Holt einzelne Session
@@ -376,8 +420,10 @@ final tutorSessionRepositoryProvider = Provider<TutorSessionRepository>((ref) {
 });
 
 /// Provider für aktive Session eines Kindes
-final activeSessionProvider =
-FutureProvider.family<TutorSession?, String>((ref, childId) async {
+final activeSessionProvider = FutureProvider.family<TutorSession?, String>((
+  ref,
+  childId,
+) async {
   final repository = ref.watch(tutorSessionRepositoryProvider);
   final authRepo = ref.watch(authRepositoryProvider);
   final userId = authRepo.currentUser?.uid;
