@@ -314,7 +314,7 @@ class _PrimaryDashboardScreenState
       case 2:
         return TutorHistoryTab(child: child);
       case 3:
-        return StatisticsTab(child: child);
+        return StatisticsTab(child: child, useTheme: false);
       default:
         return HomeTab(child: child);
     }

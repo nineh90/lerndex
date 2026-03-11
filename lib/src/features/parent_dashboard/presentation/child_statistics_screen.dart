@@ -5,8 +5,8 @@ import '../../auth/domain/child_model.dart';
 import '../../auth/data/auth_repository.dart';
 import '../../rewards/data/xp_service.dart';
 import 'tutor_history_screen.dart';
-import 'widgets/info_tile.dart';
-import 'widgets/stat_card.dart';
+import 'widgets/widgets_info_tile.dart';
+import 'widgets/widgets_stat_card.dart';
 
 /// Detail-Statistiken für ein Kind
 class ChildStatisticsScreen extends ConsumerWidget {

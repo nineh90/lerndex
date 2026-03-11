@@ -409,7 +409,16 @@ Du bist Lerndex, der persönliche Lernbegleiter für ${child.name}.
 - Beantworte KEINE Fragen zu: Kochen, Rezepten, Videospielen, Filmen, Serien, Hobbys, Freizeit
 - Bei JEDER Nicht-Schul-Frage: Lehne HÖFLICH ab und leite zurück zu Schulfächern
 - Keine Gewalt, unangemessene Inhalte oder gefährliche Themen
-- Bei Hausaufgaben: Hilf beim Verstehen, gib nicht einfach die fertige Lösung
+
+🧠 SOKRATES-METHODE – NIEMALS DIREKTE LÖSUNGEN VERRATEN:
+- Gib NIEMALS direkt das Ergebnis einer Aufgabe an, egal wie einfach sie ist.
+- Statt "2 + 2 = 4" sagst du: "Was passiert, wenn du 2 Äpfel hast und 2 dazulegst? Zähl mal nach! 🍎🍎"
+- Erkläre das PRINZIP oder den LÖSUNGSWEG, niemals das fertige Ergebnis.
+- Benutze ein ANDERES, ähnliches Beispiel um das Konzept zu erklären.
+  → Beispiel: Fragt ${child.name} "Was ist 15 × 4?", erkläre anhand von "10 × 4 = 40, und 5 × 4 = 20 – kannst du die beiden Teilergebnisse jetzt zusammenzählen?"
+- Stelle Rückfragen, die ${child.name} selbst zum Nachdenken bringen: "Was weißt du schon darüber?", "Welchen Schritt könntest du als erstes machen?"
+- Wenn ${child.name} die richtige Antwort selbst nennt → dann und nur dann bestätige sie freudig!
+- Ausnahme: Vokabeln / Fremdwörter / Fakten (z.B. "Was bedeutet 'apple'?") dürfen direkt beantwortet werden, da es hier kein Lösungsdenken gibt.
 
 💬 KOMMUNIKATIONSSTIL:
 - Einfache, kindgerechte Sprache (passend für ${child.age} Jahre)
@@ -1550,15 +1559,33 @@ Antworte NUR mit einem JSON-Array, kein Text oder Markdown davor/danach:
   }
 
   static String _stripSubjectTag(String response) {
-    // Entfernt FACH- und KORREKT-Tags sowie ihre Label-Präfixe
+    // Entfernt FACH- und KORREKT-Tags sowie alle möglichen Label-Varianten.
+    // Das Modell schreibt die Tags in verschiedenen Formaten, z.B.:
+    //   [FACH:Mathematik]
+    //   [KORREKT:ja]
+    //   KORREKT: [ja]           <- mit Leerzeichen
+    //   - Schulfach: [FACH:..] <- mit Praefix
+    //   Erkanntes Schulfach: [FACH:..]
     return response
+        // FACH mit optionalem Label-Praefix
         .replaceAll(
-          RegExp(r'[-–]?\s*(?:Erkanntes\s+)?Schulfach:\s*\[FACH:[^\]]+\]'),
+          RegExp(
+            r'[-–]?\s*(?:Erkanntes\s+)?Schulfach:\s*\[FACH:[^\]]*\]',
+            caseSensitive: false,
+          ),
           '',
         )
-        .replaceAll(RegExp(r'\s*\[FACH:[^\]]+\]'), '')
-        .replaceAll(RegExp(r'[-–]?\s*[^\n]*\[KORREKT:[^\]]+\]'), '')
-        .replaceAll(RegExp(r'\s*\[KORREKT:[^\]]+\]'), '')
+        // Nackter FACH-Tag
+        .replaceAll(RegExp(r'\s*\[FACH:[^\]]*\]', caseSensitive: false), '')
+        // "KORREKT: [ja]" oder "KORREKT: [nein]" (mit Leerzeichen vor Klammer)
+        .replaceAll(
+          RegExp(r'\s*KORREKT:\s*\[[^\]]*\]', caseSensitive: false),
+          '',
+        )
+        // Nackter [KORREKT:ja/nein]-Tag (ohne Leerzeichen)
+        .replaceAll(RegExp(r'\s*\[KORREKT:[^\]]*\]', caseSensitive: false), '')
+        // Leerzeilen aufraaeumen
+        .replaceAll(RegExp(r'\n\s*\n\s*\n'), '\n\n')
         .trim();
   }
 }

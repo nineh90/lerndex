@@ -6,6 +6,7 @@ import '../../../auth/domain/child_model.dart';
 import 'stat_card.dart';
 import 'section_header.dart';
 import 'info_tile.dart';
+import 'dashboard_theme_provider.dart';
 
 // ============================================================================
 // TAB 3: STATISTIK – eigene Seite, vollständig erhalten
@@ -14,12 +15,42 @@ import 'info_tile.dart';
 class StatisticsTab extends ConsumerWidget {
   final ChildModel child;
 
-  const StatisticsTab({super.key, required this.child});
+  /// Wenn false (Klasse 3–4): feste dunkle Farben auf weißem Hintergrund.
+  /// Wenn true (Klasse 5+):   Farben aus dem gewählten Dashboard-Theme.
+  final bool useTheme;
+
+  const StatisticsTab({super.key, required this.child, this.useTheme = true});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(authStateChangesProvider).value;
     if (user == null) return const SizedBox.shrink();
+
+    // Feste Farben für Klasse 3–4 (weißer Hintergrund, kein Theme)
+    late final Color textColor;
+    late final Color subtleColor;
+    late final Color? cardColor;
+    late final Color accentColor;
+
+    if (!useTheme) {
+      textColor = const Color(0xFF1A1A2E);
+      subtleColor = Colors.grey[600]!;
+      cardColor = null;
+      accentColor = Colors.deepPurple;
+    } else {
+      // Theme laden – Slate (isDark=false) behält dunkle Farben, alle anderen
+      // dunklen Themes bekommen helle Textfarben.
+      final themeState = ref.watch(
+        dashboardThemeProvider((userId: user.uid, childId: child.id)),
+      );
+      final theme = themeState.theme;
+      textColor = theme.onSurface;
+      subtleColor = theme.isDark
+          ? theme.onSurface.withValues(alpha: 0.55)
+          : Colors.grey[600]!;
+      cardColor = theme.isDark ? theme.surface : null;
+      accentColor = theme.primary;
+    }
 
     return StreamBuilder<DocumentSnapshot>(
       stream: FirebaseFirestore.instance
@@ -37,7 +68,6 @@ class StatisticsTab extends ConsumerWidget {
         final perfectQuizzes = data?['perfectQuizzes'] as int? ?? 0;
         final xp = data?['xp'] as int? ?? child.xp;
         final level = data?['level'] as int? ?? child.level;
-        final stars = data?['stars'] as int? ?? child.stars;
         final successRate = totalQuizzes > 0
             ? (perfectQuizzes / totalQuizzes * 100).round()
             : 0;
@@ -50,9 +80,10 @@ class StatisticsTab extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SectionHeader(
+              SectionHeader(
                 icon: Icons.emoji_events,
                 title: 'Meine Erfolge',
+                textColor: textColor,
               ),
               const SizedBox(height: 12),
               Row(
@@ -63,6 +94,7 @@ class StatisticsTab extends ConsumerWidget {
                       color: Colors.deepPurple,
                       value: 'Lvl $level',
                       label: 'Level',
+                      labelColor: subtleColor,
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -72,14 +104,16 @@ class StatisticsTab extends ConsumerWidget {
                       color: Colors.orange,
                       value: '$xp XP',
                       label: 'Gesamt',
+                      labelColor: subtleColor,
                     ),
                   ),
                 ],
               ),
               const SizedBox(height: 24),
-              const SectionHeader(
+              SectionHeader(
                 icon: Icons.local_fire_department,
                 title: 'Lern-Streak',
+                textColor: textColor,
               ),
               const SizedBox(height: 12),
               Container(
@@ -89,7 +123,7 @@ class StatisticsTab extends ConsumerWidget {
                   gradient: LinearGradient(
                     colors: streak > 0
                         ? [Colors.orange.shade400, Colors.deepOrange.shade600]
-                        : [Colors.grey.shade300, Colors.grey.shade400],
+                        : [Colors.grey.shade500, Colors.grey.shade700],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
@@ -128,10 +162,15 @@ class StatisticsTab extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: 24),
-              const SectionHeader(icon: Icons.quiz, title: 'Quiz-Statistiken'),
+              SectionHeader(
+                icon: Icons.quiz,
+                title: 'Quiz-Statistiken',
+                textColor: textColor,
+              ),
               const SizedBox(height: 12),
               Card(
                 elevation: 2,
+                color: cardColor,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
                 ),
@@ -144,6 +183,7 @@ class StatisticsTab extends ConsumerWidget {
                           icon: Icons.assignment_turned_in,
                           label: 'Absolviert',
                           value: '$totalQuizzes',
+                          textColor: textColor,
                         ),
                       ),
                       Expanded(
@@ -151,6 +191,7 @@ class StatisticsTab extends ConsumerWidget {
                           icon: Icons.workspace_premium,
                           label: 'Perfekt',
                           value: '$perfectQuizzes',
+                          textColor: textColor,
                         ),
                       ),
                       Expanded(
@@ -158,6 +199,7 @@ class StatisticsTab extends ConsumerWidget {
                           icon: Icons.percent,
                           label: 'Erfolgsrate',
                           value: '$successRate%',
+                          textColor: textColor,
                         ),
                       ),
                     ],
@@ -165,10 +207,15 @@ class StatisticsTab extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: 24),
-              const SectionHeader(icon: Icons.timer, title: 'Lernzeit'),
+              SectionHeader(
+                icon: Icons.timer,
+                title: 'Lernzeit',
+                textColor: textColor,
+              ),
               const SizedBox(height: 12),
               Card(
                 elevation: 2,
+                color: cardColor,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
                 ),
@@ -177,24 +224,20 @@ class StatisticsTab extends ConsumerWidget {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(
-                        Icons.access_time,
-                        color: Colors.deepPurple,
-                        size: 28,
-                      ),
+                      Icon(Icons.access_time, color: accentColor, size: 28),
                       const SizedBox(width: 12),
                       Text(
                         hours > 0 ? '${hours}h ${minutes}min' : '${minutes}min',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 28,
                           fontWeight: FontWeight.bold,
-                          color: Colors.deepPurple,
+                          color: textColor,
                         ),
                       ),
                       const SizedBox(width: 8),
                       Text(
                         'Gesamte Lernzeit',
-                        style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                        style: TextStyle(fontSize: 13, color: subtleColor),
                       ),
                     ],
                   ),
