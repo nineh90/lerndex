@@ -14,6 +14,7 @@ import '../../tutor/presentation/tutor_screen.dart';
 import '../../tutor/presentation/tutor_provider.dart';
 import '../../quiz/data/ai_question_cache_repository.dart';
 import '../../quiz/data/quiz_prefetch_service.dart';
+import '../../rewards/data/system_rewards_initializer.dart';
 import '../../rewards/data/xp_service.dart';
 import 'widgets/nav_item.dart';
 import 'widgets/home_tab.dart';
@@ -188,6 +189,22 @@ class _PrimaryDashboardScreen extends ConsumerStatefulWidget {
 class _PrimaryDashboardScreenState
     extends ConsumerState<_PrimaryDashboardScreen> {
   int _currentTab = 0; // 0=Home, 1=Belohnungen, 2=Verlauf, 3=Statistik
+
+  @override
+  void initState() {
+    super.initState();
+    // Systembelohnungen (Achievements) sicherstellen –
+    // falls das Kind noch keine hat oder neue hinzugekommen sind.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final user = ref.read(authStateChangesProvider).value;
+      if (user != null) {
+        SystemRewardsInitializer().addMissingSystemRewards(
+          userId: user.uid,
+          childId: widget.child.id,
+        );
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {

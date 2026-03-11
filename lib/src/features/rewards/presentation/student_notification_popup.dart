@@ -36,26 +36,21 @@ enum StudentNotificationType {
 class StudentNotificationPopup extends StatefulWidget {
   final StudentNotificationType type;
   final RewardModel? reward;
-  final VoidCallback? onGoToRewards;
   final VoidCallback onDismiss;
 
   const StudentNotificationPopup({
     super.key,
     required this.type,
     this.reward,
-    this.onGoToRewards,
     required this.onDismiss,
   });
 
-  /// Zeigt das Popup. Gibt true zurück wenn der User auf "Zur Belohnung" tippt.
-  static Future<bool> show(
+  /// Zeigt das Popup als Vollbild-Overlay.
+  static Future<void> show(
     BuildContext context, {
     required StudentNotificationType type,
     RewardModel? reward,
-    VoidCallback? onGoToRewards,
   }) async {
-    bool wentToRewards = false;
-
     await showGeneralDialog(
       context: context,
       useRootNavigator: true,
@@ -78,18 +73,9 @@ class StudentNotificationPopup extends StatefulWidget {
       pageBuilder: (ctx, _, __) => StudentNotificationPopup(
         type: type,
         reward: reward,
-        onGoToRewards: onGoToRewards != null
-            ? () {
-                wentToRewards = true;
-                Navigator.of(ctx).pop();
-                onGoToRewards();
-              }
-            : null,
         onDismiss: () => Navigator.of(ctx).pop(),
       ),
     );
-
-    return wentToRewards;
   }
 
   @override
@@ -265,8 +251,6 @@ class _StudentNotificationPopupState extends State<StudentNotificationPopup>
           title: isAvatar ? 'Avatar freigeschaltet!' : 'Neue Belohnung!',
           subtitle: widget.reward?.title ?? 'Eine Belohnung wartet auf dich',
           detail: widget.reward?.reward,
-          buttonLabel: '🎁 Zur Belohnung',
-          showButton: widget.onGoToRewards != null,
         );
 
       case StudentNotificationType.achievementUnlocked:
@@ -277,8 +261,6 @@ class _StudentNotificationPopupState extends State<StudentNotificationPopup>
           title: 'Achievement!',
           subtitle: widget.reward?.title ?? 'Ziel erreicht!',
           detail: widget.reward?.description,
-          buttonLabel: '🏆 Alle Achievements',
-          showButton: widget.onGoToRewards != null,
         );
 
       case StudentNotificationType.avatarUnlocked:
@@ -289,8 +271,6 @@ class _StudentNotificationPopupState extends State<StudentNotificationPopup>
           title: 'Neuer Avatar!',
           subtitle: widget.reward?.title ?? 'Neuer Avatar freigeschaltet!',
           detail: 'Schau dir deinen neuen Avatar an!',
-          buttonLabel: '🎭 Avatar anpassen',
-          showButton: widget.onGoToRewards != null,
         );
 
       case StudentNotificationType.streakMilestone:
@@ -301,8 +281,6 @@ class _StudentNotificationPopupState extends State<StudentNotificationPopup>
           title: 'Streak!',
           subtitle: widget.reward?.title ?? 'Streak-Meilenstein erreicht!',
           detail: widget.reward?.description,
-          buttonLabel: '',
-          showButton: false,
         );
     }
   }
@@ -479,29 +457,14 @@ class _StudentNotificationPopupState extends State<StudentNotificationPopup>
 
                     const SizedBox(height: 32),
 
-                    // ── Buttons ─────────────────────────────────────────────
+                    // ── Button ──────────────────────────────────────────────
                     SlideTransition(
                       position: _buttonSlide,
                       child: FadeTransition(
                         opacity: _buttonFade,
-                        child: Column(
-                          children: [
-                            // "Zur Belohnung" Button (optional)
-                            if (cfg.showButton && widget.onGoToRewards != null)
-                              _buildPrimaryButton(
-                                label: cfg.buttonLabel,
-                                onTap: widget.onGoToRewards!,
-                              ),
-
-                            if (cfg.showButton && widget.onGoToRewards != null)
-                              const SizedBox(height: 12),
-
-                            // "Okay / Schließen" Button
-                            _buildSecondaryButton(
-                              label: cfg.showButton ? 'Später' : '🎉 Super!',
-                              onTap: widget.onDismiss,
-                            ),
-                          ],
+                        child: _buildSecondaryButton(
+                          label: '🎉 Super!',
+                          onTap: widget.onDismiss,
                         ),
                       ),
                     ),
@@ -511,42 +474,6 @@ class _StudentNotificationPopupState extends State<StudentNotificationPopup>
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildPrimaryButton({
-    required String label,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: () {
-        HapticFeedback.mediumImpact();
-        onTap();
-      },
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.2),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 17,
-            fontWeight: FontWeight.w800,
-            color: _config.gradientColors[0],
-          ),
-          textAlign: TextAlign.center,
-        ),
       ),
     );
   }
@@ -593,8 +520,6 @@ class _NotificationConfig {
   final String title;
   final String subtitle;
   final String? detail;
-  final String buttonLabel;
-  final bool showButton;
 
   const _NotificationConfig({
     required this.gradientColors,
@@ -603,8 +528,6 @@ class _NotificationConfig {
     required this.title,
     required this.subtitle,
     this.detail,
-    required this.buttonLabel,
-    required this.showButton,
   });
 }
 
@@ -660,18 +583,12 @@ class _FireParticle {
 Future<void> showRewardNotifications(
   BuildContext context, {
   required List<RewardModel> rewards,
-  VoidCallback? onGoToRewards,
 }) async {
   for (final reward in rewards) {
     if (!context.mounted) return;
 
     final type = _typeForReward(reward);
-    await StudentNotificationPopup.show(
-      context,
-      type: type,
-      reward: reward,
-      onGoToRewards: onGoToRewards,
-    );
+    await StudentNotificationPopup.show(context, type: type, reward: reward);
   }
 }
 

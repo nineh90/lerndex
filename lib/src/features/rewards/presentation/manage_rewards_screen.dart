@@ -190,8 +190,13 @@ class _ManageRewardsScreenState extends ConsumerState<ManageRewardsScreen>
     BuildContext context,
     String userId,
   ) async {
-    await showDialog(
+    await showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
       builder: (context) =>
           CreateRewardDialog(child: widget.child, userId: userId),
     );

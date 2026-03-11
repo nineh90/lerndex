@@ -167,14 +167,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
     if (!mounted) return;
     Future.delayed(const Duration(milliseconds: 500), () {
       if (!mounted) return;
-      showRewardNotifications(
-        context,
-        rewards: rewards,
-        onGoToRewards: () {
-          ref.read(navigateToRewardsTabProvider.notifier).state = true;
-          if (mounted) Navigator.of(context).pop();
-        },
-      );
+      showRewardNotifications(context, rewards: rewards);
     });
   }
 

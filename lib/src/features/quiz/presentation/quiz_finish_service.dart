@@ -44,7 +44,6 @@ class QuizFinishService {
     required String childId,
     required bool isPerfect,
     LearningTimeTracker? timeTracker,
-    required VoidCallback onGoToRewards,
   }) async {
     try {
       final xpService = ref.read(xpServiceProvider);
@@ -97,11 +96,7 @@ class QuizFinishService {
       if (unlockedRewards.isNotEmpty) {
         Future.delayed(const Duration(milliseconds: 600), () {
           if (context.mounted) {
-            showRewardNotifications(
-              context,
-              rewards: unlockedRewards,
-              onGoToRewards: onGoToRewards,
-            );
+            showRewardNotifications(context, rewards: unlockedRewards);
           }
         });
       } else if (_isStreakMilestone(newStreak)) {

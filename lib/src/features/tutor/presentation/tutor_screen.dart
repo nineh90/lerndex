@@ -129,14 +129,7 @@ class _TutorScreenState extends ConsumerState<TutorScreen> {
       );
 
       if (unlockedRewards.isNotEmpty && mounted) {
-        showRewardNotifications(
-          context,
-          rewards: unlockedRewards,
-          onGoToRewards: () {
-            ref.read(navigateToRewardsTabProvider.notifier).state = true;
-            Navigator.of(context).pop();
-          },
-        );
+        showRewardNotifications(context, rewards: unlockedRewards);
       }
     } catch (e) {
       debugPrint('❌ Tutor: Reward-Check fehlgeschlagen: $e');

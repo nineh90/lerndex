@@ -945,10 +945,6 @@ class _EarlyLearnerQuizScreenState extends ConsumerState<EarlyLearnerQuizScreen>
       childId: child.id,
       isPerfect: _correctAnswers == _questions.length,
       timeTracker: _timeTracker,
-      onGoToRewards: () {
-        ref.read(navigateToRewardsTabProvider.notifier).state = true;
-        Navigator.of(context).pop();
-      },
     );
   }
 

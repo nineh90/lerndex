@@ -7,6 +7,8 @@ import 'package:lerndex/src/features/auth/data/auth_repository.dart';
 import 'package:lerndex/src/features/auth/domain/child_model.dart';
 import 'package:lerndex/src/features/auth/presentation/active_child_provider.dart';
 import 'package:lerndex/src/features/quiz/presentation/quiz_screen.dart';
+import 'package:lerndex/src/features/rewards/data/reward_service.dart';
+import 'package:lerndex/src/features/rewards/data/system_rewards_initializer.dart';
 import 'package:lerndex/src/features/rewards/data/xp_service.dart';
 import 'package:lerndex/src/features/rewards/presentation/rewards_screen.dart';
 import 'rewards_count_provider.dart';
@@ -60,6 +62,18 @@ class _SecondaryDashboardScreenState
     _fadeAnim = CurvedAnimation(parent: _fadeCtrl, curve: Curves.easeOut);
 
     // Onboarding einmalig anzeigen
+
+    // Systembelohnungen (Achievements) sicherstellen –
+    // falls das Kind noch keine hat oder neue hinzugekommen sind.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final user = ref.read(authStateChangesProvider).value;
+      if (user != null) {
+        SystemRewardsInitializer().addMissingSystemRewards(
+          userId: user.uid,
+          childId: widget.child.id,
+        );
+      }
+    });
   }
 
   @override

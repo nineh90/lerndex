@@ -11,21 +11,39 @@ class RewardCard extends StatelessWidget {
   final RewardModel reward;
   final VoidCallback? onClaim;
 
-  const RewardCard({super.key, required this.reward, this.onClaim});
+  /// Optionale Theme-Farben – werden für Klasse 5+ gesetzt damit die Karte
+  /// zum jeweiligen Dashboard-Theme passt.
+  final Color? primaryColor;
+  final Color? onSurfaceColor;
+  final Color? surfaceColor;
+
+  const RewardCard({
+    super.key,
+    required this.reward,
+    this.onClaim,
+    this.primaryColor,
+    this.onSurfaceColor,
+    this.surfaceColor,
+  });
 
   @override
   Widget build(BuildContext context) {
     final isClaimed = reward.status == RewardStatus.claimed;
+
+    // Theme-Farben mit Fallback auf Standard-Lila
+    final accent = primaryColor ?? const Color(0xFF7C4DFF);
+    final textColor = onSurfaceColor ?? Colors.black87;
+    final cardSurface = surfaceColor ?? const Color(0xFFF3F0FF);
+    final borderColor = isClaimed
+        ? Colors.grey.shade200
+        : primaryColor?.withOpacity(0.6) ?? const Color(0xFF9C64FF);
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       elevation: isClaimed ? 1 : 3,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side: BorderSide(
-          color: isClaimed ? Colors.grey.shade200 : const Color(0xFF9C64FF),
-          width: 2,
-        ),
+        side: BorderSide(color: borderColor, width: 2),
       ),
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -45,7 +63,7 @@ class RewardCard extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
-                          color: isClaimed ? Colors.grey : Colors.black,
+                          color: isClaimed ? Colors.grey : textColor,
                         ),
                       ),
                       if (reward.description.isNotEmpty)
@@ -53,7 +71,9 @@ class RewardCard extends StatelessWidget {
                           reward.description,
                           style: TextStyle(
                             fontSize: 14,
-                            color: Colors.grey.shade600,
+                            color: isClaimed
+                                ? Colors.grey.shade500
+                                : textColor.withOpacity(0.6),
                           ),
                         ),
                     ],
@@ -67,16 +87,14 @@ class RewardCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: isClaimed
-                    ? Colors.grey.shade100
-                    : const Color(0xFFF3F0FF),
+                color: isClaimed ? Colors.grey.shade100 : cardSurface,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Row(
                 children: [
                   Icon(
                     Icons.card_giftcard,
-                    color: isClaimed ? Colors.grey : const Color(0xFF7C4DFF),
+                    color: isClaimed ? Colors.grey : accent,
                   ),
                   const SizedBox(width: 8),
                   Expanded(
@@ -85,7 +103,7 @@ class RewardCard extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
-                        color: isClaimed ? Colors.grey : Colors.black87,
+                        color: isClaimed ? Colors.grey : textColor,
                       ),
                     ),
                   ),
@@ -101,7 +119,7 @@ class RewardCard extends StatelessWidget {
                   icon: const Icon(Icons.redeem),
                   label: const Text('Belohnung einlösen'),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF7C4DFF),
+                    backgroundColor: accent,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 12),
                   ),

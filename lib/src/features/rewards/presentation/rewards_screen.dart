@@ -112,10 +112,42 @@ class RewardsScreen extends ConsumerWidget {
                   unselectedLabelStyle: const TextStyle(fontSize: 12),
                   tabs: [
                     Tab(
-                      icon: const Icon(Icons.card_giftcard, size: 18),
-                      text: approvedRewards.isNotEmpty
-                          ? 'Verfügbar (${approvedRewards.length})'
-                          : 'Verfügbar',
+                      iconMargin: const EdgeInsets.only(bottom: 4),
+                      icon: Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          const Icon(Icons.card_giftcard, size: 18),
+                          if (approvedRewards.isNotEmpty)
+                            Positioned(
+                              top: -5,
+                              right: -8,
+                              child: Container(
+                                padding: const EdgeInsets.all(3),
+                                constraints: const BoxConstraints(
+                                  minWidth: 15,
+                                  minHeight: 15,
+                                ),
+                                decoration: const BoxDecoration(
+                                  color: Colors.red,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Text(
+                                  approvedRewards.length > 9
+                                      ? '9+'
+                                      : '${approvedRewards.length}',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 8,
+                                    fontWeight: FontWeight.bold,
+                                    height: 1,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                      text: 'Verfügbar',
                     ),
                     const Tab(
                       icon: Icon(Icons.history, size: 18),
@@ -225,6 +257,9 @@ class RewardsScreen extends ConsumerWidget {
         final reward = rewards[index];
         return RewardCard(
           reward: reward,
+          primaryColor: primary,
+          onSurfaceColor: onSurface,
+          surfaceColor: primary.withOpacity(0.08),
           onClaim: isAvailable
               ? () async {
                   await _claimReward(
