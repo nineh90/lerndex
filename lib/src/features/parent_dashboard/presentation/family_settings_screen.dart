@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../../../tutorial_provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 /// Einstellungen im Family-Dashboard (für alle sichtbar – auch Kinder).
 /// Enthält nur unkritische Optionen: App-Tour & Rechtliches.

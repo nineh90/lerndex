@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'dart:convert';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -20,7 +21,7 @@ class QuizRepository {
       // In QuizData umwandeln
       return QuizData.fromJson(jsonData);
     } catch (e) {
-      print('Fehler beim Laden der Fragen für $subject: $e');
+      debugPrint('Fehler beim Laden der Fragen für $subject: $e');
       // Fallback: Leere QuizData zurückgeben
       return QuizData(subject: subject, questions: []);
     }
@@ -45,7 +46,10 @@ final quizRepositoryProvider = Provider<QuizRepository>((ref) {
 
 /// Provider zum Laden der Fragen für ein Fach
 /// Verwendung: ref.watch(quizQuestionsProvider('mathe'))
-final quizQuestionsProvider = FutureProvider.family<QuizData, String>((ref, subject) async {
+final quizQuestionsProvider = FutureProvider.family<QuizData, String>((
+  ref,
+  subject,
+) async {
   final repository = ref.watch(quizRepositoryProvider);
   return repository.loadQuestions(subject);
 });

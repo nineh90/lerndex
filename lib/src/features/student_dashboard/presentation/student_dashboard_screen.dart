@@ -77,12 +77,12 @@ class _StudentDashboardScreenState
         ref
             .read(activeChildProvider.notifier)
             .update(child.copyWith(streak: validStreak));
-        print(
+        debugPrint(
           '🔄 Dashboard: Streak korrigiert von ${child.streak} → $validStreak',
         );
       }
     } catch (e) {
-      print('❌ Dashboard: Streak-Check fehlgeschlagen: $e');
+      debugPrint('❌ Dashboard: Streak-Check fehlgeschlagen: $e');
     }
   }
 

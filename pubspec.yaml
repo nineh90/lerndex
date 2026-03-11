@@ -34,6 +34,12 @@ dependencies:
   # Foto-Upload
   image_picker: 1.0.7
 
+  # Splash Screen
+  flutter_native_splash: ^2.4.0
+
+  # Crashlytics
+  firebase_crashlytics: ^4.0.0
+
   # UI
   confetti: ^0.7.0
   fl_chart: ^0.69.0
@@ -48,10 +54,12 @@ dependencies:
   flutter_tts: ^3.8.3
 
   flutter_math_fork: ^0.7.2
-  flutter_native_splash: ^2.4.4
-  url_launcher: ^6.3.2
-  firebase_crashlytics: ^4.1.0
 
+  # File system (genutzt in theme_picker_sheet.dart)
+  path_provider: ^2.1.4
+  path: ^1.9.0
+  url_launcher: ^6.3.2
+  
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -63,30 +71,8 @@ dev_dependencies:
   freezed: ^2.4.7
   json_serializable: ^6.8.0
 
-  path_provider: ^2.1.4
-  path: ^1.9.0
-  flutter_launcher_icons: ^0.13.1
-
-flutter_launcher_icons:
-  android: true
-  ios: true
-  image_path: "assets/icon/app_icon.png"
-  adaptive_icon_background: "#6B21A8"
-  adaptive_icon_foreground: "assets/icon/app_icon_foreground.png"
-
 flutter:
   uses-material-design: true
   assets:
     - assets/questions/
     - assets/images/
-
-flutter_native_splash:
-  color: "#3B0764"
-
-android_12:
-  color: "#3B0764"
-  # image: assets/splash_logo.png
-
-ios: true
-android: true
-fullscreen: false

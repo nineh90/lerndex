@@ -165,7 +165,7 @@ class _LerndexSplashScreenState extends ConsumerState<LerndexSplashScreen>
         }
       }
     } catch (e) {
-      print('⚠️ Splash init error: $e');
+      debugPrint('⚠️ Splash init error: $e');
       destination = 'login';
       _setProgress(1.0, 'Weiter...');
     }
@@ -237,7 +237,7 @@ class _LerndexSplashScreenState extends ConsumerState<LerndexSplashScreen>
 
       _setProgress(1.0, 'Alles bereit! ✨');
     } catch (e) {
-      print('⚠️ Prefetch-Fehler im Splash: $e');
+      debugPrint('⚠️ Prefetch-Fehler im Splash: $e');
       _setProgress(1.0, 'Weiter...');
     }
   }

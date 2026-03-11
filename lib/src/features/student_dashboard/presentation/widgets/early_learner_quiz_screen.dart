@@ -523,13 +523,13 @@ class _EarlyLearnerQuizScreenState extends ConsumerState<EarlyLearnerQuizScreen>
         Future.delayed(const Duration(milliseconds: 600), () {
           if (mounted && _questions.isNotEmpty) _speakCurrentQuestion();
         });
-        print(
+        debugPrint(
           '👨‍👩‍👧 ${selected.length} Eltern-Aufgaben für Early Learner geladen',
         );
         return;
       }
     } catch (e) {
-      print('⚠️ EarlyQuiz: Eltern-Aufgaben nicht verfügbar: $e');
+      debugPrint('⚠️ EarlyQuiz: Eltern-Aufgaben nicht verfügbar: $e');
     }
 
     // ── 2. KI-generierte Fragen ──────────────────────────────────────────────
@@ -568,7 +568,7 @@ class _EarlyLearnerQuizScreenState extends ConsumerState<EarlyLearnerQuizScreen>
 
         // Weniger als 5 – trotzdem KI-Fragen nutzen wenn welche da sind
         if (converted.isNotEmpty) {
-          print(
+          debugPrint(
             '⚠️ EarlyQuiz: Nur ${converted.length}/$_targetQuestionCount '
             'KI-Fragen verfügbar → starte mit ${converted.length}',
           );
@@ -592,7 +592,9 @@ class _EarlyLearnerQuizScreenState extends ConsumerState<EarlyLearnerQuizScreen>
         }
       }
     } catch (e) {
-      print('⚠️ EarlyQuiz: KI-Fragen nicht verfügbar, nutze statische: $e');
+      debugPrint(
+        '⚠️ EarlyQuiz: KI-Fragen nicht verfügbar, nutze statische: $e',
+      );
     }
 
     // ── 3. Statische Fallback-Fragen ─────────────────────────────────────────
@@ -603,11 +605,26 @@ class _EarlyLearnerQuizScreenState extends ConsumerState<EarlyLearnerQuizScreen>
   /// Gibt [count] gefilterte statische Fragen für das aktuelle Fach zurück.
   /// NUR als absoluter Fallback wenn KI nicht verfügbar ist!
   List<_EarlyQuestion> _getStaticQuestions(int count) {
-    final bank = _questionBank[widget.subject] ?? _questionBank['Mathe']!;
-    final filtered = _filterBySubject(bank, widget.subject);
+    // 'Zahlen' → 'Mathe', 'Buchstaben' → 'Deutsch' (Dashboard-Aliase)
+    final key = _normalizeSubject(widget.subject);
+    final bank = _questionBank[key] ?? _questionBank['Mathe']!;
+    final filtered = _filterBySubject(bank, key);
     final pool = filtered.isNotEmpty ? filtered : bank;
     final shuffled = List<_EarlyQuestion>.from(pool)..shuffle();
     return shuffled.take(count).map(_ensureFourOptions).toList();
+  }
+
+  /// Normalisiert Dashboard-Subject-Aliase auf kanonische interne Namen.
+  /// 'Zahlen' → 'Mathe', 'Buchstaben' → 'Deutsch', alles andere unverändert.
+  String _normalizeSubject(String subject) {
+    switch (subject) {
+      case 'Zahlen':
+        return 'Mathe';
+      case 'Buchstaben':
+        return 'Deutsch';
+      default:
+        return subject;
+    }
   }
 
   void _loadStaticQuestions() {
@@ -637,9 +654,11 @@ class _EarlyLearnerQuizScreenState extends ConsumerState<EarlyLearnerQuizScreen>
 
   List<_EarlyQuestion> _filterBySubject(
     List<_EarlyQuestion> questions,
-    String subject,
+    String subject, // erwartet bereits normalisierten Subject-String
   ) {
-    switch (subject) {
+    // Sicherheits-Normalisierung falls direkt aufgerufen
+    final normalized = _normalizeSubject(subject);
+    switch (normalized) {
       case 'Mathe':
         return questions.where((q) {
           final text = q.questionText.toLowerCase();
@@ -1006,7 +1025,9 @@ class _EarlyLearnerQuizScreenState extends ConsumerState<EarlyLearnerQuizScreen>
                   userId: user.uid,
                   parentTaskRef: parentTaskRef,
                 );
-            print('✅ Early-Learner Eltern-Aufgabe markiert: $parentTaskRef');
+            debugPrint(
+              '✅ Early-Learner Eltern-Aufgabe markiert: $parentTaskRef',
+            );
           } catch (_) {}
         }
       }
@@ -1949,13 +1970,26 @@ class _EarlyLearnerQuizScreenState extends ConsumerState<EarlyLearnerQuizScreen>
                                     style: TextStyle(fontSize: 28),
                                   ),
                                   const SizedBox(width: 8),
-                                  Text(
-                                    '+$earnedXP',
-                                    style: const TextStyle(
-                                      fontSize: 28,
-                                      fontWeight: FontWeight.w900,
-                                      color: Color(0xFFFF8C00),
-                                    ),
+                                  Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        '+$earnedXP',
+                                        style: const TextStyle(
+                                          fontSize: 28,
+                                          fontWeight: FontWeight.w900,
+                                          color: Color(0xFFFF8C00),
+                                        ),
+                                      ),
+                                      Text(
+                                        'in diesem Quiz',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          color: Colors.amber.shade700,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ],
                               ),

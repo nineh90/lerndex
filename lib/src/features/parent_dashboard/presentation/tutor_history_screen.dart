@@ -555,7 +555,7 @@ class _TutorHistoryScreenState extends ConsumerState<TutorHistoryScreen> {
         sessionId: sessionId,
       );
     } catch (e) {
-      print('❌ Fehler beim Löschen der Session: $e');
+      debugPrint('❌ Fehler beim Löschen der Session: $e');
     }
   }
 

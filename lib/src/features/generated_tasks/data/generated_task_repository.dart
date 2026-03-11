@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'generated_task_models.dart';
@@ -51,13 +52,13 @@ class GeneratedTaskRepository {
       }
 
       await batch.commit();
-      print(
+      debugPrint(
         '✅ Batch gespeichert: ${batchDoc.id} mit ${questions.length} Aufgaben',
       );
 
       return batchDoc.id;
     } catch (e) {
-      print('❌ Fehler beim Speichern des Batches: $e');
+      debugPrint('❌ Fehler beim Speichern des Batches: $e');
       rethrow;
     }
   }
@@ -206,7 +207,7 @@ class GeneratedTaskRepository {
 
       return GeneratedTaskBatch.fromFirestore(doc, questions);
     } catch (e) {
-      print('❌ Fehler beim Laden des Batches: $e');
+      debugPrint('❌ Fehler beim Laden des Batches: $e');
       return null;
     }
   }
@@ -241,12 +242,12 @@ class GeneratedTaskRepository {
         );
       }
 
-      print(
+      debugPrint(
         '✅ ${approvedQuestions.length} freigegebene Aufgaben geladen für ${subject.displayName}',
       );
       return approvedQuestions;
     } catch (e) {
-      print('❌ Fehler beim Laden freigegebener Aufgaben: $e');
+      debugPrint('❌ Fehler beim Laden freigegebener Aufgaben: $e');
       return [];
     }
   }
@@ -288,9 +289,9 @@ class GeneratedTaskRepository {
       }
 
       await firestoreBatch.commit();
-      print('✅ Aufgabe freigegeben: $questionId');
+      debugPrint('✅ Aufgabe freigegeben: $questionId');
     } catch (e) {
-      print('❌ Fehler beim Freigeben: $e');
+      debugPrint('❌ Fehler beim Freigeben: $e');
       rethrow;
     }
   }
@@ -328,9 +329,9 @@ class GeneratedTaskRepository {
       }
 
       await firestoreBatch.commit();
-      print('✅ Aufgabe abgelehnt: $questionId');
+      debugPrint('✅ Aufgabe abgelehnt: $questionId');
     } catch (e) {
-      print('❌ Fehler beim Ablehnen: $e');
+      debugPrint('❌ Fehler beim Ablehnen: $e');
       rethrow;
     }
   }
@@ -373,9 +374,9 @@ class GeneratedTaskRepository {
       });
 
       await firestoreBatch.commit();
-      print('✅ Alle ausstehenden Aufgaben freigegeben in Batch: $batchId');
+      debugPrint('✅ Alle ausstehenden Aufgaben freigegeben in Batch: $batchId');
     } catch (e) {
-      print('❌ Fehler beim Massen-Freigeben: $e');
+      debugPrint('❌ Fehler beim Massen-Freigeben: $e');
       rethrow;
     }
   }
@@ -404,9 +405,9 @@ class GeneratedTaskRepository {
       batch.delete(batchDoc);
 
       await batch.commit();
-      print('✅ Batch gelöscht: $batchId');
+      debugPrint('✅ Batch gelöscht: $batchId');
     } catch (e) {
-      print('❌ Fehler beim Löschen: $e');
+      debugPrint('❌ Fehler beim Löschen: $e');
       rethrow;
     }
   }
@@ -437,7 +438,7 @@ class GeneratedTaskRepository {
 
       return totalPending;
     } catch (e) {
-      print('❌ Fehler beim Zählen ausstehender Aufgaben: $e');
+      debugPrint('❌ Fehler beim Zählen ausstehender Aufgaben: $e');
       return 0;
     }
   }
@@ -462,7 +463,7 @@ class GeneratedTaskRepository {
     try {
       final parts = parentTaskRef.split('/');
       if (parts.length != 2) {
-        print('⚠️ Ungültiger parentTaskRef: $parentTaskRef');
+        debugPrint('⚠️ Ungültiger parentTaskRef: $parentTaskRef');
         return;
       }
       final batchId = parts[0];
@@ -480,9 +481,9 @@ class GeneratedTaskRepository {
             'answeredCorrectly': true,
           });
 
-      print('✅ Eltern-Aufgabe als beantwortet markiert: $questionId');
+      debugPrint('✅ Eltern-Aufgabe als beantwortet markiert: $questionId');
     } catch (e) {
-      print('❌ Fehler beim Markieren als beantwortet: $e');
+      debugPrint('❌ Fehler beim Markieren als beantwortet: $e');
     }
   }
 
@@ -503,7 +504,7 @@ class GeneratedTaskRepository {
           .get();
 
       if (batchesSnapshot.docs.isEmpty) {
-        print('ℹ️ Keine Batches für $childId / ${subject.value}');
+        debugPrint('ℹ️ Keine Batches für $childId / ${subject.value}');
         return [];
       }
 
@@ -530,13 +531,13 @@ class GeneratedTaskRepository {
         }
       }
 
-      print(
+      debugPrint(
         '✅ ${unansweredQuestions.length} unbeantwortete Eltern-Aufgaben '
         'für ${subject.displayName} geladen',
       );
       return unansweredQuestions;
     } catch (e) {
-      print('❌ Fehler beim Laden unbeantworteter Eltern-Aufgaben: $e');
+      debugPrint('❌ Fehler beim Laden unbeantworteter Eltern-Aufgaben: $e');
       return [];
     }
   }

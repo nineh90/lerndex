@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../domain/child_model.dart';
 import '../../rewards/data/system_rewards_initializer.dart';
@@ -22,8 +23,8 @@ class ProfileRepository {
   /// Stream aller Kinder des eingeloggten Eltern-Accounts
   /// Aktualisiert sich automatisch bei Änderungen in Firestore
   Stream<List<ChildModel>> watchChildren() {
-    print('🔍 currentUser: ${_auth.currentUser?.uid}');
-    print('🔍 _uid getter: $_uid');
+    debugPrint('🔍 currentUser: ${_auth.currentUser?.uid}');
+    debugPrint('🔍 _uid getter: $_uid');
 
     return _firestore
         .collection('users')
@@ -80,9 +81,9 @@ class ProfileRepository {
         childId: docRef.id,
       );
 
-      print('✅ Kind erstellt mit $count System-Belohnungen');
+      debugPrint('✅ Kind erstellt mit $count System-Belohnungen');
     } catch (e) {
-      print('⚠️ Fehler beim Erstellen der System-Belohnungen: $e');
+      debugPrint('⚠️ Fehler beim Erstellen der System-Belohnungen: $e');
     }
 
     // Quiz-Fragen im Hintergrund vorgenerieren (fire-and-forget)
@@ -125,7 +126,7 @@ class ProfileRepository {
       xpToNextLevel: XPService.calculateXPForLevel(1),
     );
 
-    print(
+    debugPrint(
       '🔮 Starte Quiz-Pre-Fetch fuer neues Kind: $name '
       '($schoolType, Klasse $grade)...',
     );
@@ -152,7 +153,7 @@ class ProfileRepository {
       final childId = doc.id;
       final childName = doc.data()['name'] ?? 'Unknown';
 
-      print('🔧 Migriere Kind: $childName ($childId)');
+      debugPrint('🔧 Migriere Kind: $childName ($childId)');
 
       try {
         final hasRewards = await rewardsInitializer.hasSystemRewards(
@@ -161,24 +162,24 @@ class ProfileRepository {
         );
 
         if (!hasRewards) {
-          print('  → Erstelle alle System-Belohnungen');
+          debugPrint('  → Erstelle alle System-Belohnungen');
           await rewardsInitializer.initializeSystemRewards(
             userId: user.uid,
             childId: childId,
           );
         } else {
-          print('  → Füge fehlende Belohnungen hinzu');
+          debugPrint('  → Füge fehlende Belohnungen hinzu');
           await rewardsInitializer.addMissingSystemRewards(
             userId: user.uid,
             childId: childId,
           );
         }
       } catch (e) {
-        print('  ❌ Fehler bei Migration für $childName: $e');
+        debugPrint('  ❌ Fehler bei Migration für $childName: $e');
       }
     }
 
-    print('✅ Migration abgeschlossen');
+    debugPrint('✅ Migration abgeschlossen');
   }
 
   /// Aktualisiert die Sterne eines Kindes.
@@ -262,7 +263,7 @@ class ProfileRepository {
         .collection('children')
         .get();
 
-    // Für jedes Kind: Subcollections löschen
+    // Für jedes Kind: Subcollections per Batch löschen (max 500 Ops pro Batch)
     for (final childDoc in childrenSnapshot.docs) {
       final childId = childDoc.id;
 
@@ -280,8 +281,16 @@ class ProfileRepository {
             .collection(subcollection)
             .get();
 
-        for (final doc in subDocs.docs) {
-          await doc.reference.delete();
+        // Batch-Delete: bis zu 400 pro Batch (Firestore-Limit ist 500)
+        for (var i = 0; i < subDocs.docs.length; i += 400) {
+          final batch = _firestore.batch();
+          final end = (i + 400 < subDocs.docs.length)
+              ? i + 400
+              : subDocs.docs.length;
+          for (var j = i; j < end; j++) {
+            batch.delete(subDocs.docs[j].reference);
+          }
+          await batch.commit();
         }
       }
 

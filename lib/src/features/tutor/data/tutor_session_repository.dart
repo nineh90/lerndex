@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'tutor_session_model.dart';
@@ -18,7 +19,7 @@ class TutorSessionRepository {
     required String userId,
     required String childId,
   }) async {
-    print('📝 Erstelle neue Tutor-Session für Kind: $childId');
+    debugPrint('📝 Erstelle neue Tutor-Session für Kind: $childId');
 
     final sessionData = TutorSession(
       id: '', // Wird von Firestore gesetzt
@@ -35,7 +36,7 @@ class TutorSessionRepository {
         .collection('tutor_sessions')
         .add(sessionData.toMap());
 
-    print('✅ Session erstellt: ${docRef.id}');
+    debugPrint('✅ Session erstellt: ${docRef.id}');
 
     return sessionData.copyWith(id: docRef.id);
   }
@@ -45,7 +46,7 @@ class TutorSessionRepository {
     required String userId,
     required String childId,
   }) async {
-    print('🔍 Suche aktive Session für Kind: $childId');
+    debugPrint('🔍 Suche aktive Session für Kind: $childId');
 
     final snapshot = await _firestore
         .collection('users')
@@ -66,7 +67,7 @@ class TutorSessionRepository {
       final timeSinceStart = now.difference(session.startedAt);
 
       if (timeSinceStart.inMinutes > 30) {
-        print(
+        debugPrint(
           '⏰ Session zu alt (${timeSinceStart.inMinutes} Min), schließe ab',
         );
         await completeSession(
@@ -77,11 +78,11 @@ class TutorSessionRepository {
         return createSession(userId: userId, childId: childId);
       }
 
-      print('✅ Aktive Session gefunden: ${session.id}');
+      debugPrint('✅ Aktive Session gefunden: ${session.id}');
       return session;
     }
 
-    print('📝 Keine aktive Session, erstelle neue');
+    debugPrint('📝 Keine aktive Session, erstelle neue');
     return createSession(userId: userId, childId: childId);
   }
 
@@ -120,7 +121,7 @@ class TutorSessionRepository {
     required String childId,
     required String sessionId,
   }) async {
-    print('🏁 Schließe Session ab: $sessionId');
+    debugPrint('🏁 Schließe Session ab: $sessionId');
 
     final now = DateTime.now();
 
@@ -155,7 +156,7 @@ class TutorSessionRepository {
           'durationSeconds': duration.inSeconds,
         });
 
-    print('✅ Session abgeschlossen. Dauer: ${duration.inMinutes} Min');
+    debugPrint('✅ Session abgeschlossen. Dauer: ${duration.inMinutes} Min');
   }
 
   // ========================================================================
@@ -257,7 +258,7 @@ class TutorSessionRepository {
       final topic = TutorSession.detectTopic(messageText);
       updates['firstQuestion'] = messageText;
       updates['detectedTopic'] = topic;
-      print('🎯 Thema erkannt: $topic');
+      debugPrint('🎯 Thema erkannt: $topic');
     }
 
     // Content-Flag bei JEDER Nachricht neu prüfen –
@@ -269,7 +270,7 @@ class TutorSessionRepository {
 
       if (newFlag != null && newFlag != session.contentFlag) {
         updates['contentFlag'] = newFlag;
-        print('🚩 Content-Flag gesetzt: $newFlag');
+        debugPrint('🚩 Content-Flag gesetzt: $newFlag');
       }
     }
 
@@ -294,7 +295,7 @@ class TutorSessionRepository {
     required String userId,
     required String childId,
   }) async {
-    print('🗑️ Lösche active_tutor_chat für Schüler');
+    debugPrint('🗑️ Lösche active_tutor_chat für Schüler');
 
     final snapshot = await _firestore
         .collection('users')
@@ -310,7 +311,7 @@ class TutorSessionRepository {
     }
 
     await batch.commit();
-    print('✅ Active Chat gelöscht (${snapshot.docs.length} Nachrichten)');
+    debugPrint('✅ Active Chat gelöscht (${snapshot.docs.length} Nachrichten)');
   }
 
   /// Lädt Nachrichten aus active_tutor_chat (für Schüler)
@@ -436,7 +437,7 @@ final activeSessionProvider = FutureProvider.family<TutorSession?, String>((
       childId: childId,
     );
   } catch (e) {
-    print('❌ Fehler beim Laden der aktiven Session: $e');
+    debugPrint('❌ Fehler beim Laden der aktiven Session: $e');
     return null;
   }
 });

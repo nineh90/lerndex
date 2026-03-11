@@ -60,7 +60,7 @@ class _TutorScreenState extends ConsumerState<TutorScreen> {
 
       _timeTracker = LearningTimeTracker(userId: user.uid, childId: child.id);
       _timeTracker!.startTracking();
-      print('⏱️ Tutor: Zeit-Tracking gestartet');
+      debugPrint('⏱️ Tutor: Zeit-Tracking gestartet');
     }
   }
 
@@ -139,7 +139,7 @@ class _TutorScreenState extends ConsumerState<TutorScreen> {
         );
       }
     } catch (e) {
-      print('❌ Tutor: Reward-Check fehlgeschlagen: $e');
+      debugPrint('❌ Tutor: Reward-Check fehlgeschlagen: $e');
     } finally {
       _isCheckingRewards = false;
     }
@@ -166,7 +166,7 @@ class _TutorScreenState extends ConsumerState<TutorScreen> {
       Future(() async {
         try {
           await tracker.saveTime();
-          print('✅ Tutor: Lernzeit gespeichert');
+          debugPrint('✅ Tutor: Lernzeit gespeichert');
 
           if (child != null &&
               userId != null &&
@@ -176,7 +176,7 @@ class _TutorScreenState extends ConsumerState<TutorScreen> {
               userId: userId,
               childId: child.id,
             );
-            print('✅ Tutor: Streak aktualisiert → $newStreak Tage');
+            debugPrint('✅ Tutor: Streak aktualisiert → $newStreak Tage');
 
             ChildModel? updatedChild = await xpService.getChild(
               userId: userId,
@@ -192,14 +192,14 @@ class _TutorScreenState extends ConsumerState<TutorScreen> {
               final unlockedRewards = await rewardService
                   .checkAndApproveRewards(userId: userId, child: updatedChild);
               if (unlockedRewards.isNotEmpty) {
-                print(
+                debugPrint(
                   '🎁 Tutor: ${unlockedRewards.length} Belohnungen freigeschaltet!',
                 );
               }
             }
           }
         } catch (e) {
-          print('❌ Fehler beim Speichern der Tutor-Lernzeit: $e');
+          debugPrint('❌ Fehler beim Speichern der Tutor-Lernzeit: $e');
         }
         tracker.dispose();
         notifier?.completeCurrentSession();

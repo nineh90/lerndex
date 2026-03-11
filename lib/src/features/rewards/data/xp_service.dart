@@ -139,12 +139,12 @@ class XPService {
         );
       });
 
-      print(
+      debugPrint(
         '✅ XP hinzugefügt: +$xpToAdd XP → Gesamt: ${result.newXP} XP, Level: ${result.newLevel}',
       );
       return result;
     } catch (e) {
-      print('❌ Fehler beim Hinzufügen von XP: $e');
+      debugPrint('❌ Fehler beim Hinzufügen von XP: $e');
       rethrow;
     }
   }
@@ -181,7 +181,7 @@ class XPService {
 
       return (data['tutorXpToday'] as int?) ?? 0;
     } catch (e) {
-      print('❌ getTutorXpToday Fehler: $e');
+      debugPrint('❌ getTutorXpToday Fehler: $e');
       return 0;
     }
   }
@@ -210,10 +210,10 @@ class XPService {
         );
       } catch (e) {
         if (attempt == retries) {
-          print('❌ addTutorXP Fehler nach $retries Versuchen: $e');
+          debugPrint('❌ addTutorXP Fehler nach $retries Versuchen: $e');
           rethrow;
         }
-        print(
+        debugPrint(
           '⚠️ addTutorXP Versuch $attempt fehlgeschlagen, retry in ${attempt}s...',
         );
         await Future.delayed(Duration(seconds: attempt));
@@ -289,7 +289,7 @@ class XPService {
         );
       });
     } catch (e) {
-      print('❌ _addTutorXPOnce Fehler: $e');
+      debugPrint('❌ _addTutorXPOnce Fehler: $e');
       rethrow;
     }
   }
@@ -317,9 +317,9 @@ class XPService {
         'lastQuizDate': FieldValue.serverTimestamp(),
       });
 
-      print('✅ Quiz-Statistiken aktualisiert (Perfect: $isPerfect)');
+      debugPrint('✅ Quiz-Statistiken aktualisiert (Perfect: $isPerfect)');
     } catch (e) {
-      print('❌ Fehler beim Aktualisieren der Quiz-Stats: $e');
+      debugPrint('❌ Fehler beim Aktualisieren der Quiz-Stats: $e');
     }
   }
 
@@ -357,17 +357,17 @@ class XPService {
         .collection('children')
         .doc(childId);
 
-    print('🔥 updateStreak() gestartet für childId=$childId');
+    debugPrint('🔥 updateStreak() gestartet für childId=$childId');
 
     final snapshot = await docRef.get();
     final data = snapshot.data();
 
     if (data == null) {
-      print('❌ updateStreak: Kein Dokument gefunden für childId=$childId');
+      debugPrint('❌ updateStreak: Kein Dokument gefunden für childId=$childId');
       return 0;
     }
 
-    print(
+    debugPrint(
       '🔥 Firestore: streak=${data['streak']}, lastLearning=${data['lastLearningDate']}',
     );
 
@@ -379,19 +379,19 @@ class XPService {
 
     if (lastLearning == null) {
       newStreak = 1;
-      print('🔥 Streak: Erster Lerntag → Streak = 1');
+      debugPrint('🔥 Streak: Erster Lerntag → Streak = 1');
     } else if (_isSameDay(lastLearning, now)) {
       // Heute bereits gelernt: war streak noch 0 (Bug-Legacy), auf 1 korrigieren
       newStreak = currentStreak < 1 ? 1 : currentStreak;
-      print(
+      debugPrint(
         '🔥 Streak: Heute bereits gelernt → $newStreak (war $currentStreak)',
       );
     } else if (_isYesterday(lastLearning, now)) {
       newStreak = currentStreak + 1;
-      print('🔥 Streak: Gestern gelernt → erhöht auf $newStreak');
+      debugPrint('🔥 Streak: Gestern gelernt → erhöht auf $newStreak');
     } else {
       newStreak = 1;
-      print('🔥 Streak: Pause > 1 Tag → zurückgesetzt auf 1');
+      debugPrint('🔥 Streak: Pause > 1 Tag → zurückgesetzt auf 1');
     }
 
     await docRef.update({
@@ -399,7 +399,7 @@ class XPService {
       'lastLearningDate': FieldValue.serverTimestamp(),
     });
 
-    print('✅ Streak gespeichert: $newStreak Tage');
+    debugPrint('✅ Streak gespeichert: $newStreak Tage');
     return newStreak;
   }
 
@@ -438,18 +438,18 @@ class XPService {
 
       // Heute oder gestern gelernt → Streak noch gültig
       if (_isSameDay(lastLearning, now) || _isYesterday(lastLearning, now)) {
-        print('✅ Streak-Check: Streak $currentStreak noch aktiv');
+        debugPrint('✅ Streak-Check: Streak $currentStreak noch aktiv');
         return currentStreak;
       }
 
       // Pause > 1 Tag → Streak verfallen, auf 0 setzen (nicht 1 – noch nicht gelernt heute)
-      print(
+      debugPrint(
         '💔 Streak-Check: Pause > 1 Tag → Streak verfallen (war $currentStreak)',
       );
       await docRef.update({'streak': 0});
       return 0;
     } catch (e) {
-      print('❌ checkAndResetStreakIfExpired Fehler: $e');
+      debugPrint('❌ checkAndResetStreakIfExpired Fehler: $e');
       return 0;
     }
   }
@@ -475,7 +475,7 @@ class XPService {
 
       return ChildModel.fromFirestore(snapshot.data()!, childId);
     } catch (e) {
-      print('❌ Fehler beim Laden des Kindes: $e');
+      debugPrint('❌ Fehler beim Laden des Kindes: $e');
       return null;
     }
   }

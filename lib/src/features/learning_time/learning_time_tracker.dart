@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
@@ -30,7 +31,7 @@ class LearningTimeTracker {
   void startTracking() {
     if (_isTracking) return;
 
-    print('⏱️ Lernzeit-Tracking gestartet');
+    debugPrint('⏱️ Lernzeit-Tracking gestartet');
     _isTracking = true;
 
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
@@ -50,7 +51,7 @@ class LearningTimeTracker {
   void stopTracking() {
     if (!_isTracking) return;
 
-    print('⏹️ Lernzeit-Tracking gestoppt bei $_secondsTracked Sekunden');
+    debugPrint('⏹️ Lernzeit-Tracking gestoppt bei $_secondsTracked Sekunden');
     _isTracking = false;
     _timer?.cancel();
     _timer = null;
@@ -61,7 +62,7 @@ class LearningTimeTracker {
     if (_secondsTracked == 0) return;
 
     try {
-      print('💾 Speichere $_secondsTracked Sekunden Lernzeit...');
+      debugPrint('💾 Speichere $_secondsTracked Sekunden Lernzeit...');
 
       await _firestore
           .collection('users')
@@ -78,10 +79,10 @@ class LearningTimeTracker {
       // Tägliche Statistik
       await _saveDailyStats(_secondsTracked);
 
-      print('✅ Lernzeit gespeichert: ${_formatTime(_secondsTracked)}');
+      debugPrint('✅ Lernzeit gespeichert: ${_formatTime(_secondsTracked)}');
       _secondsTracked = 0;
     } catch (e) {
-      print('❌ Fehler beim Speichern: $e');
+      debugPrint('❌ Fehler beim Speichern: $e');
       rethrow;
     }
   }
@@ -110,10 +111,10 @@ class LearningTimeTracker {
           .collection('children')
           .doc(childId)
           .update({'lastActiveAt': FieldValue.serverTimestamp()});
-      print('💓 Heartbeat geschrieben');
+      debugPrint('💓 Heartbeat geschrieben');
     } catch (e) {
       // Heartbeat-Fehler sind nicht kritisch – kein rethrow
-      print('⚠️ Heartbeat-Fehler (nicht kritisch): $e');
+      debugPrint('⚠️ Heartbeat-Fehler (nicht kritisch): $e');
     }
   }
 
@@ -135,7 +136,7 @@ class LearningTimeTracker {
             'seconds': FieldValue.increment(seconds),
           }, SetOptions(merge: true));
     } catch (e) {
-      print('⚠️ Tages-Stats Fehler: $e');
+      debugPrint('⚠️ Tages-Stats Fehler: $e');
     }
   }
 

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lerndex/src/ai/vertex_ai_service.dart';
@@ -90,7 +91,7 @@ class QuizPrefetchService {
           VertexAIService(),
         );
 
-    print(
+    debugPrint(
       '🚀 Splash-Prefetch: Starte für ${children.length} Kinder parallel...',
     );
 
@@ -105,7 +106,7 @@ class QuizPrefetchService {
       ),
     );
 
-    print('✅ Splash-Prefetch abgeschlossen');
+    debugPrint('✅ Splash-Prefetch abgeschlossen');
   }
 
   /// Prefetch für ein einzelnes Kind.
@@ -140,13 +141,13 @@ class QuizPrefetchService {
             _sessionPrefetchDone.add(guardKey);
             onSubjectDone?.call(child.name, subjectConfig.subject);
           } catch (e) {
-            print('⚠️ ${child.name} / ${subjectConfig.title}: $e');
+            debugPrint('⚠️ ${child.name} / ${subjectConfig.title}: $e');
           }
         }),
       );
     }
 
-    print('✅ ${child.name}: Quiz-Fächer bereit');
+    debugPrint('✅ ${child.name}: Quiz-Fächer bereit');
 
     // Klasse 1–2: Early-Learner-Fragen separat vorladen
     if (child.grade <= 2) {
@@ -171,7 +172,7 @@ class QuizPrefetchService {
     const earlySubjects = ['Zahlen', 'Buchstaben', 'FarbenFormen'];
     final repo = EarlyLearnerQuestionRepository(FirebaseFirestore.instance);
 
-    print(
+    debugPrint(
       '🧒 ${child.name} (Kl. ${child.grade}): Early-Learner-Fragen vorladen...',
     );
 
@@ -183,22 +184,37 @@ class QuizPrefetchService {
       }
 
       try {
-        // 20 Fragen generieren → nach ~50% Filter bleiben ~10 (= 2 Quiz-Runden)
+        // Phase 1 (BLOCKIEREND): Nur 5 Fragen — Quiz kann sofort starten
         await repo.prefillForQuiz(
           userId: userId,
           childId: child.id,
           child: child,
           subject: subject,
-          targetCount: 20,
+          targetCount: 5,
         );
         _sessionPrefetchDone.add(guardKey);
         onSubjectDone?.call(child.name, '$subject 🧒');
+
+        // Phase 2 (HINTERGRUND): Rest bis 15 nachladen ohne zu blockieren
+        repo
+            .prefillForQuiz(
+              userId: userId,
+              childId: child.id,
+              child: child,
+              subject: subject,
+              targetCount: 15,
+            )
+            .catchError((e) {
+              debugPrint('⚠️ Early-Hintergrund-Prefill $subject: $e');
+            });
       } catch (e) {
-        print('⚠️ Early-Prefill Fehler $subject: $e');
+        debugPrint('⚠️ Early-Prefill Fehler $subject: $e');
       }
     }
 
-    print('✅ ${child.name}: Early-Learner-Fragen bereit');
+    debugPrint(
+      '✅ ${child.name}: Early-Learner-Fragen bereit (Hintergrund läuft)',
+    );
   }
 
   // ============================================================
@@ -236,7 +252,7 @@ class QuizPrefetchService {
     } else {
       _sessionPrefetchDone.removeWhere((k) => k.startsWith('$childId|'));
     }
-    print(
+    debugPrint(
       '🔄 Session-Guard invalidiert: $childId ${subject ?? "(alle Fächer)"}',
     );
   }

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'dart:io';
 import 'dart:typed_data';
 import 'dart:convert';
@@ -69,7 +70,7 @@ class VertexAIService {
 
   Future<void> _ensureTutorInitialized() async {
     if (_tutorInitialized) return;
-    print('🚀 Vertex AI Tutor-Modell wird initialisiert...');
+    debugPrint('🚀 Vertex AI Tutor-Modell wird initialisiert...');
     _tutorModel = FirebaseAI.vertexAI().generativeModel(
       model: 'gemini-2.0-flash',
       generationConfig: GenerationConfig(
@@ -102,12 +103,12 @@ class VertexAIService {
       ],
     );
     _tutorInitialized = true;
-    print('✅ Tutor-Modell initialisiert');
+    debugPrint('✅ Tutor-Modell initialisiert');
   }
 
   Future<void> _ensureTaskInitialized() async {
     if (_taskInitialized) return;
-    print('🚀 Vertex AI Task-Modell wird initialisiert...');
+    debugPrint('🚀 Vertex AI Task-Modell wird initialisiert...');
     // Für Vision-Calls (Bild + Text): KEIN responseMimeType!
     _taskGeneratorModel = FirebaseAI.vertexAI().generativeModel(
       model: 'gemini-2.0-flash',
@@ -118,12 +119,12 @@ class VertexAIService {
       ),
     );
     _taskInitialized = true;
-    print('✅ Task-Modell initialisiert');
+    debugPrint('✅ Task-Modell initialisiert');
   }
 
   Future<void> _ensureQuizInitialized() async {
     if (_quizInitialized) return;
-    print('🚀 Vertex AI Quiz-Modell wird initialisiert...');
+    debugPrint('🚀 Vertex AI Quiz-Modell wird initialisiert...');
     _quizModel = FirebaseAI.vertexAI().generativeModel(
       model: 'gemini-2.0-flash',
       generationConfig: GenerationConfig(
@@ -133,7 +134,7 @@ class VertexAIService {
       ),
     );
     _quizInitialized = true;
-    print('✅ Quiz-Modell initialisiert');
+    debugPrint('✅ Quiz-Modell initialisiert');
   }
 
   // --------------------------------------------------------------------------
@@ -223,15 +224,15 @@ class VertexAIService {
         );
       }
 
-      print('📜 History an KI (${history.length} Nachrichten):');
+      debugPrint('📜 History an KI (${history.length} Nachrichten):');
       for (final h in history) {
         final role = h.role;
         final txt = (h.parts.first as TextPart).text;
-        print(
+        debugPrint(
           '  [$role]: ${txt.length > 80 ? "${txt.substring(0, 80)}..." : txt}',
         );
       }
-      print('  [user/neu]: $userMessage');
+      debugPrint('  [user/neu]: $userMessage');
 
       final chat = model.startChat(history: history);
       final response = await chat.sendMessage(Content.text(userMessage));
@@ -248,7 +249,7 @@ class VertexAIService {
       final subject = _extractSubjectTag(text);
       final isCorrect = _extractCorrectTag(text);
       final cleanText = _stripSubjectTag(text);
-      print(
+      debugPrint(
         '🏷️ KI-Fach erkannt: "$subject" | korrekt: $isCorrect | Tag vorhanden: ${text.contains('[FACH:')}',
       );
       return TutorResponse(
@@ -257,7 +258,7 @@ class VertexAIService {
         isCorrect: isCorrect,
       );
     } catch (e) {
-      print('❌ Tutor-Fehler: $e');
+      debugPrint('❌ Tutor-Fehler: $e');
       return const TutorResponse(
         text: 'Ups, da ist etwas schiefgelaufen. Versuch es nochmal! 😅',
         subject: 'kein_schulfach',
@@ -280,7 +281,7 @@ class VertexAIService {
     await _ensureTaskInitialized();
 
     try {
-      print(
+      debugPrint(
         '📸 Analysiere Schulaufgabe für ${child.name} '
         '(${child.schoolType}, Kl. ${child.grade}, Lv. ${child.level}, '
         '${subject.displayName})...',
@@ -291,7 +292,7 @@ class VertexAIService {
       try {
         imageUrl = await _uploadImage(imageFile, userId, child.id, subject);
       } catch (e) {
-        print('⚠️ Bild-Upload fehlgeschlagen (wird ignoriert): $e');
+        debugPrint('⚠️ Bild-Upload fehlgeschlagen (wird ignoriert): $e');
       }
 
       final imageBytes = await imageFile.readAsBytes();
@@ -309,7 +310,7 @@ class VertexAIService {
         ]),
       ];
 
-      print('🤖 Sende Anfrage an Vertex AI...');
+      debugPrint('🤖 Sende Anfrage an Vertex AI...');
       final response = await _taskGeneratorModel!.generateContent(content);
       final text = response.text;
 
@@ -317,21 +318,23 @@ class VertexAIService {
         throw Exception('KI hat keine Antwort generiert');
       }
 
-      print('📝 Antwort erhalten, parse JSON...');
+      debugPrint('📝 Antwort erhalten, parse JSON...');
       final questions = _parseGeneratedQuestions(text);
 
       if (questions.isEmpty) {
         throw Exception('Keine validen Aufgaben generiert');
       }
 
-      print('✅ ${questions.length} von $numberOfTasks Aufgaben generiert!');
+      debugPrint(
+        '✅ ${questions.length} von $numberOfTasks Aufgaben generiert!',
+      );
       return GeneratedTaskResult(
         success: true,
         questions: questions,
         imageUrl: imageUrl,
       );
     } catch (e) {
-      print('❌ Fehler bei Aufgabengenerierung: $e');
+      debugPrint('❌ Fehler bei Aufgabengenerierung: $e');
       return GeneratedTaskResult(
         success: false,
         questions: [],
@@ -360,7 +363,7 @@ class VertexAIService {
         recentTopics: recentTopics,
       );
 
-      print(
+      debugPrint(
         '📚 Generiere $count Quiz-Fragen für ${child.name} '
         '(${child.schoolType}, Kl. ${child.grade}, Lv. ${child.level}) '
         'im Fach $subject',
@@ -373,7 +376,7 @@ class VertexAIService {
 
       return _parseQuizResponse(text, child.grade, subject: subject);
     } catch (e) {
-      print('❌ Quiz-Generierung fehlgeschlagen: $e');
+      debugPrint('❌ Quiz-Generierung fehlgeschlagen: $e');
       return [];
     }
   }
@@ -773,7 +776,7 @@ Antworte NUR mit einem JSON-Array, kein Text oder Markdown davor/danach:
             if (q != null) questions.add(q);
           }
           if (questions.isNotEmpty) {
-            print('✅ ${questions.length} Aufgaben aus JSON-Array geparst');
+            debugPrint('✅ ${questions.length} Aufgaben aus JSON-Array geparst');
             return questions;
           }
         }
@@ -789,10 +792,12 @@ Antworte NUR mit einem JSON-Array, kein Text oder Markdown davor/danach:
         } catch (_) {}
       }
 
-      print('✅ ${questions.length} Aufgaben aus Einzel-Objekten geparst');
+      debugPrint('✅ ${questions.length} Aufgaben aus Einzel-Objekten geparst');
     } catch (e) {
-      print('❌ JSON Parse Fehler (generateTasks): $e');
-      print('Text war: ${text.substring(0, text.length.clamp(0, 200))}...');
+      debugPrint('❌ JSON Parse Fehler (generateTasks): $e');
+      debugPrint(
+        'Text war: ${text.substring(0, text.length.clamp(0, 200))}...',
+      );
     }
 
     return questions;
@@ -811,7 +816,7 @@ Antworte NUR mit einem JSON-Array, kein Text oder Markdown davor/danach:
       final options = List<String>.from(rawOptions);
       final correctAnswer = json['correctAnswer']?.toString() ?? '';
       if (correctAnswer.isEmpty || !options.contains(correctAnswer)) {
-        print('⚠️ Richtige Antwort nicht in Optionen: "$correctAnswer"');
+        debugPrint('⚠️ Richtige Antwort nicht in Optionen: "$correctAnswer"');
         return null;
       }
 
@@ -827,7 +832,7 @@ Antworte NUR mit einem JSON-Array, kein Text oder Markdown davor/danach:
         createdAt: DateTime.now(),
       );
     } catch (e) {
-      print('⚠️ Fehler beim Parsen einer Aufgabe: $e');
+      debugPrint('⚠️ Fehler beim Parsen einer Aufgabe: $e');
       return null;
     }
   }
@@ -846,7 +851,7 @@ Antworte NUR mit einem JSON-Array, kein Text oder Markdown davor/danach:
       final startIndex = cleaned.indexOf('[');
       final endIndex = cleaned.lastIndexOf(']');
       if (startIndex == -1 || endIndex == -1) {
-        print('⚠️ Kein JSON-Array in Quiz-Antwort gefunden');
+        debugPrint('⚠️ Kein JSON-Array in Quiz-Antwort gefunden');
         return [];
       }
 
@@ -868,7 +873,7 @@ Antworte NUR mit einem JSON-Array, kein Text oder Markdown davor/danach:
           // Fach-Validierung: Frage muss zum angeforderten Fach passen
           if (subject.isNotEmpty && !_questionMatchesSubject(q, subject)) {
             filteredOut++;
-            print(
+            debugPrint(
               '🚫 Fach-Mismatch gefiltert: "${q.question.length > 60 ? q.question.substring(0, 60) : q.question}..." (topic: ${q.topic})',
             );
             continue;
@@ -879,17 +884,17 @@ Antworte NUR mit einem JSON-Array, kein Text oder Markdown davor/danach:
           seenQuestions.add(normalized);
           questions.add(q);
         } catch (e) {
-          print('⚠️ Quiz-Frage übersprungen: $e');
+          debugPrint('⚠️ Quiz-Frage übersprungen: $e');
         }
       }
 
       if (filteredOut > 0) {
-        print('🚫 $filteredOut Fragen wegen Fach-Mismatch gefiltert');
+        debugPrint('🚫 $filteredOut Fragen wegen Fach-Mismatch gefiltert');
       }
-      print('✅ ${questions.length} Quiz-Fragen geparst (Fach: $subject)');
+      debugPrint('✅ ${questions.length} Quiz-Fragen geparst (Fach: $subject)');
       return questions;
     } catch (e) {
-      print('❌ JSON-Parsing (Quiz) fehlgeschlagen: $e');
+      debugPrint('❌ JSON-Parsing (Quiz) fehlgeschlagen: $e');
       return [];
     }
   }
@@ -1239,7 +1244,7 @@ Antworte NUR mit einem JSON-Array, kein Text oder Markdown davor/danach:
     final ref = _storage.ref().child(path);
     await ref.putFile(imageFile);
     final url = await ref.getDownloadURL();
-    print('✅ Bild hochgeladen: $path');
+    debugPrint('✅ Bild hochgeladen: $path');
     return url;
   }
 

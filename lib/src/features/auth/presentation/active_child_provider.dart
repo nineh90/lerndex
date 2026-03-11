@@ -35,6 +35,8 @@ class ActiveChildNotifier extends StateNotifier<ChildModel?> {
   /// Avatar des aktiven Kindes aktualisieren (null = abwählen)
   void updateAvatar(String? avatarId) {
     if (state == null) return;
+    // copyWith kann nullable Felder nicht auf null setzen (wegen ??-Operator),
+    // daher manuell konstruieren — alle Felder inkl. unlockedAvatars übernehmen.
     state = ChildModel(
       id: state!.id,
       name: state!.name,
@@ -52,7 +54,8 @@ class ActiveChildNotifier extends StateNotifier<ChildModel?> {
       lastLearningDate: state!.lastLearningDate,
       lastQuizDate: state!.lastQuizDate,
       lastXPGain: state!.lastXPGain,
-      selectedAvatar: avatarId, // explizit null erlaubt
+      selectedAvatar: avatarId,
+      unlockedAvatars: state!.unlockedAvatars, // ← FIX: fehlte vorher!
     );
   }
 }

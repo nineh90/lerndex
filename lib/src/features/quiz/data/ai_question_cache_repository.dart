@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lerndex/src/ai/vertex_ai_service.dart';
@@ -54,7 +55,7 @@ class AiQuestionCacheRepository {
 
     // Guard: Bereits in Bearbeitung → überspringen
     if (_inflightSubjects.contains(key)) {
-      print(
+      debugPrint(
         '⏭️ Pre-Fill: $subject für ${child.name} läuft bereits – überspringe',
       );
       return;
@@ -71,14 +72,14 @@ class AiQuestionCacheRepository {
       );
 
       if (unplayed.length >= _refillThreshold) {
-        print(
+        debugPrint(
           '✅ Pre-Fill: $subject hat schon ${unplayed.length} Fragen '
           '(Level ${child.level}) – kein Prefetch nötig',
         );
         return;
       }
 
-      print(
+      debugPrint(
         '🔮 Pre-Fill: ${unplayed.length}/$_refillThreshold Fragen für $subject '
         '(Level ${child.level}) – generiere $_fullBatchSize neue...',
       );
@@ -93,12 +94,14 @@ class AiQuestionCacheRepository {
 
       if (questions.isNotEmpty) {
         await _writeToCache(userId, childId, child, subject, questions);
-        print('✅ Pre-Fill: ${questions.length} Fragen für $subject bereit');
+        debugPrint(
+          '✅ Pre-Fill: ${questions.length} Fragen für $subject bereit',
+        );
       } else {
-        print('⚠️ Pre-Fill: Keine Fragen für $subject generiert');
+        debugPrint('⚠️ Pre-Fill: Keine Fragen für $subject generiert');
       }
     } catch (e) {
-      print('⚠️ Pre-Fill Fehler für $subject: $e');
+      debugPrint('⚠️ Pre-Fill Fehler für $subject: $e');
     } finally {
       _inflightSubjects.remove(key);
     }
@@ -131,7 +134,7 @@ class AiQuestionCacheRepository {
     }
 
     // Nicht genug: Schnell-Batch synchron generieren
-    print(
+    debugPrint(
       '🚀 Schnell-Batch: Generiere $_quickBatchSize Fragen für $subject...',
     );
     final recentTopics = await _loadRecentTopics(userId, childId, subject);
@@ -173,7 +176,7 @@ class AiQuestionCacheRepository {
         'playedAt': FieldValue.serverTimestamp(),
       });
     } catch (e) {
-      print('⚠️ markAsPlayed Fehler: $e');
+      debugPrint('⚠️ markAsPlayed Fehler: $e');
     }
   }
 
@@ -192,9 +195,9 @@ class AiQuestionCacheRepository {
       try {
         await _cacheMetaRef(userId, childId, subject).delete();
       } catch (_) {}
-      print('🗑️ Cache gelöscht für $subject');
+      debugPrint('🗑️ Cache gelöscht für $subject');
     } catch (e) {
-      print('⚠️ clearCache Fehler: $e');
+      debugPrint('⚠️ clearCache Fehler: $e');
     }
   }
 
@@ -243,14 +246,14 @@ class AiQuestionCacheRepository {
 
       final cachedLevel = metaDoc.data()?['generatedForLevel'] as int?;
       if (cachedLevel != null && cachedLevel != child.level) {
-        print(
+        debugPrint(
           '🔄 Level geändert ($cachedLevel → ${child.level}) '
           '– Cache für $subject invalidiert',
         );
         await clearCache(userId: userId, childId: childId, subject: subject);
       }
     } catch (e) {
-      print('⚠️ Level-Check Fehler: $e');
+      debugPrint('⚠️ Level-Check Fehler: $e');
     }
   }
 
@@ -299,7 +302,7 @@ class AiQuestionCacheRepository {
         );
       }).toList();
     } catch (e) {
-      print('⚠️ _loadUnplayed Fehler: $e');
+      debugPrint('⚠️ _loadUnplayed Fehler: $e');
       return [];
     }
   }
@@ -335,7 +338,7 @@ class AiQuestionCacheRepository {
         );
       }).toList();
     } catch (e) {
-      print('⚠️ _loadUnplayedForLevel Fehler: $e');
+      debugPrint('⚠️ _loadUnplayedForLevel Fehler: $e');
       // Fallback: alle ungespielten laden
       return _loadUnplayed(userId, childId, subject);
     }
@@ -448,7 +451,7 @@ class AiQuestionCacheRepository {
 
       await _cleanupOldPlayed(userId, childId, subject);
     } catch (e) {
-      print('⚠️ Hintergrund-Generierung Fehler: $e');
+      debugPrint('⚠️ Hintergrund-Generierung Fehler: $e');
     } finally {
       _inflightSubjects.remove(key);
     }
@@ -480,7 +483,7 @@ class AiQuestionCacheRepository {
 
     await batch.commit();
     await _updateCacheMeta(userId, childId, subject, child.level);
-    print(
+    debugPrint(
       '✅ ${questions.length} Fragen für $subject gecacht (Level ${child.level})',
     );
   }
@@ -504,7 +507,7 @@ class AiQuestionCacheRepository {
         batch.delete(doc.reference);
       }
       await batch.commit();
-      print('🧹 ${toDelete.length} alte Fragen aufgeräumt');
+      debugPrint('🧹 ${toDelete.length} alte Fragen aufgeräumt');
     } catch (_) {}
   }
 }

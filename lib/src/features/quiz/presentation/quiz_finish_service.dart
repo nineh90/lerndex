@@ -127,8 +127,3 @@ class QuizFinishService {
       streak == 50 ||
       streak == 100;
 }
-
-/// Provider-Variante für Screens die Riverpod nutzen wollen
-final quizFinishServiceProvider = Provider<QuizFinishService>((_) {
-  return QuizFinishService._();
-});

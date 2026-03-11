@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -55,9 +56,9 @@ class TutorNotifier extends StateNotifier<List<ChatMessage>> {
       );
       // Provider mit dem bereits heute verdienten XP-Stand befüllen
       _ref.read(tutorSessionXpProvider(_childId).notifier).state = xpToday;
-      print('📊 Tutor: Heutige XP geladen → $xpToday / $maxXpPerDay');
+      debugPrint('📊 Tutor: Heutige XP geladen → $xpToday / $maxXpPerDay');
     } catch (e) {
-      print('⚠️ Tutor: Fehler beim Laden der Tages-XP: $e');
+      debugPrint('⚠️ Tutor: Fehler beim Laden der Tages-XP: $e');
     }
     _loadChatHistoryInBackground();
   }
@@ -308,13 +309,13 @@ class TutorNotifier extends StateNotifier<List<ChatMessage>> {
         if (savedSessionTopic != null) {
           // Fach wurde früher korrekt erkannt → beibehalten, nicht überschreiben
           detectedSubject = savedSessionTopic;
-          print('🔄 Fach beibehalten (Session): $detectedSubject');
+          debugPrint('🔄 Fach beibehalten (Session): $detectedSubject');
         } else {
           // Noch kein Fach bekannt → Keyword-Matching als letzter Fallback
           final fromUserText = TutorNotifier.detectTopic(text);
           if (TutorNotifier.isSchoolSubject(fromUserText)) {
             detectedSubject = fromUserText;
-            print('🔄 Fach-Fallback (Keyword): $detectedSubject');
+            debugPrint('🔄 Fach-Fallback (Keyword): $detectedSubject');
           }
         }
       }
@@ -322,7 +323,7 @@ class TutorNotifier extends StateNotifier<List<ChatMessage>> {
       final isSchool = TutorNotifier.isSchoolSubject(detectedSubject);
       // Fach nur in Firestore schreiben wenn es noch nicht gesetzt wurde
       final topicNeedsUpdate = savedSessionTopic == null && isSchool;
-      print(
+      debugPrint(
         '🔍 XP-Check: subject="$detectedSubject" isSchool=$isSchool isCorrect=${tutorResponse.isCorrect} dailyXP=${_ref.read(tutorSessionXpProvider(_childId))} topicNeedsUpdate=$topicNeedsUpdate',
       );
       if (isSchool) {
@@ -331,10 +332,12 @@ class TutorNotifier extends StateNotifier<List<ChatMessage>> {
         if (tutorResponse.isCorrect) {
           await _awardTutorXP();
         } else {
-          print('⏭️ Kein XP: Antwort war nicht korrekt');
+          debugPrint('⏭️ Kein XP: Antwort war nicht korrekt');
         }
       } else {
-        print('⛔ Kein XP: Kein Schulfach erkannt (subject=$detectedSubject)');
+        debugPrint(
+          '⛔ Kein XP: Kein Schulfach erkannt (subject=$detectedSubject)',
+        );
       }
     } catch (e) {
       // ❌ Fehler beim Senden der Nachricht: $e
@@ -468,7 +471,7 @@ class TutorNotifier extends StateNotifier<List<ChatMessage>> {
     // Lokalen Provider-State synchronisieren
     _ref.read(tutorSessionXpProvider(_childId).notifier).state = currentDailyXP;
 
-    print(
+    debugPrint(
       '💰 _awardTutorXP: currentDailyXP=$currentDailyXP, maxXpPerDay=$maxXpPerDay, limit=${currentDailyXP >= maxXpPerDay}',
     );
 
@@ -484,7 +487,7 @@ class TutorNotifier extends StateNotifier<List<ChatMessage>> {
             currentDailyXP + result.xpGained;
         _ref.read(tutorXpGainProvider(_childId).notifier).state =
             result.xpGained;
-        print(
+        debugPrint(
           '✨ Tutor XP: +${result.xpGained} (Heute: ${currentDailyXP + result.xpGained}/$maxXpPerDay)',
         );
 
@@ -501,16 +504,16 @@ class TutorNotifier extends StateNotifier<List<ChatMessage>> {
                 .doc(_currentSessionId)
                 .update({'xpEarned': FieldValue.increment(result.xpGained)});
           } catch (e) {
-            print('⚠️ Konnte xpEarned nicht in Session speichern: $e');
+            debugPrint('⚠️ Konnte xpEarned nicht in Session speichern: $e');
           }
         }
       } else {
-        print(
+        debugPrint(
           '⏸️ Tutor XP: Tageslimit erreicht (Heute: $currentDailyXP/$maxXpPerDay)',
         );
       }
     } catch (e) {
-      print('❌ _awardTutorXP: Netzwerkfehler, XP nicht vergeben: $e');
+      debugPrint('❌ _awardTutorXP: Netzwerkfehler, XP nicht vergeben: $e');
     }
   }
 

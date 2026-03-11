@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'dart:convert';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -68,10 +69,10 @@ class ExtendedQuizRepository {
               ..shuffle();
 
         result.addAll(converted.take(questionCount));
-        print('👨‍👩‍👧 ${result.length} Eltern-Aufgaben eingebaut');
+        debugPrint('👨‍👩‍👧 ${result.length} Eltern-Aufgaben eingebaut');
       }
     } catch (e) {
-      print('⚠️ Eltern-Aufgaben nicht verfuegbar: $e');
+      debugPrint('⚠️ Eltern-Aufgaben nicht verfuegbar: $e');
     }
 
     // Bereits genug Fragen durch Eltern-Aufgaben?
@@ -107,7 +108,7 @@ class ExtendedQuizRepository {
 
         result.addAll(deduped.take(remaining));
 
-        print(
+        debugPrint(
           '✅ ${result.length}/$questionCount Fragen geladen '
           '(${result.where((q) => q.isParentTask).length} Eltern, '
           '${result.where((q) => !q.isParentTask).length} KI)',
@@ -118,7 +119,7 @@ class ExtendedQuizRepository {
         }
       }
     } catch (e) {
-      print('⚠️ KI-Cache nicht verfuegbar: $e');
+      debugPrint('⚠️ KI-Cache nicht verfuegbar: $e');
     }
 
     // -------------------------------------------------------------------------
@@ -126,7 +127,7 @@ class ExtendedQuizRepository {
     // -------------------------------------------------------------------------
     final stillNeeded = questionCount - result.length;
     if (stillNeeded > 0) {
-      print('⚠️ Fuelle $stillNeeded Plaetze mit statischen Fragen auf...');
+      debugPrint('⚠️ Fuelle $stillNeeded Plaetze mit statischen Fragen auf...');
       try {
         final staticQuestions = await _loadStaticQuestions(
           subject,
@@ -147,12 +148,12 @@ class ExtendedQuizRepository {
 
         result.addAll(filtered.take(stillNeeded));
       } catch (e) {
-        print('⚠️ Statische Fragen nicht verfuegbar: $e');
+        debugPrint('⚠️ Statische Fragen nicht verfuegbar: $e');
       }
     }
 
     if (result.isEmpty) {
-      print('❌ Keine Fragen fuer $subject Klasse ${child.grade} gefunden');
+      debugPrint('❌ Keine Fragen fuer $subject Klasse ${child.grade} gefunden');
     }
 
     return result.take(questionCount).toList();
@@ -166,7 +167,9 @@ class ExtendedQuizRepository {
       );
       return QuizData.fromJson(json.decode(jsonString));
     } catch (e) {
-      print('⚠️ Fehler beim Laden der statischen Fragen fuer $subject: $e');
+      debugPrint(
+        '⚠️ Fehler beim Laden der statischen Fragen fuer $subject: $e',
+      );
       return QuizData(subject: subject, questions: []);
     }
   }

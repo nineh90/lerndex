@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -17,7 +18,7 @@ class TutorChatCleanupService {
   final FirebaseFirestore _firestore;
 
   TutorChatCleanupService({FirebaseFirestore? firestore})
-      : _firestore = firestore ?? FirebaseFirestore.instance;
+    : _firestore = firestore ?? FirebaseFirestore.instance;
 
   // ──────────────────────────────────────────────────────────────────────────
   // MANUELLES LÖSCHEN
@@ -31,7 +32,7 @@ class TutorChatCleanupService {
     required String childId,
     required String sessionId,
   }) async {
-    print('🗑️ Lösche Session $sessionId...');
+    debugPrint('🗑️ Lösche Session $sessionId...');
 
     // 1. Session sofort als 'deleted' markieren → Schülerdashboard filtert sie
     //    sofort aus, auch wenn der Delete noch läuft oder gecacht ist
@@ -46,7 +47,8 @@ class TutorChatCleanupService {
 
     // 2. Alle messages der Session löschen (Batch)
     await _deleteSubCollection(
-      path: 'users/$userId/children/$childId/tutor_sessions/$sessionId/messages',
+      path:
+          'users/$userId/children/$childId/tutor_sessions/$sessionId/messages',
     );
 
     // 3. Session-Dokument selbst löschen
@@ -62,7 +64,7 @@ class TutorChatCleanupService {
     // 4. active_tutor_chat leeren (falls diese Session die aktive war)
     await _clearActiveTutorChat(userId: userId, childId: childId);
 
-    print('✅ Session $sessionId gelöscht');
+    debugPrint('✅ Session $sessionId gelöscht');
   }
 
   /// Löscht alle Sessions eines Kindes.
@@ -70,7 +72,7 @@ class TutorChatCleanupService {
     required String userId,
     required String childId,
   }) async {
-    print('🗑️ Lösche alle Sessions für Kind $childId...');
+    debugPrint('🗑️ Lösche alle Sessions für Kind $childId...');
 
     final sessionsSnapshot = await _firestore
         .collection('users')
@@ -81,14 +83,10 @@ class TutorChatCleanupService {
         .get();
 
     for (final doc in sessionsSnapshot.docs) {
-      await deleteSession(
-        userId: userId,
-        childId: childId,
-        sessionId: doc.id,
-      );
+      await deleteSession(userId: userId, childId: childId, sessionId: doc.id);
     }
 
-    print('✅ Alle Sessions für Kind $childId gelöscht');
+    debugPrint('✅ Alle Sessions für Kind $childId gelöscht');
   }
 
   // ──────────────────────────────────────────────────────────────────────────
@@ -108,24 +106,28 @@ class TutorChatCleanupService {
 
     // Nur einmal pro Tag ausführen
     if (now.difference(lastCleanup).inHours < 24) {
-      print('⏭️ Chat-Cleanup: Heute schon gelaufen, überspringe');
+      debugPrint('⏭️ Chat-Cleanup: Heute schon gelaufen, überspringe');
       return;
     }
 
-    print('🧹 Starte automatischen 14-Tage Chat-Cleanup...');
+    debugPrint('🧹 Starte automatischen 14-Tage Chat-Cleanup...');
     await runAutoCleanup(userId: userId);
 
     // Zeitstempel speichern
     await prefs.setInt(_lastCleanupKey, now.millisecondsSinceEpoch);
-    print('✅ Auto-Cleanup abgeschlossen, nächster in 24h');
+    debugPrint('✅ Auto-Cleanup abgeschlossen, nächster in 24h');
   }
 
   /// Löscht alle abgeschlossenen Sessions aller Kinder, die älter als 14 Tage sind.
   Future<void> runAutoCleanup({required String userId}) async {
-    final cutoff = DateTime.now().subtract(const Duration(days: _retentionDays));
+    final cutoff = DateTime.now().subtract(
+      const Duration(days: _retentionDays),
+    );
     final cutoffTimestamp = Timestamp.fromDate(cutoff);
 
-    print('🧹 Lösche Sessions älter als ${cutoff.day}.${cutoff.month}.${cutoff.year}...');
+    debugPrint(
+      '🧹 Lösche Sessions älter als ${cutoff.day}.${cutoff.month}.${cutoff.year}...',
+    );
 
     // Alle Kinder des Users
     final childrenSnapshot = await _firestore
@@ -151,11 +153,13 @@ class TutorChatCleanupService {
           .get();
 
       if (oldSessionsSnapshot.docs.isEmpty) {
-        print('   Kind $childId: Keine alten Sessions');
+        debugPrint('   Kind $childId: Keine alten Sessions');
         continue;
       }
 
-      print('   Kind $childId: ${oldSessionsSnapshot.docs.length} alte Sessions werden gelöscht');
+      debugPrint(
+        '   Kind $childId: ${oldSessionsSnapshot.docs.length} alte Sessions werden gelöscht',
+      );
 
       for (final sessionDoc in oldSessionsSnapshot.docs) {
         await deleteSession(
@@ -167,7 +171,7 @@ class TutorChatCleanupService {
       }
     }
 
-    print('✅ Auto-Cleanup: $totalDeleted Sessions gelöscht');
+    debugPrint('✅ Auto-Cleanup: $totalDeleted Sessions gelöscht');
   }
 
   // ──────────────────────────────────────────────────────────────────────────
@@ -179,10 +183,7 @@ class TutorChatCleanupService {
     const batchSize = 400;
 
     while (true) {
-      final snapshot = await _firestore
-          .collection(path)
-          .limit(batchSize)
-          .get();
+      final snapshot = await _firestore.collection(path).limit(batchSize).get();
 
       if (snapshot.docs.isEmpty) break;
 

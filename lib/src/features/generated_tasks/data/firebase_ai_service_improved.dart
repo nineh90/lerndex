@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'dart:io';
 import 'dart:typed_data';
 import 'dart:convert';
@@ -18,7 +19,7 @@ class ImprovedFirebaseAIService {
 
   Future<void> initialize() async {
     if (_isInitialized) return;
-    print('🚀 Firebase AI wird initialisiert...');
+    debugPrint('🚀 Firebase AI wird initialisiert...');
     try {
       _taskGeneratorModel = FirebaseAI.googleAI().generativeModel(
         model: 'gemini-3-flash-preview',
@@ -30,9 +31,9 @@ class ImprovedFirebaseAIService {
         ),
       );
       _isInitialized = true;
-      print('✅ Firebase AI initialisiert!');
+      debugPrint('✅ Firebase AI initialisiert!');
     } catch (e) {
-      print('❌ Fehler bei AI-Initialisierung: $e');
+      debugPrint('❌ Fehler bei AI-Initialisierung: $e');
       rethrow;
     }
   }
@@ -51,7 +52,7 @@ class ImprovedFirebaseAIService {
     try {
       if (!_isInitialized) await initialize();
 
-      print(
+      debugPrint(
         '📸 Starte Generierung für ${child.name} (${subject.displayName})...',
       );
 
@@ -63,7 +64,7 @@ class ImprovedFirebaseAIService {
       final previousQuestions = <String>[];
 
       for (int i = 1; i <= numberOfTasks; i++) {
-        print('🤖 Generiere Aufgabe $i von $numberOfTasks...');
+        debugPrint('🤖 Generiere Aufgabe $i von $numberOfTasks...');
         try {
           final prompt = _buildSingleTaskPrompt(
             child: child,
@@ -85,7 +86,7 @@ class ImprovedFirebaseAIService {
           final text = response.text;
 
           if (text == null || text.isEmpty) {
-            print('⚠️ Aufgabe $i: Keine Antwort');
+            debugPrint('⚠️ Aufgabe $i: Keine Antwort');
             continue;
           }
 
@@ -93,14 +94,14 @@ class ImprovedFirebaseAIService {
           if (question != null) {
             questions.add(question);
             previousQuestions.add(question.question);
-            print(
+            debugPrint(
               '✅ Aufgabe $i OK: ${question.question.substring(0, question.question.length.clamp(0, 50))}',
             );
           } else {
-            print('⚠️ Aufgabe $i: Parse fehlgeschlagen');
+            debugPrint('⚠️ Aufgabe $i: Parse fehlgeschlagen');
           }
         } catch (e) {
-          print('⚠️ Aufgabe $i Fehler: $e');
+          debugPrint('⚠️ Aufgabe $i Fehler: $e');
         }
       }
 
@@ -108,7 +109,9 @@ class ImprovedFirebaseAIService {
         throw Exception('Keine validen Aufgaben generiert');
       }
 
-      print('✅ ${questions.length} von $numberOfTasks Aufgaben generiert!');
+      debugPrint(
+        '✅ ${questions.length} von $numberOfTasks Aufgaben generiert!',
+      );
 
       return GeneratedTaskResult(
         success: true,
@@ -116,7 +119,7 @@ class ImprovedFirebaseAIService {
         imageUrl: null,
       );
     } catch (e) {
-      print('❌ Fehler bei Aufgabengenerierung: $e');
+      debugPrint('❌ Fehler bei Aufgabengenerierung: $e');
       return GeneratedTaskResult(
         success: false,
         questions: [],
@@ -193,7 +196,7 @@ Antworte NUR mit diesem JSON-Objekt (kein Array, kein Text davor/danach):
       final start = cleaned.indexOf('{');
       final end = cleaned.lastIndexOf('}');
       if (start == -1 || end == -1 || end <= start) {
-        print(
+        debugPrint(
           '⚠️ Kein JSON-Objekt gefunden in: ${cleaned.substring(0, cleaned.length.clamp(0, 100))}',
         );
         return null;
@@ -213,7 +216,7 @@ Antworte NUR mit diesem JSON-Objekt (kein Array, kein Text davor/danach):
       final options = List<String>.from(json['options']);
       final correctAnswer = json['correctAnswer']?.toString() ?? '';
       if (!options.contains(correctAnswer)) {
-        print('⚠️ Richtige Antwort nicht in Optionen: "$correctAnswer"');
+        debugPrint('⚠️ Richtige Antwort nicht in Optionen: "$correctAnswer"');
         return null;
       }
 
@@ -229,8 +232,8 @@ Antworte NUR mit diesem JSON-Objekt (kein Array, kein Text davor/danach):
         createdAt: DateTime.now(),
       );
     } catch (e) {
-      print('❌ Parse Fehler: $e');
-      print('Text war: $text');
+      debugPrint('❌ Parse Fehler: $e');
+      debugPrint('Text war: $text');
       return null;
     }
   }

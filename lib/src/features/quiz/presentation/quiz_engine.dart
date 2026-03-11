@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../auth/domain/child_model.dart';
@@ -211,12 +212,12 @@ class QuizEngine extends StateNotifier<QuizState> {
 
       state = QuizState(phase: QuizPhase.question, questions: questions);
 
-      print(
+      debugPrint(
         '✅ QuizEngine: ${questions.length} Fragen geladen für $subject '
         '(${child.name}, Kl. ${child.grade}, Lv. ${child.level})',
       );
     } catch (e) {
-      print('❌ QuizEngine.start Fehler: $e');
+      debugPrint('❌ QuizEngine.start Fehler: $e');
       state = QuizState(
         phase: QuizPhase.error,
         errorMessage: 'Fragen konnten nicht geladen werden.',
@@ -251,7 +252,7 @@ class QuizEngine extends StateNotifier<QuizState> {
         leveledUp = xpResult.leveledUp;
         newLevel = xpResult.newLevel;
       } catch (e) {
-        print('⚠️ QuizEngine: XP-Vergabe fehlgeschlagen: $e');
+        debugPrint('⚠️ QuizEngine: XP-Vergabe fehlgeschlagen: $e');
       }
 
       // Eltern-Aufgabe als korrekt beantwortet markieren
@@ -262,7 +263,9 @@ class QuizEngine extends StateNotifier<QuizState> {
             parentTaskRef: current.parentTaskRef!,
           );
         } catch (e) {
-          print('⚠️ QuizEngine: Eltern-Aufgabe Markierung fehlgeschlagen: $e');
+          debugPrint(
+            '⚠️ QuizEngine: Eltern-Aufgabe Markierung fehlgeschlagen: $e',
+          );
         }
       }
     }
@@ -361,7 +364,7 @@ class QuizEngine extends StateNotifier<QuizState> {
         userId: userId,
         childId: child.id,
       );
-      print('✅ Streak: $newStreak Tage (vorher: $streakBefore)');
+      debugPrint('✅ Streak: $newStreak Tage (vorher: $streakBefore)');
       // Nur feuern wenn Streak sich tatsächlich erhöht hat — nicht bei
       // "heute bereits gelernt" (würde sonst Milestone-Popup doppelt zeigen)
       if (newStreak > streakBefore) {
@@ -424,18 +427,18 @@ class QuizEngine extends StateNotifier<QuizState> {
         }
 
         if (unlockedRewards.isNotEmpty) {
-          print('🎁 ${unlockedRewards.length} Rewards freigeschaltet');
+          debugPrint('🎁 ${unlockedRewards.length} Rewards freigeschaltet');
           onRewardsUnlocked?.call(unlockedRewards);
         }
       }
 
-      print(
+      debugPrint(
         '✅ Quiz abgeschlossen: ${state.correctAnswers}/${state.questions.length} '
         'richtig | ${state.earnedXP} XP | '
         '${state.wrongQuestions.length} endgültig falsch',
       );
     } catch (e, st) {
-      print('❌ QuizEngine.finish Fehler: $e\n$st');
+      debugPrint('❌ QuizEngine.finish Fehler: $e\n$st');
     }
   }
 

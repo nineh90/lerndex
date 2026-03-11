@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'dart:async';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -264,7 +265,7 @@ class TtsController extends StateNotifier<TtsState> {
             'name': match['name'].toString(),
             'locale': match['locale']?.toString() ?? 'de-DE',
           });
-          print('🎙️ TTS: Stimme gewählt: ${match['name']}');
+          debugPrint('🎙️ TTS: Stimme gewählt: ${match['name']}');
           return;
         }
       }
@@ -279,7 +280,7 @@ class TtsController extends StateNotifier<TtsState> {
           'name': googleVoice['name'].toString(),
           'locale': googleVoice['locale']?.toString() ?? 'de-DE',
         });
-        print('🎙️ TTS: Google-Stimme gewählt: ${googleVoice['name']}');
+        debugPrint('🎙️ TTS: Google-Stimme gewählt: ${googleVoice['name']}');
         return;
       }
 
@@ -289,9 +290,9 @@ class TtsController extends StateNotifier<TtsState> {
         'name': first['name'].toString(),
         'locale': first['locale']?.toString() ?? 'de-DE',
       });
-      print('🎙️ TTS: Fallback-Stimme: ${first['name']}');
+      debugPrint('🎙️ TTS: Fallback-Stimme: ${first['name']}');
     } catch (e) {
-      print('⚠️ TTS: Stimme konnte nicht gesetzt werden: $e');
+      debugPrint('⚠️ TTS: Stimme konnte nicht gesetzt werden: $e');
     }
   }
 

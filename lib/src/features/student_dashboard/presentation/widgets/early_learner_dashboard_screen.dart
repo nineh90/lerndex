@@ -67,19 +67,27 @@ const _earlySubjects = [
   ),
   _EarlySubject(
     emoji: '✏️',
-    label: 'Malen Buchstaben',
+    label: 'Buchstaben malen',
     colors: [Color(0xFFFF7043), Color(0xFFBF360C)],
     subject: 'MalenBuchstaben',
   ),
   _EarlySubject(
     emoji: '🖊️',
-    label: 'Malen Zahlen',
+    label: 'Zahlen malen',
     colors: [Color(0xFF26A69A), Color(0xFF00695C)],
     subject: 'MalenZahlen',
   ),
 ];
 
 enum _EarlyTab { home, rewards, stars }
+
+// ── Temporär ausgeblendete Quiz-Fächer (Zahlen, Buchstaben, FarbenFormen) ───
+// Diese werden grundlegend überarbeitet. Bis dahin sehen Kinder nur die
+// Malen-Fächer. Um die Quiz-Fächer wieder einzublenden, ersetze
+// _visibleSubjects durch _earlySubjects an allen Stellen unten.
+final _visibleSubjects = _earlySubjects
+    .where((s) => s.subject.startsWith('Malen'))
+    .toList();
 
 // ============================================================================
 // MAIN SCREEN
@@ -325,7 +333,7 @@ class _HomeContentState extends ConsumerState<_HomeContent> {
     if (ttsEnabled) {
       ref
           .read(ttsControllerProvider.notifier)
-          .speakSubject(_earlySubjects[index].label);
+          .speakSubject(_visibleSubjects[index].label);
     }
   }
 
@@ -345,7 +353,7 @@ class _HomeContentState extends ConsumerState<_HomeContent> {
         Expanded(
           child: PageView.builder(
             controller: _pageController,
-            itemCount: _earlySubjects.length,
+            itemCount: _visibleSubjects.length,
             onPageChanged: _onPageChanged,
             physics: const BouncingScrollPhysics(),
             itemBuilder: (context, index) {
@@ -367,9 +375,10 @@ class _HomeContentState extends ConsumerState<_HomeContent> {
                     child: Opacity(
                       opacity: opacity,
                       child: _CarouselSubjectCard(
-                        subject: _earlySubjects[index],
+                        subject: _visibleSubjects[index],
                         isActive: index == _currentPage,
-                        onTap: () => widget.onSubjectTap(_earlySubjects[index]),
+                        onTap: () =>
+                            widget.onSubjectTap(_visibleSubjects[index]),
                       ),
                     ),
                   );
@@ -383,7 +392,7 @@ class _HomeContentState extends ConsumerState<_HomeContent> {
 
         // ── Page Indicator Dots ───────────────────────────────────────
         _PageIndicatorDots(
-          count: _earlySubjects.length,
+          count: _visibleSubjects.length,
           currentIndex: _currentPage,
         ),
 
@@ -906,7 +915,7 @@ class _PageIndicatorDots extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.center,
       children: List.generate(count, (i) {
         final isActive = i == currentIndex;
-        final color = _earlySubjects[i].colors.first;
+        final color = _visibleSubjects[i].colors.first;
 
         return AnimatedContainer(
           duration: const Duration(milliseconds: 300),

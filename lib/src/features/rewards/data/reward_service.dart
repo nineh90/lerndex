@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../auth/domain/child_model.dart';
@@ -11,6 +12,10 @@ class RewardService {
   final FirebaseFirestore _firestore;
 
   RewardService(this._firestore);
+
+  /// Lazy XPService – vermeidet wiederholte Instanziierung
+  XPService? _xpService;
+  XPService get _xp => _xpService ??= _xp;
 
   /// Erstellt eine System-Belohnung (automatisch approved)
   Future<RewardModel> createSystemReward({
@@ -51,10 +56,10 @@ class RewardService {
           .collection('rewards')
           .add(rewardData.toFirestore());
 
-      print('✅ System-Belohnung erstellt: $title');
+      debugPrint('✅ System-Belohnung erstellt: $title');
       return rewardData.copyWith(id: docRef.id);
     } catch (e) {
-      print('❌ Fehler beim Erstellen der System-Belohnung: $e');
+      debugPrint('❌ Fehler beim Erstellen der System-Belohnung: $e');
       rethrow;
     }
   }
@@ -68,7 +73,7 @@ class RewardService {
     bool isPerfectQuiz = false,
   }) async {
     try {
-      print('🔍 Prüfe Belohnungen für ${child.name}...');
+      debugPrint('🔍 Prüfe Belohnungen für ${child.name}...');
 
       final allApproved = <RewardModel>[];
 
@@ -109,21 +114,20 @@ class RewardService {
               'approvedAt': FieldValue.serverTimestamp(),
             });
 
-            print('✅ Belohnung freigeschaltet: ${reward.title}');
+            debugPrint('✅ Belohnung freigeschaltet: ${reward.title}');
 
             // ⚡ Bonus-XP automatisch vergeben
             if (reward.bonusXP != null && reward.bonusXP! > 0) {
               try {
-                final xpService = XPService(_firestore);
-                await xpService.addXP(
+                await _xp.addXP(
                   userId: userId,
                   childId: currentChild.id,
                   xpToAdd: reward.bonusXP!,
                 );
-                print('⚡ +${reward.bonusXP} Bonus-XP vergeben');
+                debugPrint('⚡ +${reward.bonusXP} Bonus-XP vergeben');
                 bonusXpAwarded = true;
               } catch (e) {
-                print('❌ Fehler beim Vergeben von Bonus-XP: $e');
+                debugPrint('❌ Fehler beim Vergeben von Bonus-XP: $e');
               }
             }
 
@@ -140,9 +144,11 @@ class RewardService {
                         reward.avatarUnlockId!,
                       ]),
                     });
-                print('🎭 Avatar freigeschaltet: ${reward.avatarUnlockId}');
+                debugPrint(
+                  '🎭 Avatar freigeschaltet: ${reward.avatarUnlockId}',
+                );
               } catch (e) {
-                print('❌ Fehler beim Freischalten des Avatars: $e');
+                debugPrint('❌ Fehler beim Freischalten des Avatars: $e');
               }
             }
 
@@ -160,12 +166,13 @@ class RewardService {
         if (!bonusXpAwarded) break;
 
         // Kind neu laden mit aktualisierten XP/Level-Werten
-        final refreshed = await XPService(
-          _firestore,
-        ).getChild(userId: userId, childId: currentChild.id);
+        final refreshed = await _xp.getChild(
+          userId: userId,
+          childId: currentChild.id,
+        );
         if (refreshed == null) break;
         currentChild = refreshed;
-        print(
+        debugPrint(
           '🔄 Zweiter Reward-Check nach Bonus-XP '
           '(Level ${currentChild.level}, ${currentChild.xp} XP)',
         );
@@ -173,7 +180,7 @@ class RewardService {
 
       return allApproved;
     } catch (e) {
-      print('❌ Fehler beim Prüfen der Belohnungen: $e');
+      debugPrint('❌ Fehler beim Prüfen der Belohnungen: $e');
       return [];
     }
   }
@@ -208,7 +215,7 @@ class RewardService {
 
         // Bereits approved oder claimed → nichts tun
         if (existing.status != RewardStatus.pending) {
-          print('ℹ️ Level-$level-Belohnung bereits freigeschaltet');
+          debugPrint('ℹ️ Level-$level-Belohnung bereits freigeschaltet');
           return null;
         }
 
@@ -220,19 +227,20 @@ class RewardService {
 
         if (existing.bonusXP != null && existing.bonusXP! > 0) {
           try {
-            final xpService = XPService(_firestore);
-            await xpService.addXP(
+            await _xp.addXP(
               userId: userId,
               childId: childId,
               xpToAdd: existing.bonusXP!,
             );
-            print('⚡ +${existing.bonusXP} Bonus-XP für Level $level vergeben');
+            debugPrint(
+              '⚡ +${existing.bonusXP} Bonus-XP für Level $level vergeben',
+            );
           } catch (e) {
-            print('❌ Fehler beim Vergeben von Bonus-XP: $e');
+            debugPrint('❌ Fehler beim Vergeben von Bonus-XP: $e');
           }
         }
 
-        print('✅ Level-$level-Belohnung aus pending approved');
+        debugPrint('✅ Level-$level-Belohnung aus pending approved');
         return existing.copyWith(
           status: RewardStatus.approved,
           approvedAt: DateTime.now(),
@@ -253,7 +261,7 @@ class RewardService {
         badgeId: 'badge-level-$level',
       );
     } catch (e) {
-      print('❌ Fehler beim Freischalten der Level-Up Belohnung: $e');
+      debugPrint('❌ Fehler beim Freischalten der Level-Up Belohnung: $e');
       return null;
     }
   }
@@ -275,7 +283,7 @@ class RewardService {
         badgeId: 'badge-perfect-quiz',
       );
     } catch (e) {
-      print('❌ Fehler beim Erstellen der Perfect-Quiz Belohnung: $e');
+      debugPrint('❌ Fehler beim Erstellen der Perfect-Quiz Belohnung: $e');
       return null;
     }
   }
@@ -300,9 +308,9 @@ class RewardService {
             'parentSeen': false,
           });
 
-      print('✅ Belohnung eingelöst!');
+      debugPrint('✅ Belohnung eingelöst!');
     } catch (e) {
-      print('❌ Fehler beim Einlösen der Belohnung: $e');
+      debugPrint('❌ Fehler beim Einlösen der Belohnung: $e');
       rethrow;
     }
   }
@@ -333,9 +341,9 @@ class RewardService {
         batch.update(doc.reference, {'parentSeen': true});
       }
       await batch.commit();
-      print('✅ ${unseen.length} Belohnungen als gesehen markiert');
+      debugPrint('✅ ${unseen.length} Belohnungen als gesehen markiert');
     } catch (e) {
-      print('❌ Fehler beim Markieren als gesehen: $e');
+      debugPrint('❌ Fehler beim Markieren als gesehen: $e');
     }
   }
 

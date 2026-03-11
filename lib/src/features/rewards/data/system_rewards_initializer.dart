@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 /// 🏆 SYSTEM-BELOHNUNGEN INITIALIZER
@@ -80,8 +81,8 @@ class SystemRewardsInitializer {
 
     // ========== XP-BASIERTE BELOHNUNGEN ==========
     {
-      'title': '💪 100 XP gesammelt!',
-      'description': 'Du hast fleißig gelernt – weiter so!',
+      'title': '💪 Fleißige Lernerin!',
+      'description': 'Meilenstein: 100 XP gesammelt – weiter so!',
       'reward': '+20 Bonus-XP & Badge „Fleißig"',
       'trigger': 'xp',
       'requiredXP': 100,
@@ -89,8 +90,9 @@ class SystemRewardsInitializer {
       'badgeId': 'badge-xp-100',
     },
     {
-      'title': '🔥 500 XP Meilenstein!',
-      'description': 'Wow, 500 XP! Du bist auf dem richtigen Weg!',
+      'title': '🔥 Super Lernerin!',
+      'description':
+          'Meilenstein: 500 XP gesammelt! Du bist auf dem richtigen Weg!',
       'reward': '+75 Bonus-XP & Titel „XP-Sammler"',
       'trigger': 'xp',
       'requiredXP': 500,
@@ -98,8 +100,8 @@ class SystemRewardsInitializer {
       'badgeId': 'badge-xp-500',
     },
     {
-      'title': '⚡ 1.000 XP erreicht!',
-      'description': 'Das ist eine großartige Leistung!',
+      'title': '⚡ Unaufhaltsam!',
+      'description': 'Meilenstein: 1.000 XP! Das ist eine großartige Leistung!',
       'reward': '+150 Bonus-XP & Titel „XP-Jäger" + Badge „1k Club"',
       'trigger': 'xp',
       'requiredXP': 1000,
@@ -234,7 +236,7 @@ class SystemRewardsInitializer {
     required String childId,
   }) async {
     try {
-      print('🎁 Initialisiere System-Belohnungen für Kind: $childId');
+      debugPrint('🎁 Initialisiere System-Belohnungen für Kind: $childId');
 
       final batch = _firestore.batch();
       final rewardsCollection = _firestore
@@ -292,10 +294,10 @@ class SystemRewardsInitializer {
       }
 
       await batch.commit();
-      print('✅ $count System-Belohnungen erstellt');
+      debugPrint('✅ $count System-Belohnungen erstellt');
     } catch (e, stackTrace) {
-      print('❌ Fehler beim Initialisieren der System-Belohnungen: $e');
-      print('Stack: $stackTrace');
+      debugPrint('❌ Fehler beim Initialisieren der System-Belohnungen: $e');
+      debugPrint('Stack: $stackTrace');
       rethrow;
     }
   }
@@ -324,7 +326,7 @@ class SystemRewardsInitializer {
     required String childId,
   }) async {
     try {
-      print('🔍 Prüfe fehlende System-Belohnungen für Kind: $childId');
+      debugPrint('🔍 Prüfe fehlende System-Belohnungen für Kind: $childId');
 
       final existingSnapshot = await _firestore
           .collection('users')
@@ -344,11 +346,11 @@ class SystemRewardsInitializer {
           .toList();
 
       if (missingRewards.isEmpty) {
-        print('✅ Alle System-Belohnungen bereits vorhanden');
+        debugPrint('✅ Alle System-Belohnungen bereits vorhanden');
         return;
       }
 
-      print('📝 Füge ${missingRewards.length} fehlende Belohnungen hinzu');
+      debugPrint('📝 Füge ${missingRewards.length} fehlende Belohnungen hinzu');
 
       final batch = _firestore.batch();
       final rewardsCollection = _firestore
@@ -402,10 +404,10 @@ class SystemRewardsInitializer {
       }
 
       await batch.commit();
-      print('✅ ${missingRewards.length} Belohnungen hinzugefügt');
+      debugPrint('✅ ${missingRewards.length} Belohnungen hinzugefügt');
     } catch (e, stackTrace) {
-      print('❌ Fehler beim Hinzufügen fehlender Belohnungen: $e');
-      print('Stack: $stackTrace');
+      debugPrint('❌ Fehler beim Hinzufügen fehlender Belohnungen: $e');
+      debugPrint('Stack: $stackTrace');
     }
   }
 

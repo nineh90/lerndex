@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_ai/firebase_ai.dart';
@@ -172,7 +173,7 @@ class EarlyLearnerQuestionRepository {
       int attempts = 0;
       while (unplayed.length < count && attempts < 2) {
         attempts++;
-        print(
+        debugPrint(
           '🔄 EarlyLearner: Nur ${unplayed.length}/$count Fragen für $subject '
           '→ generiere nach (Versuch $attempts)...',
         );
@@ -196,7 +197,9 @@ class EarlyLearnerQuestionRepository {
       }
 
       if (unplayed.isEmpty) {
-        print('⚠️ EarlyLearner: Cache leer trotz Generierung → leere Liste');
+        debugPrint(
+          '⚠️ EarlyLearner: Cache leer trotz Generierung → leere Liste',
+        );
         return [];
       }
 
@@ -206,12 +209,35 @@ class EarlyLearnerQuestionRepository {
       await _markPlayedByIds(userId, childId, subject, selected);
       return selected;
     } catch (e) {
-      print('⚠️ EarlyQuestionRepo.getQuestions Fehler: $e');
+      debugPrint('⚠️ EarlyQuestionRepo.getQuestions Fehler: $e');
       return [];
     }
   }
 
   /// Füllt den Cache wenn leer (Pre-Fetch bei Kind-Erstellung).
+  // ── Cache-Versionierung ───────────────────────────────────────────────────
+  //
+  // Bei jeder Änderung der Prompt-Logik oder Filter-Regeln diese Zahl erhöhen.
+  // Beim nächsten App-Start erkennt prefillIfEmpty den veralteten Cache und
+  // löscht ihn vollständig bevor neue Fragen generiert werden.
+  //
+  // v1 → v2: Subject-Fix (Zahlen/Buchstaben wurden als generisch generiert)
+  static const int _cacheVersion = 2;
+
+  /// Gibt den Firestore-Pfad für das Cache-Meta-Dokument zurück.
+  /// Speichert die Versionsnummer des aktuellen Caches.
+  DocumentReference _cacheMetaRef(
+    String userId,
+    String childId,
+    String subject,
+  ) => _firestore
+      .collection('users')
+      .doc(userId)
+      .collection('children')
+      .doc(childId)
+      .collection('early_question_cache')
+      .doc(subject);
+
   Future<void> prefillIfEmpty({
     required String userId,
     required String childId,
@@ -219,6 +245,10 @@ class EarlyLearnerQuestionRepository {
     required String subject,
   }) async {
     try {
+      // Cache-Versionsprüfung: Alten Cache vollständig löschen wenn veraltet.
+      // Zuverlässiger als heuristische Inhalts-Checks.
+      await _clearIfOutdated(userId, childId, subject);
+
       final unplayed = await _loadUnplayed(userId, childId, subject);
       if (unplayed.length >= _refillThreshold) return;
       await _generateAndCache(
@@ -228,21 +258,75 @@ class EarlyLearnerQuestionRepository {
         subject: subject,
       );
     } catch (e) {
-      print('⚠️ EarlyQuestionRepo.prefill Fehler: $e');
+      debugPrint('⚠️ EarlyQuestionRepo.prefill Fehler: $e');
+    }
+  }
+
+  /// Löscht den Cache wenn seine Version nicht mit _cacheVersion übereinstimmt.
+  Future<void> _clearIfOutdated(
+    String userId,
+    String childId,
+    String subject,
+  ) async {
+    try {
+      final meta = await _cacheMetaRef(userId, childId, subject).get();
+      final metaData = meta.data() as Map<String, dynamic>?;
+      final storedVersion = metaData?['cacheVersion'] as int?;
+      if (storedVersion == _cacheVersion) return; // Aktuell → nichts zu tun
+
+      if (meta.exists) {
+        debugPrint(
+          '🔄 EarlyLearner: Cache v${storedVersion ?? "?"} für $subject veraltet '
+          '(aktuell: v$_cacheVersion) → wird geleert',
+        );
+      }
+      await _clearCache(userId, childId, subject);
+    } catch (e) {
+      // Nicht kritisch, einfach weitermachen
+    }
+  }
+
+  Future<void> _clearCache(
+    String userId,
+    String childId,
+    String subject,
+  ) async {
+    try {
+      final snap = await _cacheRef(userId, childId, subject).get();
+      if (snap.docs.isNotEmpty) {
+        // Firestore batch max 500 Docs
+        for (int i = 0; i < snap.docs.length; i += 400) {
+          final batch = _firestore.batch();
+          for (final doc in snap.docs.skip(i).take(400)) {
+            batch.delete(doc.reference);
+          }
+          await batch.commit();
+        }
+        debugPrint(
+          '✅ EarlyLearner: Cache für $subject geleert (${snap.docs.length} Docs)',
+        );
+      }
+      // Meta-Dokument ebenfalls löschen damit Version-Check bei nächstem
+      // prefill auch sauber von vorne startet
+      try {
+        await _cacheMetaRef(userId, childId, subject).delete();
+      } catch (_) {}
+    } catch (e) {
+      debugPrint('⚠️ _clearCache Fehler: $e');
     }
   }
 
   /// Füllt den Cache bis MINDESTENS [targetCount] Fragen vorhanden sind.
-  /// Wird vom Splash-Screen aufgerufen damit genug Fragen für den
-  /// Client-seitigen Fach-Filter übrig bleiben.
   ///
-  /// Beispiel: targetCount=20, batchSize=10 → generiert bis zu 2 Batches
+  /// Wird in zwei Phasen aufgerufen:
+  ///   Phase 1 (blockierend):  targetCount=5  → 1 Batch, Quiz kann sofort starten
+  ///   Phase 2 (Hintergrund):  targetCount=15 → weitere Batches, kein Warten
   Future<void> prefillForQuiz({
     required String userId,
     required String childId,
     required ChildModel child,
     required String subject,
-    int targetCount = 20,
+    int targetCount = 5,
   }) async {
     try {
       await _ensureInitialized();
@@ -251,7 +335,7 @@ class EarlyLearnerQuestionRepository {
       int attempts = 0;
       while (unplayed.length < targetCount && attempts < 3) {
         attempts++;
-        print(
+        debugPrint(
           '🧒 EarlyPrefill: ${unplayed.length}/$targetCount für $subject '
           '→ generiere Batch $attempts...',
         );
@@ -264,11 +348,11 @@ class EarlyLearnerQuestionRepository {
         unplayed = await _loadUnplayed(userId, childId, subject);
       }
 
-      print(
+      debugPrint(
         '✅ EarlyPrefill: $subject hat jetzt ${unplayed.length} Fragen im Cache',
       );
     } catch (e) {
-      print('⚠️ EarlyQuestionRepo.prefillForQuiz Fehler: $e');
+      debugPrint('⚠️ EarlyQuestionRepo.prefillForQuiz Fehler: $e');
     }
   }
 
@@ -285,13 +369,30 @@ class EarlyLearnerQuestionRepository {
         childId,
         subject,
       ).where('played', isEqualTo: false).get();
+
       final list = snap.docs.map((d) {
         final q = EarlyAiQuestion.fromJson(d.data() as Map<String, dynamic>);
         return q.copyWithDocId(d.id);
       }).toList();
-      // Shufflen damit nicht immer dieselben Fragen zuerst kommen
-      list.shuffle();
-      return list;
+
+      // Deduplizieren nach questionText — KI kann in verschiedenen Batches
+      // dieselbe Frage generieren (verschiedene Doc-IDs, gleicher Inhalt).
+      // Wir behalten nur das erste Vorkommen jedes Fragetexts.
+      final seen = <String>{};
+      final deduped = list.where((q) {
+        final key = q.questionText.toLowerCase().trim();
+        return seen.add(key);
+      }).toList();
+
+      if (deduped.length < list.length) {
+        debugPrint(
+          '🔍 EarlyLearner: ${list.length - deduped.length} doppelte Fragen '
+          'für $subject rausgefiltert',
+        );
+      }
+
+      deduped.shuffle();
+      return deduped;
     } catch (_) {
       return [];
     }
@@ -315,7 +416,7 @@ class EarlyLearnerQuestionRepository {
       }
       await batch.commit();
     } catch (e) {
-      print('⚠️ _markPlayedByIds Fehler: $e');
+      debugPrint('⚠️ _markPlayedByIds Fehler: $e');
     }
   }
 
@@ -348,7 +449,7 @@ class EarlyLearnerQuestionRepository {
     required String subject,
   }) async {
     await _ensureInitialized();
-    print('🤖 EarlyLearner: Generiere $_batchSize Fragen für $subject...');
+    debugPrint('🤖 EarlyLearner: Generiere $_batchSize Fragen für $subject...');
 
     final prompt = _buildPrompt(subject: subject, child: child);
 
@@ -368,7 +469,7 @@ class EarlyLearnerQuestionRepository {
 
       final filtered = parsed.length - questions.length;
       if (filtered > 0) {
-        print(
+        debugPrint(
           '🔍 EarlyLearner: $filtered/${parsed.length} Fragen für $subject '
           'vom Fach-Filter entfernt (vor dem Cachen)',
         );
@@ -376,14 +477,14 @@ class EarlyLearnerQuestionRepository {
 
       if (questions.isNotEmpty) {
         await _writeToCache(userId, childId, subject, questions);
-        print(
+        debugPrint(
           '✅ EarlyLearner: ${questions.length} Fragen für $subject gecacht',
         );
       }
 
       return questions;
     } catch (e) {
-      print('❌ EarlyLearner: Generierung fehlgeschlagen für $subject: $e');
+      debugPrint('❌ EarlyLearner: Generierung fehlgeschlagen für $subject: $e');
       return [];
     }
   }
@@ -401,6 +502,14 @@ class EarlyLearnerQuestionRepository {
       batch.set(doc, q.toJson());
     }
     await batch.commit();
+
+    // Cache-Version ins Meta-Dokument schreiben damit _clearIfOutdated
+    // beim nächsten Start weiß dass dieser Cache aktuell ist.
+    await _cacheMetaRef(userId, childId, subject).set({
+      'cacheVersion': _cacheVersion,
+      'lastUpdated': FieldValue.serverTimestamp(),
+      'subject': subject,
+    }, SetOptions(merge: true));
   }
 
   // ══════════════════════════════════════════════════════════════════════════
@@ -424,7 +533,8 @@ class EarlyLearnerQuestionRepository {
   bool _passesSubjectFilter(EarlyAiQuestion q) {
     final text = q.questionText.toLowerCase();
     final type = q.type;
-    final subject = q.subject;
+    // Normalisieren: 'Zahlen'→'Mathe', 'Buchstaben'→'Deutsch'
+    final subject = _normalizeSubject(q.subject);
 
     switch (subject) {
       case 'Mathe':
@@ -585,12 +695,14 @@ WICHTIG FÜR VERGLEICHSFRAGEN:
   // ════════════════════════════════════════════════════════════════════════════
 
   String _subjectInstructions(String subject, ChildModel child) {
+    // Normalisieren damit 'Zahlen'→'Mathe', 'Buchstaben'→'Deutsch' matcht
+    final normalized = _normalizeSubject(subject);
     final maxNum = _maxNumber(child);
     final gradeSpecific = child.grade <= 1
         ? 'Klasse 1: NUR Zahlen 1–$maxNum, nur Zählen und einfaches "Welche Zahl ist größer?". KEIN Plus/Minus.'
         : 'Klasse 2: Zahlen 1–$maxNum, Zählen, einfaches Plus und Minus (Ergebnis max $maxNum), Zahlenvergleiche.';
 
-    switch (subject) {
+    switch (normalized) {
       case 'Mathe':
         return '''
 THEMEN für Mathe ($gradeSpecific):
@@ -734,7 +846,7 @@ Mischung: 4 "imageChoice", 3 "pattern", 3 "oddOneOut"
       final startArr = cleaned.indexOf('[');
       final endArr = cleaned.lastIndexOf(']');
       if (startArr == -1 || endArr == -1 || endArr <= startArr) {
-        print('⚠️ EarlyParser: Kein JSON-Array gefunden');
+        debugPrint('⚠️ EarlyParser: Kein JSON-Array gefunden');
         return [];
       }
 
@@ -747,11 +859,13 @@ Mischung: 4 "imageChoice", 3 "pattern", 3 "oddOneOut"
         if (q != null) questions.add(q);
       }
     } catch (e) {
-      print('❌ EarlyParser: JSON-Fehler: $e');
-      print('   Text-Anfang: ${text.substring(0, text.length.clamp(0, 200))}');
+      debugPrint('❌ EarlyParser: JSON-Fehler: $e');
+      debugPrint(
+        '   Text-Anfang: ${text.substring(0, text.length.clamp(0, 200))}',
+      );
     }
 
-    print('✅ EarlyParser: ${questions.length} valide Fragen geparst');
+    debugPrint('✅ EarlyParser: ${questions.length} valide Fragen geparst');
     return questions;
   }
 
@@ -845,7 +959,7 @@ Mischung: 4 "imageChoice", 3 "pattern", 3 "oddOneOut"
 
       // ── VALIDIERUNG: Unbeantwortbare Fragen rausfiltern ─────────────
       if (!_isValidQuestion(question)) {
-        print(
+        debugPrint(
           '⚠️ EarlyParser: Frage rausgefiltert (Validierung): ${question.questionText}',
         );
         return null;
@@ -853,8 +967,33 @@ Mischung: 4 "imageChoice", 3 "pattern", 3 "oddOneOut"
 
       return question;
     } catch (e) {
-      print('⚠️ EarlyParser: Frage-Parse-Fehler: $e');
+      debugPrint('⚠️ EarlyParser: Frage-Parse-Fehler: $e');
       return null;
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // SUBJECT-NORMALISIERUNG
+  //
+  // Das Dashboard übergibt 'Zahlen' und 'Buchstaben' als Subject-Strings,
+  // damit die Firestore-Pfade sich von den regulären KI-Quiz-Caches
+  // ('mathe', 'deutsch') unterscheiden.
+  //
+  // Intern (Prompts, Filter, Validierung) müssen wir aber die kanonischen
+  // Namen 'Mathe', 'Deutsch', 'FarbenFormen' verwenden.
+  //
+  // _normalizeSubject macht dieses Mapping — NUR für interne Logik verwenden,
+  // NIEMALS für Firestore-Pfade (die bleiben 'Zahlen'/'Buchstaben').
+  // ══════════════════════════════════════════════════════════════════════════
+
+  static String _normalizeSubject(String subject) {
+    switch (subject) {
+      case 'Zahlen':
+        return 'Mathe';
+      case 'Buchstaben':
+        return 'Deutsch';
+      default:
+        return subject;
     }
   }
 
@@ -864,10 +1003,11 @@ Mischung: 4 "imageChoice", 3 "pattern", 3 "oddOneOut"
 
   bool _isValidQuestion(EarlyAiQuestion q) {
     final text = q.questionText.toLowerCase();
+    final normalizedSubject = _normalizeSubject(q.subject);
 
     // 1. correctAnswer muss in options enthalten sein
     if (!q.options.contains(q.correctAnswer)) {
-      print('   → correctAnswer "${q.correctAnswer}" nicht in options');
+      debugPrint('   → correctAnswer "${q.correctAnswer}" nicht in options');
       return false;
     }
 
@@ -876,51 +1016,50 @@ Mischung: 4 "imageChoice", 3 "pattern", 3 "oddOneOut"
         text.contains('kleiner') ||
         text.contains('mehr') ||
         text.contains('weniger')) {
-      // questionEmoji oder questionText muss mindestens zwei Zahlen enthalten
       final allText = '${q.questionEmoji} ${q.questionText}';
       final numberMatches = RegExp(r'\d+').allMatches(allText).toList();
-      // Auch Zahlen-Emojis zählen
       final emojiNumbers = RegExp(r'[0-9]️⃣').allMatches(allText).toList();
       final totalNumbers = numberMatches.length + emojiNumbers.length;
 
       if (totalNumbers < 2) {
-        print(
+        debugPrint(
           '   → Vergleichsfrage ohne zwei Zahlen: "${q.questionText}" emoji="${q.questionEmoji}"',
         );
         return false;
       }
     }
 
-    // 3. Mathe: Alle Options müssen Zahlen sein (wenn subject Mathe)
-    if (q.subject == 'Mathe') {
+    // 3. Mathe/Zahlen: Alle Options müssen Zahlen sein
+    if (normalizedSubject == 'Mathe') {
       final allNumbers = q.options.every((o) => RegExp(r'^\d+$').hasMatch(o));
       if (!allNumbers && q.type != 'pattern') {
-        // Bei pattern können auch Zahlen-Emojis als options vorkommen
-        print('   → Mathe-Frage mit Nicht-Zahlen-Options: ${q.options}');
+        debugPrint('   → Mathe-Frage mit Nicht-Zahlen-Options: ${q.options}');
         return false;
       }
     }
 
-    // 4. Deutsch anlaut: Options müssen einzelne Buchstaben sein
-    if (q.subject == 'Deutsch' && q.type == 'anlaut') {
+    // 4. Deutsch/Buchstaben anlaut: Options müssen einzelne Buchstaben sein
+    if (normalizedSubject == 'Deutsch' && q.type == 'anlaut') {
       final allLetters = q.options.every(
         (o) => o.length == 1 && RegExp(r'[A-ZÄÖÜa-zäöü]').hasMatch(o),
       );
       if (!allLetters) {
-        print('   → Anlaut-Frage mit Nicht-Buchstaben-Options: ${q.options}');
+        debugPrint(
+          '   → Anlaut-Frage mit Nicht-Buchstaben-Options: ${q.options}',
+        );
         return false;
       }
     }
 
     // 5. Keine leeren oder zu kurzen Fragen
     if (q.questionText.length < 5) {
-      print('   → Frage zu kurz: "${q.questionText}"');
+      debugPrint('   → Frage zu kurz: "${q.questionText}"');
       return false;
     }
 
-    // 6. Mindestens 4 verschiedene Options (keine Duplikate)
+    // 6. Mindestens 3 verschiedene Options (keine Duplikate)
     if (q.options.toSet().length < 3) {
-      print('   → Zu viele doppelte Options: ${q.options}');
+      debugPrint('   → Zu viele doppelte Options: ${q.options}');
       return false;
     }
 
