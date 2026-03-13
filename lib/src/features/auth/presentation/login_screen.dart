@@ -4,6 +4,9 @@ import '../data/auth_repository.dart';
 import 'register_screen.dart';
 import 'setup_dialog.dart';
 import 'family_dashboard_screen.dart';
+// NEU: Subscription
+import '../../subscription/data/subscription_provider.dart';
+import '../../subscription/data/subscription_service.dart';
 
 /// Login-Screen für bestehende Nutzer
 /// Neue Nutzer werden zu RegisterScreen weitergeleitet
@@ -40,9 +43,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     setState(() => _isLoading = true);
 
     try {
-      await ref
+      final credential = await ref
           .read(authRepositoryProvider)
           .signInWithEmailAndPassword(email, password);
+
+      if (!mounted) return;
+
+      // NEU: RevenueCat identifizieren + Abo-Status laden
+      final uid = credential.user?.uid;
+      if (uid != null) {
+        await ref.read(subscriptionServiceProvider).identifyUser(uid);
+        await ref.read(subscriptionStatusProvider.notifier).refresh();
+      }
 
       if (!mounted) return;
 
@@ -72,6 +84,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
     try {
       final result = await ref.read(authRepositoryProvider).signInWithGoogle();
+
+      if (!mounted) return;
+
+      // NEU: RevenueCat identifizieren + Abo-Status laden
+      final uid = result.credential.user?.uid;
+      if (uid != null) {
+        await ref.read(subscriptionServiceProvider).identifyUser(uid);
+        await ref.read(subscriptionStatusProvider.notifier).refresh();
+      }
 
       if (!mounted) return;
 

@@ -1,12 +1,15 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
+import 'package:lerndex/src/features/subscription/data/subscription_model.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../domain/child_model.dart';
 import '../../rewards/data/system_rewards_initializer.dart';
 import '../../rewards/data/xp_service.dart';
 import '../../quiz/data/quiz_prefetch_service.dart';
 import 'auth_repository.dart';
+// NEU: Subscription
+import '../../subscription/data/subscription_service.dart';
 
 part 'profile_repository.g.dart';
 
@@ -38,8 +41,7 @@ class ProfileRepository {
         );
   }
 
-  /// Erstellt ein neues Kind mit System-Belohnungen
-  /// und generiert sofort Quiz-Fragen im Hintergrund
+  /// Erstellt ein neues Kind — prüft vorher das Abo-Limit
   Future<String> createChild({
     required String name,
     required int age,
@@ -48,6 +50,30 @@ class ProfileRepository {
   }) async {
     final user = _auth.currentUser;
     if (user == null) throw Exception('Not authenticated');
+
+    // ── Abo-Limit prüfen ───────────────────────────────────────────────────
+    final subscriptionService = SubscriptionService(_firestore, _auth);
+    final subscriptionStatus = await subscriptionService
+        .getSubscriptionStatus();
+
+    final existingSnapshot = await _firestore
+        .collection('users')
+        .doc(user.uid)
+        .collection('children')
+        .count()
+        .get();
+
+    final currentCount = existingSnapshot.count ?? 0;
+    final limit = subscriptionStatus.childLimit;
+
+    if (currentCount >= limit) {
+      throw ChildLimitReachedException(
+        currentCount: currentCount,
+        limit: limit,
+        plan: subscriptionStatus.plan,
+      );
+    }
+    // ── Ende Limit-Prüfung ─────────────────────────────────────────────────
 
     final childData = {
       'name': name,
@@ -238,6 +264,44 @@ class ProfileRepository {
         });
   }
 
+  /// Deaktiviert ein Kind (pausiert es) — Daten bleiben erhalten.
+  /// Wird beim Plan-Downgrade aufgerufen.
+  Future<void> deactivateChild(String childId) async {
+    await _firestore
+        .collection('users')
+        .doc(_uid)
+        .collection('children')
+        .doc(childId)
+        .update({'isActive': false});
+    debugPrint('⏸ Kind deaktiviert: $childId');
+  }
+
+  /// Reaktiviert ein pausiertes Kind (nach Upgrade).
+  Future<void> reactivateChild(String childId) async {
+    await _firestore
+        .collection('users')
+        .doc(_uid)
+        .collection('children')
+        .doc(childId)
+        .update({'isActive': true});
+    debugPrint('▶️ Kind reaktiviert: $childId');
+  }
+
+  /// Stream nur der AKTIVEN Kinder (isActive != false)
+  Stream<List<ChildModel>> watchActiveChildren() {
+    return _firestore
+        .collection('users')
+        .doc(_uid)
+        .collection('children')
+        .snapshots()
+        .map(
+          (snapshot) => snapshot.docs
+              .map((doc) => ChildModel.fromMap(doc.data(), doc.id))
+              .where((c) => c.isActive)
+              .toList(),
+        );
+  }
+
   /// Löscht ein Kind
   Future<void> deleteChild(String childId) async {
     await _firestore
@@ -315,4 +379,32 @@ Stream<List<ChildModel>> childrenList(ChildrenListRef ref) {
   final user = authState.value;
   if (user == null) return Stream.value([]);
   return ref.watch(profileRepositoryProvider).watchChildren();
+}
+
+// =============================================================================
+// EXCEPTIONS
+// =============================================================================
+
+/// Wird geworfen wenn das Kind-Limit des Abos erreicht ist.
+/// Die UI fängt diese Exception und öffnet die Paywall.
+class ChildLimitReachedException implements Exception {
+  final int currentCount;
+  final int limit;
+  final SubscriptionPlan plan;
+
+  const ChildLimitReachedException({
+    required this.currentCount,
+    required this.limit,
+    required this.plan,
+  });
+
+  @override
+  String toString() {
+    if (plan == SubscriptionPlan.none) {
+      return 'Kein aktives Abo. Bitte wähle einen Plan um fortzufahren.';
+    }
+    return 'Du hast das Limit von $limit '
+        '${limit == 1 ? "Kind" : "Kindern"} für deinen '
+        '${plan.displayName}-Plan erreicht.';
+  }
 }

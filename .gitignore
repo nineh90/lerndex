@@ -11,6 +11,7 @@
 .svn/
 .swiftpm/
 migrate_working_dir/
+*.jks
 
 # IntelliJ related
 *.iml
@@ -61,3 +62,8 @@ android/local.properties
 
 secrets.json
 config/secrets.dart
+*.cc
+*.h
+*.cmake
+*.swift
+pubspec.lock

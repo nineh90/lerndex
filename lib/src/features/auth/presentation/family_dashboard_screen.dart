@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lerndex/src/features/auth/domain/child_model.dart';
+import 'package:lerndex/src/features/auth/presentation/widgets/child_limit_exceeded_screen.dart';
 import 'package:lerndex/src/features/student_dashboard/presentation/student_dashboard_screen.dart';
 import '../data/auth_repository.dart';
 import '../data/profile_repository.dart';
@@ -12,6 +14,9 @@ import '../../parent_dashboard/presentation/family_settings_screen.dart';
 import 'widgets/parent_dashboard_button.dart';
 import '../../../tutorial_provider.dart';
 import '../../../tutorial_overlay.dart';
+// NEU: Subscription
+import '../../subscription/data/subscription_provider.dart';
+import '../../subscription/presentation/paywall_screen.dart';
 
 class FamilyDashboardScreen extends ConsumerStatefulWidget {
   const FamilyDashboardScreen({super.key});
@@ -32,6 +37,37 @@ class _FamilyDashboardScreenState extends ConsumerState<FamilyDashboardScreen> {
     final childrenAsync = ref.watch(childrenListProvider);
     final pendingRewards = ref.watch(totalPendingRewardsProvider);
     final tutState = ref.watch(tutorialProvider);
+
+    // ── NEU: Abo-Check ─────────────────────────────────────────────────────
+    final subscriptionAsync = ref.watch(subscriptionStatusProvider);
+    final hasAccess = subscriptionAsync.when(
+      data: (s) => s.hasAccess,
+      loading: () => true,
+      error: (_, __) => true,
+    );
+
+    // Kein Abo → Paywall als vollständiger Screen (nicht wegklickbar)
+    if (!hasAccess) {
+      return const PaywallScreen(canDismiss: false);
+    }
+
+    // ── NEU: Downgrade-Check ────────────────────────────────────────────────
+    final childLimit = subscriptionAsync.maybeWhen(
+      data: (s) => s.childLimit,
+      orElse: () => 99,
+    );
+    final allChildren = childrenAsync.maybeWhen(
+      data: (list) => list,
+      orElse: () => <ChildModel>[],
+    );
+    final activeChildren = allChildren.where((c) => c.isActive).toList();
+    if (activeChildren.length > childLimit) {
+      return ChildLimitExceededScreen(
+        children: allChildren, // Alle anzeigen damit Elternteil wählen kann
+        allowedCount: childLimit,
+      );
+    }
+    // ── Ende Checks ─────────────────────────────────────────────────────────
 
     // Aktiven Spotlight-Key je nach Schritt bestimmen
     GlobalKey? spotlightKey;
@@ -104,98 +140,168 @@ class _FamilyDashboardScreenState extends ConsumerState<FamilyDashboardScreen> {
                 );
               }
 
+              // Aktive Kinder zuerst, inaktive unten
+              final sorted = [...children]
+                ..sort((a, b) {
+                  if (a.isActive == b.isActive) return 0;
+                  return a.isActive ? -1 : 1;
+                });
+
               return ListView.builder(
                 key: _childListKey,
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
-                itemCount: children.length,
+                itemCount: sorted.length,
                 itemBuilder: (context, index) {
-                  final child = children[index];
+                  final child = sorted[index];
+                  final isActive = child.isActive;
+
                   return Card(
                     margin: const EdgeInsets.only(bottom: 12),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
                     ),
                     clipBehavior: Clip.antiAlias,
+                    // Inaktive Kinder ausgegraut
+                    color: isActive ? null : Colors.grey.shade100,
                     child: InkWell(
                       borderRadius: BorderRadius.circular(16),
-                      onTap: () async {
-                        ref.read(activeChildProvider.notifier).select(child);
-                        if (context.mounted) {
-                          await Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) => const StudentDashboardScreen(),
-                            ),
-                          );
-                          if (context.mounted) {
-                            ref.read(activeChildProvider.notifier).deselect();
-                          }
-                        }
-                      },
+                      // Inaktive Kinder nicht klickbar
+                      onTap: isActive
+                          ? () async {
+                              ref
+                                  .read(activeChildProvider.notifier)
+                                  .select(child);
+                              if (context.mounted) {
+                                await Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) =>
+                                        const StudentDashboardScreen(),
+                                  ),
+                                );
+                                if (context.mounted) {
+                                  ref
+                                      .read(activeChildProvider.notifier)
+                                      .deselect();
+                                }
+                              }
+                            }
+                          : null,
                       child: ListTile(
                         contentPadding: const EdgeInsets.all(16),
-                        leading: CircleAvatar(
-                          backgroundColor: const Color(0xFF6B21A8),
-                          radius: 24,
-                          backgroundImage: child.selectedAvatar != null
-                              ? AssetImage(
-                                  'assets/images/${child.selectedAvatar}.png',
-                                )
-                              : null,
-                          child: child.selectedAvatar == null
-                              ? Text(
-                                  child.name[0].toUpperCase(),
-                                  style: const TextStyle(
+                        leading: Stack(
+                          children: [
+                            CircleAvatar(
+                              backgroundColor: isActive
+                                  ? const Color(0xFF6B21A8)
+                                  : Colors.grey.shade400,
+                              radius: 24,
+                              backgroundImage: child.selectedAvatar != null
+                                  ? AssetImage(
+                                      'assets/images/${child.selectedAvatar}.png',
+                                    )
+                                  : null,
+                              child: child.selectedAvatar == null
+                                  ? Text(
+                                      child.name[0].toUpperCase(),
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    )
+                                  : null,
+                            ),
+                            // Schloss-Icon auf inaktiven Kindern
+                            if (!isActive)
+                              Positioned(
+                                right: 0,
+                                bottom: 0,
+                                child: Container(
+                                  decoration: const BoxDecoration(
                                     color: Colors.white,
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.bold,
+                                    shape: BoxShape.circle,
                                   ),
-                                )
-                              : null,
+                                  padding: const EdgeInsets.all(2),
+                                  child: const Icon(
+                                    Icons.lock,
+                                    size: 12,
+                                    color: Colors.grey,
+                                  ),
+                                ),
+                              ),
+                          ],
                         ),
                         title: Text(
                           child.name,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 16,
+                            color: isActive
+                                ? Colors.black87
+                                : Colors.grey.shade500,
                           ),
                         ),
                         subtitle: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             const SizedBox(height: 4),
-                            Text('${child.schoolType} • Klasse ${child.grade}'),
-                            const SizedBox(height: 4),
-                            Row(
-                              children: [
-                                const Icon(
-                                  Icons.bolt,
-                                  size: 14,
-                                  color: Colors.orange,
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  '${child.xp} XP • Lvl ${child.level}',
-                                  style: const TextStyle(fontSize: 12),
-                                ),
-                                const SizedBox(width: 12),
-                                const Icon(
-                                  Icons.local_fire_department,
-                                  size: 14,
-                                  color: Colors.orange,
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  '${child.streak ?? 0} Tage',
-                                  style: const TextStyle(fontSize: 12),
-                                ),
-                              ],
+                            Text(
+                              isActive
+                                  ? '${child.schoolType} • Klasse ${child.grade}'
+                                  : 'Pausiert • Upgrade für Zugriff',
+                              style: TextStyle(
+                                color: isActive ? null : Colors.grey.shade500,
+                                fontSize: 13,
+                              ),
                             ),
+                            if (isActive) ...[
+                              const SizedBox(height: 4),
+                              Row(
+                                children: [
+                                  const Icon(
+                                    Icons.bolt,
+                                    size: 14,
+                                    color: Colors.orange,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    '${child.xp} XP • Lvl ${child.level}',
+                                    style: const TextStyle(fontSize: 12),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  const Icon(
+                                    Icons.local_fire_department,
+                                    size: 14,
+                                    color: Colors.orange,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    '${child.streak ?? 0} Tage',
+                                    style: const TextStyle(fontSize: 12),
+                                  ),
+                                ],
+                              ),
+                            ],
                           ],
                         ),
-                        trailing: const Icon(
-                          Icons.chevron_right,
-                          color: Color(0xFF6B21A8),
-                        ),
+                        trailing: isActive
+                            ? const Icon(
+                                Icons.chevron_right,
+                                color: Color(0xFF6B21A8),
+                              )
+                            : GestureDetector(
+                                onTap: () => Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) =>
+                                        const PaywallScreen(canDismiss: true),
+                                  ),
+                                ),
+                                child: const Icon(
+                                  Icons.upgrade,
+                                  color: Color(0xFF6B21A8),
+                                ),
+                              ),
                       ),
                     ),
                   );

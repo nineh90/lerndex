@@ -27,6 +27,9 @@ class ChildModel {
   final List<String>
   unlockedAvatars; // Über Belohnungen freigeschaltete Avatare
 
+  // NEU: Aktiv-Status (false = pausiert durch Plan-Downgrade)
+  final bool isActive;
+
   const ChildModel({
     required this.id,
     required this.name,
@@ -37,8 +40,7 @@ class ChildModel {
     this.stars = 0,
     this.totalLearningSeconds = 0,
     this.xp = 0,
-    this.xpToNextLevel = 25, // Standard: 25 XP für Level 2
-    // NEU: Optional parameters
+    this.xpToNextLevel = 25,
     this.streak,
     this.totalQuizzes,
     this.perfectQuizzes,
@@ -47,6 +49,7 @@ class ChildModel {
     this.lastXPGain,
     this.selectedAvatar,
     this.unlockedAvatars = const [],
+    this.isActive = true, // Standard: aktiv
   });
 
   /// Berechnet den XP-Fortschritt als Prozentwert (0.0 - 1.0)
@@ -87,6 +90,7 @@ class ChildModel {
       lastXPGain: (data['lastXPGain'] as Timestamp?)?.toDate(),
       selectedAvatar: data['selectedAvatar'],
       unlockedAvatars: List<String>.from(data['unlockedAvatars'] ?? []),
+      isActive: data['isActive'] != false, // null oder true → aktiv
     );
   }
 

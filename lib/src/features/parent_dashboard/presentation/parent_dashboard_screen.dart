@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../auth/data/profile_repository.dart';
@@ -7,6 +9,9 @@ import 'settings_screen.dart';
 import '../../auth/presentation/login_screen.dart';
 import '../../../tutorial_provider.dart';
 import '../../../tutorial_overlay.dart';
+// NEU: Subscription
+import '../../subscription/data/subscription_service.dart';
+import '../../subscription/presentation/paywall_screen.dart';
 
 /// Haupt-Dashboard für Eltern mit Statistiken & Verwaltung
 class ParentDashboardScreen extends ConsumerStatefulWidget {
@@ -101,15 +106,20 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
                       style: TextStyle(color: Colors.grey[600]),
                     ),
                     const SizedBox(height: 24),
-                    // Kinder-Karten mit Key für Tutorial-Spotlight
+                    // Aktive Kinder zuerst, inaktive unten
                     SizedBox(
                       key: _childCardAreaKey,
                       child: Column(
-                        children: children
-                            .map(
-                              (child) => LiveChildStatCard(childId: child.id),
-                            )
-                            .toList(),
+                        children:
+                            ([...children]..sort((a, b) {
+                                  if (a.isActive == b.isActive) return 0;
+                                  return a.isActive ? -1 : 1;
+                                }))
+                                .map(
+                                  (child) =>
+                                      LiveChildStatCard(childId: child.id),
+                                )
+                                .toList(),
                       ),
                     ),
                   ],
@@ -146,7 +156,12 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
               _showAddChildDialog(context);
               break;
             case 1:
-              _showComingSoon(context, 'Abo');
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const PaywallScreen(canDismiss: true),
+                ),
+              );
               break;
             case 2:
               Navigator.push(
@@ -345,14 +360,32 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
                     }
                   } catch (e) {
                     if (dialogContext.mounted) {
-                      Navigator.pop(dialogContext);
-                      ScaffoldMessenger.of(screenContext).showSnackBar(
-                        SnackBar(
-                          content: Text('❌ Fehler: $e'),
-                          backgroundColor: Colors.red,
-                          duration: const Duration(seconds: 5),
-                        ),
-                      );
+                      Navigator.pop(dialogContext); // Loading-Dialog
+                    }
+                    // Kind-Limit erreicht → Paywall öffnen
+                    if (e is ChildLimitReachedException) {
+                      if (dialogContext.mounted) {
+                        Navigator.pop(dialogContext); // Kind-Dialog schließen
+                      }
+                      if (screenContext.mounted) {
+                        await Navigator.push(
+                          screenContext,
+                          MaterialPageRoute(
+                            builder: (_) =>
+                                const PaywallScreen(canDismiss: true),
+                          ),
+                        );
+                      }
+                    } else {
+                      if (screenContext.mounted) {
+                        ScaffoldMessenger.of(screenContext).showSnackBar(
+                          SnackBar(
+                            content: Text('❌ Fehler: $e'),
+                            backgroundColor: Colors.red,
+                            duration: const Duration(seconds: 5),
+                          ),
+                        );
+                      }
                     }
                   }
                 }
@@ -361,51 +394,6 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  // ── Platzhalter „Bald verfügbar" ─────────────────────────────────────────
-  void _showComingSoon(BuildContext context, String feature) {
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          children: [
-            const Icon(Icons.rocket_launch, color: Colors.deepPurple),
-            const SizedBox(width: 8),
-            Text(feature),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.hourglass_top, size: 56, color: Colors.deepPurple),
-            const SizedBox(height: 16),
-            Text(
-              '„$feature" ist bald verfügbar! 🚀',
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Dieses Feature befindet sich gerade in Entwicklung und wird in einem zukünftigen Update freigeschaltet.',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.grey[600], fontSize: 14),
-            ),
-          ],
-        ),
-        actions: [
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.deepPurple,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Verstanden'),
-          ),
-        ],
       ),
     );
   }
@@ -425,6 +413,11 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
           ElevatedButton(
             onPressed: () async {
               Navigator.pop(context);
+              // RevenueCat ebenfalls ausloggen
+              await SubscriptionService(
+                FirebaseFirestore.instance,
+                FirebaseAuth.instance,
+              ).logOut();
               await ref.read(authRepositoryProvider).signOut();
               if (context.mounted) {
                 Navigator.of(context).pushAndRemoveUntil(

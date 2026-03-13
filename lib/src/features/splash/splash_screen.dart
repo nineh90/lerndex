@@ -10,6 +10,9 @@ import '../auth/presentation/family_dashboard_screen.dart';
 import '../quiz/data/ai_question_cache_repository.dart';
 import '../quiz/data/quiz_prefetch_service.dart';
 import '../../tutorial_provider.dart';
+// NEU: Subscription
+import '../subscription/data/subscription_service.dart';
+import '../subscription/data/subscription_provider.dart';
 
 // ============================================================================
 // LERNDEX SPLASH SCREEN
@@ -153,6 +156,14 @@ class _LerndexSplashScreenState extends ConsumerState<LerndexSplashScreen>
         destination = 'login';
         _setProgress(1.0, 'Los geht\'s! ✨');
       } else {
+        // NEU: RevenueCat User identifizieren
+        final subscriptionService = ref.read(subscriptionServiceProvider);
+        await subscriptionService.identifyUser(user.uid);
+
+        // NEU: Abo-Status laden & in Provider speichern
+        _setProgress(_bootstrapShare * 0.7, 'Abo prüfen...');
+        await ref.read(subscriptionStatusProvider.notifier).refresh();
+
         final onboardingDone = await authRepo.isOnboardingComplete();
         _setProgress(_bootstrapShare, 'Lade deine Kinder...');
 

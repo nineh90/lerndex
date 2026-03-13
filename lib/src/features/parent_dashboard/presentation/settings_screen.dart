@@ -2,11 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:lerndex/src/features/subscription/data/subscription_model.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../auth/data/auth_repository.dart';
 import '../../auth/data/profile_repository.dart';
 import '../../../../main.dart';
 import '../../auth/presentation/account_deleted_screen.dart';
 import '../data/pin_repository.dart';
+// NEU: Subscription
+import '../../subscription/data/subscription_provider.dart';
+import '../../subscription/presentation/paywall_screen.dart';
 
 /// Einstellungsbereich im Elterndashboard
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -29,6 +34,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       ),
       body: ListView(
         children: [
+          // ── Abschnitt: Abo ───────────────────────────────────────────────
+          const _SectionHeader(title: 'Abonnement'),
+          _SubscriptionTile(),
+
+          const Divider(indent: 16, endIndent: 16),
+
           // ── Abschnitt: Konto ─────────────────────────────────────────
           const _SectionHeader(title: 'Konto'),
 
@@ -671,5 +682,159 @@ class _DeleteAccountDialogState extends State<_DeleteAccountDialog> {
         ],
       ),
     );
+  }
+}
+
+// =============================================================================
+// ABO-KACHEL
+// =============================================================================
+
+class _SubscriptionTile extends ConsumerWidget {
+  static const _purple = Colors.deepPurple;
+
+  // Google Play Abo-Verwaltung — öffnet die offizielle Google Play Seite
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final statusAsync = ref.watch(subscriptionStatusProvider);
+
+    return statusAsync.when(
+      loading: () => const ListTile(
+        leading: Icon(Icons.star_outline, color: Colors.deepPurple),
+        title: Text('Abo wird geladen...'),
+      ),
+      error: (_, __) => const ListTile(
+        leading: Icon(Icons.star_outline, color: Colors.deepPurple),
+        title: Text('Abo'),
+        subtitle: Text('Fehler beim Laden'),
+      ),
+      data: (status) {
+        final plan = status.plan;
+        final isTrial = status.isTrial;
+
+        // Ablaufdatum formatieren
+        String? expiryText;
+        if (status.expiresAt != null) {
+          final d = status.expiresAt!;
+          expiryText = 'Verlängert am ${d.day}.${d.month}.${d.year}';
+        }
+        if (isTrial && status.trialEndsAt != null) {
+          final d = status.trialEndsAt!;
+          expiryText = 'Test endet am ${d.day}.${d.month}.${d.year}';
+        }
+
+        return Column(
+          children: [
+            // ── Aktueller Plan ─────────────────────────────────────────
+            ListTile(
+              leading: Icon(
+                status.hasAccess ? Icons.star_rounded : Icons.star_outline,
+                color: status.hasAccess ? Colors.amber : Colors.grey,
+              ),
+              title: Text(
+                isTrial
+                    ? '14-Tage Test aktiv'
+                    : plan == SubscriptionPlan.none
+                    ? 'Kein aktives Abo'
+                    : '${plan.displayName}-Plan',
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
+              subtitle: Text(
+                expiryText ?? plan.priceLabel,
+                style: const TextStyle(fontSize: 12),
+              ),
+              trailing: status.hasAccess && plan != SubscriptionPlan.none
+                  ? Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.green.shade50,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: Colors.green.shade300),
+                      ),
+                      child: Text(
+                        isTrial ? 'Test' : 'Aktiv',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.green.shade700,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    )
+                  : null,
+            ),
+
+            // ── Buttons ────────────────────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+              child: Row(
+                children: [
+                  // Plan wechseln / Abo abschließen
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      icon: const Icon(Icons.swap_horiz, size: 18),
+                      label: Text(
+                        status.hasAccess ? 'Plan wechseln' : 'Abo abschließen',
+                        style: const TextStyle(fontSize: 13),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: _purple,
+                        side: const BorderSide(color: Colors.deepPurple),
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                      ),
+                      onPressed: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const PaywallScreen(canDismiss: true),
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  if (status.hasAccess && plan != SubscriptionPlan.none) ...[
+                    const SizedBox(width: 10),
+                    // Abo bei Google Play verwalten (kündigen etc.)
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        icon: const Icon(Icons.open_in_new, size: 18),
+                        label: const Text(
+                          'Verwalten',
+                          style: TextStyle(fontSize: 13),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.grey.shade700,
+                          side: BorderSide(color: Colors.grey.shade400),
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                        ),
+                        onPressed: () => _openGooglePlaySubscriptions(context),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _openGooglePlaySubscriptions(BuildContext context) async {
+    // Öffnet Google Play → Meine Abos direkt für diese App
+    final uri = Uri.parse(
+      'https://play.google.com/store/account/subscriptions'
+      '?package=de.nilsdigital.lerndex',
+    );
+    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Google Play konnte nicht geöffnet werden.'),
+          ),
+        );
+      }
+    }
   }
 }
