@@ -29,8 +29,6 @@ class TaskGeneratorScreen extends ConsumerStatefulWidget {
 class _TaskGeneratorScreenState extends ConsumerState<TaskGeneratorScreen> {
   Subject? _selectedSubject;
 
-  /// Für Klasse 1–2: gewähltes Unter-Thema (Zahlen/Buchstaben/Farben/Formen)
-  String? _earlyLearnerTopic;
   File? _selectedImage;
   bool _isGenerating = false;
   String? _errorMessage;
@@ -44,13 +42,12 @@ class _TaskGeneratorScreenState extends ConsumerState<TaskGeneratorScreen> {
 
   /// Gibt die verfügbaren Fächer zurück die zur Klasse des Kindes passen.
   ///
-  /// Klasse 1–2: farbenFormen (wird als 4 visuelle Karten dargestellt:
-  ///              Zahlen, Buchstaben, Farben, Formen)
   /// Klasse 3+:  die normalen Schulfächer passend zur Klassenstufe
+  /// Klasse 1–2:  keine Eltern-Aufgaben – eigene lokale Engines
   List<Subject> _getAvailableSubjects() {
-    // Klasse 1–2: nur Early-Learner-Fach
+    // Klasse 1–2: Eltern-Aufgaben nicht unterstützt – eigene Engines
     if (widget.child.grade <= 2) {
-      return [Subject.farbenFormen];
+      return [];
     }
 
     // Klasse 3+: aus SubjectConfig ableiten (bleibt die Single Source of Truth)
@@ -208,9 +205,50 @@ class _TaskGeneratorScreenState extends ConsumerState<TaskGeneratorScreen> {
   // ---------------------------------------------------------------------------
 
   Widget _buildSubjectSelector() {
-    // Klasse 1–2: kindgerechte 4-Kachel-Ansicht statt Text-Chips
+    // Klasse 1-2: Eltern-Aufgaben nicht mehr unterstützt
     if (widget.child.grade <= 2) {
-      return _buildEarlyLearnerTopicSelector();
+      return Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.orange.shade50,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.orange.shade200),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              Icons.info_outline_rounded,
+              color: Colors.orange.shade700,
+              size: 28,
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Nicht verfügbar für Klasse 1-2',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.orange.shade800,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Für ${widget.child.name} werden Aufgaben automatisch '
+                    'von der App generiert - keine Eltern-Aufgaben nötig.',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.orange.shade700,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
     }
 
     final availableSubjects = _getAvailableSubjects();
@@ -285,91 +323,6 @@ class _TaskGeneratorScreenState extends ConsumerState<TaskGeneratorScreen> {
       ],
     );
   }
-
-  /// Kindgerechte Themenauswahl für Klasse 1–2.
-  /// Zeigt 4 große bunte Kacheln: Zahlen 🔢, Buchstaben 🔤, Farben 🎨, Formen 🔷
-  Widget _buildEarlyLearnerTopicSelector() {
-    // Nur die Quiz-faehigen Fruehlernen-Themen anbieten.
-    // Malen wird direkt im Dashboard geoeffnet, braucht keinen Eltern-Task.
-    const topics = [
-      ('Zahlen', '🔢', Color(0xFF7E57C2), Color(0xFF512DA8)),
-      ('Buchstaben', '🔤', Color(0xFFEC407A), Color(0xFF8E24AA)),
-      ('Farben & Formen', '🎨', Color(0xFF1E88E5), Color(0xFF00897B)),
-    ];
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Was soll geübt werden?',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 12),
-        GridView.count(
-          crossAxisCount: 3,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          crossAxisSpacing: 10,
-          mainAxisSpacing: 10,
-          childAspectRatio: 0.9,
-          children: topics.map((t) {
-            final (label, emoji, c1, c2) = t;
-            final isSelected = _earlyLearnerTopic == label;
-            return GestureDetector(
-              onTap: () => setState(() {
-                _earlyLearnerTopic = label;
-                _selectedSubject = Subject.farbenFormen;
-                _selectedImage = null;
-                _errorMessage = null;
-              }),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 180),
-                decoration: BoxDecoration(
-                  gradient: isSelected
-                      ? LinearGradient(colors: [c1, c2])
-                      : null,
-                  color: isSelected ? null : Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: isSelected ? c1 : Colors.grey.shade200,
-                    width: isSelected ? 0 : 2,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: isSelected
-                          ? c1.withValues(alpha: 0.35)
-                          : Colors.black.withValues(alpha: 0.06),
-                      blurRadius: isSelected ? 12 : 4,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(emoji, style: const TextStyle(fontSize: 28)),
-                    const SizedBox(height: 6),
-                    Text(
-                      label,
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.bold,
-                        color: isSelected ? Colors.white : Colors.grey.shade800,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          }).toList(),
-        ),
-      ],
-    );
-  }
-
-  // ---------------------------------------------------------------------------
-  // BILD-AUSWAHL
-  // ---------------------------------------------------------------------------
 
   Widget _buildImagePicker() {
     return Column(
@@ -695,7 +648,7 @@ class _TaskGeneratorScreenState extends ConsumerState<TaskGeneratorScreen> {
         userId: userId,
         subject: _selectedSubject!,
         numberOfTasks: _numberOfTasks,
-        earlyLearnerTopic: widget.child.grade <= 2 ? _earlyLearnerTopic : null,
+        earlyLearnerTopic: null, // Eltern-Aufgaben nur für Klasse 3+
       );
 
       if (!result.success || result.questions.isEmpty) {

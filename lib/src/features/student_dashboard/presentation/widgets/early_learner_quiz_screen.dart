@@ -8,13 +8,7 @@ import 'package:lerndex/src/features/auth/data/auth_repository.dart';
 import 'package:lerndex/src/features/auth/presentation/active_child_provider.dart';
 import 'package:lerndex/src/features/learning_time/learning_time_tracker.dart';
 import 'package:lerndex/src/features/parent_dashboard/presentation/widgets/early_learner_question_repository.dart';
-import 'package:lerndex/src/features/generated_tasks/data/generated_task_repository.dart';
-import 'package:lerndex/src/features/generated_tasks/data/generated_task_models.dart';
 import 'package:lerndex/src/features/rewards/data/xp_service.dart';
-import 'package:lerndex/src/features/rewards/data/reward_service.dart';
-import 'package:lerndex/src/features/auth/data/profile_repository.dart';
-import 'package:lerndex/src/features/rewards/presentation/student_notification_popup.dart';
-import 'package:lerndex/src/features/student_dashboard/presentation/widgets/rewards_count_provider.dart';
 import 'package:lerndex/src/features/tts/tts_provider.dart';
 import 'package:lerndex/src/features/student_dashboard/presentation/widgets/avatar_progress_bar.dart';
 import 'package:lerndex/src/features/student_dashboard/presentation/widgets/treasure_chest_overlay.dart';
@@ -414,9 +408,6 @@ class _EarlyLearnerQuizScreenState extends ConsumerState<EarlyLearnerQuizScreen>
   // Child-ID für TTS Settings
   String? _childId;
 
-  /// parentTaskRef je Fragen-Index (nur für Eltern-Aufgaben gesetzt)
-  final Map<int, String> _parentTaskRefs = {};
-
   @override
   void initState() {
     super.initState();
@@ -469,162 +460,14 @@ class _EarlyLearnerQuizScreenState extends ConsumerState<EarlyLearnerQuizScreen>
   static const int _targetQuestionCount = 5;
 
   void _loadQuestions() {
-    final child = ref.read(activeChildProvider);
-    final user = ref.read(authStateChangesProvider).value;
-
-    // Versuche KI-generierte Fragen zu laden
-    if (child != null && user != null) {
-      _loadAiQuestions(user.uid, child);
-    } else {
-      _loadStaticQuestions();
-    }
-  }
-
-  Future<void> _loadAiQuestions(String userId, dynamic child) async {
-    // ── 1. Eltern-Aufgaben mit höchster Priorität ────────────────────────────
-    try {
-      final taskRepo = ref.read(generatedTaskRepositoryProvider);
-      final subjectEnum = SubjectExtension.fromString(widget.subject);
-      final parentQuestions = await taskRepo.getUnansweredApprovedQuestions(
-        userId: userId,
-        childId: child.id,
-        subject: subjectEnum,
-      );
-
-      if (parentQuestions.isNotEmpty && mounted) {
-        final shuffled = List<GeneratedQuestion>.from(parentQuestions)
-          ..shuffle();
-        final selected = shuffled.take(_targetQuestionCount).toList();
-
-        final converted = selected.asMap().entries.map((entry) {
-          final idx = entry.key;
-          final gq = entry.value;
-          // parentTaskRef für späteres Tracking speichern
-          if (gq.batchId != null) {
-            _parentTaskRefs[idx] = '${gq.batchId}/${gq.id}';
-          }
-          return _ensureFourOptions(
-            _EarlyQuestion(
-              type: _QuestionType.imageChoice,
-              questionEmoji: '📝',
-              questionText: gq.question,
-              options: gq.options,
-              correctAnswer: gq.correctAnswer,
-              feedbackCorrect: '🌟 Super gemacht!',
-              feedbackWrong: '💪 Versuch es nochmal!',
-            ),
-          );
-        }).toList();
-
-        setState(() {
-          _questions = converted;
-          _stepResults = List.filled(_questions.length, null);
-        });
-        Future.delayed(const Duration(milliseconds: 600), () {
-          if (mounted && _questions.isNotEmpty) _speakCurrentQuestion();
-        });
-        debugPrint(
-          '👨‍👩‍👧 ${selected.length} Eltern-Aufgaben für Early Learner geladen',
-        );
-        return;
-      }
-    } catch (e) {
-      debugPrint('⚠️ EarlyQuiz: Eltern-Aufgaben nicht verfügbar: $e');
-    }
-
-    // ── 2. KI-generierte Fragen ──────────────────────────────────────────────
-    //
-    // Der Fach-Filter läuft jetzt schon im Repository VOR dem Cachen.
-    // Alle Fragen im Cache sind garantiert fachkonform → einfach 5 holen.
-    // Statische Fragen NUR als absoluter Fallback (kein Internet etc.)
-    //
-    try {
-      final repo = ref.read(earlyLearnerQuestionRepoProvider);
-
-      final aiQuestions = await repo.getQuestions(
-        userId: userId,
-        childId: child.id,
-        child: child,
-        subject: widget.subject,
-        count: _targetQuestionCount,
-      );
-
-      if (aiQuestions.isNotEmpty && mounted) {
-        final converted = aiQuestions
-            .map(_convertAiQuestion)
-            .map(_ensureFourOptions)
-            .toList();
-
-        if (converted.length >= _targetQuestionCount) {
-          setState(() {
-            _questions = converted.take(_targetQuestionCount).toList();
-            _stepResults = List.filled(_questions.length, null);
-          });
-          Future.delayed(const Duration(milliseconds: 600), () {
-            if (mounted && _questions.isNotEmpty) _speakCurrentQuestion();
-          });
-          return;
-        }
-
-        // Weniger als 5 – trotzdem KI-Fragen nutzen wenn welche da sind
-        if (converted.isNotEmpty) {
-          debugPrint(
-            '⚠️ EarlyQuiz: Nur ${converted.length}/$_targetQuestionCount '
-            'KI-Fragen verfügbar → starte mit ${converted.length}',
-          );
-          setState(() {
-            _questions = converted;
-            _stepResults = List.filled(_questions.length, null);
-          });
-          Future.delayed(const Duration(milliseconds: 600), () {
-            if (mounted && _questions.isNotEmpty) _speakCurrentQuestion();
-          });
-
-          // Hintergrund: Mehr generieren für nächstes Mal
-          repo.getQuestions(
-            userId: userId,
-            childId: child.id,
-            child: child,
-            subject: widget.subject,
-            count: _targetQuestionCount * 3,
-          );
-          return;
-        }
-      }
-    } catch (e) {
-      debugPrint(
-        '⚠️ EarlyQuiz: KI-Fragen nicht verfügbar, nutze statische: $e',
-      );
-    }
-
-    // ── 3. Statische Fallback-Fragen ─────────────────────────────────────────
-    // NUR wenn gar keine KI-Fragen verfügbar sind (kein Internet, Fehler etc.)
     _loadStaticQuestions();
   }
 
-  /// Gibt [count] gefilterte statische Fragen für das aktuelle Fach zurück.
-  /// NUR als absoluter Fallback wenn KI nicht verfügbar ist!
+  /// Gibt [count] statische Fragen für das aktuelle Fach zurück.
   List<_EarlyQuestion> _getStaticQuestions(int count) {
-    // 'Zahlen' → 'Mathe', 'Buchstaben' → 'Deutsch' (Dashboard-Aliase)
-    final key = _normalizeSubject(widget.subject);
-    final bank = _questionBank[key] ?? _questionBank['Mathe']!;
-    final filtered = _filterBySubject(bank, key);
-    final pool = filtered.isNotEmpty ? filtered : bank;
-    final shuffled = List<_EarlyQuestion>.from(pool)..shuffle();
+    final bank = _questionBank[widget.subject] ?? _questionBank.values.first;
+    final shuffled = List<_EarlyQuestion>.from(bank)..shuffle();
     return shuffled.take(count).map(_ensureFourOptions).toList();
-  }
-
-  /// Normalisiert Dashboard-Subject-Aliase auf kanonische interne Namen.
-  /// 'Zahlen' → 'Mathe', 'Buchstaben' → 'Deutsch', alles andere unverändert.
-  String _normalizeSubject(String subject) {
-    switch (subject) {
-      case 'Zahlen':
-        return 'Mathe';
-      case 'Buchstaben':
-        return 'Deutsch';
-      default:
-        return subject;
-    }
   }
 
   void _loadStaticQuestions() {
@@ -639,150 +482,6 @@ class _EarlyLearnerQuizScreenState extends ConsumerState<EarlyLearnerQuizScreen>
   }
 
   /// Filtert Fragen nach erlaubten Typen UND Inhalten pro Fach.
-  /// Verhindert z.B. Zählen-Aufgaben bei Buchstaben oder Sonnen-Fragen bei Mathe.
-  /// Hilfsmethode: Prüft ob alle options reine Zahlen sind
-  bool _optionsAreNumbers(List<String> opts) =>
-      opts.every((o) => RegExp(r'^\d+$').hasMatch(o));
-
-  /// Hilfsmethode: Prüft ob alle options einzelne Buchstaben sind
-  bool _optionsAreLetters(List<String> opts) =>
-      opts.every((o) => o.length == 1 && RegExp(r'[A-ZÄÖÜa-zäöü]').hasMatch(o));
-
-  /// Hilfsmethode: Prüft ob questionEmoji Zahlen-Emojis enthält
-  bool _emojiHasNumbers(String emoji) =>
-      RegExp(r'[0-9]|[1️⃣2️⃣3️⃣4️⃣5️⃣6️⃣7️⃣8️⃣9️⃣0️⃣]').hasMatch(emoji);
-
-  List<_EarlyQuestion> _filterBySubject(
-    List<_EarlyQuestion> questions,
-    String subject, // erwartet bereits normalisierten Subject-String
-  ) {
-    // Sicherheits-Normalisierung falls direkt aufgerufen
-    final normalized = _normalizeSubject(subject);
-    switch (normalized) {
-      case 'Mathe':
-        return questions.where((q) {
-          final text = q.questionText.toLowerCase();
-
-          // Erlaubte Typen für Mathe
-          switch (q.type) {
-            case _QuestionType.counting:
-              // counting ist immer Mathe (Dinge zählen → Zahlen als Antwort)
-              return _optionsAreNumbers(q.options);
-
-            case _QuestionType.imageChoice:
-              // Muss eindeutigen Zahlen-Bezug haben
-              return text.contains('zahl') ||
-                  text.contains('größer') ||
-                  text.contains('kleiner') ||
-                  text.contains('wie viele') ||
-                  text.contains('mehr') ||
-                  text.contains('weniger') ||
-                  text.contains('rechne') ||
-                  text.contains('ergebnis') ||
-                  _optionsAreNumbers(q.options);
-
-            case _QuestionType.pattern:
-              // Muster nur wenn Zahlen oder Mathe-Emojis → options sind Zahlen
-              // ODER der questionText explizit Zahlen-Muster anspricht
-              return _optionsAreNumbers(q.options) ||
-                  _emojiHasNumbers(q.questionEmoji) ||
-                  text.contains('zahl') ||
-                  text.contains('zähl');
-
-            case _QuestionType.sizeOrder:
-              // sizeOrder bei Mathe: options müssen Zahlen sein
-              return _optionsAreNumbers(q.options);
-
-            default:
-              // oddOneOut, anlaut, wordToImage → nicht für Mathe
-              return false;
-          }
-        }).toList();
-
-      case 'Deutsch':
-        return questions.where((q) {
-          final text = q.questionText.toLowerCase();
-
-          switch (q.type) {
-            case _QuestionType.anlaut:
-              // anlaut immer Deutsch wenn options Buchstaben sind
-              return _optionsAreLetters(q.options);
-
-            case _QuestionType.pattern:
-              // Muster nur wenn options Buchstaben sind
-              return _optionsAreLetters(q.options);
-
-            case _QuestionType.oddOneOut:
-              // Kein Zahlen-Text, kein Reimen
-              return !text.contains('wie viele') &&
-                  !text.contains('zähl') &&
-                  !text.contains('reimt') &&
-                  !text.contains('zahl') &&
-                  !text.contains('farbe') &&
-                  !text.contains('form') &&
-                  !text.contains('rund') &&
-                  !text.contains('eckig');
-
-            default:
-              // counting, imageChoice, sizeOrder → nicht für Deutsch
-              return false;
-          }
-        }).toList();
-
-      case 'FarbenFormen':
-        return questions.where((q) {
-          final text = q.questionText.toLowerCase();
-
-          switch (q.type) {
-            case _QuestionType.imageChoice:
-              // Muss Farb- oder Form-Bezug haben
-              return text.contains('farbe') ||
-                  text.contains('form') ||
-                  text.contains('farb') ||
-                  text.contains('rot') ||
-                  text.contains('blau') ||
-                  text.contains('gelb') ||
-                  text.contains('grün') ||
-                  text.contains('rund') ||
-                  text.contains('eckig') ||
-                  text.contains('kreis') ||
-                  text.contains('dreieck') ||
-                  text.contains('quadrat') ||
-                  text.contains('rechteck') ||
-                  text.contains('gleiche');
-
-            case _QuestionType.pattern:
-              // Muster nur wenn options Farb-Emojis sind (keine Zahlen, keine Buchstaben)
-              return !_optionsAreNumbers(q.options) &&
-                  !_optionsAreLetters(q.options);
-
-            case _QuestionType.oddOneOut:
-              // Farb- oder Form-Kontext
-              return !text.contains('buchstab') &&
-                  !text.contains('anlaut') &&
-                  !text.contains('zahl') &&
-                  !text.contains('wie viele') &&
-                  (text.contains('nicht') ||
-                      text.contains('passt') ||
-                      text.contains('farb') ||
-                      text.contains('form') ||
-                      text.contains('rund') ||
-                      text.contains('rot') ||
-                      text.contains('blau'));
-
-            case _QuestionType.sizeOrder:
-              // sizeOrder bei FarbenFormen: keine Zahlen-Optionen
-              return !_optionsAreNumbers(q.options);
-
-            default:
-              return false;
-          }
-        }).toList();
-
-      default:
-        return questions;
-    }
-  }
 
   /// Stellt sicher dass eine Frage immer genau 4 Antwortoptionen hat.
   /// Füllt fehlende Optionen mit typgerechten Distraktoren auf.
@@ -1010,22 +709,6 @@ class _EarlyLearnerQuizScreenState extends ConsumerState<EarlyLearnerQuizScreen>
               .read(xpServiceProvider)
               .addXP(userId: user.uid, childId: child.id, xpToAdd: 3);
         } catch (_) {}
-
-        // Eltern-Aufgabe als beantwortet markieren (falls vorhanden)
-        final parentTaskRef = _parentTaskRefs[_currentIndex];
-        if (parentTaskRef != null) {
-          try {
-            await ref
-                .read(generatedTaskRepositoryProvider)
-                .markQuestionAnsweredCorrectly(
-                  userId: user.uid,
-                  parentTaskRef: parentTaskRef,
-                );
-            debugPrint(
-              '✅ Early-Learner Eltern-Aufgabe markiert: $parentTaskRef',
-            );
-          } catch (_) {}
-        }
       }
     } else {
       // ── Falsche Antwort ───────────────────────────────────────────

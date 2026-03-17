@@ -3,7 +3,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lerndex/src/ai/vertex_ai_service.dart';
 import 'package:lerndex/src/features/auth/domain/child_model.dart';
-import 'package:lerndex/src/features/parent_dashboard/presentation/widgets/early_learner_question_repository.dart';
 import 'package:lerndex/src/features/quiz/data/ai_question_cache_repository.dart';
 import 'package:lerndex/src/features/student_dashboard/presentation/subject_config.dart';
 
@@ -39,23 +38,12 @@ class QuizPrefetchService {
 
   /// Anzahl der Quiz-Fächer für ein Kind (für Splash-Fortschrittsanzeige).
   static int subjectCountForChild(ChildModel child) {
-    return getSubjectsForChild(child).length + earlyLearnerSubjectCount(child);
-  }
-
-  static int earlyLearnerSubjectCount(ChildModel child) {
-    // Zahlen, Buchstaben, FarbenFormen — die 3 Quiz-fähigen Early-Learner-Fächer
-    return child.grade <= 2 ? 3 : 0;
+    return getSubjectsForChild(child).length;
   }
 
   /// Fächer-Reihenfolge: Prioritäts-Fächer zuerst laden.
   static List<SubjectConfig> _prioritized(List<SubjectConfig> subjects) {
-    const priority = [
-      'Mathe',
-      'Deutsch',
-      'Zahlen',
-      'Buchstaben',
-      'FarbenFormen',
-    ];
+    const priority = ['Mathe', 'Deutsch', 'Zahlen', 'Buchstaben'];
     final sorted = List<SubjectConfig>.from(subjects);
     sorted.sort((a, b) {
       final aIdx = priority.indexOf(a.subject);
@@ -148,73 +136,6 @@ class QuizPrefetchService {
     }
 
     debugPrint('✅ ${child.name}: Quiz-Fächer bereit');
-
-    // Klasse 1–2: Early-Learner-Fragen separat vorladen
-    if (child.grade <= 2) {
-      await _prefetchEarlyLearnerQuestions(
-        userId: userId,
-        child: child,
-        onSubjectDone: onSubjectDone,
-      );
-    }
-  }
-
-  // ============================================================
-  // EARLY LEARNER: KI-Fragen für Klasse 1–2 vorladen
-  // ============================================================
-
-  static Future<void> _prefetchEarlyLearnerQuestions({
-    required String userId,
-    required ChildModel child,
-    void Function(String childName, String subject)? onSubjectDone,
-  }) async {
-    // Die 3 Quiz-fähigen Early-Learner-Fächer (Malen ist kein Quiz)
-    const earlySubjects = ['Zahlen', 'Buchstaben', 'FarbenFormen'];
-    final repo = EarlyLearnerQuestionRepository(FirebaseFirestore.instance);
-
-    debugPrint(
-      '🧒 ${child.name} (Kl. ${child.grade}): Early-Learner-Fragen vorladen...',
-    );
-
-    for (final subject in earlySubjects) {
-      final guardKey = '${child.id}|early|$subject';
-      if (_sessionPrefetchDone.contains(guardKey)) {
-        onSubjectDone?.call(child.name, '$subject 🧒');
-        continue;
-      }
-
-      try {
-        // Phase 1 (BLOCKIEREND): Nur 5 Fragen — Quiz kann sofort starten
-        await repo.prefillForQuiz(
-          userId: userId,
-          childId: child.id,
-          child: child,
-          subject: subject,
-          targetCount: 5,
-        );
-        _sessionPrefetchDone.add(guardKey);
-        onSubjectDone?.call(child.name, '$subject 🧒');
-
-        // Phase 2 (HINTERGRUND): Rest bis 15 nachladen ohne zu blockieren
-        repo
-            .prefillForQuiz(
-              userId: userId,
-              childId: child.id,
-              child: child,
-              subject: subject,
-              targetCount: 15,
-            )
-            .catchError((e) {
-              debugPrint('⚠️ Early-Hintergrund-Prefill $subject: $e');
-            });
-      } catch (e) {
-        debugPrint('⚠️ Early-Prefill Fehler $subject: $e');
-      }
-    }
-
-    debugPrint(
-      '✅ ${child.name}: Early-Learner-Fragen bereit (Hintergrund läuft)',
-    );
   }
 
   // ============================================================

@@ -12,6 +12,9 @@ import 'package:lerndex/src/features/rewards/data/system_rewards_initializer.dar
 import 'avatar_settings_sheet.dart';
 import 'rewards_count_provider.dart';
 import 'early_learner_quiz_screen.dart';
+import 'math_quiz_screen.dart';
+import 'letter_quiz_screen.dart';
+import 'color_shape_quiz_screen.dart';
 
 // ============================================================================
 // EARLY LEARNER DASHBOARD – Klasse 1–2 (v2: Carousel-Layout)
@@ -65,6 +68,7 @@ const _earlySubjects = [
     colors: [Color(0xFF1E88E5), Color(0xFF00897B)],
     subject: 'FarbenFormen',
   ),
+
   _EarlySubject(
     emoji: '✏️',
     label: 'Buchstaben malen',
@@ -81,13 +85,8 @@ const _earlySubjects = [
 
 enum _EarlyTab { home, rewards, stars }
 
-// ── Temporär ausgeblendete Quiz-Fächer (Zahlen, Buchstaben, FarbenFormen) ───
-// Diese werden grundlegend überarbeitet. Bis dahin sehen Kinder nur die
-// Malen-Fächer. Um die Quiz-Fächer wieder einzublenden, ersetze
-// _visibleSubjects durch _earlySubjects an allen Stellen unten.
-final _visibleSubjects = _earlySubjects
-    .where((s) => s.subject.startsWith('Malen'))
-    .toList();
+// Alle Fächer anzeigen (Zahlen jetzt mit neuem MathQuizScreen)
+final _visibleSubjects = _earlySubjects;
 
 // ============================================================================
 // MAIN SCREEN
@@ -203,6 +202,78 @@ class _EarlyLearnerDashboardScreenState
         PageRouteBuilder(
           pageBuilder: (_, animation, __) =>
               TracingGameScreen(subjectColors: subject.colors, mode: mode),
+          transitionsBuilder: (_, animation, __, child) {
+            return ScaleTransition(
+              scale: CurvedAnimation(
+                parent: animation,
+                curve: Curves.easeOutBack,
+              ),
+              child: child,
+            );
+          },
+          transitionDuration: const Duration(milliseconds: 400),
+        ),
+      );
+      return;
+    }
+
+    // Zahlen → neuer algorithmischer MathQuizScreen (Klasse 1 & 2)
+    if (subject.subject == 'Zahlen') {
+      Navigator.push(
+        context,
+        PageRouteBuilder(
+          pageBuilder: (_, animation, __) => MathQuizScreen(
+            grade: widget.child.grade,
+            subjectColors: subject.colors,
+          ),
+          transitionsBuilder: (_, animation, __, child) {
+            return ScaleTransition(
+              scale: CurvedAnimation(
+                parent: animation,
+                curve: Curves.easeOutBack,
+              ),
+              child: child,
+            );
+          },
+          transitionDuration: const Duration(milliseconds: 400),
+        ),
+      );
+      return;
+    }
+
+    // Buchstaben → neuer algorithmischer LetterQuizScreen (Klasse 1 & 2)
+    if (subject.subject == 'Buchstaben') {
+      Navigator.push(
+        context,
+        PageRouteBuilder(
+          pageBuilder: (_, animation, __) => LetterQuizScreen(
+            grade: widget.child.grade,
+            subjectColors: subject.colors,
+          ),
+          transitionsBuilder: (_, animation, __, child) {
+            return ScaleTransition(
+              scale: CurvedAnimation(
+                parent: animation,
+                curve: Curves.easeOutBack,
+              ),
+              child: child,
+            );
+          },
+          transitionDuration: const Duration(milliseconds: 400),
+        ),
+      );
+      return;
+    }
+
+    // FarbenFormen → neuer algorithmischer ColorShapeQuizScreen
+    if (subject.subject == 'FarbenFormen') {
+      Navigator.push(
+        context,
+        PageRouteBuilder(
+          pageBuilder: (_, animation, __) => ColorShapeQuizScreen(
+            grade: widget.child.grade,
+            subjectColors: subject.colors,
+          ),
           transitionsBuilder: (_, animation, __, child) {
             return ScaleTransition(
               scale: CurvedAnimation(

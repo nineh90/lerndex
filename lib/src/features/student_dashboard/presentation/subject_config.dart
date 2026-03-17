@@ -4,7 +4,7 @@ import '../../auth/domain/child_model.dart';
 // ============================================================================
 // DYNAMISCHE FÄCHER-KONFIGURATION
 //
-// Klasse 1–2 (Early Learner): Zahlen, Buchstaben, Farben, Formen
+// Klasse 1–2 (Early Learner): Zahlen, Buchstaben
 // Klasse 3–4 (Grundschule):   Mathe, Deutsch, Englisch, Sachkunde
 // Klasse 5–10 (Mittelstufe):  + Biologie, Chemie, Physik, Geschichte
 // Klasse 11–13 (Oberstufe):   ohne Sachkunde/Biologie, dafür breiter
@@ -51,13 +51,6 @@ List<SubjectConfig> getSubjectsForChild(ChildModel child) {
         icon: Icons.abc_rounded,
         gradientColors: [Color(0xFFEC407A), Color(0xFF8E24AA)],
         subject: 'Buchstaben',
-      ),
-      SubjectConfig(
-        title: 'Farben & Formen',
-        emoji: '🎨',
-        icon: Icons.palette_rounded,
-        gradientColors: [Color(0xFF1E88E5), Color(0xFF00897B)],
-        subject: 'FarbenFormen',
       ),
     ];
   }
