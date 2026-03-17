@@ -24,7 +24,7 @@ class FamilySettingsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Einstellungen'),
+        title: const Text('Infos'),
         backgroundColor: const Color(0xFF6B21A8),
         foregroundColor: Colors.white,
       ),

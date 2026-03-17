@@ -1,7 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:purchases_flutter/purchases_flutter.dart';
+import 'package:purchases_flutter/models/offerings_wrapper.dart';
+import 'package:purchases_flutter/models/package_wrapper.dart';
 import 'subscription_model.dart';
 import 'subscription_service.dart';
 

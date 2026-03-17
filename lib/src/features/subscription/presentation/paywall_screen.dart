@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lerndex/src/features/subscription/data/subscription_model.dart';
 import 'package:lerndex/src/features/subscription/data/subscription_provider.dart';
-import 'package:purchases_flutter/purchases_flutter.dart';
+import 'package:purchases_flutter/models/offering_wrapper.dart';
+import 'package:purchases_flutter/models/package_wrapper.dart';
 
 /// Paywall-Screen — wird angezeigt wenn der User kein aktives Abo hat
 /// oder ein neues Abo abschließen möchte.

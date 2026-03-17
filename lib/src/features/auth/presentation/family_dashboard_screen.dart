@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lerndex/src/features/auth/domain/child_model.dart';
 import 'package:lerndex/src/features/auth/presentation/widgets/child_limit_exceeded_screen.dart';
+import 'package:lerndex/src/features/auth/presentation/widgets/child_reactivation_screen.dart';
 import 'package:lerndex/src/features/student_dashboard/presentation/student_dashboard_screen.dart';
 import '../data/auth_repository.dart';
 import '../data/profile_repository.dart';
@@ -63,9 +64,30 @@ class _FamilyDashboardScreenState extends ConsumerState<FamilyDashboardScreen> {
     final activeChildren = allChildren.where((c) => c.isActive).toList();
     if (activeChildren.length > childLimit) {
       return ChildLimitExceededScreen(
-        children: allChildren, // Alle anzeigen damit Elternteil wählen kann
+        children: allChildren,
         allowedCount: childLimit,
       );
+    }
+
+    // ── NEU: Upgrade-Check (pausierte Kinder reaktivieren) ──────────────────
+    final pausedChildren = allChildren.where((c) => !c.isActive).toList();
+    final slotsAvailable = childLimit - activeChildren.length;
+    if (pausedChildren.isNotEmpty && slotsAvailable > 0) {
+      if (slotsAvailable >= pausedChildren.length) {
+        // Alle pausierten Kinder passen rein → automatisch reaktivieren
+        WidgetsBinding.instance.addPostFrameCallback((_) async {
+          final repo = ref.read(profileRepositoryProvider);
+          for (final child in pausedChildren) {
+            await repo.reactivateChild(child.id);
+          }
+        });
+      } else {
+        // Nicht alle passen rein → User wählt welche reaktiviert werden
+        return ChildReactivationScreen(
+          pausedChildren: pausedChildren,
+          slotsAvailable: slotsAvailable,
+        );
+      }
     }
     // ── Ende Checks ─────────────────────────────────────────────────────────
 
@@ -356,7 +378,7 @@ class _FamilyDashboardScreenState extends ConsumerState<FamilyDashboardScreen> {
                   ),
                 ),
 
-                // ── Einstellungen Button ───────────────────────────────
+                // ── Info Button ───────────────────────────────────────
                 SizedBox(
                   key: _settingsButtonKey,
                   child: _BottomBarButton(
@@ -366,8 +388,8 @@ class _FamilyDashboardScreenState extends ConsumerState<FamilyDashboardScreen> {
                         builder: (_) => const FamilySettingsScreen(),
                       ),
                     ),
-                    icon: Icons.settings_outlined,
-                    label: 'Einstellungen',
+                    icon: Icons.info_outline,
+                    label: 'Infos',
                     color: Colors.grey.shade700,
                   ),
                 ),

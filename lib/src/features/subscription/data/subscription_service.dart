@@ -11,9 +11,10 @@ class SubscriptionService {
 
   final FirebaseFirestore _firestore;
   final FirebaseAuth _auth;
-
-  static const _androidApiKey = 'sk_xeTOuNvnlbRmvNKZabWGdWKviAZgg';
-  static const _iosApiKey = 'sk_ooBpwgVoGmmwsNsAzGoUmbIleQTsm';
+  static const bool _devBypass = true;
+  static const _androidApiKey = 'goog_kxcheBcScIxFnnzSGLbHITJMmPe';
+  static const _iosApiKey =
+      'goog_kxcheBcScIxFnnzSGLbHITJMmPe'; // TODO: Replace with actual iOS API key
 
   static const _entitlementId = 'premium';
 
@@ -49,6 +50,14 @@ class SubscriptionService {
 
   Future<SubscriptionStatus> getSubscriptionStatus() async {
     try {
+      if (_devBypass) {
+        return SubscriptionStatus(
+          plan: SubscriptionPlan.family,
+          isActive: true,
+          isTrial: false,
+          expiresAt: DateTime.now().add(const Duration(days: 365)),
+        );
+      }
       final customerInfo = await Purchases.getCustomerInfo();
       return _parseCustomerInfo(customerInfo);
     } catch (e) {
