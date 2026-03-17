@@ -7,7 +7,6 @@ import 'package:confetti/confetti.dart';
 import 'package:lerndex/src/features/auth/data/auth_repository.dart';
 import 'package:lerndex/src/features/auth/presentation/active_child_provider.dart';
 import 'package:lerndex/src/features/learning_time/learning_time_tracker.dart';
-import 'package:lerndex/src/features/parent_dashboard/presentation/widgets/early_learner_question_repository.dart';
 import 'package:lerndex/src/features/rewards/data/xp_service.dart';
 import 'package:lerndex/src/features/tts/tts_provider.dart';
 import 'package:lerndex/src/features/student_dashboard/presentation/widgets/avatar_progress_bar.dart';
@@ -566,41 +565,6 @@ class _EarlyLearnerQuizScreenState extends ConsumerState<EarlyLearnerQuizScreen>
       questionEmoji: q.questionEmoji,
       questionText: q.questionText,
       options: opts,
-      correctAnswer: q.correctAnswer,
-      feedbackCorrect: q.feedbackCorrect,
-      feedbackWrong: q.feedbackWrong,
-      orderedAnswers: q.orderedAnswers,
-    );
-  }
-
-  /// Konvertiert eine KI-generierte Frage in das interne _EarlyQuestion-Format.
-  _EarlyQuestion _convertAiQuestion(EarlyAiQuestion q) {
-    _QuestionType type;
-    switch (q.type) {
-      case 'counting':
-        type = _QuestionType.counting;
-        break;
-      case 'anlaut':
-        type = _QuestionType.anlaut;
-        break;
-      case 'pattern':
-        type = _QuestionType.pattern;
-        break;
-      case 'oddOneOut':
-        type = _QuestionType.oddOneOut;
-        break;
-      case 'sizeOrder':
-        type = _QuestionType.sizeOrder;
-        break;
-      default:
-        type = _QuestionType.imageChoice;
-    }
-
-    return _EarlyQuestion(
-      type: type,
-      questionEmoji: q.questionEmoji,
-      questionText: q.questionText,
-      options: q.options,
       correctAnswer: q.correctAnswer,
       feedbackCorrect: q.feedbackCorrect,
       feedbackWrong: q.feedbackWrong,
