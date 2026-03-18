@@ -11,10 +11,10 @@ class SubscriptionService {
 
   final FirebaseFirestore _firestore;
   final FirebaseAuth _auth;
-  static const bool _devBypass = true;
+  static const bool _devBypass = false;
   static const _androidApiKey = 'goog_kxcheBcScIxFnnzSGLbHITJMmPe';
   static const _iosApiKey =
-      'goog_kxcheBcScIxFnnzSGLbHITJMmPe'; // TODO: Replace with actual iOS API key
+      'test_kxcheBcScIxFnnzSGLbHITJMmPe'; // TODO: Replace with actual iOS API key
 
   static const _entitlementId = 'premium';
 
