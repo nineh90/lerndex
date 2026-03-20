@@ -15,6 +15,7 @@ import '../../rewards/presentation/student_notification_popup.dart';
 import '../../student_dashboard/presentation/widgets/rewards_count_provider.dart';
 import 'widgets/answer_button.dart';
 import '../data/quiz_prefetch_service.dart';
+import '../../../ai/vertex_ai_service.dart';
 
 // ============================================================================
 // QUIZ SCREEN – Klasse 3+ (v2)
@@ -859,39 +860,9 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
                                           color: Colors.red.shade100,
                                         ),
                                       ),
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            q.question,
-                                            style: const TextStyle(
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w500,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 6),
-                                          Row(
-                                            children: [
-                                              const Icon(
-                                                Icons.check_circle,
-                                                size: 14,
-                                                color: Colors.green,
-                                              ),
-                                              const SizedBox(width: 4),
-                                              Expanded(
-                                                child: Text(
-                                                  'Richtig: ${q.answer}',
-                                                  style: const TextStyle(
-                                                    fontSize: 13,
-                                                    color: Colors.green,
-                                                    fontWeight: FontWeight.w500,
-                                                  ),
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ],
+                                      child: _WrongQuestionTile(
+                                        question: q,
+                                        child: ref.read(activeChildProvider),
                                       ),
                                     ),
                                   ),
@@ -1063,6 +1034,156 @@ class _TutorUnlockedDialog extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+// ============================================================================
+// FALSCH-FRAGE KACHEL MIT INLINE-ERKLÄRUNG
+// ============================================================================
+
+class _WrongQuestionTile extends ConsumerStatefulWidget {
+  final Question question;
+  final ChildModel? child;
+
+  const _WrongQuestionTile({required this.question, required this.child});
+
+  @override
+  ConsumerState<_WrongQuestionTile> createState() => _WrongQuestionTileState();
+}
+
+class _WrongQuestionTileState extends ConsumerState<_WrongQuestionTile> {
+  String? _explanation;
+  bool _isLoading = false;
+
+  Future<void> _loadExplanation() async {
+    if (_isLoading || _explanation != null) return;
+    setState(() => _isLoading = true);
+
+    try {
+      final aiService = ref.read(vertexAIServiceProvider);
+      final child =
+          widget.child ??
+          ChildModel(
+            id: 'tmp',
+            name: 'Schüler',
+            grade: 5,
+            schoolType: 'Gymnasium',
+            age: 10,
+          );
+
+      final explanation = await aiService.explainWrongAnswer(
+        question: widget.question.question,
+        correctAnswer: widget.question.answer,
+        child: child,
+      );
+
+      if (mounted) setState(() => _explanation = explanation);
+    } catch (_) {
+      if (mounted) {
+        setState(
+          () => _explanation =
+              'Die Erklärung konnte leider nicht geladen werden.',
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final q = widget.question;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Frage
+        Text(
+          q.question,
+          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+        ),
+        const SizedBox(height: 6),
+
+        // Richtige Antwort
+        Row(
+          children: [
+            const Icon(Icons.check_circle, size: 14, color: Colors.green),
+            const SizedBox(width: 4),
+            Expanded(
+              child: Text(
+                'Richtig: ${q.answer}',
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: Colors.green,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ],
+        ),
+
+        // "Antwort erklären"-Textlink / Ladeindikator / Erklärung
+        if (_explanation == null && !_isLoading) ...[
+          const SizedBox(height: 6),
+          GestureDetector(
+            onTap: _loadExplanation,
+            child: const Text(
+              '💡 Antwort erklären',
+              style: TextStyle(
+                fontSize: 13,
+                color: Color(0xFF6B21A8),
+                fontWeight: FontWeight.w600,
+                decoration: TextDecoration.underline,
+                decorationColor: Color(0xFF6B21A8),
+              ),
+            ),
+          ),
+        ] else if (_isLoading) ...[
+          const SizedBox(height: 8),
+          const Row(
+            children: [
+              SizedBox(
+                width: 14,
+                height: 14,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Color(0xFF6B21A8),
+                ),
+              ),
+              SizedBox(width: 8),
+              Text(
+                'Wird erklärt …',
+                style: TextStyle(fontSize: 13, color: Colors.grey),
+              ),
+            ],
+          ),
+        ] else if (_explanation != null) ...[
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF3E8FF),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('🤖 ', style: TextStyle(fontSize: 14)),
+                Expanded(
+                  child: Text(
+                    _explanation!,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: Color(0xFF3B0764),
+                      height: 1.5,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ],
     );
   }
 }
