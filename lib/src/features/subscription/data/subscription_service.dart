@@ -73,7 +73,11 @@ class SubscriptionService {
   Stream<SubscriptionStatus> get customerInfoStream {
     final controller = StreamController<SubscriptionStatus>.broadcast();
     Purchases.addCustomerInfoUpdateListener((customerInfo) {
-      controller.add(_parseCustomerInfo(customerInfo));
+      final status = _parseCustomerInfo(customerInfo);
+      // Immer in Firestore syncen – auch bei Kündigung (leerer Status),
+      // damit der App-Start-Cache nie einen abgelaufenen Zugriff zurückgibt.
+      _syncToFirestore(status);
+      controller.add(status);
     });
     return controller.stream;
   }
@@ -114,11 +118,53 @@ class SubscriptionService {
 
   Future<SubscriptionStatus> purchasePackage(Package package) async {
     try {
-      final result = await Purchases.purchase(PurchaseParams.package(package));
+      PurchaseResult result;
+
+      // Aktives Abo ermitteln – beim Plan-Wechsel muss das alte Produkt
+      // als googleProductChangeInfo übergeben werden, damit Google Play
+      // das alte Abo ersetzt statt ein zweites parallel zu starten.
+      try {
+        final customerInfo = await Purchases.getCustomerInfo();
+        final activeSubscriptions = customerInfo.activeSubscriptions;
+
+        if (activeSubscriptions.isNotEmpty) {
+          final oldProductId = activeSubscriptions.first;
+
+          // Dasselbe Produkt bereits aktiv → kein Kauf nötig
+          if (oldProductId == package.storeProduct.identifier) {
+            debugPrint('ℹ️ Dasselbe Produkt bereits aktiv: $oldProductId');
+            final status = _parseCustomerInfo(customerInfo);
+            await _syncToFirestore(status);
+            return status;
+          }
+
+          // Anderes Produkt aktiv → Plan-Wechsel mit GoogleProductChangeInfo
+          debugPrint(
+            '🔄 Plan-Wechsel: $oldProductId → ${package.storeProduct.identifier}',
+          );
+          result = await Purchases.purchasePackage(
+            package,
+            googleProductChangeInfo: GoogleProductChangeInfo(
+              oldProductId,
+              prorationMode: GoogleProrationMode.immediateWithTimeProration,
+            ),
+          );
+        } else {
+          // Kein aktives Abo → normaler Erstkauf
+          result = await Purchases.purchase(PurchaseParams.package(package));
+        }
+      } catch (innerError) {
+        final msg = innerError.toString();
+        if (msg.contains('purchaseCancelled') || msg.contains('abgebrochen')) {
+          rethrow;
+        }
+        // Fallback: normaler Kauf wenn getCustomerInfo fehlschlägt
+        debugPrint('⚠️ Plan-Wechsel Fallback: $innerError');
+        result = await Purchases.purchase(PurchaseParams.package(package));
+      }
+
       final status = _parseCustomerInfo(result.customerInfo);
-
       await _syncToFirestore(status);
-
       return status;
     } on PurchasesErrorCode catch (e) {
       if (e == PurchasesErrorCode.purchaseCancelledError) {
@@ -126,6 +172,8 @@ class SubscriptionService {
       }
       throw 'Kauf fehlgeschlagen: ${e.name}';
     } catch (e) {
+      final msg = e.toString();
+      if (msg.contains('abgebrochen') || msg.contains('Kauf')) rethrow;
       throw 'Unbekannter Fehler: $e';
     }
   }
