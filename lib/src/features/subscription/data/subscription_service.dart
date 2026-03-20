@@ -12,9 +12,13 @@ class SubscriptionService {
   final FirebaseFirestore _firestore;
   final FirebaseAuth _auth;
   static const bool _devBypass = false;
-  static const _androidApiKey = 'goog_kxcheBcScIxFnnzSGLbHITJMmPe';
-  static const _iosApiKey =
-      'test_kxcheBcScIxFnnzSGLbHITJMmPe'; // TODO: Replace with actual iOS API key
+
+  // API-Keys werden zur Build-Zeit per --dart-define-from-file injiziert.
+  // Niemals direkt hier eintragen! Siehe dart_defines.json (liegt in .gitignore).
+  static const _androidApiKey = String.fromEnvironment(
+    'REVENUECAT_ANDROID_KEY',
+  );
+  static const _iosApiKey = String.fromEnvironment('REVENUECAT_IOS_KEY');
 
   static const _entitlementId = 'premium';
 

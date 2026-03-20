@@ -71,8 +71,6 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
         children: [
           // ── Header ────────────────────────────────────────────────────────
           const SizedBox(height: 16),
-          Image.asset('assets/images/lerndex_logo.png', height: 120),
-          const SizedBox(height: 14),
           const Text(
             'Lerndex Premium',
             textAlign: TextAlign.center,

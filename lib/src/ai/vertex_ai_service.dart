@@ -441,6 +441,87 @@ Füge als ALLERLETZTE Zeile exakt diese zwei Tags an (werden automatisch entfern
   }
 
   // --------------------------------------------------------------------------
+  // QUIZ-ANTWORT ERKLÄREN (Endscreen – kein Tutor-Flow, keine Filter)
+  // --------------------------------------------------------------------------
+
+  /// Erklärt eine falsch beantwortete Quiz-Frage direkt und ohne Umwege.
+  /// Umgeht bewusst die Tutor-Filter (_isNonSchoolQuestion, Sokrates-Methode),
+  /// weil hier die richtige Antwort bereits bekannt ist und erklärt werden soll.
+  Future<String> explainWrongAnswer({
+    required String question,
+    required String correctAnswer,
+    required ChildModel child,
+  }) async {
+    await _ensureTutorInitialized();
+
+    final systemPrompt =
+        '''
+Du bist ein freundlicher Schullehrer, der einem Kind eine falsch beantwortete Quiz-Frage erklärt.
+
+Schüler: ${child.name}, Klasse ${child.grade}, ${child.schoolType}, ${child.age} Jahre alt.
+
+DEINE AUFGABE:
+- Erkläre in 2-3 kindgerechten Sätzen, WARUM "${correctAnswer}" die richtige Antwort ist.
+- Erkläre das Konzept dahinter – nicht nur die nackte Antwort.
+- Benutze einfache Sprache passend für Klasse ${child.grade}.
+- Sei motivierend und freundlich.
+- Kein "Du hast falsch geantwortet" – fokussiere dich auf die Erklärung.
+- Keine Tags wie [FACH:...] oder [KORREKT:...] in der Antwort.
+- Antworte NUR mit der Erklärung, nichts weiter.
+''';
+
+    try {
+      final model = FirebaseAI.vertexAI().generativeModel(
+        model: 'gemini-2.0-flash',
+        generationConfig: GenerationConfig(
+          temperature: 0.5,
+          maxOutputTokens: 300,
+          topP: 0.9,
+        ),
+        systemInstruction: Content.system(systemPrompt),
+        safetySettings: [
+          SafetySetting(
+            HarmCategory.harassment,
+            HarmBlockThreshold.high,
+            HarmBlockMethod.severity,
+          ),
+          SafetySetting(
+            HarmCategory.hateSpeech,
+            HarmBlockThreshold.high,
+            HarmBlockMethod.severity,
+          ),
+          SafetySetting(
+            HarmCategory.sexuallyExplicit,
+            HarmBlockThreshold.medium,
+            HarmBlockMethod.severity,
+          ),
+          SafetySetting(
+            HarmCategory.dangerousContent,
+            HarmBlockThreshold.high,
+            HarmBlockMethod.severity,
+          ),
+        ],
+      );
+
+      final prompt =
+          'Frage: "${question}"\nRichtige Antwort: "${correctAnswer}"';
+      final response = await model.generateContent([Content.text(prompt)]);
+      final text = response.text;
+
+      if (text == null || text.isEmpty) {
+        return 'Die richtige Antwort ist "$correctAnswer". '
+            'Schau dir das Thema nochmal in deinem Schulbuch an! 📚';
+      }
+
+      return _stripSubjectTag(text).trim();
+    } catch (e) {
+      debugPrint('❌ explainWrongAnswer Fehler: $e');
+      return 'Die richtige Antwort ist "$correctAnswer". '
+          'Schau dir das Thema nochmal in deinem Schulbuch an! 📚';
+    }
+  }
+
+  // --------------------------------------------------------------------------
   // DYNAMISCHE BEGRÜSSUNG
   // --------------------------------------------------------------------------
 

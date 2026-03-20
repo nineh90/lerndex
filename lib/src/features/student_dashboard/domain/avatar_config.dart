@@ -75,15 +75,36 @@ const List<AvatarConfig> kAvatars = [
   ),
   AvatarConfig(
     id: 'avatar-legendary-1',
-    label: 'Gift',
-    requiredLevel: 0,
+    label: 'Legendary',
+    requiredLevel: 50,
     color: Color(0xFFFF8F00),
     rarityLabel: '🟨 Legendary',
-    isRewardUnlock: true,
   ),
+  // ── ELTERN-GIFT-AVATARE ──────────────────────────────────────────────────
+  // Nur diese Avatare (id startet mit "avatar-gift") erscheinen im
+  // Belohnungs-Dialog der Eltern. Neue hinzufügen als avatar-gift-1,
+  // avatar-gift-2 usw. – Bild muss unter assets/images/ liegen.
   AvatarConfig(
     id: 'avatar-gift',
-    label: 'Gift',
+    label: 'Geschenk',
+    requiredLevel: 0,
+    color: Color(0xFFE53935),
+    rarityLabel: '🎁 Geschenk',
+    isRewardUnlock: true,
+  ),
+
+  AvatarConfig(
+    id: 'avatar-gift-1',
+    label: 'Geschenk',
+    requiredLevel: 0,
+    color: Color(0xFFE53935),
+    rarityLabel: '🎁 Geschenk',
+    isRewardUnlock: true,
+  ),
+
+  AvatarConfig(
+    id: 'avatar-gift-2',
+    label: 'Geschenk',
     requiredLevel: 0,
     color: Color(0xFFE53935),
     rarityLabel: '🎁 Geschenk',

@@ -1054,7 +1054,7 @@ class _TutorUnlockedDialog extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(vertical: 14),
                   ),
                   child: const Text(
-                    'Zum Tutor! 🚀',
+                    'Super, weiter so! 🎉',
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                 ),

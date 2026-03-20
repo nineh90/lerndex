@@ -261,7 +261,7 @@ class _CreateRewardDialogState extends ConsumerState<CreateRewardDialog> {
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
                         itemCount: kAvatars
-                            .where((a) => a.isRewardUnlock)
+                            .where((a) => a.id.startsWith('avatar-gift'))
                             .length,
                         gridDelegate:
                             const SliverGridDelegateWithFixedCrossAxisCount(
@@ -272,7 +272,7 @@ class _CreateRewardDialogState extends ConsumerState<CreateRewardDialog> {
                             ),
                         itemBuilder: (context, index) {
                           final avatar = kAvatars
-                              .where((a) => a.isRewardUnlock)
+                              .where((a) => a.id.startsWith('avatar-gift'))
                               .toList()[index];
                           final isSelected = _selectedAvatarId == avatar.id;
                           return GestureDetector(
