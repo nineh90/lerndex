@@ -1,6 +1,10 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="com.android.vending.BILLING" />
     <uses-permission android:name="com.google.android.gms.permission.AD_ID" />
+    <!-- Kamera ist optional: Geräte ohne Kamera (z.B. Chromebooks) werden
+         nicht ausgeschlossen. Die Kamera-Funktion (Aufgaben fotografieren)
+         ist nur im Eltern-Bereich verfügbar und nicht kernfunktional. -->
+    <uses-feature android:name="android.hardware.camera" android:required="false"/>
     <uses-permission android:name="android.permission.CAMERA"/>
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32"/>
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>
