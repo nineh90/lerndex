@@ -24,14 +24,12 @@
 		<string>$(FLUTTER_BUILD_NUMBER)</string>
 		<key>LSRequiresIPhoneOS</key>
 		<true/>
-		<key>UILaunchStoryboardName</key>
-		<string>LaunchScreen</string>
-		<key>UIMainStoryboardFile</key>
-		<string>Main</string>
-		<key>NSCameraUsageDescription</key>
-		<string>Lerndex benötigt die Kamera um Schulaufgaben zu fotografieren und daraus Quiz-Fragen zu generieren.</string>
-		<key>NSPhotoLibraryUsageDescription</key>
-		<string>Lerndex benötigt Zugriff auf deine Fotos um Schulaufgaben hochzuladen.</string>
+
+		<!-- ═══════════════════════════════════════════════════════════ -->
+		<!-- ORIENTIERUNG                                                -->
+		<!-- ═══════════════════════════════════════════════════════════ -->
+		<!-- BUGFIX: Key fehlte komplett in der originalen Datei        -->
+		<key>UISupportedInterfaceOrientations</key>
 		<array>
 			<string>UIInterfaceOrientationPortrait</string>
 			<string>UIInterfaceOrientationLandscapeLeft</string>
@@ -44,12 +42,50 @@
 			<string>UIInterfaceOrientationLandscapeLeft</string>
 			<string>UIInterfaceOrientationLandscapeRight</string>
 		</array>
+
+		<!-- ═══════════════════════════════════════════════════════════ -->
+		<!-- BERECHTIGUNGEN (Privacy – Pflicht für App Store Review)    -->
+		<!-- ═══════════════════════════════════════════════════════════ -->
+
+		<!-- Kamera: Foto-Upload für KI-Aufgabengenerierung -->
+		<key>NSCameraUsageDescription</key>
+		<string>Lerndex benötigt die Kamera um Schulaufgaben zu fotografieren und daraus Quiz-Fragen zu generieren.</string>
+
+		<!-- Fotobibliothek: Bild hochladen -->
+		<key>NSPhotoLibraryUsageDescription</key>
+		<string>Lerndex benötigt Zugriff auf deine Fotos um Schulaufgaben hochzuladen.</string>
+
+		<!-- Mikrofon: flutter_tts Sprachausgabe kann auf iOS das Mikrofon-Entitlement triggern -->
+		<key>NSMicrophoneUsageDescription</key>
+		<string>Lerndex nutzt das Mikrofon für die Sprachausgabe des KI-Tutors.</string>
+
+		<!-- Tracking: Pflicht wegen RevenueCat (IDFA). Ohne diesen Key lehnt Apple die App ab. -->
+		<!-- Wenn ihr kein personalisiertes Tracking wollt: einfach so lassen, ATT-Dialog erscheint nicht -->
+		<key>NSUserTrackingUsageDescription</key>
+		<string>Lerndex nutzt diese Information ausschließlich um Käufe korrekt zu verarbeiten und dir passende Abo-Angebote anzuzeigen.</string>
+
+		<!-- ═══════════════════════════════════════════════════════════ -->
+		<!-- APP STORE / EXPORT COMPLIANCE                              -->
+		<!-- ═══════════════════════════════════════════════════════════ -->
+
+		<!-- Verhindert den manuellen "Export Compliance"-Dialog bei jedem Upload zu TestFlight.  -->
+		<!-- Firebase/TLS nutzt Standard-HTTPS – keine eigene Verschlüsselung → false ist korrekt -->
+		<key>ITSAppUsesNonExemptEncryption</key>
+		<false/>
+
+		<!-- ═══════════════════════════════════════════════════════════ -->
+		<!-- UI / SYSTEM                                                 -->
+		<!-- ═══════════════════════════════════════════════════════════ -->
+		<key>UILaunchStoryboardName</key>
+		<string>LaunchScreen</string>
 		<key>CADisableMinimumFrameDurationOnPhone</key>
 		<true/>
 		<key>UIApplicationSupportsIndirectInputEvents</key>
 		<true/>
 		<key>UIStatusBarHidden</key>
 		<false/>
+
+		<!-- URL-Schemes für Google Sign-In und externe Links -->
 		<key>LSApplicationQueriesSchemes</key>
 		<array>
 			<string>https</string>
