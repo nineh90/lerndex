@@ -30,6 +30,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   double _passwordStrength = 0;
   String _passwordStrengthLabel = '';
   Color _passwordStrengthColor = Colors.transparent;
+  DateTime? _selectedBirthdate;
 
   @override
   void dispose() {
@@ -39,6 +40,38 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     super.dispose();
+  }
+
+  /// Öffnet den DatePicker zur Geburtstagseingabe
+  Future<void> _pickBirthdate() async {
+    final now = DateTime.now();
+    final minDate = DateTime(now.year - 100);
+    final maxDate = DateTime(now.year - 18, now.month, now.day);
+
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedBirthdate ?? maxDate,
+      firstDate: minDate,
+      lastDate: maxDate,
+      locale: const Locale('de', 'DE'),
+      helpText: 'Geburtsdatum auswählen',
+      cancelText: 'Abbrechen',
+      confirmText: 'OK',
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: Color(0xFF6B21A8),
+              onPrimary: Colors.white,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+    if (picked != null) {
+      setState(() => _selectedBirthdate = picked);
+    }
   }
 
   /// Berechnet Passwort-Stärke (0.0 - 1.0)
@@ -76,6 +109,38 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   Future<void> _register() async {
     if (!_formKey.currentState!.validate()) return;
 
+    if (_selectedBirthdate == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Bitte gib dein Geburtsdatum an.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    // Mindestalter 18 Jahre prüfen
+    final now = DateTime.now();
+    final age =
+        now.year -
+        _selectedBirthdate!.year -
+        ((now.month < _selectedBirthdate!.month ||
+                (now.month == _selectedBirthdate!.month &&
+                    now.day < _selectedBirthdate!.day))
+            ? 1
+            : 0);
+    if (age < 18) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Du musst mindestens 18 Jahre alt sein, um ein Konto zu erstellen.',
+          ),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
     if (!_privacyAccepted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -98,6 +163,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             _emailController.text.trim(),
             _passwordController.text.trim(),
             displayName,
+            birthdate: _selectedBirthdate,
           );
 
       if (!mounted) return;
@@ -434,6 +500,36 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                                     }
                                     return null;
                                   },
+                                ),
+                                const SizedBox(height: 24),
+
+                                // ── GEBURTSDATUM ───────────────────────────
+                                GestureDetector(
+                                  onTap: _pickBirthdate,
+                                  child: AbsorbPointer(
+                                    child: TextFormField(
+                                      readOnly: true,
+                                      decoration: InputDecoration(
+                                        labelText: 'Geburtsdatum (Elternteil)',
+                                        prefixIcon: const Icon(
+                                          Icons.cake_outlined,
+                                        ),
+                                        border: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            12,
+                                          ),
+                                        ),
+                                        hintText: 'TT.MM.JJJJ',
+                                        helperText:
+                                            'Du musst mindestens 18 Jahre alt sein.',
+                                      ),
+                                      controller: TextEditingController(
+                                        text: _selectedBirthdate == null
+                                            ? ''
+                                            : '${_selectedBirthdate!.day.toString().padLeft(2, '0')}.${_selectedBirthdate!.month.toString().padLeft(2, '0')}.${_selectedBirthdate!.year}',
+                                      ),
+                                    ),
+                                  ),
                                 ),
                                 const SizedBox(height: 24),
 

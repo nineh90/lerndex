@@ -306,8 +306,25 @@ class QuizEngine extends StateNotifier<QuizState> {
 
   /// Wechselt nach falscher Antwort in den Retry-Prompt.
   /// Wird nach dem Feedback-Delay aufgerufen.
+  /// Kinder haben pro Frage nur EINEN Retry-Versuch — war isRetry bereits
+  /// true, wird die Frage direkt als falsch gewertet und übersprungen.
   void showRetryPrompt() {
     if (state.phase != QuizPhase.feedback || state.wasCorrect) return;
+
+    // Zweiter Fehlversuch → kein erneuter Retry, Frage endgültig falsch werten
+    if (state.isRetry) {
+      final current = state.currentQuestion;
+      if (current != null) {
+        final updatedWrong = List<Question>.from(state.wrongQuestions);
+        if (!updatedWrong.any((q) => q.question == current.question)) {
+          updatedWrong.add(current);
+        }
+        state = state.copyWith(wrongQuestions: updatedWrong);
+      }
+      _advance();
+      return;
+    }
+
     state = state.copyWith(phase: QuizPhase.retryPrompt);
   }
 

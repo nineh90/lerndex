@@ -26,10 +26,11 @@ class AuthRepository {
 
   /// Registriert einen neuen Eltern-Account
   Future<UserCredential> createUserWithEmailAndPassword(
-      String email,
-      String password,
-      String displayName,
-      ) async {
+    String email,
+    String password,
+    String displayName, {
+    DateTime? birthdate,
+  }) async {
     try {
       final credential = await _auth.createUserWithEmailAndPassword(
         email: email,
@@ -43,7 +44,11 @@ class AuthRepository {
       await credential.user?.sendEmailVerification();
 
       // User-Dokument in Firestore anlegen
-      await _createUserDocument(credential.user!, displayName: displayName);
+      await _createUserDocument(
+        credential.user!,
+        displayName: displayName,
+        birthdate: birthdate,
+      );
 
       return credential;
     } on FirebaseAuthException catch (e) {
@@ -53,9 +58,9 @@ class AuthRepository {
 
   /// Login mit E-Mail und Passwort
   Future<UserCredential> signInWithEmailAndPassword(
-      String email,
-      String password,
-      ) async {
+    String email,
+    String password,
+  ) async {
     try {
       final credential = await _auth.signInWithEmailAndPassword(
         email: email,
@@ -91,13 +96,14 @@ class AuthRepository {
 
   /// Login / Registrierung mit Google
   /// Gibt zurück ob es ein NEUER User ist (für Onboarding-Entscheidung)
-  Future<({UserCredential credential, bool isNewUser})> signInWithGoogle() async {
+  Future<({UserCredential credential, bool isNewUser})>
+  signInWithGoogle() async {
     try {
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
       if (googleUser == null) throw 'Google-Login abgebrochen.';
 
       final GoogleSignInAuthentication googleAuth =
-      await googleUser.authentication;
+          await googleUser.authentication;
 
       final oauthCredential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
@@ -137,9 +143,7 @@ class AuthRepository {
   }
 
   /// Markiert das Onboarding als abgeschlossen
-  Future<void> completeOnboarding({
-    required String displayName,
-  }) async {
+  Future<void> completeOnboarding({required String displayName}) async {
     final user = _auth.currentUser;
     if (user == null) return;
 
@@ -159,10 +163,7 @@ class AuthRepository {
 
   /// Logout (E-Mail + Google)
   Future<void> signOut() async {
-    await Future.wait([
-      _auth.signOut(),
-      _googleSignIn.signOut(),
-    ]);
+    await Future.wait([_auth.signOut(), _googleSignIn.signOut()]);
   }
 
   /// Passwort zurücksetzen
@@ -186,7 +187,11 @@ class AuthRepository {
   // =========================================================================
 
   /// Erstellt das initiale User-Dokument in Firestore
-  Future<void> _createUserDocument(User user, {required String displayName}) async {
+  Future<void> _createUserDocument(
+    User user, {
+    required String displayName,
+    DateTime? birthdate,
+  }) async {
     await _firestore.collection('users').doc(user.uid).set({
       'email': user.email,
       'displayName': displayName,
@@ -194,6 +199,7 @@ class AuthRepository {
       'onboardingCompleted': false,
       'betaTester': false,
       'premiumUntil': null,
+      if (birthdate != null) 'birthdate': Timestamp.fromDate(birthdate),
     }, SetOptions(merge: true));
   }
 
@@ -221,7 +227,6 @@ class AuthRepository {
     }
   }
 }
-
 
 // NACHHER — authStateChanges mit keepAlive damit er nie disposed wird:
 @Riverpod(keepAlive: true)

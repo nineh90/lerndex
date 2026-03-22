@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:confetti/confetti.dart';
 import '../domain/reward_model.dart';
-import 'widgets/reward_item.dart';
 
-/// 🎉 SPEKTAKULÄRER LEVEL-UP DIALOG
-/// - Vollbild-Animation
-/// - Confetti-Effekt
-/// - Große Icons und Text
-/// - "Okay" Button zur Bestätigung
+// ============================================================================
+// REWARD UNLOCKED DIALOG — Lerndex Design v2
+//
+// Kompakt, kein Scrollen, Button immer sichtbar.
+// Lerndex-Lila Farbwelt, klares Layout.
+// ============================================================================
 
 class RewardUnlockedDialog extends StatefulWidget {
   final List<RewardModel> rewards;
@@ -26,198 +26,180 @@ class RewardUnlockedDialog extends StatefulWidget {
 }
 
 class _RewardUnlockedDialogState extends State<RewardUnlockedDialog>
-    with TickerProviderStateMixin {
-  late AnimationController _scaleController;
-  late AnimationController _pulseController;
-  late AnimationController _slideController;
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnim;
+  late Animation<double> _fadeAnim;
   late ConfettiController _confettiController;
 
-  late Animation<double> _scaleAnimation;
-  late Animation<double> _pulseAnimation;
-  late Animation<Offset> _slideAnimation;
+  // Lerndex Lila Palette
+  static const _purple = Color(0xFF6B21A8);
+  static const _purpleLight = Color(0xFF9333EA);
+  static const _purpleDark = Color(0xFF4C1D95);
 
   @override
   void initState() {
     super.initState();
 
-    // Scale Animation für Icon
-    _scaleController = AnimationController(
-      duration: const Duration(milliseconds: 1000),
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 550),
       vsync: this,
     );
-    _scaleAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _scaleController, curve: Curves.elasticOut),
+
+    _scaleAnim = Tween<double>(
+      begin: 0.7,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutBack));
+
+    _fadeAnim = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _controller,
+        curve: const Interval(0.0, 0.6, curve: Curves.easeOut),
+      ),
     );
 
-    // Pulse Animation (pulsiert weiter)
-    _pulseController = AnimationController(
-      duration: const Duration(milliseconds: 1500),
-      vsync: this,
-    )..repeat(reverse: true);
-    _pulseAnimation = Tween<double>(begin: 1.0, end: 1.1).animate(
-      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
-    );
-
-    // Slide Animation für Content
-    _slideController = AnimationController(
-      duration: const Duration(milliseconds: 800),
-      vsync: this,
-    );
-    _slideAnimation =
-        Tween<Offset>(begin: const Offset(0, 0.3), end: Offset.zero).animate(
-          CurvedAnimation(parent: _slideController, curve: Curves.easeOutCubic),
-        );
-
-    // Confetti für Level-Up
     _confettiController = ConfettiController(
       duration: const Duration(seconds: 3),
     );
 
-    // Starte Animationen
-    _scaleController.forward();
-    _slideController.forward();
-
-    if (widget.isLevelUp) {
-      _confettiController.play();
-    }
+    _controller.forward();
+    if (widget.isLevelUp) _confettiController.play();
   }
 
   @override
   void dispose() {
-    _scaleController.dispose();
-    _pulseController.dispose();
-    _slideController.dispose();
+    _controller.dispose();
     _confettiController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    // Vollbild Dialog für maximale Sichtbarkeit
     return Dialog(
       backgroundColor: Colors.transparent,
-      insetPadding: const EdgeInsets.all(20),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
       child: Stack(
-        alignment: Alignment.center,
+        alignment: Alignment.topCenter,
+        clipBehavior: Clip.none,
         children: [
-          // Confetti (oben in der Mitte)
-          if (widget.isLevelUp)
-            Align(
-              alignment: Alignment.topCenter,
-              child: ConfettiWidget(
-                confettiController: _confettiController,
-                blastDirection: 3.14 / 2, // Nach unten
-                maxBlastForce: 15,
-                minBlastForce: 8,
-                emissionFrequency: 0.05,
-                numberOfParticles: 20,
-                gravity: 0.3,
-                colors: const [
-                  Colors.amber,
-                  Colors.orange,
-                  Colors.deepPurple,
-                  Colors.purple,
-                  Colors.pink,
-                  Colors.blue,
-                ],
-              ),
-            ),
-
-          // Haupt-Content
-          Container(
-            constraints: const BoxConstraints(maxWidth: 400),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: widget.isLevelUp
-                    ? [
-                        Colors.amber.shade400,
-                        Colors.orange.shade500,
-                        Colors.deepOrange.shade600,
-                      ]
-                    : [Colors.deepPurple.shade400, Colors.purple.shade600],
-              ),
-              borderRadius: BorderRadius.circular(30),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.3),
-                  blurRadius: 30,
-                  offset: const Offset(0, 10),
+          // ── Haupt-Card ──────────────────────────────────────────────────
+          FadeTransition(
+            opacity: _fadeAnim,
+            child: ScaleTransition(
+              scale: _scaleAnim,
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [_purpleDark, _purple, _purpleLight],
+                  ),
+                  borderRadius: BorderRadius.circular(28),
+                  boxShadow: [
+                    BoxShadow(
+                      color: _purple.withOpacity(0.5),
+                      blurRadius: 32,
+                      offset: const Offset(0, 12),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(30),
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(32),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Animiertes Icon
-                    _buildAnimatedIcon(),
-                    const SizedBox(height: 24),
+                    // ── Header ─────────────────────────────────────────────
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(28, 36, 28, 0),
+                      child: Column(
+                        children: [
+                          // Icon-Kreis
+                          Container(
+                            width: 80,
+                            height: 80,
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.15),
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: Colors.white.withOpacity(0.4),
+                                width: 2,
+                              ),
+                            ),
+                            child: Center(
+                              child: Text(
+                                widget.isLevelUp ? '🏆' : '🎁',
+                                style: const TextStyle(fontSize: 40),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
 
-                    // Titel mit Animation
-                    SlideTransition(
-                      position: _slideAnimation,
-                      child: FadeTransition(
-                        opacity: _slideController,
-                        child: _buildTitle(),
+                          // Titel
+                          Text(
+                            widget.isLevelUp ? 'Level Up!' : 'Belohnung!',
+                            style: const TextStyle(
+                              fontSize: 30,
+                              fontWeight: FontWeight.w900,
+                              color: Colors.white,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+
+                          // Level-Badge
+                          if (widget.isLevelUp && widget.newLevel != null) ...[
+                            const SizedBox(height: 10),
+                            _LevelBadge(level: widget.newLevel!),
+                          ],
+                        ],
                       ),
                     ),
 
-                    if (widget.isLevelUp && widget.newLevel != null) ...[
-                      const SizedBox(height: 16),
-                      _buildLevelBadge(),
-                    ],
+                    // ── Divider ────────────────────────────────────────────
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 28,
+                        vertical: 20,
+                      ),
+                      child: Divider(
+                        color: Colors.white.withOpacity(0.25),
+                        height: 1,
+                      ),
+                    ),
 
-                    const SizedBox(height: 32),
-
-                    // Belohnungen
-                    if (widget.rewards.isNotEmpty) ...[
-                      SlideTransition(
-                        position: _slideAnimation,
-                        child: FadeTransition(
-                          opacity: _slideController,
-                          child: Column(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 8,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(0.2),
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
-                                child: const Text(
-                                  '🎁 Deine Belohnung',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 16),
-                              ...widget.rewards.map(
-                                (reward) => RewardItem(reward: reward),
-                              ),
-                            ],
-                          ),
+                    // ── Rewards (kompakt, max 2) ───────────────────────────
+                    if (widget.rewards.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 28),
+                        child: Column(
+                          children: widget.rewards
+                              .take(2)
+                              .map((r) => _CompactRewardRow(reward: r))
+                              .toList(),
                         ),
                       ),
-                    ],
 
-                    const SizedBox(height: 32),
-
-                    // Bestätigungs-Button
-                    SlideTransition(
-                      position: _slideAnimation,
-                      child: FadeTransition(
-                        opacity: _slideController,
-                        child: _buildConfirmButton(),
+                    // ── Button ─────────────────────────────────────────────
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(28, 20, 28, 28),
+                      child: SizedBox(
+                        width: double.infinity,
+                        height: 52,
+                        child: ElevatedButton(
+                          onPressed: () => Navigator.of(context).pop(),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.white,
+                            foregroundColor: _purple,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                          ),
+                          child: Text(
+                            widget.isLevelUp ? 'Super! 🎉' : 'Okay! 👍',
+                            style: const TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
                       ),
                     ),
                   ],
@@ -225,125 +207,74 @@ class _RewardUnlockedDialogState extends State<RewardUnlockedDialog>
               ),
             ),
           ),
+
+          // ── Confetti ────────────────────────────────────────────────────
+          if (widget.isLevelUp)
+            Positioned(
+              top: 0,
+              child: ConfettiWidget(
+                confettiController: _confettiController,
+                blastDirection: 3.14 / 2,
+                maxBlastForce: 18,
+                minBlastForce: 8,
+                emissionFrequency: 0.06,
+                numberOfParticles: 18,
+                gravity: 0.35,
+                colors: const [
+                  Colors.amber,
+                  Colors.white,
+                  Color(0xFFE9D5FF),
+                  Color(0xFFC084FC),
+                  Colors.pink,
+                  Colors.cyan,
+                ],
+              ),
+            ),
         ],
       ),
     );
   }
+}
 
-  Widget _buildAnimatedIcon() {
-    return AnimatedBuilder(
-      animation: _scaleController,
-      builder: (context, child) {
-        return Transform.scale(
-          scale: _scaleAnimation.value,
-          child: AnimatedBuilder(
-            animation: _pulseController,
-            builder: (context, child) {
-              return Transform.scale(
-                scale: _pulseAnimation.value,
-                child: Container(
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.3),
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.white.withOpacity(0.5),
-                        blurRadius: 20,
-                        spreadRadius: 5,
-                      ),
-                    ],
-                  ),
-                  child: Icon(
-                    widget.isLevelUp ? Icons.emoji_events : Icons.card_giftcard,
-                    size: 100,
-                    color: Colors.white,
-                  ),
-                ),
-              );
-            },
-          ),
-        );
-      },
-    );
-  }
+// ── Level Badge ───────────────────────────────────────────────────────────────
 
-  Widget _buildTitle() {
-    return Column(
-      children: [
-        Text(
-          widget.isLevelUp ? 'LEVEL UP!' : 'Belohnung!',
-          style: const TextStyle(
-            fontSize: 42,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-            letterSpacing: 2,
-            shadows: [
-              Shadow(
-                color: Colors.black26,
-                offset: Offset(2, 2),
-                blurRadius: 4,
-              ),
-            ],
-          ),
-          textAlign: TextAlign.center,
-        ),
-        if (widget.isLevelUp) ...[
-          const SizedBox(height: 8),
-          const Text(
-            '🎉 Glückwunsch! 🎉',
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.w600,
-              color: Colors.white,
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ],
-    );
-  }
+class _LevelBadge extends StatelessWidget {
+  final int level;
+  const _LevelBadge({required this.level});
 
-  Widget _buildLevelBadge() {
+  @override
+  Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Colors.white.withOpacity(0.18),
         borderRadius: BorderRadius.circular(50),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.2),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        border: Border.all(color: Colors.white.withOpacity(0.4), width: 1.5),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Text(
+          Text(
             'Level',
             style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: Colors.deepOrange,
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              color: Colors.white.withOpacity(0.9),
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 8),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Colors.amber.shade400, Colors.orange.shade600],
-              ),
+              color: Colors.white,
               borderRadius: BorderRadius.circular(20),
             ),
             child: Text(
-              '${widget.newLevel}',
+              '$level',
               style: const TextStyle(
-                fontSize: 32,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
+                fontSize: 20,
+                fontWeight: FontWeight.w900,
+                color: Color(0xFF6B21A8),
               ),
             ),
           ),
@@ -351,30 +282,70 @@ class _RewardUnlockedDialogState extends State<RewardUnlockedDialog>
       ),
     );
   }
+}
 
-  Widget _buildConfirmButton() {
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton(
-        onPressed: () => Navigator.of(context).pop(),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.white,
-          foregroundColor: widget.isLevelUp ? Colors.orange : Colors.deepPurple,
-          padding: const EdgeInsets.symmetric(vertical: 18),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          elevation: 8,
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              widget.isLevelUp ? 'Super! 🎉' : 'Okay! 👍',
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+// ── Kompakte Reward-Zeile ─────────────────────────────────────────────────────
+
+class _CompactRewardRow extends StatelessWidget {
+  final RewardModel reward;
+  const _CompactRewardRow({required this.reward});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.13),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white.withOpacity(0.25), width: 1),
+      ),
+      child: Row(
+        children: [
+          Text(reward.statusEmoji, style: const TextStyle(fontSize: 26)),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  reward.title,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                ),
+                if (reward.reward.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    reward.reward,
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.white.withOpacity(0.8),
+                    ),
+                  ),
+                ],
+              ],
             ),
-          ],
-        ),
+          ),
+          if (reward.bonusXP != null && reward.bonusXP! > 0)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.amber.shade600,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                '+${reward.bonusXP} XP',
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
