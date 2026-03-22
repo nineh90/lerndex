@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:lerndex/src/features/auth/data/auth_repository.dart';
 import 'package:lerndex/src/features/auth/presentation/active_child_provider.dart';
 import 'package:path_provider/path_provider.dart';
@@ -153,6 +154,29 @@ class _ThemePickerSheetState extends ConsumerState<ThemePickerSheet> {
     String userId,
     String childId,
   ) async {
+    // Galerie-Permission prüfen und ggf. anfordern
+    final status = await Permission.photos.request();
+    if (status.isDenied || status.isPermanentlyDenied) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text(
+              'Foto-Zugriff verweigert. Bitte in den Einstellungen erlauben.',
+            ),
+            backgroundColor: Colors.red,
+            action: status.isPermanentlyDenied
+                ? SnackBarAction(
+                    label: 'Einstellungen',
+                    textColor: Colors.white,
+                    onPressed: openAppSettings,
+                  )
+                : null,
+          ),
+        );
+      }
+      return;
+    }
+
     final picker = ImagePicker();
     final picked = await picker.pickImage(
       source: ImageSource.gallery,

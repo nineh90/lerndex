@@ -32,7 +32,12 @@ dependencies:
   firebase_ai: ^2.3.0
 
   # Foto-Upload
-  image_picker: 1.0.7
+  image_picker: ^1.1.2
+  permission_handler: ^11.3.1
+
+  # File system (genutzt in theme_picker_sheet.dart zur LAUFZEIT – nicht dev!)
+  path_provider: ^2.1.4
+  path: ^1.9.0
 
   # Splash Screen
   flutter_native_splash: ^2.4.0
@@ -56,8 +61,6 @@ dependencies:
   flutter_math_fork: ^0.7.2
 
   # File system (genutzt in theme_picker_sheet.dart)
-  path_provider: ^2.1.4
-  path: ^1.9.0
   url_launcher: ^6.3.2
   purchases_flutter: ^9.13.2
   purchases_ui_flutter: ^9.13.2

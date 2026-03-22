@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:lerndex/src/features/generated_tasks/presentation/widgets/info_row.dart';
 import '../../auth/domain/child_model.dart';
 import '../../auth/data/auth_repository.dart';
@@ -604,6 +605,37 @@ class _TaskGeneratorScreenState extends ConsumerState<TaskGeneratorScreen> {
   // ---------------------------------------------------------------------------
 
   Future<void> _pickImage(ImageSource source) async {
+    // Runtime-Permission prüfen und ggf. anfordern
+    final permission = source == ImageSource.camera
+        ? Permission.camera
+        : Permission
+              .photos; // Android 13+: READ_MEDIA_IMAGES; älter: READ_EXTERNAL_STORAGE
+
+    final status = await permission.request();
+
+    if (status.isDenied || status.isPermanentlyDenied) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              source == ImageSource.camera
+                  ? 'Kamera-Zugriff verweigert. Bitte in den Einstellungen erlauben.'
+                  : 'Foto-Zugriff verweigert. Bitte in den Einstellungen erlauben.',
+            ),
+            backgroundColor: Colors.red,
+            action: status.isPermanentlyDenied
+                ? SnackBarAction(
+                    label: 'Einstellungen',
+                    textColor: Colors.white,
+                    onPressed: openAppSettings,
+                  )
+                : null,
+          ),
+        );
+      }
+      return;
+    }
+
     try {
       final image = await _picker.pickImage(
         source: source,
