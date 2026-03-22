@@ -1,0 +1,173 @@
+workflows:
+
+  # ============================================================================
+  # ANDROID — Google Play (Internal Track)
+  # ============================================================================
+  android-release:
+    name: Android Release
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+
+    environment:
+      flutter: 3.38.7          # Pinne auf die Flutter-Version die du lokal nutzt
+      java: 17
+      groups:
+        - firebase              # Gruppe mit GOOGLE_SERVICES_JSON (Base64)
+        - revenuecat            # Gruppe mit REVENUECAT_ANDROID_KEY, REVENUECAT_IOS_KEY
+        - dart_defines          # Gruppe mit DART_DEFINES_JSON (Base64 von dart_defines.json)
+        - android_signing       # Gruppe mit Keystore-Variablen (s.u.)
+      vars:
+        PACKAGE_NAME: "de.nilsdigital.lerndex"
+
+    triggering:
+      events:
+        - push
+      branch_patterns:
+        - pattern: main
+          include: true
+
+    scripts:
+      # 1. google-services.json aus Secret wiederherstellen
+      - name: Restore google-services.json
+        script: |
+          echo $GOOGLE_SERVICES_JSON | base64 --decode > \
+            $CM_BUILD_DIR/android/app/google-services.json
+
+      # 2. dart_defines.json aus Secret wiederherstellen
+      #    (enthält REVENUECAT_ANDROID_KEY etc. – liegt in .gitignore)
+      - name: Restore dart_defines.json
+        script: |
+          echo $DART_DEFINES_JSON | base64 --decode > \
+            $CM_BUILD_DIR/dart_defines.json
+
+      # 3. Keystore aus Secret wiederherstellen
+      - name: Restore Keystore
+        script: |
+          echo $CM_KEYSTORE | base64 --decode > \
+            $CM_BUILD_DIR/android/app/keystore.jks
+          cat > $CM_BUILD_DIR/android/key.properties <<EOF
+          storePassword=$CM_KEYSTORE_PASSWORD
+          keyPassword=$CM_KEY_PASSWORD
+          keyAlias=$CM_KEY_ALIAS
+          storeFile=keystore.jks
+          EOF
+
+      # 4. Dependencies
+      - name: Flutter pub get
+        script: flutter pub get
+
+      # 5. Code-Generatoren (Riverpod, Freezed, JSON)
+      - name: Build Runner
+        script: |
+          dart run build_runner build --delete-conflicting-outputs
+
+      # 6. Build Android App Bundle
+      - name: Build AAB
+        script: |
+          flutter build appbundle \
+            --release \
+            --dart-define-from-file=dart_defines.json
+
+    artifacts:
+      - build/app/outputs/bundle/release/*.aab
+      - build/app/outputs/mapping/release/mapping.txt   # ProGuard-Map für Crashlytics
+
+    publishing:
+      google_play:
+        credentials: $GCLOUD_SERVICE_ACCOUNT_CREDENTIALS  # JSON-Key der GCP Service-Account
+        track: internal   # internal → alpha → beta → production
+        submit_as_draft: false
+      email:
+        recipients:
+          - info@nils-digital.de
+        notify:
+          success: true
+          failure: true
+
+
+  # ============================================================================
+  # IOS — App Store Connect (TestFlight)
+  # ============================================================================
+  ios-release:
+    name: iOS Release
+    max_build_duration: 90
+    instance_type: mac_mini_m2
+
+    environment:
+      flutter: 3.38.7
+      xcode: latest
+      cocoapods: default
+      groups:
+        - firebase              # Gruppe mit GOOGLE_SERVICES_JSON + GOOGLESERVICE_INFO_PLIST
+        - revenuecat
+        - dart_defines
+        - ios_signing           # Gruppe mit Signing-Zertifikat & Provisioning Profile
+      vars:
+        BUNDLE_ID: "de.nilsdigital.lerndex"
+        APP_STORE_APPLE_ID: "DEINE_APP_ID"   # Numerische App-ID aus App Store Connect
+
+    triggering:
+      events:
+        - push
+      branch_patterns:
+        - pattern: main
+          include: true
+
+    scripts:
+      # 1. GoogleService-Info.plist wiederherstellen
+      - name: Restore GoogleService-Info.plist
+        script: |
+          echo $GOOGLESERVICE_INFO_PLIST | base64 --decode > \
+            $CM_BUILD_DIR/ios/Runner/GoogleService-Info.plist
+
+      # 2. dart_defines.json wiederherstellen
+      - name: Restore dart_defines.json
+        script: |
+          echo $DART_DEFINES_JSON | base64 --decode > \
+            $CM_BUILD_DIR/dart_defines.json
+
+      # 3. Code Signing (Codemagic verwaltet Zertifikat & Profile automatisch)
+      - name: Set up code signing
+        script: |
+          xcode-project use-profiles
+
+      # 4. Dependencies
+      - name: Flutter pub get
+        script: flutter pub get
+
+      # 5. CocoaPods
+      - name: Pod install
+        script: |
+          cd ios && pod install
+
+      # 6. Code-Generatoren
+      - name: Build Runner
+        script: |
+          dart run build_runner build --delete-conflicting-outputs
+
+      # 7. Build IPA
+      - name: Build IPA
+        script: |
+          flutter build ipa \
+            --release \
+            --dart-define-from-file=dart_defines.json \
+            --export-options-plist=/Users/builder/export_options.plist
+
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+
+    publishing:
+      app_store_connect:
+        api_key: $APP_STORE_CONNECT_PRIVATE_KEY       # Codemagic-Variable (P8-Datei-Inhalt)
+        key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER      # z.B. ABCDE12345
+        issuer_id: $APP_STORE_CONNECT_ISSUER_ID        # UUID aus App Store Connect
+        submit_to_testflight: true
+        beta_groups:
+          - "Internal Testers"
+      email:
+        recipients:
+          - info@nils-digital.de
+        notify:
+          success: true
+          failure: true
