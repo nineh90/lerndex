@@ -22,6 +22,10 @@ class SubscriptionService {
 
   static const _entitlementId = 'premium';
 
+  /// RevenueCat Produkt-ID für den zugekauften Kind-Slot (Consumable IAP).
+  /// Muss exakt so in App Store Connect & Google Play Console angelegt sein.
+  static const _extraChildSlotProductId = 'lerndex_extra_child_slot';
+
   static Future<void> initialize() async {
     final apiKey = Platform.isIOS ? _iosApiKey : _androidApiKey;
 
@@ -187,6 +191,62 @@ class SubscriptionService {
     } catch (e) {
       throw 'Wiederherstellen fehlgeschlagen: $e';
     }
+  }
+
+  /// Kauft einen zusätzlichen Kind-Slot (Consumable, 6,99 €).
+  /// Erhöht nach erfolgreichem Kauf `extraChildSlots` in Firestore um 1.
+  /// Nur erlaubt wenn der User einen aktiven Family-Plan hat.
+  Future<void> purchaseExtraChildSlot() async {
+    try {
+      final offerings = await Purchases.getOfferings();
+      final current = offerings?.current;
+      if (current == null) throw 'Angebote konnten nicht geladen werden.';
+
+      // Produkt aus dem aktuellen Offering holen
+      StoreProduct? product;
+      for (final pkg in current.availablePackages) {
+        if (pkg.storeProduct.identifier == _extraChildSlotProductId) {
+          product = pkg.storeProduct;
+          break;
+        }
+      }
+
+      // Falls nicht im Offering → direkt als Produkt laden
+      product ??= (await Purchases.getProducts([
+        _extraChildSlotProductId,
+      ], productCategory: ProductCategory.nonSubscription)).firstOrNull;
+
+      if (product == null) {
+        throw 'Produkt "$_extraChildSlotProductId" nicht gefunden. '
+            'Bitte sicherstellen, dass es in RevenueCat konfiguriert ist.';
+      }
+
+      await Purchases.purchaseStoreProduct(product);
+
+      // Kauf erfolgreich → Slot-Zähler in Firestore atomar erhöhen
+      await _incrementExtraChildSlot();
+      debugPrint('✅ Extra Kind-Slot gekauft und in Firestore gespeichert');
+    } on PurchasesErrorCode catch (e) {
+      if (e == PurchasesErrorCode.purchaseCancelledError) {
+        throw 'Kauf abgebrochen.';
+      }
+      throw 'Kauf fehlgeschlagen: ${e.name}';
+    } catch (e) {
+      final msg = e.toString();
+      if (msg.contains('abgebrochen') || msg.contains('Kauf')) rethrow;
+      throw 'Unbekannter Fehler beim Kauf: $e';
+    }
+  }
+
+  /// Erhöht `extraChildSlots` im Firestore-Userdokument atomar um 1.
+  Future<void> _incrementExtraChildSlot() async {
+    final uid = _auth.currentUser?.uid;
+    if (uid == null) return;
+
+    await _firestore.collection('users').doc(uid).update({
+      'subscription.extraChildSlots': FieldValue.increment(1),
+      'subscriptionUpdatedAt': FieldValue.serverTimestamp(),
+    });
   }
 
   Future<void> _syncToFirestore(SubscriptionStatus status) async {

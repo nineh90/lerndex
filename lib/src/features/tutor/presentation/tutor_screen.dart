@@ -271,7 +271,7 @@ class _TutorScreenState extends ConsumerState<TutorScreen> {
               ),
             ),
             const SizedBox(width: 10),
-            const Text('Lerndex Tutor'),
+            const Text('Lexi'),
           ],
         ),
         backgroundColor: Colors.deepPurple,

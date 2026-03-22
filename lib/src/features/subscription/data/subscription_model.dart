@@ -127,12 +127,16 @@ class SubscriptionStatus {
   final DateTime? expiresAt;
   final DateTime? trialEndsAt;
 
+  /// Anzahl zusätzlich gekaufter Kind-Slots (6,99 € / Slot, nur für Family-Plan)
+  final int extraChildSlots;
+
   const SubscriptionStatus({
     required this.plan,
     required this.isActive,
     this.isTrial = false,
     this.expiresAt,
     this.trialEndsAt,
+    this.extraChildSlots = 0,
   });
 
   /// Kein Zugriff
@@ -145,7 +149,13 @@ class SubscriptionStatus {
   bool get hasAccess => isActive && plan.hasAccess;
 
   /// Wie viele Kinder darf dieser User anlegen?
-  int get childLimit => plan.childLimit;
+  /// Basis-Limit aus Plan + eventuell zugekaufte Slots (nur Family).
+  int get childLimit => plan.childLimit + extraChildSlots;
+
+  /// Darf ein weiterer Kind-Slot zugekauft werden?
+  /// Nur im aktiven Family-Plan möglich.
+  bool get canPurchaseExtraChildSlot =>
+      isActive && plan == SubscriptionPlan.family;
 
   /// Aus Firestore-Map laden
   factory SubscriptionStatus.fromFirestore(Map<String, dynamic>? data) {
@@ -171,6 +181,7 @@ class SubscriptionStatus {
       isTrial: isTrial,
       expiresAt: expiresAt,
       trialEndsAt: trialEndsAt,
+      extraChildSlots: (data['extraChildSlots'] as int?) ?? 0,
     );
   }
 
@@ -182,6 +193,7 @@ class SubscriptionStatus {
       'isTrial': isTrial,
       if (expiresAt != null) 'expiresAt': Timestamp.fromDate(expiresAt!),
       if (trialEndsAt != null) 'trialEndsAt': Timestamp.fromDate(trialEndsAt!),
+      // extraChildSlots wird NICHT hier überschrieben – nur via incrementExtraChildSlot()
     };
   }
 }

@@ -1,8 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:purchases_flutter/models/offerings_wrapper.dart';
-import 'package:purchases_flutter/models/package_wrapper.dart';
+import 'package:purchases_flutter/purchases_flutter.dart';
 import 'subscription_model.dart';
 import 'subscription_service.dart';
 
@@ -76,6 +75,15 @@ class SubscriptionNotifier
     if (mounted) state = AsyncValue.data(status);
     return status;
   }
+
+  /// Kauft einen zusätzlichen Kind-Slot (6,99 €) für den Family-Plan.
+  /// Nach Kauf wird der Status aus Firestore neu geladen um extraChildSlots
+  /// aktuell zu haben.
+  Future<void> purchaseExtraChildSlot() async {
+    await _service.purchaseExtraChildSlot();
+    // Status neu laden damit extraChildSlots sofort aktuell ist
+    await refresh();
+  }
 }
 
 // =============================================================================
@@ -119,5 +127,26 @@ final currentPlanProvider = Provider<SubscriptionPlan>((ref) {
     data: (s) => s.plan,
     loading: () => SubscriptionPlan.none,
     error: (_, __) => SubscriptionPlan.none,
+  );
+});
+
+/// Anzahl bisher zugekaufter extra Kind-Slots.
+final extraChildSlotsProvider = Provider<int>((ref) {
+  final status = ref.watch(subscriptionStatusProvider);
+  return status.when(
+    data: (s) => s.extraChildSlots,
+    loading: () => 0,
+    error: (_, __) => 0,
+  );
+});
+
+/// Darf der User gerade einen weiteren Kind-Slot kaufen?
+/// (Nur Family-Plan + aktives Abo)
+final canPurchaseExtraSlotProvider = Provider<bool>((ref) {
+  final status = ref.watch(subscriptionStatusProvider);
+  return status.when(
+    data: (s) => s.canPurchaseExtraChildSlot,
+    loading: () => false,
+    error: (_, __) => false,
   );
 });

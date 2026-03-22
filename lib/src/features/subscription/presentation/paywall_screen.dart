@@ -6,7 +6,7 @@ import 'package:purchases_flutter/models/offering_wrapper.dart';
 import 'package:purchases_flutter/models/package_wrapper.dart';
 
 /// Paywall-Screen — wird angezeigt wenn der User kein aktives Abo hat
-/// oder ein neues Abo abschließen möchte.
+/// oder ein bestehendes Abo ändern möchte.
 class PaywallScreen extends ConsumerStatefulWidget {
   /// Wenn true, zeigt einen "Schließen"-Button (z.B. aus den Einstellungen)
   final bool canDismiss;
@@ -18,7 +18,7 @@ class PaywallScreen extends ConsumerStatefulWidget {
 }
 
 class _PaywallScreenState extends ConsumerState<PaywallScreen> {
-  SubscriptionPlan _selectedPlan = SubscriptionPlan.duo; // Vorauswahl: Duo
+  SubscriptionPlan? _selectedPlan; // null bis Status geladen
   bool _isLoading = false;
 
   static const _purple = Color(0xFF6B21A8);
@@ -27,11 +27,24 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
   @override
   Widget build(BuildContext context) {
     final offeringsAsync = ref.watch(offeringsProvider);
+    final statusAsync = ref.watch(subscriptionStatusProvider);
+
+    // Aktiven Plan bestimmen
+    final activePlan = statusAsync.whenOrNull(
+      data: (s) => s.isActive ? s.plan : null,
+    );
+    final hasActivePlan =
+        activePlan != null && activePlan != SubscriptionPlan.none;
+
+    // Vorauswahl: aktiver Plan wenn vorhanden, sonst Duo
+    if (_selectedPlan == null) {
+      _selectedPlan = hasActivePlan ? activePlan! : SubscriptionPlan.duo;
+    }
 
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text('Abo wählen'),
+        title: Text(hasActivePlan ? 'Abo verwalten' : 'Abo wählen'),
         backgroundColor: Colors.deepPurple,
         foregroundColor: Colors.white,
         automaticallyImplyLeading: false,
@@ -54,45 +67,82 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
                 'Produkte konnten nicht geladen werden.\nBitte prüfe deine Internetverbindung.',
               );
             }
-            return _buildContent(offerings.current!);
+            return _buildContent(offerings.current!, activePlan);
           },
         ),
       ),
     );
   }
 
-  Widget _buildContent(Offering offering) {
+  Widget _buildContent(Offering offering, SubscriptionPlan? activePlan) {
     final bottomPadding = MediaQuery.of(context).padding.bottom;
+    final hasActivePlan =
+        activePlan != null && activePlan != SubscriptionPlan.none;
 
     return SingleChildScrollView(
       padding: EdgeInsets.fromLTRB(24, 0, 24, bottomPadding + 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // ── Header ────────────────────────────────────────────────────────
+          // ── Header ──────────────────────────────────────────────────────
           const SizedBox(height: 16),
-          const Text(
-            'Lerndex Premium',
+          Text(
+            hasActivePlan ? 'Dein Abo' : 'Lerndex Premium',
             textAlign: TextAlign.center,
-            style: TextStyle(
+            style: const TextStyle(
               fontSize: 28,
               fontWeight: FontWeight.bold,
               color: Colors.black87,
             ),
           ),
           const SizedBox(height: 8),
-          const Text(
-            '14 Tage kostenlos testen —\ndanach monatlich kündbar.',
+          Text(
+            hasActivePlan
+                ? 'Hier kannst du deinen Plan jederzeit wechseln.'
+                : '14 Tage kostenlos testen —\ndanach monatlich kündbar.',
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 15, color: Colors.black54),
+            style: const TextStyle(fontSize: 15, color: Colors.black54),
           ),
 
-          const SizedBox(height: 28),
+          // ── Aktives Abo Badge ────────────────────────────────────────────
+          if (hasActivePlan) ...[
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              decoration: BoxDecoration(
+                color: Colors.green.shade50,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.green.shade200),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.check_circle,
+                    color: Colors.green.shade600,
+                    size: 18,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Aktiver Plan: ${activePlan!.displayName}  •  ${activePlan.priceLabel}',
+                    style: TextStyle(
+                      color: Colors.green.shade700,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
 
-          // ── Plan-Karten ────────────────────────────────────────────────────
+          const SizedBox(height: 24),
+
+          // ── Plan-Karten ──────────────────────────────────────────────────
           _PlanCard(
             plan: SubscriptionPlan.solo,
             isSelected: _selectedPlan == SubscriptionPlan.solo,
+            isActive: activePlan == SubscriptionPlan.solo,
             offering: offering,
             onTap: () => setState(() => _selectedPlan = SubscriptionPlan.solo),
           ),
@@ -100,14 +150,18 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
           _PlanCard(
             plan: SubscriptionPlan.duo,
             isSelected: _selectedPlan == SubscriptionPlan.duo,
+            isActive: activePlan == SubscriptionPlan.duo,
             offering: offering,
-            badge: 'Beliebt',
+            badge: activePlan == null || activePlan == SubscriptionPlan.none
+                ? 'Beliebt'
+                : null,
             onTap: () => setState(() => _selectedPlan = SubscriptionPlan.duo),
           ),
           const SizedBox(height: 12),
           _PlanCard(
             plan: SubscriptionPlan.family,
             isSelected: _selectedPlan == SubscriptionPlan.family,
+            isActive: activePlan == SubscriptionPlan.family,
             offering: offering,
             onTap: () =>
                 setState(() => _selectedPlan = SubscriptionPlan.family),
@@ -122,8 +176,8 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
               color: _lightPurple,
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Column(
-              children: const [
+            child: const Column(
+              children: [
                 _FeatureRow(
                   icon: Icons.quiz_outlined,
                   text: 'Unbegrenzte Quiz-Fragen',
@@ -150,19 +204,20 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
 
           const SizedBox(height: 24),
 
-          // ── Kauf-Button ───────────────────────────────────────────────────
-          _buildPurchaseButton(offering),
+          // ── Kauf-Button ──────────────────────────────────────────────────
+          _buildPurchaseButton(offering, activePlan),
 
           const SizedBox(height: 12),
 
-          // ── Restore ──────────────────────────────────────────────────────
-          TextButton(
-            onPressed: _isLoading ? null : _restorePurchases,
-            child: const Text(
-              'Käufe wiederherstellen',
-              style: TextStyle(color: Colors.black45, fontSize: 13),
+          // ── Restore ─────────────────────────────────────────────────────
+          if (!hasActivePlan)
+            TextButton(
+              onPressed: _isLoading ? null : _restorePurchases,
+              child: const Text(
+                'Käufe wiederherstellen',
+                style: TextStyle(color: Colors.black45, fontSize: 13),
+              ),
             ),
-          ),
 
           const SizedBox(height: 8),
           const Text(
@@ -175,19 +230,34 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
     );
   }
 
-  Widget _buildPurchaseButton(Offering offering) {
-    final package = _findPackage(offering, _selectedPlan);
+  Widget _buildPurchaseButton(Offering offering, SubscriptionPlan? activePlan) {
+    final package = _findPackage(offering, _selectedPlan!);
+    final isCurrentPlan = _selectedPlan == activePlan;
+    final hasActivePlan =
+        activePlan != null && activePlan != SubscriptionPlan.none;
+
+    String buttonLabel;
+    if (_isLoading) {
+      buttonLabel = '';
+    } else if (isCurrentPlan) {
+      buttonLabel = '✓ Aktueller Plan';
+    } else if (hasActivePlan) {
+      buttonLabel =
+          'Zu ${_selectedPlan!.displayName} wechseln – ${_selectedPlan!.priceLabel}';
+    } else {
+      buttonLabel = '14 Tage kostenlos starten – ${_selectedPlan!.priceLabel}';
+    }
 
     return ElevatedButton(
-      onPressed: (_isLoading || package == null)
+      onPressed: (_isLoading || package == null || isCurrentPlan)
           ? null
-          : () => _purchase(package),
+          : () => _purchase(package, hasActivePlan),
       style: ElevatedButton.styleFrom(
-        backgroundColor: _purple,
-        foregroundColor: Colors.white,
+        backgroundColor: isCurrentPlan ? Colors.grey.shade300 : _purple,
+        foregroundColor: isCurrentPlan ? Colors.grey.shade600 : Colors.white,
         padding: const EdgeInsets.symmetric(vertical: 16),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        elevation: 2,
+        elevation: isCurrentPlan ? 0 : 2,
       ),
       child: _isLoading
           ? const SizedBox(
@@ -199,7 +269,8 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
               ),
             )
           : Text(
-              '14 Tage kostenlos starten – ${_selectedPlan.priceLabel}',
+              buttonLabel,
+              textAlign: TextAlign.center,
               style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
             ),
     );
@@ -241,15 +312,18 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
     }
   }
 
-  Future<void> _purchase(Package package) async {
+  Future<void> _purchase(Package package, bool isUpgrade) async {
     setState(() => _isLoading = true);
     try {
       await ref.read(subscriptionStatusProvider.notifier).purchase(package);
       if (mounted) {
+        final msg = isUpgrade
+            ? '✅ Plan erfolgreich gewechselt!'
+            : '🎉 Willkommen bei Lerndex Premium!';
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('🎉 Willkommen bei Lerndex Premium!'),
-            backgroundColor: Color(0xFF6B21A8),
+          SnackBar(
+            content: Text(msg),
+            backgroundColor: const Color(0xFF6B21A8),
           ),
         );
         Navigator.of(context).pop(true);
@@ -299,6 +373,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
 class _PlanCard extends StatelessWidget {
   final SubscriptionPlan plan;
   final bool isSelected;
+  final bool isActive;
   final Offering offering;
   final String? badge;
   final VoidCallback onTap;
@@ -306,6 +381,7 @@ class _PlanCard extends StatelessWidget {
   const _PlanCard({
     required this.plan,
     required this.isSelected,
+    required this.isActive,
     required this.offering,
     required this.onTap,
     this.badge,
@@ -315,9 +391,20 @@ class _PlanCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Eigene Preise aus dem Model anzeigen — Store-Preise sind erst nach
-    // Play Console Veröffentlichung zuverlässig, daher hardcoded.
     final priceString = plan.priceLabel;
+
+    // Aktiver Plan bekommt grünen Rand, ausgewählter lila
+    final borderColor = isActive
+        ? Colors.green.shade400
+        : isSelected
+        ? _purple
+        : Colors.grey.shade300;
+    final borderWidth = (isActive || isSelected) ? 2.0 : 1.0;
+    final bgColor = isActive
+        ? Colors.green.shade50
+        : isSelected
+        ? const Color(0xFFF3E8FF)
+        : Colors.white;
 
     return GestureDetector(
       onTap: onTap,
@@ -325,14 +412,18 @@ class _PlanCard extends StatelessWidget {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFFF3E8FF) : Colors.white,
+          color: bgColor,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: isSelected ? _purple : Colors.grey.shade300,
-            width: isSelected ? 2 : 1,
-          ),
+          border: Border.all(color: borderColor, width: borderWidth),
           boxShadow: isSelected
               ? [BoxShadow(color: _purple.withOpacity(0.15), blurRadius: 8)]
+              : isActive
+              ? [
+                  BoxShadow(
+                    color: Colors.green.withOpacity(0.15),
+                    blurRadius: 8,
+                  ),
+                ]
               : [],
         ),
         child: Row(
@@ -344,11 +435,17 @@ class _PlanCard extends StatelessWidget {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 border: Border.all(
-                  color: isSelected ? _purple : Colors.grey.shade400,
+                  color: isActive
+                      ? Colors.green.shade400
+                      : isSelected
+                      ? _purple
+                      : Colors.grey.shade400,
                   width: 2,
                 ),
               ),
-              child: isSelected
+              child: isActive
+                  ? Icon(Icons.circle, size: 12, color: Colors.green.shade500)
+                  : isSelected
                   ? const Icon(Icons.circle, size: 12, color: _purple)
                   : null,
             ),
@@ -366,10 +463,30 @@ class _PlanCard extends StatelessWidget {
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 16,
-                          color: isSelected ? _purple : Colors.black87,
+                          color: isActive
+                              ? Colors.green.shade700
+                              : isSelected
+                              ? _purple
+                              : Colors.black87,
                         ),
                       ),
-                      if (badge != null) ...[
+                      if (isActive) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.green.shade500,
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: const Text(
+                            'Aktiv',
+                            style: TextStyle(color: Colors.white, fontSize: 11),
+                          ),
+                        ),
+                      ] else if (badge != null) ...[
                         const SizedBox(width: 8),
                         Container(
                           padding: const EdgeInsets.symmetric(
@@ -406,7 +523,11 @@ class _PlanCard extends StatelessWidget {
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 15,
-                color: isSelected ? _purple : Colors.black87,
+                color: isActive
+                    ? Colors.green.shade700
+                    : isSelected
+                    ? _purple
+                    : Colors.black87,
               ),
             ),
           ],

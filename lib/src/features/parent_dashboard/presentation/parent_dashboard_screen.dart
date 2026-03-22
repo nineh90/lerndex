@@ -11,6 +11,7 @@ import '../../../tutorial_provider.dart';
 import '../../../tutorial_overlay.dart';
 // NEU: Subscription
 import '../../subscription/data/subscription_service.dart';
+import '../../subscription/data/subscription_provider.dart';
 import '../../subscription/presentation/paywall_screen.dart';
 
 /// Haupt-Dashboard für Eltern mit Statistiken & Verwaltung
@@ -362,19 +363,28 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
                     if (dialogContext.mounted) {
                       Navigator.pop(dialogContext); // Loading-Dialog
                     }
-                    // Kind-Limit erreicht → Paywall öffnen
+                    // Kind-Limit erreicht
                     if (e is ChildLimitReachedException) {
                       if (dialogContext.mounted) {
                         Navigator.pop(dialogContext); // Kind-Dialog schließen
                       }
                       if (screenContext.mounted) {
-                        await Navigator.push(
-                          screenContext,
-                          MaterialPageRoute(
-                            builder: (_) =>
-                                const PaywallScreen(canDismiss: true),
-                          ),
+                        final canBuyExtra = ref.read(
+                          canPurchaseExtraSlotProvider,
                         );
+                        if (canBuyExtra) {
+                          // Family-Plan → Extra-Slot-Kauf anbieten
+                          await _showExtraChildSlotDialog(screenContext);
+                        } else {
+                          // Anderer Plan → Paywall
+                          await Navigator.push(
+                            screenContext,
+                            MaterialPageRoute(
+                              builder: (_) =>
+                                  const PaywallScreen(canDismiss: true),
+                            ),
+                          );
+                        }
                       }
                     } else {
                       if (screenContext.mounted) {
@@ -396,6 +406,137 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
         ),
       ),
     );
+  }
+
+  // ── Extra Kind-Slot kaufen (nur Family-Plan) ─────────────────────────────
+  Future<void> _showExtraChildSlotDialog(BuildContext screenContext) async {
+    final confirmed = await showDialog<bool>(
+      context: screenContext,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: const [
+            Icon(Icons.child_care, color: Color(0xFF6B21A8)),
+            SizedBox(width: 10),
+            Flexible(
+              child: Text(
+                'Weiteres Kind hinzufügen',
+                style: TextStyle(fontSize: 17),
+              ),
+            ),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF3E8FF),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: const [
+                    Icon(
+                      Icons.info_outline,
+                      color: Color(0xFF6B21A8),
+                      size: 20,
+                    ),
+                    SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'Du hast das Limit deines Family-Plans erreicht. '
+                        'Für 6,99 € kaufst du dauerhaft einen weiteren Kind-Slot dazu.',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Color(0xFF4C1D95),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                '✅ Einmaliger Kauf – kein Abo',
+                style: TextStyle(fontSize: 13, color: Colors.black87),
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                '✅ Slot bleibt dauerhaft erhalten',
+                style: TextStyle(fontSize: 13, color: Colors.black87),
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                '✅ Beliebig oft wiederholbar',
+                style: TextStyle(fontSize: 13, color: Colors.black87),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Abbrechen'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF6B21A8),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            child: const Text('6,99 € – Slot kaufen'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !screenContext.mounted) return;
+
+    // Lade-Indikator zeigen
+    showDialog(
+      context: screenContext,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      await ref
+          .read(subscriptionStatusProvider.notifier)
+          .purchaseExtraChildSlot();
+
+      if (screenContext.mounted) {
+        Navigator.pop(screenContext); // Loading schließen
+        ScaffoldMessenger.of(screenContext).showSnackBar(
+          const SnackBar(
+            content: Text(
+              '🎉 Slot freigeschaltet! Du kannst jetzt ein weiteres Kind anlegen.',
+            ),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 4),
+          ),
+        );
+      }
+    } catch (e) {
+      if (screenContext.mounted) {
+        Navigator.pop(screenContext); // Loading schließen
+        if (!e.toString().contains('abgebrochen')) {
+          ScaffoldMessenger.of(screenContext).showSnackBar(
+            SnackBar(
+              content: Text('❌ $e'),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 5),
+            ),
+          );
+        }
+      }
+    }
   }
 
   // ── Abmelden bestätigen ──────────────────────────────────────────────────

@@ -45,11 +45,13 @@ class TutorResponse {
 //   3. Quiz-Fragen generieren       → generateQuizQuestions()
 // ============================================================================
 class VertexAIService {
-  GenerativeModel? _tutorModel;
+  // Tutor-Modell-Cache: ein GenerativeModel pro childId (inkl. systemInstruction).
+  // Wird nur neu erstellt wenn sich das Kind ändert – nicht bei jeder Nachricht.
+  final Map<String, GenerativeModel> _tutorModels = {};
+
   GenerativeModel? _taskGeneratorModel;
   GenerativeModel? _quizModel;
 
-  bool _tutorInitialized = false;
   bool _taskInitialized = false;
   bool _quizInitialized = false;
 
@@ -61,17 +63,25 @@ class VertexAIService {
   // --------------------------------------------------------------------------
 
   /// Kompatibilitäts-Methode – wird von tutor_provider.dart aufgerufen.
-  /// Die eigentliche Initialisierung erfolgt lazy beim ersten Aufruf.
+  /// Tutor-Modelle werden lazy pro Kind beim ersten Aufruf erstellt.
   Future<void> initialize() async {
-    await _ensureTutorInitialized();
     await _ensureTaskInitialized();
     await _ensureQuizInitialized();
   }
 
-  Future<void> _ensureTutorInitialized() async {
-    if (_tutorInitialized) return;
-    debugPrint('🚀 Vertex AI Tutor-Modell wird initialisiert...');
-    _tutorModel = FirebaseAI.vertexAI().generativeModel(
+  /// Gibt das gecachte Tutor-Modell für das Kind zurück.
+  /// Erstellt es beim ersten Aufruf (oder nach Profil-Änderung) neu.
+  GenerativeModel _getTutorModel(ChildModel child) {
+    final cacheKey =
+        '${child.id}_${child.level}_${child.grade}_${child.schoolType}';
+    if (_tutorModels.containsKey(cacheKey)) {
+      return _tutorModels[cacheKey]!;
+    }
+
+    debugPrint(
+      '🚀 Tutor-Modell für ${child.name} (${child.id}) wird erstellt...',
+    );
+    final model = FirebaseAI.vertexAI().generativeModel(
       model: 'gemini-2.0-flash',
       generationConfig: GenerationConfig(
         temperature: 0.7,
@@ -79,6 +89,7 @@ class VertexAIService {
         topP: 0.9,
         topK: 40,
       ),
+      systemInstruction: Content.system(_buildTutorSystemPrompt(child)),
       safetySettings: [
         SafetySetting(
           HarmCategory.harassment,
@@ -102,8 +113,11 @@ class VertexAIService {
         ),
       ],
     );
-    _tutorInitialized = true;
-    debugPrint('✅ Tutor-Modell initialisiert');
+    // Altes Modell für dieses Kind ggf. aus Cache entfernen
+    _tutorModels.removeWhere((k, _) => k.startsWith('${child.id}_'));
+    _tutorModels[cacheKey] = model;
+    debugPrint('✅ Tutor-Modell für ${child.name} gecacht (Key: $cacheKey)');
+    return model;
   }
 
   Future<void> _ensureTaskInitialized() async {
@@ -146,13 +160,11 @@ class VertexAIService {
     required String userMessage,
     required List<ChatMessage> conversationHistory,
   }) async {
-    await _ensureTutorInitialized();
-
     // Sicherheitschecks
     if (!_isAppropriateQuestion(userMessage)) {
       return const TutorResponse(
         text:
-            'Diese Frage kann ich leider nicht beantworten. Ich bin Lerndex und helfe dir nur beim Lernen! 📚 Hast du eine Frage zu Mathe, Deutsch, Englisch oder anderen Schulfächern? 🎓',
+            'Diese Frage kann ich leider nicht beantworten. Ich bin Lexi und helfe dir nur beim Lernen! 📚 Hast du eine Frage zu Mathe, Deutsch, Englisch oder anderen Schulfächern? 🎓',
         subject: 'kein_schulfach',
       );
     }
@@ -160,7 +172,7 @@ class VertexAIService {
     if (_isNonSchoolQuestion(userMessage)) {
       return TutorResponse(
         text:
-            'Das ist eine interessante Frage, ${child.name}! Aber ich bin Lerndex, dein Lernbegleiter, und helfe dir nur bei Schulfächern. 📚 Hast du vielleicht eine Frage zu Mathe, Deutsch, Englisch oder einem anderen Schulfach? 🎓',
+            'Das ist eine interessante Frage, ${child.name}! Aber ich bin Lexi, dein Lernbegleiter, und helfe dir nur bei Schulfächern. 📚 Hast du vielleicht eine Frage zu Mathe, Deutsch, Englisch oder einem anderen Schulfach? 🎓',
         subject: 'kein_schulfach',
       );
     }
@@ -174,42 +186,8 @@ class VertexAIService {
     }
 
     try {
-      final systemPrompt = _buildTutorSystemPrompt(child);
-
-      // Modell pro Anfrage mit systemInstruction erstellen –
-      // das ist der einzige Weg systemInstruction in firebase_ai zu übergeben.
-      final model = FirebaseAI.vertexAI().generativeModel(
-        model: 'gemini-2.0-flash',
-        generationConfig: GenerationConfig(
-          temperature: 0.7,
-          maxOutputTokens: 2048,
-          topP: 0.9,
-          topK: 40,
-        ),
-        systemInstruction: Content.system(systemPrompt),
-        safetySettings: [
-          SafetySetting(
-            HarmCategory.harassment,
-            HarmBlockThreshold.high,
-            HarmBlockMethod.severity,
-          ),
-          SafetySetting(
-            HarmCategory.hateSpeech,
-            HarmBlockThreshold.high,
-            HarmBlockMethod.severity,
-          ),
-          SafetySetting(
-            HarmCategory.sexuallyExplicit,
-            HarmBlockThreshold.medium,
-            HarmBlockMethod.severity,
-          ),
-          SafetySetting(
-            HarmCategory.dangerousContent,
-            HarmBlockThreshold.high,
-            HarmBlockMethod.severity,
-          ),
-        ],
-      );
+      // Gecachtes Modell für dieses Kind holen (wird nur einmal pro Child erstellt)
+      final model = _getTutorModel(child);
 
       final history = <Content>[];
 
@@ -387,12 +365,14 @@ class VertexAIService {
 
   String _buildTutorSystemPrompt(ChildModel child) {
     return '''
-Du bist Lerndex, der persönliche Lernbegleiter für ${child.name}.
+Du bist Lexi, der persönliche KI-Lernbegleiter der Lerndex-App für ${child.name}.
 
 🎯 DEINE IDENTITÄT:
-- Name: Lerndex
+- Dein Name ist **Lexi** – nicht "Lerndex", nicht "KI", nicht "Assistent"
+- Du gehörst zur **Lerndex-App** – das ist die App, in der ${child.name} lernt
 - Rolle: Geduldiger, freundlicher KI-Lernbegleiter
 - Ziel: ${child.name} beim Lernen unterstützen und motivieren
+- Wenn jemand fragt wer du bist oder wie du heißt: Antworte IMMER mit "Ich bin Lexi, dein Lernbegleiter in der Lerndex-App!" oder ähnlich.
 
 📚 SCHÜLER-INFORMATIONEN:
 - Name: ${child.name}
@@ -452,8 +432,6 @@ Füge als ALLERLETZTE Zeile exakt diese zwei Tags an (werden automatisch entfern
     required String correctAnswer,
     required ChildModel child,
   }) async {
-    await _ensureTutorInitialized();
-
     final systemPrompt =
         '''
 Du bist ein freundlicher Schullehrer, der einem Kind eine falsch beantwortete Quiz-Frage erklärt.
