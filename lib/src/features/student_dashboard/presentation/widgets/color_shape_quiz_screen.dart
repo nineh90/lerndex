@@ -99,7 +99,11 @@ class _ColorShapeQuizScreenState extends ConsumerState<ColorShapeQuizScreen>
     _childId = child?.id;
 
     if (child != null && user != null) {
-      _timeTracker = LearningTimeTracker(userId: user.uid, childId: child.id);
+      _timeTracker = LearningTimeTracker(
+        userId: user.uid,
+        childId: child.id,
+        subject: 'Farben & Formen',
+      );
       _timeTracker!.startTracking();
     }
 

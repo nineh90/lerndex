@@ -8,6 +8,24 @@ import 'tutor_history_screen.dart';
 import 'widgets/widgets_info_tile.dart';
 import 'widgets/widgets_stat_card.dart';
 
+// ─── Lerndex Brand-Theme für Eltern-Screens ──────────────────────────────────
+// Brand-Lila aus main.dart (ColorScheme.fromSeed seed). Wird hier konsistent
+// statt der lockeren `Colors.deepPurple`-Variante verwendet.
+//
+// Komplette Lila-Palette für Variation innerhalb des Brands:
+//   _kBrand        — Haupt-Lila (AppBar, Buttons, Streak)
+//   _kBrandLight   — Helleres Lila (Akzent, zweite Spalte in Tile-Pairs)
+//   _kBrandDeep    — Dunkles Lila (Headers, kritische Werte)
+//   _kBrandSoft    — Pastell-Lila (Lernzeit-Block, dezent)
+//   _kBrandAccent  — Pink-Lila (Sterne/Belohnungen statt gelb-amber)
+//   _kBrandTint    — 10% Lila-Hintergrund für getintete Container
+const Color _kBrand = Color(0xFF6B21A8);
+const Color _kBrandLight = Color(0xFF9333EA);
+const Color _kBrandDeep = Color(0xFF4C1D95);
+const Color _kBrandSoft = Color(0xFFA855F7);
+const Color _kBrandAccent = Color(0xFFC026D3);
+final Color _kBrandTint = const Color(0xFF6B21A8).withOpacity(0.10);
+
 /// Detail-Statistiken für ein Kind
 class ChildStatisticsScreen extends ConsumerWidget {
   final ChildModel child;
@@ -16,44 +34,54 @@ class ChildStatisticsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final bottomInset = MediaQuery.of(context).padding.bottom;
     return Scaffold(
+      backgroundColor: const Color(0xFFF7F4FB), // sanftes Lila-Beige
       appBar: AppBar(
         title: Text('${child.name} - Statistiken'),
-        backgroundColor: Colors.deepPurple,
+        backgroundColor: _kBrand,
         foregroundColor: Colors.white,
+        elevation: 0,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Übersicht-Kacheln
-            _buildOverviewSection(),
-            const SizedBox(height: 24),
+      body: SafeArea(
+        top: false,
+        child: SingleChildScrollView(
+          padding: EdgeInsets.fromLTRB(16, 16, 16, 32 + bottomInset),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Übersicht-Kacheln
+              _buildOverviewSection(),
+              const SizedBox(height: 24),
 
-            // XP & Level Fortschritt
-            _buildLevelProgressSection(),
-            const SizedBox(height: 24),
+              // XP & Level Fortschritt
+              _buildLevelProgressSection(),
+              const SizedBox(height: 24),
 
-            // Lernzeit
-            _buildLearningTimeSection(),
-            const SizedBox(height: 24),
+              // Lernzeit
+              _buildLearningTimeSection(),
+              const SizedBox(height: 24),
 
-            // Quiz-Statistiken
-            _buildQuizStatsSection(),
-            const SizedBox(height: 24),
+              // Fächer-Übersicht (welches Fach wie oft trainiert)
+              _buildSubjectsBreakdownSection(),
+              const SizedBox(height: 24),
 
-            // Streak & Aktivität
-            _buildActivitySection(),
-            const SizedBox(height: 24),
+              // Quiz-Statistiken
+              _buildQuizStatsSection(),
+              const SizedBox(height: 24),
 
-            // Belohnungen
-            _buildRewardsSection(ref),
-            const SizedBox(height: 24),
+              // Streak & Aktivität
+              _buildActivitySection(),
+              const SizedBox(height: 24),
 
-            // Tutor-Gespräche
-            _buildTutorSection(context),
-          ],
+              // Belohnungen
+              _buildRewardsSection(ref),
+              const SizedBox(height: 24),
+
+              // Tutor-Gespräche
+              _buildTutorSection(context),
+            ],
+          ),
         ),
       ),
     );
@@ -70,7 +98,7 @@ class ChildStatisticsScreen extends ConsumerWidget {
           children: [
             const Row(
               children: [
-                Icon(Icons.chat, color: Colors.deepPurple, size: 24),
+                Icon(Icons.chat, color: _kBrand, size: 24),
                 SizedBox(width: 8),
                 Text(
                   'Tutor-Gespräche',
@@ -98,7 +126,7 @@ class ChildStatisticsScreen extends ConsumerWidget {
                 icon: const Icon(Icons.history),
                 label: const Text('Alle Gespräche anzeigen'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.deepPurple,
+                  backgroundColor: _kBrand,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.all(16),
                   shape: RoundedRectangleBorder(
@@ -129,7 +157,7 @@ class ChildStatisticsScreen extends ConsumerWidget {
                 icon: Icons.emoji_events,
                 label: 'Level',
                 value: '${child.level}',
-                color: Colors.orange,
+                color: _kBrand,
                 subtitle: 'Erreicht',
               ),
             ),
@@ -139,7 +167,7 @@ class ChildStatisticsScreen extends ConsumerWidget {
                 icon: Icons.auto_graph,
                 label: 'Gesamt XP',
                 value: '${child.xp}',
-                color: Colors.blue,
+                color: _kBrandLight,
                 subtitle: 'Gesammelt',
               ),
             ),
@@ -153,7 +181,7 @@ class ChildStatisticsScreen extends ConsumerWidget {
                 icon: Icons.stars,
                 label: 'Sterne',
                 value: '${child.stars}',
-                color: Colors.amber,
+                color: _kBrandAccent,
                 subtitle: 'Verdient',
               ),
             ),
@@ -163,7 +191,7 @@ class ChildStatisticsScreen extends ConsumerWidget {
                 icon: Icons.timer,
                 label: 'Lernzeit',
                 value: child.formattedLearningTime,
-                color: Colors.green,
+                color: _kBrandSoft,
                 subtitle: 'Gesamt',
               ),
             ),
@@ -195,7 +223,7 @@ class ChildStatisticsScreen extends ConsumerWidget {
           children: [
             const Row(
               children: [
-                Icon(Icons.trending_up, color: Colors.deepPurple, size: 24),
+                Icon(Icons.trending_up, color: _kBrand, size: 24),
                 SizedBox(width: 8),
                 Text(
                   'Level-Fortschritt',
@@ -222,7 +250,7 @@ class ChildStatisticsScreen extends ConsumerWidget {
                         strokeWidth: 12,
                         backgroundColor: Colors.grey[200],
                         valueColor: const AlwaysStoppedAnimation<Color>(
-                          Colors.deepPurple,
+                          _kBrand,
                         ),
                       ),
                     ),
@@ -257,7 +285,7 @@ class ChildStatisticsScreen extends ConsumerWidget {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.deepPurple.withOpacity(0.1),
+                color: _kBrandTint,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Column(
@@ -292,7 +320,7 @@ class ChildStatisticsScreen extends ConsumerWidget {
                         '${xpForNextLevel - currentLevelXP} XP',
                         style: const TextStyle(
                           fontWeight: FontWeight.bold,
-                          color: Colors.orange,
+                          color: _kBrand,
                         ),
                       ),
                     ],
@@ -307,141 +335,11 @@ class ChildStatisticsScreen extends ConsumerWidget {
   }
 
   Widget _buildLearningTimeSection() {
-    final hours = child.totalLearningSeconds ~/ 3600;
-    final minutes = (child.totalLearningSeconds % 3600) ~/ 60;
-    final seconds = child.totalLearningSeconds % 60;
+    return _LearningTimeStatsCard(child: child);
+  }
 
-    // Berechne Durchschnitt pro Tag (wenn lastLearningDate vorhanden)
-    String avgPerDay = '-';
-    if (child.lastLearningDate != null) {
-      final daysSinceStart =
-          DateTime.now().difference(child.lastLearningDate!).inDays + 1;
-      if (daysSinceStart > 0) {
-        final avgSeconds = child.totalLearningSeconds ~/ daysSinceStart;
-        final avgMinutes = avgSeconds ~/ 60;
-        avgPerDay = '${avgMinutes}min';
-      }
-    }
-
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Row(
-              children: [
-                Icon(Icons.schedule, color: Colors.green, size: 24),
-                SizedBox(width: 8),
-                Text(
-                  'Lernzeit',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-
-            // Große Anzeige
-            Center(
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 20,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.green.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: Colors.green.withOpacity(0.3),
-                    width: 2,
-                  ),
-                ),
-                child: Column(
-                  children: [
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        if (hours > 0) ...[
-                          Text(
-                            '$hours',
-                            style: const TextStyle(
-                              fontSize: 48,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.green,
-                            ),
-                          ),
-                          const Padding(
-                            padding: EdgeInsets.only(
-                              bottom: 8,
-                              left: 4,
-                              right: 12,
-                            ),
-                            child: Text(
-                              'h',
-                              style: TextStyle(
-                                fontSize: 20,
-                                color: Colors.green,
-                              ),
-                            ),
-                          ),
-                        ],
-                        Text(
-                          '$minutes',
-                          style: const TextStyle(
-                            fontSize: 48,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.green,
-                          ),
-                        ),
-                        const Padding(
-                          padding: EdgeInsets.only(bottom: 8, left: 4),
-                          child: Text(
-                            'min',
-                            style: TextStyle(fontSize: 20, color: Colors.green),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Gesamte Lernzeit',
-                      style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 20),
-
-            // Details
-            Row(
-              children: [
-                Expanded(
-                  child: InfoTile(
-                    icon: Icons.today,
-                    label: 'Ø pro Tag',
-                    value: avgPerDay,
-                    color: Colors.green,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: InfoTile(
-                    icon: Icons.timer_outlined,
-                    label: 'Gesamt',
-                    value: '${child.totalLearningSeconds}s',
-                    color: Colors.green,
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
+  Widget _buildSubjectsBreakdownSection() {
+    return _SubjectsBreakdownCard(child: child);
   }
 
   Widget _buildQuizStatsSection() {
@@ -461,7 +359,7 @@ class ChildStatisticsScreen extends ConsumerWidget {
           children: [
             const Row(
               children: [
-                Icon(Icons.quiz, color: Colors.blue, size: 24),
+                Icon(Icons.quiz, color: _kBrandLight, size: 24),
                 SizedBox(width: 8),
                 Text(
                   'Quiz-Statistiken',
@@ -478,7 +376,7 @@ class ChildStatisticsScreen extends ConsumerWidget {
                     icon: Icons.assignment_turned_in,
                     label: 'Absolviert',
                     value: '$totalQuizzes',
-                    color: Colors.blue,
+                    color: _kBrandLight,
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -487,7 +385,7 @@ class ChildStatisticsScreen extends ConsumerWidget {
                     icon: Icons.stars,
                     label: 'Perfekt',
                     value: '$perfectQuizzes',
-                    color: Colors.amber,
+                    color: _kBrandAccent,
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -496,7 +394,7 @@ class ChildStatisticsScreen extends ConsumerWidget {
                     icon: Icons.percent,
                     label: 'Erfolgsrate',
                     value: '$successRate%',
-                    color: Colors.green,
+                    color: _kBrand,
                   ),
                 ),
               ],
@@ -508,7 +406,7 @@ class ChildStatisticsScreen extends ConsumerWidget {
                 value: perfectQuizzes / totalQuizzes,
                 minHeight: 10,
                 backgroundColor: Colors.grey[200],
-                valueColor: const AlwaysStoppedAnimation<Color>(Colors.amber),
+                valueColor: const AlwaysStoppedAnimation<Color>(_kBrandAccent),
               ),
               const SizedBox(height: 8),
               Text(
@@ -561,11 +459,7 @@ class ChildStatisticsScreen extends ConsumerWidget {
           children: [
             const Row(
               children: [
-                Icon(
-                  Icons.local_fire_department,
-                  color: Colors.orange,
-                  size: 24,
-                ),
+                Icon(Icons.timeline, color: _kBrand, size: 24),
                 SizedBox(width: 8),
                 Text(
                   'Aktivität & Streak',
@@ -573,46 +467,74 @@ class ChildStatisticsScreen extends ConsumerWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
 
-            // Streak-Anzeige
-            Center(
-              child: Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      Colors.orange.shade300,
-                      Colors.deepOrange.shade400,
+            // Kompakte Streak-Anzeige: kleines Flammen-Icon, große Zahl,
+            // Label rechts daneben — kein riesiger Hero-Block mehr.
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              decoration: BoxDecoration(
+                color: _kBrandTint,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: _kBrand.withOpacity(0.25), width: 1),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: const BoxDecoration(
+                      color: _kBrand,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.local_fire_department,
+                      color: Colors.white,
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.baseline,
+                        textBaseline: TextBaseline.alphabetic,
+                        children: [
+                          Text(
+                            '$streak',
+                            style: const TextStyle(
+                              fontSize: 32,
+                              fontWeight: FontWeight.bold,
+                              color: _kBrand,
+                              height: 1,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            streak == 1 ? 'Tag' : 'Tage',
+                            style: const TextStyle(
+                              fontSize: 16,
+                              color: _kBrand,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        streak > 0
+                            ? 'Aktuelle Lern-Streak'
+                            : 'Noch keine Streak',
+                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                      ),
                     ],
                   ),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Column(
-                  children: [
-                    const Icon(
-                      Icons.local_fire_department,
-                      size: 48,
-                      color: Colors.white,
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      '$streak',
-                      style: const TextStyle(
-                        fontSize: 48,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                    const Text(
-                      'Tage Streak',
-                      style: TextStyle(fontSize: 16, color: Colors.white),
-                    ),
-                  ],
-                ),
+                ],
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
 
             // Letzte Aktivitäten
             Row(
@@ -622,7 +544,7 @@ class ChildStatisticsScreen extends ConsumerWidget {
                     icon: Icons.event,
                     label: 'Letztes Lernen',
                     value: lastLearningText,
-                    color: Colors.purple,
+                    color: _kBrand,
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -631,7 +553,7 @@ class ChildStatisticsScreen extends ConsumerWidget {
                     icon: Icons.quiz,
                     label: 'Letztes Quiz',
                     value: lastQuizText,
-                    color: Colors.blue,
+                    color: _kBrandLight,
                   ),
                 ),
               ],
@@ -658,7 +580,7 @@ class ChildStatisticsScreen extends ConsumerWidget {
           children: [
             const Row(
               children: [
-                Icon(Icons.card_giftcard, color: Colors.amber, size: 24),
+                Icon(Icons.card_giftcard, color: _kBrandAccent, size: 24),
                 SizedBox(width: 8),
                 Text(
                   'Belohnungen',
@@ -741,7 +663,7 @@ class ChildStatisticsScreen extends ConsumerWidget {
                     }
 
                     return ListTile(
-                      leading: const Icon(Icons.redeem, color: Colors.amber),
+                      leading: const Icon(Icons.redeem, color: _kBrandAccent),
                       title: Text(data['title'] ?? 'Belohnung'),
                       subtitle: Text(data['reward'] ?? ''),
                       trailing: Text(
@@ -757,5 +679,392 @@ class ChildStatisticsScreen extends ConsumerWidget {
         ),
       ),
     );
+  }
+}
+
+// ============================================================================
+// LERNZEIT-CARD MIT KORREKTEM DURCHSCHNITT
+// ============================================================================
+//
+// Bug-Fix: Der vorherige Durchschnitt-pro-Tag teilte `totalLearningSeconds`
+// durch `now - lastLearningDate` — was nur den Zeitraum seit dem LETZTEN
+// Lerntag misst. Wenn das Kind heute gelernt hat → Divisor = 1 → "Durch-
+// schnitt" = Gesamtlernzeit (Tester-Befund).
+//
+// Korrekte Berechnung: Anzahl Dokumente in `learning_stats` zählen — das
+// sind die unique Tage an denen tatsächlich gelernt wurde. So bekommt man
+// einen realistischen Durchschnitt der echten Lerntage. Alternative wäre
+// (firstLearningDate → now), aber das verfälscht den Wert nach unten wenn
+// das Kind Pausen einlegt.
+
+class _LearningTimeStatsCard extends StatelessWidget {
+  final ChildModel child;
+  const _LearningTimeStatsCard({required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    final hours = child.totalLearningSeconds ~/ 3600;
+    final minutes = (child.totalLearningSeconds % 3600) ~/ 60;
+
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Row(
+              children: [
+                Icon(Icons.schedule, color: _kBrandSoft, size: 24),
+                SizedBox(width: 8),
+                Text(
+                  'Lernzeit',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            Center(
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 20,
+                ),
+                decoration: BoxDecoration(
+                  color: _kBrandSoft.withOpacity(0.10),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: _kBrandSoft.withOpacity(0.30),
+                    width: 2,
+                  ),
+                ),
+                child: Column(
+                  children: [
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        if (hours > 0) ...[
+                          Text(
+                            '$hours',
+                            style: const TextStyle(
+                              fontSize: 48,
+                              fontWeight: FontWeight.bold,
+                              color: _kBrandDeep,
+                            ),
+                          ),
+                          const Padding(
+                            padding: EdgeInsets.only(
+                              bottom: 8,
+                              left: 4,
+                              right: 12,
+                            ),
+                            child: Text(
+                              'h',
+                              style: TextStyle(
+                                fontSize: 20,
+                                color: _kBrandDeep,
+                              ),
+                            ),
+                          ),
+                        ],
+                        Text(
+                          '$minutes',
+                          style: const TextStyle(
+                            fontSize: 48,
+                            fontWeight: FontWeight.bold,
+                            color: _kBrandDeep,
+                          ),
+                        ),
+                        const Padding(
+                          padding: EdgeInsets.only(bottom: 8, left: 4),
+                          child: Text(
+                            'min',
+                            style: TextStyle(fontSize: 20, color: _kBrandDeep),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Gesamte Lernzeit',
+                      style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            // Durchschnitt: lädt async aus learning_stats
+            _AverageRow(child: child),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AverageRow extends ConsumerWidget {
+  final ChildModel child;
+  const _AverageRow({required this.child});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final user = ref.watch(authStateChangesProvider).value;
+    if (user == null) return const SizedBox.shrink();
+
+    return FutureBuilder<int>(
+      future: _countLearningDays(user.uid, child.id),
+      builder: (context, snapshot) {
+        final learningDays = snapshot.data ?? 0;
+        final avgSeconds = learningDays > 0
+            ? child.totalLearningSeconds ~/ learningDays
+            : 0;
+        final avgMinutes = avgSeconds ~/ 60;
+        final avgLabel = learningDays > 0 ? '${avgMinutes}min' : '-';
+
+        return Row(
+          children: [
+            Expanded(
+              child: InfoTile(
+                icon: Icons.today,
+                label: 'Ø pro Lerntag',
+                value: avgLabel,
+                color: _kBrandSoft,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: InfoTile(
+                icon: Icons.calendar_today,
+                label: 'Lerntage',
+                value: snapshot.connectionState == ConnectionState.waiting
+                    ? '…'
+                    : '$learningDays',
+                color: _kBrandSoft,
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  /// Zählt unique Lerntage = Anzahl Dokumente in learning_stats-Subcollection.
+  Future<int> _countLearningDays(String userId, String childId) async {
+    try {
+      final snap = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .collection('children')
+          .doc(childId)
+          .collection('learning_stats')
+          .count()
+          .get();
+      return snap.count ?? 0;
+    } catch (e) {
+      return 0;
+    }
+  }
+}
+
+// ============================================================================
+// FÄCHER-ÜBERSICHT (Tester-Wunsch #4)
+// ============================================================================
+//
+// Zeigt eine horizontale Balken-Übersicht: welches Fach wurde wie oft (in
+// Minuten) trainiert. Datenquelle: `learning_stats/{date}.subjects.{name}`
+// — pro Tag und Fach inkrementiert. Wir aggregieren über alle Tage.
+
+class _SubjectsBreakdownCard extends ConsumerWidget {
+  final ChildModel child;
+  const _SubjectsBreakdownCard({required this.child});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final user = ref.watch(authStateChangesProvider).value;
+    if (user == null) return const SizedBox.shrink();
+
+    return FutureBuilder<Map<String, int>>(
+      future: _aggregateSubjectSeconds(user.uid, child.id),
+      builder: (context, snapshot) {
+        final data = snapshot.data ?? <String, int>{};
+        final totalSeconds = data.values.fold<int>(0, (a, b) => a + b);
+
+        return Card(
+          elevation: 2,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Row(
+                  children: [
+                    Icon(Icons.pie_chart_outline, color: _kBrand, size: 24),
+                    SizedBox(width: 8),
+                    Text(
+                      'Fächer-Übersicht',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Lernzeit pro Fach',
+                  style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                ),
+                const SizedBox(height: 16),
+                if (snapshot.connectionState == ConnectionState.waiting)
+                  const Center(child: CircularProgressIndicator())
+                else if (data.isEmpty || totalSeconds == 0)
+                  _buildEmptyState()
+                else
+                  _buildBars(data, totalSeconds),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      child: Row(
+        children: [
+          Icon(Icons.info_outline, color: Colors.grey[400], size: 20),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'Noch keine Lerndaten pro Fach. Wird gefüllt, '
+              'sobald ${child.name} ein Quiz absolviert hat.',
+              style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBars(Map<String, int> data, int totalSeconds) {
+    // Nach Sekunden absteigend sortieren
+    final entries = data.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+
+    return Column(
+      children: entries.map((e) {
+        final pct = totalSeconds > 0 ? e.value / totalSeconds : 0.0;
+        final minutes = e.value ~/ 60;
+        final timeLabel = minutes >= 60
+            ? '${minutes ~/ 60}h ${minutes % 60}min'
+            : '${minutes}min';
+
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      e.key,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    timeLabel,
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.grey[700],
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    '(${(pct * 100).round()}%)',
+                    style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: LinearProgressIndicator(
+                  value: pct,
+                  minHeight: 8,
+                  backgroundColor: Colors.grey[200],
+                  valueColor: AlwaysStoppedAnimation<Color>(_colorFor(e.key)),
+                ),
+              ),
+            ],
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  /// Aggregiert pro-Fach-Sekunden über alle learning_stats-Dokumente.
+  /// Komplexität: O(n) mit n = Anzahl Lerntage.
+  Future<Map<String, int>> _aggregateSubjectSeconds(
+    String userId,
+    String childId,
+  ) async {
+    try {
+      final snap = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .collection('children')
+          .doc(childId)
+          .collection('learning_stats')
+          .get();
+
+      final agg = <String, int>{};
+      for (final doc in snap.docs) {
+        final data = doc.data();
+        final subjects = data['subjects'];
+        if (subjects is Map) {
+          for (final entry in subjects.entries) {
+            final name = entry.key.toString();
+            final sec = (entry.value is num) ? (entry.value as num).toInt() : 0;
+            agg[name] = (agg[name] ?? 0) + sec;
+          }
+        }
+      }
+      return agg;
+    } catch (e) {
+      return {};
+    }
+  }
+
+  /// Konsistente Farbe pro Fach (anstatt Random).
+  Color _colorFor(String subject) {
+    const map = {
+      'Mathe': Color(0xFF7E57C2),
+      'Zahlen': Color(0xFF7E57C2),
+      'Deutsch': Color(0xFFEC407A),
+      'Buchstaben': Color(0xFFEC407A),
+      'Englisch': Color(0xFF1E88E5),
+      'Sachkunde': Color(0xFF43A047),
+      'Biologie': Color(0xFF26A69A),
+      'Chemie': Color(0xFFAB47BC),
+      'Physik': Color(0xFF5C6BC0),
+      'Geschichte': Color(0xFF8D6E63),
+      'Farben & Formen': Color(0xFFFF7043),
+      'KI-Tutor': Color(0xFF00897B),
+    };
+    return map[subject] ?? Colors.indigo;
   }
 }

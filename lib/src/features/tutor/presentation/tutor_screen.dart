@@ -58,7 +58,11 @@ class _TutorScreenState extends ConsumerState<TutorScreen> {
         _tutorNotifier = ref.read(providerInstance.notifier);
       }
 
-      _timeTracker = LearningTimeTracker(userId: user.uid, childId: child.id);
+      _timeTracker = LearningTimeTracker(
+        userId: user.uid,
+        childId: child.id,
+        subject: 'KI-Tutor',
+      );
       _timeTracker!.startTracking();
       debugPrint('⏱️ Tutor: Zeit-Tracking gestartet');
     }

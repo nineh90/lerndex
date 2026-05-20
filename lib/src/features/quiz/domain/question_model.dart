@@ -1,5 +1,7 @@
 export 'quiz_data.dart';
 
+import 'safe_emojis.dart';
+
 /// Repräsentiert eine Quiz-Frage.
 ///
 /// Diese Klasse ist die EINZIGE Question-Klasse im gesamten Projekt.
@@ -17,6 +19,11 @@ class Question {
   final String difficulty;
   final String topic;
 
+  /// Optionales Emoji-Bild zur Veranschaulichung der Frage.
+  /// MUSS aus [SafeEmojis.whitelist] kommen — sonst null.
+  /// Wird im UI groß über der Frage gerendert (Grundschul-Verständlichkeit).
+  final String? emoji;
+
   /// Wenn gesetzt: Diese Frage stammt von einem Eltern-gepflegten Task.
   /// Format: "batchId/questionId"
   /// Wird beim korrekten Beantworten in Firestore markiert.
@@ -33,6 +40,7 @@ class Question {
     required this.answer,
     required this.difficulty,
     this.topic = '',
+    this.emoji,
     this.parentTaskRef,
     this.generatedTaskId,
   });
@@ -40,16 +48,46 @@ class Question {
   // ── Factories ──────────────────────────────────────────────────────────────
 
   factory Question.fromJson(Map<String, dynamic> json) {
+    // Emoji-Sanitization: nur akzeptieren, wenn in Whitelist.
+    final rawEmoji = json['emoji'] as String?;
+    final safeEmoji = SafeEmojis.sanitize(rawEmoji);
+
+    // Frage-Text sanitisieren: Platzhalter wie "(Bild eines Apfels)"
+    // werden entfernt, da wir stattdessen das emoji-Feld nutzen.
+    final rawQuestion = json['question'] as String;
+    final cleanedQuestion = _stripImagePlaceholders(rawQuestion);
+
     return Question(
       grade: json['grade'] as int? ?? 1,
-      question: json['question'] as String,
+      question: cleanedQuestion,
       options: List<String>.from(json['options']),
       answer: json['answer'] as String,
       difficulty: json['difficulty'] as String? ?? 'medium',
       topic: json['topic'] as String? ?? '',
+      emoji: safeEmoji,
       parentTaskRef: json['parentTaskRef'] as String?,
       generatedTaskId: json['generatedTaskId'] as String?,
     );
+  }
+
+  /// Entfernt Klammer-Platzhalter wie "(Bild eines Apfels)" oder
+  /// "[Bild: Hund]" aus dem Fragetext. Diese kamen früher von der KI
+  /// wenn das Modell ein Bild "wollte" aber keines liefern konnte.
+  /// Jetzt nutzen wir das emoji-Feld dafür.
+  static String _stripImagePlaceholders(String text) {
+    final patterns = [
+      RegExp(r'\(\s*Bild[^)]*\)', caseSensitive: false),
+      RegExp(r'\[\s*Bild[^\]]*\]', caseSensitive: false),
+      RegExp(r'\(\s*siehe Bild[^)]*\)', caseSensitive: false),
+      RegExp(r'\(\s*Image[^)]*\)', caseSensitive: false),
+      RegExp(r'\[\s*Image[^\]]*\]', caseSensitive: false),
+    ];
+    var cleaned = text;
+    for (final p in patterns) {
+      cleaned = cleaned.replaceAll(p, '');
+    }
+    // Doppelte Leerzeichen + Whitespace bereinigen
+    return cleaned.replaceAll(RegExp(r'\s{2,}'), ' ').trim();
   }
 
   // ── Methoden ───────────────────────────────────────────────────────────────
@@ -59,6 +97,9 @@ class Question {
   /// True wenn diese Frage von Eltern gepflegt wurde
   bool get isParentTask => parentTaskRef != null;
 
+  /// True wenn ein Emoji-Bild verfügbar ist
+  bool get hasEmoji => emoji != null && emoji!.isNotEmpty;
+
   Map<String, dynamic> toJson() {
     return {
       'grade': grade,
@@ -67,6 +108,7 @@ class Question {
       'answer': answer,
       'difficulty': difficulty,
       'topic': topic,
+      if (emoji != null) 'emoji': emoji,
       if (parentTaskRef != null) 'parentTaskRef': parentTaskRef,
       if (generatedTaskId != null) 'generatedTaskId': generatedTaskId,
     };
@@ -79,6 +121,7 @@ class Question {
     String? answer,
     String? difficulty,
     String? topic,
+    String? emoji,
     String? parentTaskRef,
     String? generatedTaskId,
   }) {
@@ -89,6 +132,7 @@ class Question {
       answer: answer ?? this.answer,
       difficulty: difficulty ?? this.difficulty,
       topic: topic ?? this.topic,
+      emoji: emoji ?? this.emoji,
       parentTaskRef: parentTaskRef ?? this.parentTaskRef,
       generatedTaskId: generatedTaskId ?? this.generatedTaskId,
     );

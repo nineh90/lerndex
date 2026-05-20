@@ -95,7 +95,11 @@ class _LetterQuizScreenState extends ConsumerState<LetterQuizScreen>
     _childId = child?.id;
 
     if (child != null && user != null) {
-      _timeTracker = LearningTimeTracker(userId: user.uid, childId: child.id);
+      _timeTracker = LearningTimeTracker(
+        userId: user.uid,
+        childId: child.id,
+        subject: 'Buchstaben',
+      );
       _timeTracker!.startTracking();
     }
 

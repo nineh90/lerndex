@@ -13,9 +13,15 @@ class RewardService {
 
   RewardService(this._firestore);
 
-  /// Lazy XPService – vermeidet wiederholte Instanziierung
+  /// Lazy XPService – vermeidet wiederholte Instanziierung.
+  /// ⚠️ FIX: Vorher stand hier `_xpService ??= _xp` was zu einer endlosen
+  /// Rekursion (StackOverflowError) führte, sobald `addXP` oder `getChild`
+  /// aufgerufen wurde. Das hatte zur Folge, dass `checkAndApproveRewards`
+  /// stillschweigend gefangen wurde und Eltern-Belohnungen mit Trigger
+  /// (Level/XP/Streak) nie auf 'approved' gesetzt wurden — wodurch sie für
+  /// das Kind unsichtbar blieben.
   XPService? _xpService;
-  XPService get _xp => _xpService ??= _xp;
+  XPService get _xp => _xpService ??= XPService(_firestore);
 
   /// Erstellt eine System-Belohnung (automatisch approved)
   Future<RewardModel> createSystemReward({

@@ -190,7 +190,11 @@ class QuizEngine extends StateNotifier<QuizState> {
 
     state = const QuizState(phase: QuizPhase.loading);
 
-    _timeTracker = LearningTimeTracker(userId: userId, childId: child.id);
+    _timeTracker = LearningTimeTracker(
+      userId: userId,
+      childId: child.id,
+      subject: subject,
+    );
     _timeTracker!.startTracking();
 
     try {

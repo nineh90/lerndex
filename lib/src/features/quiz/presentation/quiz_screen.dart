@@ -494,14 +494,28 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
           ),
         ],
       ),
-      child: Text(
-        question.question,
-        style: const TextStyle(
-          fontSize: 24,
-          fontWeight: FontWeight.bold,
-          height: 1.4,
-        ),
-        textAlign: TextAlign.center,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (question.hasEmoji) ...[
+            Text(
+              question.emoji!,
+              style: const TextStyle(fontSize: 64, height: 1.1),
+              textAlign: TextAlign.center,
+              semanticsLabel: 'Bild zur Frage',
+            ),
+            const SizedBox(height: 16),
+          ],
+          Text(
+            question.question,
+            style: const TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              height: 1.4,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
       ),
     );
   }

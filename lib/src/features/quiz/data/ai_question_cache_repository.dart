@@ -28,6 +28,15 @@ class AiQuestionCacheRepository {
   static const int _quickBatchSize = 2;
   static const int _maxPlayedToKeep = 100;
 
+  /// Schema-Version für Cache-Einträge. Wird beim Schreiben in jedes Dokument
+  /// abgelegt. Wenn beim Lesen eine ältere Version gefunden wird, wird der
+  /// Cache invalidiert.
+  ///
+  /// Versionen:
+  /// - 1 (default für alle Pre-Update-Einträge): Kein emoji-Feld
+  /// - 2: Mit emoji-Feld (Whitelist von SafeEmojis)
+  static const int _cacheSchemaVersion = 2;
+
   /// In-Memory-Guard: verhindert Race Conditions beim parallelen Prefetch.
   /// Key: "$childId|$subject"
   final Set<String> _inflightSubjects = {};
@@ -122,6 +131,7 @@ class AiQuestionCacheRepository {
   }) async {
     // Level-Check NUR in getQuestions – prefillIfEmpty vertraut dem aktuellen Level
     await _checkAndInvalidateOnLevelChange(userId, childId, child, subject);
+    await _checkAndInvalidateOnSchemaChange(userId, childId, subject);
 
     final unplayed = await _loadUnplayed(userId, childId, subject);
 
@@ -257,6 +267,32 @@ class AiQuestionCacheRepository {
     }
   }
 
+  /// Invalidiert den Cache wenn dort noch Pre-Emoji-Einträge (Schema v1)
+  /// liegen. Greift einmalig nach App-Update auf v2 — danach steht in der
+  /// Meta-Doc `schemaVersion: 2` und der Check ist no-op.
+  Future<void> _checkAndInvalidateOnSchemaChange(
+    String userId,
+    String childId,
+    String subject,
+  ) async {
+    try {
+      final metaDoc = await _cacheMetaRef(userId, childId, subject).get();
+      if (!metaDoc.exists) return;
+
+      final cachedSchema =
+          metaDoc.data()?['schemaVersion'] as int? ?? 1; // null = v1 (alt)
+      if (cachedSchema < _cacheSchemaVersion) {
+        debugPrint(
+          '🔄 Cache-Schema veraltet (v$cachedSchema → v$_cacheSchemaVersion) '
+          '– Cache für $subject invalidiert (Emoji-Migration)',
+        );
+        await clearCache(userId: userId, childId: childId, subject: subject);
+      }
+    } catch (e) {
+      debugPrint('⚠️ Schema-Check Fehler: $e');
+    }
+  }
+
   Future<void> _updateCacheMeta(
     String userId,
     String childId,
@@ -267,6 +303,7 @@ class AiQuestionCacheRepository {
       await _cacheMetaRef(userId, childId, subject).set({
         'generatedForLevel': level,
         'lastRefill': FieldValue.serverTimestamp(),
+        'schemaVersion': _cacheSchemaVersion,
       }, SetOptions(merge: true));
     } catch (_) {}
   }
@@ -298,6 +335,7 @@ class AiQuestionCacheRepository {
             answer: data['answer'] as String? ?? '',
             difficulty: data['difficulty'] as String? ?? 'medium',
             topic: data['topic'] as String? ?? '',
+            emoji: data['emoji'] as String?,
           ),
         );
       }).toList();
@@ -334,6 +372,7 @@ class AiQuestionCacheRepository {
             answer: data['answer'] as String? ?? '',
             difficulty: data['difficulty'] as String? ?? 'medium',
             topic: data['topic'] as String? ?? '',
+            emoji: data['emoji'] as String?,
           ),
         );
       }).toList();
@@ -475,9 +514,13 @@ class AiQuestionCacheRepository {
         'answer': q.answer,
         'difficulty': q.difficulty,
         'topic': q.topic,
+        if (q.emoji != null) 'emoji': q.emoji,
         'played': false,
         'createdAt': FieldValue.serverTimestamp(),
         'generatedForLevel': child.level,
+        // Schema-Version. Wird in _checkAndInvalidateOnSchemaChange genutzt
+        // um alte Cache-Einträge (vor Emoji-Support) automatisch zu löschen.
+        'schemaVersion': _cacheSchemaVersion,
       });
     }
 

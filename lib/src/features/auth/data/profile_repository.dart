@@ -249,19 +249,25 @@ class ProfileRepository {
     required int age,
     required String schoolType,
     required int grade,
+    List<String>? hiddenSubjects,
   }) async {
+    final updates = <String, dynamic>{
+      'name': name,
+      'age': age,
+      'schoolType': schoolType,
+      'grade': grade,
+      'updatedAt': FieldValue.serverTimestamp(),
+    };
+    if (hiddenSubjects != null) {
+      updates['hiddenSubjects'] = hiddenSubjects;
+    }
+
     await _firestore
         .collection('users')
         .doc(_uid)
         .collection('children')
         .doc(childId)
-        .update({
-          'name': name,
-          'age': age,
-          'schoolType': schoolType,
-          'grade': grade,
-          'updatedAt': FieldValue.serverTimestamp(),
-        });
+        .update(updates);
   }
 
   /// Deaktiviert ein Kind (pausiert es) — Daten bleiben erhalten.

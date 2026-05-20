@@ -11,6 +11,7 @@ import '../features/tutor/domain/chat_message.dart';
 import '../features/generated_tasks/data/generated_task_models.dart';
 import '../features/generated_tasks/domain/generated_task_result.dart';
 import '../features/quiz/domain/question_model.dart';
+import '../features/quiz/domain/safe_emojis.dart';
 import '../features/quiz/data/curriculum_data.dart';
 
 // ============================================================================
@@ -412,7 +413,7 @@ Du bist Lexi, der persönliche KI-Lernbegleiter der Lerndex-App für ${child.nam
 
 PFLICHT BEI JEDER ANTWORT:
 Füge als ALLERLETZTE Zeile exakt diese zwei Tags an (werden automatisch entfernt, für den Nutzer unsichtbar):
-- Schulfach: [FACH:Mathematik] / [FACH:Deutsch] / [FACH:Englisch]${child.grade <= 4 || child.schoolType == 'Grundschule' ? ' / [FACH:Sachkunde]' : ''}${child.grade >= 5 ? ' / [FACH:Biologie] / [FACH:Chemie] / [FACH:Physik] / [FACH:Geschichte]' : ''}
+- Schulfach: [FACH:Mathematik] / [FACH:Deutsch] / [FACH:Englisch]${child.grade <= 4 ? ' / [FACH:Sachkunde]' : ''}${child.grade >= 5 ? ' / [FACH:Biologie] / [FACH:Chemie] / [FACH:Physik] / [FACH:Geschichte]' : ''}
 - Kein Schulfach / unklar / Smalltalk / Ablehnung: [FACH:kein_schulfach]
 - Nur wenn der Schüler eine Aufgabe FALSCH beantwortet hat: [KORREKT:nein]
 - Nur wenn der Schüler eine Aufgabe RICHTIG beantwortet hat: [KORREKT:ja]
@@ -797,10 +798,24 @@ Du generierst AUSSCHLIESSLICH Fragen zum Fach $subjectDisplay.
 - Jede Frage MUSS eindeutig dem Fach $subjectDisplay zuzuordnen sein
 - Das Feld "topic" MUSS ein Unterthema von $subjectDisplay enthalten (z.B. "Bruchrechnung", "Groß- und Kleinschreibung", "Simple Past")
 
+🖼️ EMOJI-BILDER (WICHTIG FÜR GRUNDSCHULE):
+Wenn eine Frage von einem Bild profitiert (z.B. zählen, vergleichen, Farben),
+SETZE das Feld "emoji" mit EINEM ODER MEHREREN dieser exakten Emojis:
+$_emojiWhitelistForPrompt
+
+REGELN für emoji:
+- NUR Emojis aus obiger Liste verwenden. Andere Emojis werden verworfen.
+- Bei Zähl-Aufgaben: Emoji wiederholen ("🍎🍎🍎" für 3 Äpfel) — max. 5 Stück.
+- Wenn das Bild die Frage trägt (z.B. "Wie viele 🍎?"), darf der Fragetext
+  KEINEN Platzhalter wie "(Bild)" enthalten — das Emoji-Feld ERSETZT das Bild.
+- Wenn kein Emoji zur Frage passt: Feld weglassen oder null.
+- NIEMALS Platzhalter wie "(Bild eines Hundes)" in den Fragetext schreiben.
+
 Antworte NUR mit einem JSON-Array, kein Text oder Markdown davor/danach:
 [
   {
-    "question": "Fragetext",
+    "question": "Fragetext (KEIN Bild-Platzhalter in Klammern!)",
+    "emoji": "🍎🍎🍎",
     "options": ["A", "B", "C", "D"],
     "answer": "Richtige Option exakt wie oben",
     "difficulty": "easy|medium|hard",
@@ -808,6 +823,18 @@ Antworte NUR mit einem JSON-Array, kein Text oder Markdown davor/danach:
   }
 ]
 ''';
+  }
+
+  /// Liefert die Emoji-Whitelist als Prompt-Block (gechunked, damit es nicht
+  /// als eine endlose Zeile rüberkommt).
+  static String get _emojiWhitelistForPrompt {
+    final all = SafeEmojis.whitelist.toList();
+    final buf = StringBuffer();
+    for (var i = 0; i < all.length; i += 12) {
+      final end = (i + 12 > all.length) ? all.length : i + 12;
+      buf.writeln('  ${all.sublist(i, end).join(' ')}');
+    }
+    return buf.toString();
   }
 
   // --------------------------------------------------------------------------
@@ -1217,14 +1244,25 @@ Antworte NUR mit einem JSON-Array, kein Text oder Markdown davor/danach:
   }
 
   Question? _parseQuizQuestionFromMap(Map<String, dynamic> item, int grade) {
-    final question = item['question'] as String? ?? '';
+    final rawQuestion = item['question'] as String? ?? '';
     final options = (item['options'] as List?)?.cast<String>() ?? [];
     final answer = item['answer'] as String? ?? '';
     final difficulty = item['difficulty'] as String? ?? 'medium';
     final topic = item['topic'] as String? ?? '';
+    final rawEmoji = item['emoji'] as String?;
 
-    if (question.isEmpty || options.length != 4 || answer.isEmpty) return null;
+    if (rawQuestion.isEmpty || options.length != 4 || answer.isEmpty) {
+      return null;
+    }
     if (!options.contains(answer)) return null;
+
+    // Fragetext: Platzhalter wie "(Bild eines Apfels)" entfernen, da wir
+    // stattdessen das emoji-Feld nutzen.
+    final question = _stripImagePlaceholders(rawQuestion);
+    if (question.isEmpty) return null;
+
+    // Emoji: nur durchlassen wenn in Whitelist.
+    final safeEmoji = SafeEmojis.sanitize(rawEmoji);
 
     return Question(
       grade: grade,
@@ -1233,7 +1271,25 @@ Antworte NUR mit einem JSON-Array, kein Text oder Markdown davor/danach:
       answer: answer,
       difficulty: difficulty,
       topic: topic,
+      emoji: safeEmoji,
     );
+  }
+
+  /// Entfernt Bild-Platzhalter aus Fragetext.
+  /// Beispiele: "(Bild eines Apfels)", "[Bild: Hund]", "(siehe Bild)"
+  String _stripImagePlaceholders(String text) {
+    final patterns = [
+      RegExp(r'\(\s*Bild[^)]*\)', caseSensitive: false),
+      RegExp(r'\[\s*Bild[^\]]*\]', caseSensitive: false),
+      RegExp(r'\(\s*siehe Bild[^)]*\)', caseSensitive: false),
+      RegExp(r'\(\s*Image[^)]*\)', caseSensitive: false),
+      RegExp(r'\[\s*Image[^\]]*\]', caseSensitive: false),
+    ];
+    var cleaned = text;
+    for (final p in patterns) {
+      cleaned = cleaned.replaceAll(p, '');
+    }
+    return cleaned.replaceAll(RegExp(r'\s{2,}'), ' ').trim();
   }
 
   // --------------------------------------------------------------------------
@@ -1399,7 +1455,9 @@ Antworte NUR mit einem JSON-Array, kein Text oder Markdown davor/danach:
     if (subject.toLowerCase() != 'mathe') return '';
 
     String example;
-    if (schoolType == 'Grundschule') {
+    // Klasse 5+ ist nie Grundschule, selbst wenn schoolType es behauptet.
+    final isGrundschule = schoolType == 'Grundschule' && grade <= 4;
+    if (isGrundschule) {
       example =
           '{"question":"Anna hat 24 Äpfel. Sie gibt 9 davon ab. Wie viele hat sie noch?","options":["13","15","16","14"],"answer":"15","difficulty":"easy","topic":"Subtraktion"}';
     } else if (schoolType == 'Hauptschule' ||
@@ -1442,8 +1500,12 @@ Antworte NUR mit einem JSON-Array, kein Text oder Markdown davor/danach:
 
   /// Gibt eine kommaseparierte Liste der tatsächlich verfügbaren Fächer zurück.
   /// Spiegelt exakt die Fächer aus subject_config.dart – nie mehr, nie weniger.
+  /// Klasse ist der primäre Indikator; schoolType wird ignoriert (siehe
+  /// subject_config.dart, ehemaliger Klasse-5-mit-schoolType-Grundschule-Bug).
   static String _subjectsForGrade(int grade, String schoolType) {
-    if (schoolType == 'Grundschule' || grade <= 4) {
+    if (grade <= 2) {
+      return 'Zahlen, Buchstaben';
+    } else if (grade <= 4) {
       return 'Mathe, Deutsch, Englisch, Sachkunde';
     } else if (grade <= 10) {
       return 'Mathe, Deutsch, Englisch, Biologie, Chemie, Physik, Geschichte';

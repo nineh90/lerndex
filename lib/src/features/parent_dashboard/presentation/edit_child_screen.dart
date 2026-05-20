@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../auth/domain/child_model.dart';
 import '../../auth/data/profile_repository.dart';
+import '../../student_dashboard/presentation/subject_config.dart';
 
 /// Screen zum Bearbeiten eines Kindes
 class EditChildScreen extends ConsumerStatefulWidget {
@@ -19,6 +20,7 @@ class _EditChildScreenState extends ConsumerState<EditChildScreen> {
   late int _selectedAge;
   late int _selectedGrade;
   late String _selectedSchoolType;
+  late Set<String> _hiddenSubjects;
   bool _isSaving = false;
 
   static const List<String> _schoolTypes = [
@@ -37,6 +39,7 @@ class _EditChildScreenState extends ConsumerState<EditChildScreen> {
     _selectedAge = widget.child.age.clamp(6, 16);
     _selectedGrade = widget.child.grade.clamp(1, 8);
     _selectedSchoolType = widget.child.schoolType;
+    _hiddenSubjects = widget.child.hiddenSubjects.toSet();
   }
 
   @override
@@ -58,6 +61,7 @@ class _EditChildScreenState extends ConsumerState<EditChildScreen> {
             age: _selectedAge,
             schoolType: _selectedSchoolType,
             grade: _selectedGrade,
+            hiddenSubjects: _hiddenSubjects.toList(),
           );
 
       if (mounted) {
@@ -234,6 +238,22 @@ class _EditChildScreenState extends ConsumerState<EditChildScreen> {
                   if (value != null) setState(() => _selectedGrade = value);
                 },
               ),
+              const SizedBox(height: 32),
+
+              // ── Fächer ein-/ausblenden ────────────────────────────────────
+              const _SectionHeader(
+                icon: Icons.tune,
+                title: 'Sichtbare Fächer',
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Schalte einzelne Fächer für ${widget.child.name} aus, '
+                'um den Fokus auf bestimmte Bereiche zu lenken. '
+                'Ausgeblendete Fächer erscheinen nicht im Dashboard.',
+                style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+              ),
+              const SizedBox(height: 12),
+              _buildSubjectsToggle(),
               const SizedBox(height: 40),
 
               SizedBox(
@@ -302,6 +322,71 @@ class _EditChildScreenState extends ConsumerState<EditChildScreen> {
       ),
       filled: true,
       fillColor: Colors.grey.shade50,
+    );
+  }
+
+  /// Liefert alle Fächer für die aktuell gewählte Klasse/Schulform
+  /// (Live-Werte aus dem State, nicht aus widget.child) und rendert pro
+  /// Fach einen Toggle.
+  Widget _buildSubjectsToggle() {
+    // Temporäres Kind mit aktuellen Edit-Werten — so reagieren die Fächer
+    // sofort wenn die Eltern Klasse/Schulform ändern.
+    final temp = widget.child.copyWith(
+      grade: _selectedGrade,
+      schoolType: _selectedSchoolType,
+      hiddenSubjects: const [],
+    );
+    final allSubjects = getAllSubjectsForChild(temp);
+
+    if (allSubjects.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.all(12),
+        child: Text(
+          'Keine Fächer für diese Klasse/Schulform.',
+          style: TextStyle(color: Colors.grey[600], fontSize: 13),
+        ),
+      );
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade300),
+      ),
+      child: Column(
+        children: allSubjects.map((s) {
+          final visible = !_hiddenSubjects.contains(s.subject);
+          return SwitchListTile(
+            value: visible,
+            onChanged: (newValue) {
+              setState(() {
+                if (newValue) {
+                  _hiddenSubjects.remove(s.subject);
+                } else {
+                  _hiddenSubjects.add(s.subject);
+                }
+              });
+            },
+            activeThumbColor: Colors.deepPurple,
+            secondary: Text(
+              s.emoji,
+              style: const TextStyle(fontSize: 24),
+            ),
+            title: Text(
+              s.title,
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
+            subtitle: Text(
+              visible ? 'Sichtbar' : 'Ausgeblendet',
+              style: TextStyle(
+                fontSize: 12,
+                color: visible ? Colors.green[700] : Colors.grey[600],
+              ),
+            ),
+          );
+        }).toList(),
+      ),
     );
   }
 }

@@ -203,6 +203,15 @@ class _EditRewardDialogState extends ConsumerState<EditRewardDialog> {
                   ),
                   items: RewardTrigger.values
                       .where((t) => t != RewardTrigger.avatarUnlock)
+                      // Manual ausgeblendet, siehe create_reward_dialog.
+                      // Existierende manual-Rewards können trotzdem
+                      // editiert werden, wenn _selectedTrigger == manual ist,
+                      // wird der Wert beim Speichern unverändert übernommen.
+                      .where(
+                        (t) =>
+                            t != RewardTrigger.manual ||
+                            _selectedTrigger == RewardTrigger.manual,
+                      )
                       .map((trigger) {
                         return DropdownMenuItem(
                           value: trigger,

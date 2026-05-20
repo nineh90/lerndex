@@ -28,7 +28,23 @@ class SubjectConfig {
 
 /// Gibt die passenden Fächer für ein Kind zurück.
 /// Basiert auf schoolType und grade aus ChildModel.
+///
+/// Filtert automatisch Fächer heraus, die unter `child.hiddenSubjects`
+/// von den Eltern ausgeblendet wurden (Tester-Wunsch #5).
 List<SubjectConfig> getSubjectsForChild(ChildModel child) {
+  final all = _allSubjectsForChild(child);
+  if (child.hiddenSubjects.isEmpty) return all;
+  return all
+      .where((s) => !child.hiddenSubjects.contains(s.subject))
+      .toList(growable: false);
+}
+
+/// Alle für die Klasse verfügbaren Fächer — UNGEFILTERT.
+/// Nützlich für das Eltern-Edit-Screen (Toggle-Liste).
+List<SubjectConfig> getAllSubjectsForChild(ChildModel child) =>
+    _allSubjectsForChild(child);
+
+List<SubjectConfig> _allSubjectsForChild(ChildModel child) {
   final grade = child.grade;
   final schoolType = child.schoolType;
 
@@ -56,7 +72,10 @@ List<SubjectConfig> getSubjectsForChild(ChildModel child) {
   }
 
   // ── Klasse 3–4 (Grundschule) ──────────────────────────────────────────────
-  if (schoolType == 'Grundschule' || grade <= 4) {
+  // WICHTIG: Klasse ist der primäre Indikator. Ein Klasse-5-Kind ist NIE
+  // Grundschule, auch wenn schoolType versehentlich auf "Grundschule" steht
+  // (war früher Default im Add-Child-Dialog).
+  if (grade <= 4) {
     return const [
       SubjectConfig(
         title: 'Mathe',
@@ -88,6 +107,11 @@ List<SubjectConfig> getSubjectsForChild(ChildModel child) {
       ),
     ];
   }
+
+  // schoolType wird ab Klasse 5 nur noch informativ verwendet (Prompt-Kontext),
+  // entscheidet aber nicht über das Fächerset.
+  // ignore: unused_local_variable
+  final _ = schoolType;
 
   // ── Mittelstufe (Klasse 5–10) ─────────────────────────────────────────────
   if (grade <= 10) {

@@ -21,6 +21,7 @@ class ChildModel {
   final DateTime? lastLearningDate; // Letztes Lerndatum
   final DateTime? lastQuizDate; // Letztes Quiz-Datum
   final DateTime? lastXPGain; // Letzter XP-Gewinn
+  final DateTime? firstLearningDate; // Erstes Lerndatum (für Durchschnittsberechnung)
 
   // Avatar
   final String? selectedAvatar; // z.B. 'avatar-common', 'avatar-rare', etc.
@@ -29,6 +30,10 @@ class ChildModel {
 
   // NEU: Aktiv-Status (false = pausiert durch Plan-Downgrade)
   final bool isActive;
+
+  // NEU: Eltern können einzelne Fächer für dieses Kind ausblenden
+  // (z.B. "Mathe" trainieren, "Englisch" zunächst nicht zeigen)
+  final List<String> hiddenSubjects;
 
   const ChildModel({
     required this.id,
@@ -47,9 +52,11 @@ class ChildModel {
     this.lastLearningDate,
     this.lastQuizDate,
     this.lastXPGain,
+    this.firstLearningDate,
     this.selectedAvatar,
     this.unlockedAvatars = const [],
     this.isActive = true, // Standard: aktiv
+    this.hiddenSubjects = const [],
   });
 
   /// Berechnet den XP-Fortschritt als Prozentwert (0.0 - 1.0)
@@ -88,9 +95,11 @@ class ChildModel {
       lastLearningDate: (data['lastLearningDate'] as Timestamp?)?.toDate(),
       lastQuizDate: (data['lastQuizDate'] as Timestamp?)?.toDate(),
       lastXPGain: (data['lastXPGain'] as Timestamp?)?.toDate(),
+      firstLearningDate: (data['firstLearningDate'] as Timestamp?)?.toDate(),
       selectedAvatar: data['selectedAvatar'],
       unlockedAvatars: List<String>.from(data['unlockedAvatars'] ?? []),
       isActive: data['isActive'] != false, // null oder true → aktiv
+      hiddenSubjects: List<String>.from(data['hiddenSubjects'] ?? []),
     );
   }
 
@@ -121,8 +130,12 @@ class ChildModel {
       if (lastQuizDate != null)
         'lastQuizDate': Timestamp.fromDate(lastQuizDate!),
       if (lastXPGain != null) 'lastXPGain': Timestamp.fromDate(lastXPGain!),
+      if (firstLearningDate != null)
+        'firstLearningDate': Timestamp.fromDate(firstLearningDate!),
       if (selectedAvatar != null) 'selectedAvatar': selectedAvatar,
       if (unlockedAvatars.isNotEmpty) 'unlockedAvatars': unlockedAvatars,
+      'isActive': isActive,
+      if (hiddenSubjects.isNotEmpty) 'hiddenSubjects': hiddenSubjects,
     };
   }
 
@@ -145,8 +158,11 @@ class ChildModel {
     DateTime? lastLearningDate,
     DateTime? lastQuizDate,
     DateTime? lastXPGain,
+    DateTime? firstLearningDate,
     String? selectedAvatar,
     List<String>? unlockedAvatars,
+    bool? isActive,
+    List<String>? hiddenSubjects,
   }) {
     return ChildModel(
       id: id ?? this.id,
@@ -166,8 +182,11 @@ class ChildModel {
       lastLearningDate: lastLearningDate ?? this.lastLearningDate,
       lastQuizDate: lastQuizDate ?? this.lastQuizDate,
       lastXPGain: lastXPGain ?? this.lastXPGain,
+      firstLearningDate: firstLearningDate ?? this.firstLearningDate,
       selectedAvatar: selectedAvatar ?? this.selectedAvatar,
       unlockedAvatars: unlockedAvatars ?? this.unlockedAvatars,
+      isActive: isActive ?? this.isActive,
+      hiddenSubjects: hiddenSubjects ?? this.hiddenSubjects,
     );
   }
 }

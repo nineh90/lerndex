@@ -10,11 +10,23 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 /// ❌ Dashboard-Browsing
 /// ❌ Einstellungen
 ///
-/// NEU: Schreibt alle 30s einen Heartbeat → Eltern sehen LIVE-Status
+/// Schreibt alle 30s einen Heartbeat → Eltern sehen LIVE-Status.
+///
+/// NEU: Optionaler `subject`-Parameter — bei `saveTime()` wird die Sekunden-
+/// Summe zusätzlich pro Fach in `learning_stats/{date}.subjects.{subject}`
+/// abgelegt. Die Eltern-Statistik liest das aus für die Fächer-Übersicht.
+///
+/// NEU: `firstLearningDate` wird beim allerersten saveTime() gesetzt, damit
+/// die Durchschnittsberechnung pro Tag stimmt.
 
 class LearningTimeTracker {
   final String userId;
   final String childId;
+
+  /// Optionales Fach (z.B. "Mathe", "Deutsch", "Zahlen", "Buchstaben",
+  /// "Farben & Formen", "Tutor"). Wird in den Tages-Stats aufgeschlüsselt.
+  final String? subject;
+
   final FirebaseFirestore _firestore;
 
   Timer? _timer;
@@ -24,6 +36,7 @@ class LearningTimeTracker {
   LearningTimeTracker({
     required this.userId,
     required this.childId,
+    this.subject,
     FirebaseFirestore? firestore,
   }) : _firestore = firestore ?? FirebaseFirestore.instance;
 
@@ -31,7 +44,9 @@ class LearningTimeTracker {
   void startTracking() {
     if (_isTracking) return;
 
-    debugPrint('⏱️ Lernzeit-Tracking gestartet');
+    debugPrint(
+      '⏱️ Lernzeit-Tracking gestartet${subject != null ? ' ($subject)' : ''}',
+    );
     _isTracking = true;
 
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
@@ -57,29 +72,48 @@ class LearningTimeTracker {
     _timer = null;
   }
 
-  /// Speichert die getrackte Zeit zu Firebase
+  /// Speichert die getrackte Zeit zu Firebase.
+  ///
+  /// Setzt beim allerersten Aufruf `firstLearningDate` per `setIfMissing`-Logik
+  /// (Transaction). Schreibt außerdem die Subject-Aufschlüsselung in die
+  /// Tages-Statistik.
   Future<void> saveTime() async {
     if (_secondsTracked == 0) return;
 
-    try {
-      debugPrint('💾 Speichere $_secondsTracked Sekunden Lernzeit...');
+    final secondsToSave = _secondsTracked;
 
-      await _firestore
+    try {
+      debugPrint('💾 Speichere $secondsToSave Sekunden Lernzeit...');
+
+      final childRef = _firestore
           .collection('users')
           .doc(userId)
           .collection('children')
-          .doc(childId)
-          .update({
-            'totalLearningSeconds': FieldValue.increment(_secondsTracked),
-            // lastLearningDate wird von updateStreak() gesetzt – nicht hier!
-            // Würde updateStreak() sonst als 'heute bereits gelernt' erkennen
-            // und den Streak beim ersten Mal nie auf 1 setzen.
-          });
+          .doc(childId);
 
-      // Tägliche Statistik
-      await _saveDailyStats(_secondsTracked);
+      // Transaktion: firstLearningDate nur setzen, wenn noch nicht vorhanden.
+      // (Verhindert Race Conditions bei mehreren parallelen Quiz-Sessions.)
+      await _firestore.runTransaction((tx) async {
+        final snap = await tx.get(childRef);
+        final data = snap.data();
+        final updates = <String, dynamic>{
+          'totalLearningSeconds': FieldValue.increment(secondsToSave),
+          // lastLearningDate wird von updateStreak() gesetzt – nicht hier!
+          // Würde updateStreak() sonst als 'heute bereits gelernt' erkennen
+          // und den Streak beim ersten Mal nie auf 1 setzen.
+        };
 
-      debugPrint('✅ Lernzeit gespeichert: ${_formatTime(_secondsTracked)}');
+        if (data == null || data['firstLearningDate'] == null) {
+          updates['firstLearningDate'] = FieldValue.serverTimestamp();
+        }
+
+        tx.update(childRef, updates);
+      });
+
+      // Tägliche Statistik (inkl. Fach-Aufschlüsselung)
+      await _saveDailyStats(secondsToSave);
+
+      debugPrint('✅ Lernzeit gespeichert: ${_formatTime(secondsToSave)}');
       _secondsTracked = 0;
     } catch (e) {
       debugPrint('❌ Fehler beim Speichern: $e');
@@ -110,7 +144,12 @@ class LearningTimeTracker {
           .doc(userId)
           .collection('children')
           .doc(childId)
-          .update({'lastActiveAt': FieldValue.serverTimestamp()});
+          .update({
+            'lastActiveAt': FieldValue.serverTimestamp(),
+            // Optional: aktuelles Fach mit-Heartbeaten, damit Eltern auch
+            // im Live-Status sehen, was gelernt wird.
+            if (subject != null) 'lastActiveSubject': subject,
+          });
       debugPrint('💓 Heartbeat geschrieben');
     } catch (e) {
       // Heartbeat-Fehler sind nicht kritisch – kein rethrow
@@ -124,17 +163,34 @@ class LearningTimeTracker {
       final dateKey =
           '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
 
-      await _firestore
+      final docRef = _firestore
           .collection('users')
           .doc(userId)
           .collection('children')
           .doc(childId)
           .collection('learning_stats')
-          .doc(dateKey)
-          .set({
-            'date': Timestamp.fromDate(now),
-            'seconds': FieldValue.increment(seconds),
-          }, SetOptions(merge: true));
+          .doc(dateKey);
+
+      // WICHTIG: `set(merge: true)` parst dotted-keys NICHT als Map-Pfade —
+      // `subjects.Mathe` würde als Top-Level-Feld mit Punkt im Namen landen.
+      // Daher 2-Phasen:
+      //   1) Sicherstellen, dass Dokument existiert (date + seconds-Inkrement)
+      //   2) Per UPDATE die dotted-field-Pfade schreiben (parst korrekt
+      //      zu verschachteltem Map subjects.{Fach})
+
+      // Phase 1: Existenz sicherstellen + Top-Level-Felder
+      await docRef.set({
+        'date': Timestamp.fromDate(now),
+        'seconds': FieldValue.increment(seconds),
+      }, SetOptions(merge: true));
+
+      // Phase 2: Subject-Aufschlüsselung via update() — hier wird die
+      // Dot-Notation als Pfad geparst und ergibt verschachteltes Map.
+      if (subject != null && subject!.isNotEmpty) {
+        await docRef.update({
+          'subjects.$subject': FieldValue.increment(seconds),
+        });
+      }
     } catch (e) {
       debugPrint('⚠️ Tages-Stats Fehler: $e');
     }
