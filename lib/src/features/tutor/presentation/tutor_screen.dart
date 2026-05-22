@@ -11,6 +11,7 @@ import '../../rewards/data/xp_service.dart';
 import '../../rewards/data/reward_service.dart';
 import '../../rewards/presentation/student_notification_popup.dart';
 import '../../student_dashboard/presentation/widgets/rewards_count_provider.dart';
+import 'package:lerndex/src/features/stt/stt_provider.dart';
 import 'widgets/xp_gain_overlay.dart';
 import 'widgets/tutor_xp_banner.dart';
 
@@ -352,6 +353,21 @@ class _TutorScreenState extends ConsumerState<TutorScreen> {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
+                  // Mikrofon-Button (Tap-Toggle)
+                  // 1x tippen → Aufnahme START, nochmal tippen → STOP.
+                  // Bei erneutem Start wird an bestehenden Text angehängt,
+                  // damit das Kind in Etappen sprechen und tippen kann.
+                  _MicButton(
+                    getCurrentText: () => _messageController.text,
+                    onPartialResult: (text) {
+                      // Text live ins Eingabefeld schreiben.
+                      _messageController.text = text;
+                      _messageController.selection = TextSelection.fromPosition(
+                        TextPosition(offset: text.length),
+                      );
+                    },
+                  ),
+                  const SizedBox(width: 6),
                   Expanded(
                     // FIX 2: maxLines: null + keyboardType multiline → Zeilenumbruch
                     child: ConstrainedBox(
@@ -399,6 +415,103 @@ class _TutorScreenState extends ConsumerState<TutorScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ============================================================================
+// MIKROFON-BUTTON (Push-to-Talk)
+// ============================================================================
+//
+// UX-Verhalten:
+// • Drücken-und-Halten → Aufnahme startet, ggf. Permission-Dialog
+// • Live-Transkript erscheint im TextField (Eltern-Wunsch: nicht direkt
+//   abschicken, damit Kind ergänzen kann)
+// • Loslassen oder Wegziehen vom Button → Aufnahme stoppt
+// • Visuelles Feedback: pulst während Aufnahme, Größe folgt Lautstärke
+// • Fehler (z.B. Permission verweigert) erscheinen als SnackBar
+//
+// Bewusste Design-Entscheidung: KEIN Auto-Send. Das Kind hat immer die
+// Kontrolle, was tatsächlich an den Tutor geht.
+
+class _MicButton extends ConsumerStatefulWidget {
+  final void Function(String text) onPartialResult;
+  final String Function() getCurrentText;
+  const _MicButton({
+    required this.onPartialResult,
+    required this.getCurrentText,
+  });
+
+  @override
+  ConsumerState<_MicButton> createState() => _MicButtonState();
+}
+
+class _MicButtonState extends ConsumerState<_MicButton> {
+  String? _lastErrorShown;
+
+  Future<void> _onTap() async {
+    await ref
+        .read(sttControllerProvider.notifier)
+        .toggle(
+          onResult: widget.onPartialResult,
+          initialText: widget.getCurrentText(),
+        );
+    _showErrorIfChanged();
+  }
+
+  void _showErrorIfChanged() {
+    final err = ref.read(sttControllerProvider).error;
+    if (err != null && err != _lastErrorShown && mounted) {
+      _lastErrorShown = err;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(err),
+          duration: const Duration(seconds: 2),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final state = ref.watch(sttControllerProvider);
+    final listening = state.isListening;
+
+    // Größen-Animation: 1.0 normal, 1.0..1.25 abhängig von Lautstärke
+    final scale = listening ? (1.0 + state.soundLevel * 0.25) : 1.0;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 2),
+      child: GestureDetector(
+        onTap: _onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 80),
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: listening ? Colors.red.shade400 : Colors.deepPurple,
+            boxShadow: listening
+                ? [
+                    BoxShadow(
+                      color: Colors.red.withOpacity(0.4),
+                      blurRadius: 12,
+                      spreadRadius: 2,
+                    ),
+                  ]
+                : null,
+          ),
+          child: Transform.scale(
+            scale: scale,
+            child: Icon(
+              listening ? Icons.stop : Icons.mic,
+              color: Colors.white,
+              size: 20,
+            ),
+          ),
+        ),
       ),
     );
   }

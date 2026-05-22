@@ -91,5 +91,9 @@
 			<string>https</string>
 			<string>http</string>
 		</array>
+		<key>NSMicrophoneUsageDescription</key>
+<string>Lerndex benötigt das Mikrofon, damit dein Kind seine Frage an den Tutor sprechen kann.</string>
+<key>NSSpeechRecognitionUsageDescription</key>
+<string>Lerndex nutzt die Spracherkennung, um gesprochene Fragen in Text umzuwandeln. Audiodaten werden nicht gespeichert.</string>
 	</dict>
 </plist>
