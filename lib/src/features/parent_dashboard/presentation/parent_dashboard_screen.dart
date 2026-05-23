@@ -94,19 +94,6 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Fortschritte & Verwaltung',
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      '${children.length} ${children.length == 1 ? "Kind" : "Kinder"} registriert',
-                      style: TextStyle(color: Colors.grey[600]),
-                    ),
-                    const SizedBox(height: 24),
                     // Aktive Kinder zuerst, inaktive unten
                     SizedBox(
                       key: _childCardAreaKey,
@@ -249,7 +236,7 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
                 ),
                 const SizedBox(height: 16),
                 DropdownButtonFormField<int>(
-                  value: selectedAge,
+                  initialValue: selectedAge,
                   decoration: const InputDecoration(
                     labelText: 'Alter',
                     prefixIcon: Icon(Icons.cake_outlined),
@@ -414,8 +401,8 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
       context: screenContext,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Row(
-          children: const [
+        title: const Row(
+          children: [
             Icon(Icons.child_care, color: Color(0xFF6B21A8)),
             SizedBox(width: 10),
             Flexible(
@@ -437,9 +424,9 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
                   color: const Color(0xFFF3E8FF),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Row(
+                child: const Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  children: const [
+                  children: [
                     Icon(
                       Icons.info_outline,
                       color: Color(0xFF6B21A8),

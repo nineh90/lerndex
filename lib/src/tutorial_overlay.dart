@@ -130,8 +130,9 @@ class _TutorialOverlayState extends ConsumerState<TutorialOverlay>
       _onVisibilityRestored();
     }
 
-    if (!tutState.isActive || !tutState.isVisible)
+    if (!tutState.isActive || !tutState.isVisible) {
       return const SizedBox.shrink();
+    }
 
     final content = tutorialContent[tutState.step];
     if (content == null) return const SizedBox.shrink();

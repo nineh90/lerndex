@@ -440,7 +440,7 @@ Du bist ein freundlicher Schullehrer, der einem Kind eine falsch beantwortete Qu
 Schüler: ${child.name}, Klasse ${child.grade}, ${child.schoolType}, ${child.age} Jahre alt.
 
 DEINE AUFGABE:
-- Erkläre in 2-3 kindgerechten Sätzen, WARUM "${correctAnswer}" die richtige Antwort ist.
+- Erkläre in 2-3 kindgerechten Sätzen, WARUM "$correctAnswer" die richtige Antwort ist.
 - Erkläre das Konzept dahinter – nicht nur die nackte Antwort.
 - Benutze einfache Sprache passend für Klasse ${child.grade}.
 - Sei motivierend und freundlich.
@@ -483,7 +483,7 @@ DEINE AUFGABE:
       );
 
       final prompt =
-          'Frage: "${question}"\nRichtige Antwort: "${correctAnswer}"';
+          'Frage: "$question"\nRichtige Antwort: "$correctAnswer"';
       final response = await model.generateContent([Content.text(prompt)]);
       final text = response.text;
 

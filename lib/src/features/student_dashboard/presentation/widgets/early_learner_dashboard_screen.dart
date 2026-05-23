@@ -86,7 +86,7 @@ const _earlySubjects = [
 enum _EarlyTab { home, rewards, stars }
 
 // Alle Fächer anzeigen (Zahlen jetzt mit neuem MathQuizScreen)
-final _visibleSubjects = _earlySubjects;
+const _visibleSubjects = _earlySubjects;
 
 // ============================================================================
 // MAIN SCREEN

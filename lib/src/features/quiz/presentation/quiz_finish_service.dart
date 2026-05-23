@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../rewards/data/xp_service.dart';
 import '../../rewards/data/reward_service.dart';
 import '../../rewards/presentation/student_notification_popup.dart';
-import '../../student_dashboard/presentation/widgets/rewards_count_provider.dart';
 import '../../learning_time/learning_time_tracker.dart';
 import '../../auth/presentation/active_child_provider.dart';
 

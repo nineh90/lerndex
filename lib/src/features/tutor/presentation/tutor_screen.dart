@@ -10,7 +10,6 @@ import '../../learning_time/learning_time_tracker.dart';
 import '../../rewards/data/xp_service.dart';
 import '../../rewards/data/reward_service.dart';
 import '../../rewards/presentation/student_notification_popup.dart';
-import '../../student_dashboard/presentation/widgets/rewards_count_provider.dart';
 import 'package:lerndex/src/features/stt/stt_provider.dart';
 import 'widgets/xp_gain_overlay.dart';
 import 'widgets/tutor_xp_banner.dart';

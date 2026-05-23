@@ -222,7 +222,7 @@ class QuizEngine extends StateNotifier<QuizState> {
       );
     } catch (e) {
       debugPrint('❌ QuizEngine.start Fehler: $e');
-      state = QuizState(
+      state = const QuizState(
         phase: QuizPhase.error,
         errorMessage: 'Fragen konnten nicht geladen werden.',
       );

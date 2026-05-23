@@ -1833,7 +1833,9 @@ class _LetterDrawingPainter extends CustomPainter {
       canvas.drawPath(path, paint);
     }
 
-    for (final stroke in strokes) drawStroke(stroke);
+    for (final stroke in strokes) {
+      drawStroke(stroke);
+    }
     if (currentStroke.isNotEmpty) {
       drawStroke(currentStroke.map((o) => o as Offset?).toList());
     }

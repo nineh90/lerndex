@@ -1,6 +1,5 @@
 import 'package:flutter/foundation.dart';
 import 'dart:io';
-import 'dart:typed_data';
 import 'dart:convert';
 import 'package:firebase_ai/firebase_ai.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';

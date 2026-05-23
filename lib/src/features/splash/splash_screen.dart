@@ -220,7 +220,7 @@ class _LerndexSplashScreenState extends ConsumerState<LerndexSplashScreen>
       _totalSubjects = subjectCounts.fold(0, (a, b) => a + b);
       _doneSubjects = 0;
 
-      final prefetchShare = 1.0 - _bootstrapShare;
+      const prefetchShare = 1.0 - _bootstrapShare;
 
       _setProgress(
         _bootstrapShare,
@@ -439,20 +439,20 @@ class _LerndexSplashScreenState extends ConsumerState<LerndexSplashScreen>
 
   List<Widget> _buildBackgroundStars(Size size) {
     final stars = [
-      _StarData(0.1, 0.08, 3),
-      _StarData(0.85, 0.12, 2),
-      _StarData(0.6, 0.05, 4),
-      _StarData(0.25, 0.2, 2),
-      _StarData(0.92, 0.35, 3),
-      _StarData(0.05, 0.45, 2),
-      _StarData(0.75, 0.55, 3),
-      _StarData(0.4, 0.08, 2),
-      _StarData(0.55, 0.88, 3),
-      _StarData(0.15, 0.75, 2),
-      _StarData(0.88, 0.78, 4),
-      _StarData(0.33, 0.92, 2),
-      _StarData(0.7, 0.25, 3),
-      _StarData(0.48, 0.42, 2),
+      const _StarData(0.1, 0.08, 3),
+      const _StarData(0.85, 0.12, 2),
+      const _StarData(0.6, 0.05, 4),
+      const _StarData(0.25, 0.2, 2),
+      const _StarData(0.92, 0.35, 3),
+      const _StarData(0.05, 0.45, 2),
+      const _StarData(0.75, 0.55, 3),
+      const _StarData(0.4, 0.08, 2),
+      const _StarData(0.55, 0.88, 3),
+      const _StarData(0.15, 0.75, 2),
+      const _StarData(0.88, 0.78, 4),
+      const _StarData(0.33, 0.92, 2),
+      const _StarData(0.7, 0.25, 3),
+      const _StarData(0.48, 0.42, 2),
     ];
 
     return stars.map((s) {

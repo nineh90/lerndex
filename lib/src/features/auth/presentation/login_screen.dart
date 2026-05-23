@@ -6,7 +6,6 @@ import 'setup_dialog.dart';
 import 'family_dashboard_screen.dart';
 // NEU: Subscription
 import '../../subscription/data/subscription_provider.dart';
-import '../../subscription/data/subscription_service.dart';
 
 /// Login-Screen für bestehende Nutzer
 /// Neue Nutzer werden zu RegisterScreen weitergeleitet

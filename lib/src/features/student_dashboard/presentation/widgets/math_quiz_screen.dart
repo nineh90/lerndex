@@ -2368,7 +2368,7 @@ class _NumberLinePainter extends CustomPainter {
 
     const paddingX = 20.0;
     final lineY = size.height * 0.45;
-    final lineStart = paddingX;
+    const lineStart = paddingX;
     final lineEnd = size.width - paddingX;
 
     // Hauptlinie
@@ -2562,7 +2562,7 @@ class _BalanceScalePainter extends CustomPainter {
       ..style = PaintingStyle.stroke;
 
     // Standfuß
-    final baseW = 40.0;
+    const baseW = 40.0;
     canvas.drawLine(
       Offset(cx - baseW, poleBottom),
       Offset(cx + baseW, poleBottom),
@@ -2750,7 +2750,9 @@ class _DrawingPainter extends CustomPainter {
       canvas.drawPath(path, paint);
     }
 
-    for (final stroke in strokes) drawStroke(stroke);
+    for (final stroke in strokes) {
+      drawStroke(stroke);
+    }
     if (currentStroke.isNotEmpty) {
       drawStroke(currentStroke.map((o) => o as Offset?).toList());
     }

@@ -37,9 +37,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
         activePlan != null && activePlan != SubscriptionPlan.none;
 
     // Vorauswahl: aktiver Plan wenn vorhanden, sonst Duo
-    if (_selectedPlan == null) {
-      _selectedPlan = hasActivePlan ? activePlan! : SubscriptionPlan.duo;
-    }
+    _selectedPlan ??= hasActivePlan ? activePlan! : SubscriptionPlan.duo;
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -124,7 +122,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    'Aktiver Plan: ${activePlan!.displayName}  •  ${activePlan.priceLabel}',
+                    'Aktiver Plan: ${activePlan.displayName}  •  ${activePlan.priceLabel}',
                     style: TextStyle(
                       color: Colors.green.shade700,
                       fontWeight: FontWeight.w600,

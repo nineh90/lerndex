@@ -1078,7 +1078,7 @@ class _WrongQuestionTileState extends ConsumerState<_WrongQuestionTile> {
       final aiService = ref.read(vertexAIServiceProvider);
       final child =
           widget.child ??
-          ChildModel(
+          const ChildModel(
             id: 'tmp',
             name: 'Schüler',
             grade: 5,

@@ -751,10 +751,10 @@ class _ColorShapeQuizScreenState extends ConsumerState<ColorShapeQuizScreen>
     final seq = task.sequence ?? [];
     return Column(
       children: [
-        Text(
+        const Text(
           'Was kommt als nächstes?',
           textAlign: TextAlign.center,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.w800,
             color: Color(0xFF1A1A2E),
@@ -1616,7 +1616,9 @@ class _DrawingPainter extends CustomPainter {
       canvas.drawPath(path, paint);
     }
 
-    for (final stroke in strokes) drawStroke(stroke);
+    for (final stroke in strokes) {
+      drawStroke(stroke);
+    }
     if (currentStroke.isNotEmpty) {
       drawStroke(currentStroke.map((o) => o as Offset?).toList());
     }

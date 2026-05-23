@@ -624,7 +624,7 @@ class _TaskGeneratorScreenState extends ConsumerState<TaskGeneratorScreen> {
             ),
             backgroundColor: Colors.red,
             action: status.isPermanentlyDenied
-                ? SnackBarAction(
+                ? const SnackBarAction(
                     label: 'Einstellungen',
                     textColor: Colors.white,
                     onPressed: openAppSettings,

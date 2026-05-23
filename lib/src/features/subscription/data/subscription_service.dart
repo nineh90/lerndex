@@ -199,7 +199,7 @@ class SubscriptionService {
   Future<void> purchaseExtraChildSlot() async {
     try {
       final offerings = await Purchases.getOfferings();
-      final current = offerings?.current;
+      final current = offerings.current;
       if (current == null) throw 'Angebote konnten nicht geladen werden.';
 
       // Produkt aus dem aktuellen Offering holen
