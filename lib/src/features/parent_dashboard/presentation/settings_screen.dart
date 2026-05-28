@@ -12,6 +12,7 @@ import '../data/pin_repository.dart';
 // NEU: Subscription
 import '../../subscription/data/subscription_provider.dart';
 import '../../subscription/presentation/paywall_screen.dart';
+import 'feedback_dialog.dart';
 
 /// Einstellungsbereich im Elterndashboard
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -65,6 +66,25 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => _showChangePinDialog(context),
+          ),
+
+          const Divider(indent: 16, endIndent: 16),
+
+          // ── Abschnitt: Hilfe & Feedback ──────────────────────────────
+          const _SectionHeader(title: 'Hilfe & Feedback'),
+
+          ListTile(
+            leading: const Icon(
+              Icons.feedback_outlined,
+              color: Colors.deepPurple,
+            ),
+            title: const Text('Feedback senden'),
+            subtitle: const Text(
+              'Schreib uns an support@lerndex.de',
+              style: TextStyle(fontSize: 12),
+            ),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => showFeedbackDialog(context),
           ),
 
           const Divider(indent: 16, endIndent: 16),
