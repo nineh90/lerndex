@@ -12,7 +12,6 @@ import 'package:lerndex/src/features/tts/tts_provider.dart';
 import 'package:lerndex/src/features/student_dashboard/presentation/widgets/avatar_progress_bar.dart';
 import 'package:lerndex/src/features/student_dashboard/presentation/widgets/treasure_chest_overlay.dart';
 import 'dart:convert';
-import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'package:flutter/rendering.dart';
 import 'package:firebase_ai/firebase_ai.dart';

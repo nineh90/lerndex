@@ -11,7 +11,6 @@ import '../quiz/data/ai_question_cache_repository.dart';
 import '../quiz/data/quiz_prefetch_service.dart';
 import '../../tutorial_provider.dart';
 // NEU: Subscription
-import '../subscription/data/subscription_service.dart';
 import '../subscription/data/subscription_provider.dart';
 
 // ============================================================================

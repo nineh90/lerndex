@@ -1,6 +1,5 @@
 import 'package:flutter/foundation.dart';
 import 'dart:io';
-import 'dart:typed_data';
 import 'dart:convert';
 import 'dart:math';
 import 'package:firebase_ai/firebase_ai.dart';

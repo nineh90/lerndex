@@ -1,6 +1,7 @@
+import 'dart:io';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
@@ -16,16 +17,6 @@ class FeedbackRepository {
 
   static const String _supportAddress = 'support@lerndex.de';
 
-  // Wird beim ersten Aufruf befüllt und danach wiederverwendet – PackageInfo
-  // muss nur einmal pro App-Session vom nativen Bundle gelesen werden.
-  PackageInfo? _packageInfo;
-
-  Future<String> _appVersion() async {
-    final info = _packageInfo ??= await PackageInfo.fromPlatform();
-    final build = info.buildNumber;
-    return build.isEmpty ? info.version : '${info.version}+$build';
-  }
-
   Future<void> sendFeedback({
     required String subject,
     required String message,
@@ -34,45 +25,32 @@ class FeedbackRepository {
     if (user == null) {
       throw StateError('Nicht eingeloggt – Feedback nicht möglich.');
     }
-    final userEmail = user.email ?? '';
 
     final trimmedSubject = subject.trim();
     final trimmedMessage = message.trim();
 
-    final effectiveSubject = trimmedSubject.isEmpty
-        ? 'Feedback aus der Lerndex-App'
-        : 'Lerndex-Feedback: $trimmedSubject';
-
-    final platform = kIsWeb ? 'web' : defaultTargetPlatform.name;
-    final appVersion = await _appVersion();
-
-    final mailBody = StringBuffer()
-      ..writeln(trimmedMessage)
-      ..writeln()
-      ..writeln('— — — — — — — — — — — — — — —')
-      ..writeln('Absender: $userEmail')
-      ..writeln('User-ID: ${user.uid}')
-      ..writeln('App-Version: $appVersion')
-      ..writeln('Plattform: $platform');
+    final info = await PackageInfo.fromPlatform();
+    final appVersion = '${info.version}+${info.buildNumber}';
 
     final data = <String, dynamic>{
-      // Trigger-Email-Extension-Felder
       'to': [_supportAddress],
       'message': {
-        'subject': effectiveSubject,
-        'text': mailBody.toString(),
+        'subject': trimmedSubject.isEmpty
+            ? 'Feedback aus der Lerndex App'
+            : 'Feedback: $trimmedSubject',
+        'text': trimmedMessage,
       },
-      // Meta-Felder (nur User-E-Mail, keine Kind-Daten – DSGVO)
       'userId': user.uid,
-      'userEmail': userEmail,
-      'subject': trimmedSubject,
-      'messageBody': trimmedMessage,
+      'userEmail': user.email,
       'appVersion': appVersion,
-      'platform': platform,
+      'platform': Platform.isIOS ? 'ios' : 'android',
       'createdAt': FieldValue.serverTimestamp(),
     };
-    if (userEmail.isNotEmpty) {
-      data['replyTo'] = userEmail;
+
+    // Antworten des Supports gehen so direkt an den Nutzer, nicht an support@.
+    final email = user.email;
+    if (email != null && email.isNotEmpty) {
+      data['replyTo'] = email;
     }
 
     await _firestore.collection('mail').add(data);

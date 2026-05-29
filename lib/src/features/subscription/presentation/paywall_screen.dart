@@ -37,7 +37,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
         activePlan != null && activePlan != SubscriptionPlan.none;
 
     // Vorauswahl: aktiver Plan wenn vorhanden, sonst Duo
-    _selectedPlan ??= hasActivePlan ? activePlan! : SubscriptionPlan.duo;
+    _selectedPlan ??= hasActivePlan ? activePlan : SubscriptionPlan.duo;
 
     return Scaffold(
       backgroundColor: Colors.white,

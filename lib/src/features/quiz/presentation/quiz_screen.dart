@@ -12,7 +12,6 @@ import '../../rewards/data/xp_service.dart';
 import '../../rewards/domain/reward_model.dart';
 import '../../rewards/presentation/reward_unlocked_dialog.dart';
 import '../../rewards/presentation/student_notification_popup.dart';
-import '../../student_dashboard/presentation/widgets/rewards_count_provider.dart';
 import 'widgets/answer_button.dart';
 import '../data/quiz_prefetch_service.dart';
 import '../../../ai/vertex_ai_service.dart';

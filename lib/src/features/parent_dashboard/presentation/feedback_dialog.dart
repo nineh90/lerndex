@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/feedback_repository.dart';
@@ -43,12 +44,21 @@ class _FeedbackDialogState extends ConsumerState<FeedbackDialog> {
           backgroundColor: Colors.green,
         ),
       );
-    } catch (e) {
+    } on FirebaseException catch (e) {
+      if (!mounted) return;
+      setState(() => _isSending = false);
+      final msg = e.code == 'permission-denied'
+          ? 'Bitte gib mindestens 10 Zeichen ein.'
+          : 'Senden fehlgeschlagen. Bitte versuch es später erneut.';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(msg), backgroundColor: Colors.red),
+      );
+    } catch (_) {
       if (!mounted) return;
       setState(() => _isSending = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Senden fehlgeschlagen: $e'),
+        const SnackBar(
+          content: Text('Senden fehlgeschlagen. Bitte versuch es später erneut.'),
           backgroundColor: Colors.red,
         ),
       );
@@ -82,7 +92,8 @@ class _FeedbackDialogState extends ConsumerState<FeedbackDialog> {
                 controller: _subjectCtrl,
                 enabled: !_isSending,
                 textInputAction: TextInputAction.next,
-                maxLength: 80,
+                // 190 + Präfix "Feedback: " (10) = 200, passt zur Firestore-Rule.
+                maxLength: 190,
                 decoration: _inputDecoration(
                   label: 'Betreff (optional)',
                   hint: 'Worum geht’s?',
