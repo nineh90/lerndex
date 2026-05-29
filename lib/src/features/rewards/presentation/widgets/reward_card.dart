@@ -40,7 +40,7 @@ class RewardCard extends StatelessWidget {
     final cardSurface = surfaceColor ?? const Color(0xFFF3F0FF);
     final borderColor = muted
         ? Colors.grey.shade300
-        : primaryColor?.withOpacity(0.6) ?? const Color(0xFF9C64FF);
+        : primaryColor?.withValues(alpha: 0.6) ?? const Color(0xFF9C64FF);
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
@@ -77,7 +77,7 @@ class RewardCard extends StatelessWidget {
                             fontSize: 14,
                             color: muted
                                 ? Colors.grey.shade500
-                                : textColor.withOpacity(0.6),
+                                : textColor.withValues(alpha: 0.6),
                           ),
                         ),
                     ],

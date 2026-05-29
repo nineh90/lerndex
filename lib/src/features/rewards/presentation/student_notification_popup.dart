@@ -55,7 +55,7 @@ class StudentNotificationPopup extends StatefulWidget {
       context: context,
       useRootNavigator: true,
       barrierDismissible: false,
-      barrierColor: Colors.black.withOpacity(0.75),
+      barrierColor: Colors.black.withValues(alpha: 0.75),
       transitionDuration: const Duration(milliseconds: 400),
       transitionBuilder: (ctx, anim, secAnim, child) {
         final curved = CurvedAnimation(
@@ -340,7 +340,7 @@ class _StudentNotificationPopupState extends State<StudentNotificationPopup>
                 borderRadius: BorderRadius.circular(32),
                 boxShadow: [
                   BoxShadow(
-                    color: cfg.glowColor.withOpacity(0.5),
+                    color: cfg.glowColor.withValues(alpha: 0.5),
                     blurRadius: 40,
                     spreadRadius: 4,
                     offset: const Offset(0, 8),
@@ -366,11 +366,11 @@ class _StudentNotificationPopupState extends State<StudentNotificationPopup>
                             width: 110,
                             height: 110,
                             decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.2),
+                              color: Colors.white.withValues(alpha: 0.2),
                               shape: BoxShape.circle,
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.white.withOpacity(0.4),
+                                  color: Colors.white.withValues(alpha: 0.4),
                                   blurRadius: _glow.value,
                                   spreadRadius: _glow.value * 0.3,
                                 ),
@@ -419,7 +419,7 @@ class _StudentNotificationPopupState extends State<StudentNotificationPopup>
                               style: TextStyle(
                                 fontSize: 20,
                                 fontWeight: FontWeight.w700,
-                                color: Colors.white.withOpacity(0.95),
+                                color: Colors.white.withValues(alpha: 0.95),
                               ),
                               textAlign: TextAlign.center,
                             ),
@@ -432,10 +432,10 @@ class _StudentNotificationPopupState extends State<StudentNotificationPopup>
                                   vertical: 12,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(0.18),
+                                  color: Colors.white.withValues(alpha: 0.18),
                                   borderRadius: BorderRadius.circular(16),
                                   border: Border.all(
-                                    color: Colors.white.withOpacity(0.3),
+                                    color: Colors.white.withValues(alpha: 0.3),
                                     width: 1.5,
                                   ),
                                 ),
@@ -443,7 +443,7 @@ class _StudentNotificationPopupState extends State<StudentNotificationPopup>
                                   cfg.detail!,
                                   style: TextStyle(
                                     fontSize: 15,
-                                    color: Colors.white.withOpacity(0.9),
+                                    color: Colors.white.withValues(alpha: 0.9),
                                     height: 1.4,
                                   ),
                                   textAlign: TextAlign.center,
@@ -491,9 +491,9 @@ class _StudentNotificationPopupState extends State<StudentNotificationPopup>
         width: double.infinity,
         padding: const EdgeInsets.symmetric(vertical: 14),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.2),
+          color: Colors.white.withValues(alpha: 0.2),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Colors.white.withOpacity(0.4), width: 1.5),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.4), width: 1.5),
         ),
         child: Text(
           label,

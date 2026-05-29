@@ -179,7 +179,7 @@ class _AchievementHeader extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.deepPurple.withOpacity(0.3),
+            color: Colors.deepPurple.withValues(alpha: 0.3),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -207,7 +207,7 @@ class _AchievementHeader extends StatelessWidget {
                     Text(
                       '$unlockedCount von $totalCount freigeschaltet',
                       style: TextStyle(
-                        color: Colors.white.withOpacity(0.8),
+                        color: Colors.white.withValues(alpha: 0.8),
                         fontSize: 13,
                       ),
                     ),
@@ -220,7 +220,7 @@ class _AchievementHeader extends StatelessWidget {
                   vertical: 6,
                 ),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
+                  color: Colors.white.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
@@ -240,7 +240,7 @@ class _AchievementHeader extends StatelessWidget {
             child: LinearProgressIndicator(
               value: progress,
               minHeight: 10,
-              backgroundColor: Colors.white.withOpacity(0.2),
+              backgroundColor: Colors.white.withValues(alpha: 0.2),
               valueColor: const AlwaysStoppedAnimation<Color>(
                 Color(0xFFFFD600),
               ),
@@ -296,7 +296,7 @@ class _HeaderStat extends StatelessWidget {
         ),
         Text(
           label,
-          style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 11),
+          style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 11),
         ),
       ],
     );
@@ -376,7 +376,7 @@ class _AvatarChip extends StatelessWidget {
           width: isUnlocked ? 2 : 1.5,
         ),
         color: isUnlocked
-            ? avatar.color.withOpacity(0.08)
+            ? avatar.color.withValues(alpha: 0.08)
             : Colors.grey.shade50,
       ),
       child: Column(
@@ -505,7 +505,7 @@ class _CategorySection extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(
-                  color: category.color.withOpacity(0.12),
+                  color: category.color.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Text(
@@ -623,15 +623,15 @@ class _AchievementTile extends StatelessWidget {
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
           color: _isUnlocked
-              ? categoryColor.withOpacity(0.4)
+              ? categoryColor.withValues(alpha: 0.4)
               : Colors.grey.shade200,
           width: _isUnlocked ? 1.5 : 1,
         ),
-        color: _isUnlocked ? categoryColor.withOpacity(0.05) : Colors.white,
+        color: _isUnlocked ? categoryColor.withValues(alpha: 0.05) : Colors.white,
         boxShadow: _isUnlocked
             ? [
                 BoxShadow(
-                  color: categoryColor.withOpacity(0.1),
+                  color: categoryColor.withValues(alpha: 0.1),
                   blurRadius: 6,
                   offset: const Offset(0, 2),
                 ),
@@ -653,7 +653,7 @@ class _AchievementTile extends StatelessWidget {
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     color: _isUnlocked
-                        ? categoryColor.withOpacity(0.15)
+                        ? categoryColor.withValues(alpha: 0.15)
                         : Colors.grey.shade100,
                   ),
                   child: Center(
@@ -703,7 +703,7 @@ class _AchievementTile extends StatelessWidget {
                     ),
                     decoration: BoxDecoration(
                       color: _isUnlocked
-                          ? const Color(0xFF7C4DFF).withOpacity(0.12)
+                          ? const Color(0xFF7C4DFF).withValues(alpha: 0.12)
                           : Colors.grey.shade100,
                       borderRadius: BorderRadius.circular(8),
                     ),
@@ -762,7 +762,7 @@ class _AchievementTile extends StatelessWidget {
                         valueColor: AlwaysStoppedAnimation<Color>(
                           _isUnlocked
                               ? categoryColor
-                              : categoryColor.withOpacity(0.5),
+                              : categoryColor.withValues(alpha: 0.5),
                         ),
                       ),
                     ),

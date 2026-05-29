@@ -97,7 +97,7 @@ class _RewardUnlockedDialogState extends State<RewardUnlockedDialog>
                   borderRadius: BorderRadius.circular(28),
                   boxShadow: [
                     BoxShadow(
-                      color: _purple.withOpacity(0.5),
+                      color: _purple.withValues(alpha: 0.5),
                       blurRadius: 32,
                       offset: const Offset(0, 12),
                     ),
@@ -116,10 +116,10 @@ class _RewardUnlockedDialogState extends State<RewardUnlockedDialog>
                             width: 80,
                             height: 80,
                             decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.15),
+                              color: Colors.white.withValues(alpha: 0.15),
                               shape: BoxShape.circle,
                               border: Border.all(
-                                color: Colors.white.withOpacity(0.4),
+                                color: Colors.white.withValues(alpha: 0.4),
                                 width: 2,
                               ),
                             ),
@@ -159,7 +159,7 @@ class _RewardUnlockedDialogState extends State<RewardUnlockedDialog>
                         vertical: 20,
                       ),
                       child: Divider(
-                        color: Colors.white.withOpacity(0.25),
+                        color: Colors.white.withValues(alpha: 0.25),
                         height: 1,
                       ),
                     ),
@@ -247,9 +247,9 @@ class _LevelBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.18),
+        color: Colors.white.withValues(alpha: 0.18),
         borderRadius: BorderRadius.circular(50),
-        border: Border.all(color: Colors.white.withOpacity(0.4), width: 1.5),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.4), width: 1.5),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -259,7 +259,7 @@ class _LevelBadge extends StatelessWidget {
             style: TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w600,
-              color: Colors.white.withOpacity(0.9),
+              color: Colors.white.withValues(alpha: 0.9),
             ),
           ),
           const SizedBox(width: 8),
@@ -296,9 +296,9 @@ class _CompactRewardRow extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.13),
+        color: Colors.white.withValues(alpha: 0.13),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.white.withOpacity(0.25), width: 1),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.25), width: 1),
       ),
       child: Row(
         children: [
@@ -322,7 +322,7 @@ class _CompactRewardRow extends StatelessWidget {
                     reward.reward,
                     style: TextStyle(
                       fontSize: 13,
-                      color: Colors.white.withOpacity(0.8),
+                      color: Colors.white.withValues(alpha: 0.8),
                     ),
                   ),
                 ],

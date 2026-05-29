@@ -335,9 +335,9 @@ class _TutorHistoryScreenState extends ConsumerState<TutorHistoryScreen> {
         final isToday = entry.key == 'Heute';
         final dailyXp = isToday
             ? _todayXp
-            : entry.value.fold<int>(0, (sum, doc) {
+            : entry.value.fold<int>(0, (acc, doc) {
                 final data = doc.data() as Map<String, dynamic>;
-                return sum + ((data['xpEarned'] as int?) ?? 0);
+                return acc + ((data['xpEarned'] as int?) ?? 0);
               });
         const kMaxXpPerDay = 50;
         final xpCapped = dailyXp.clamp(0, kMaxXpPerDay);

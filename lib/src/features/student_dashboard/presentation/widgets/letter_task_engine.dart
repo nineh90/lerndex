@@ -593,12 +593,6 @@ const _feedbacksCorrect = [
   '💪 Stark!',
 ];
 
-const _feedbacksWrong = [
-  '💪 Versuch es nochmal!',
-  '🤔 Fast – nochmal!',
-  '💡 Du schaffst das!',
-  '🧠 Denk nochmal nach!',
-];
 
 // ── Engine ────────────────────────────────────────────────────────────────────
 

@@ -56,7 +56,7 @@ class _ThemePickerSheetState extends ConsumerState<ThemePickerSheet> {
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: themeState.theme.onSurface.withOpacity(0.2),
+                color: themeState.theme.onSurface.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -78,7 +78,7 @@ class _ThemePickerSheetState extends ConsumerState<ThemePickerSheet> {
             'Wähle deine Farben und dein Hintergrundbild',
             style: TextStyle(
               fontSize: 13,
-              color: themeState.theme.onSurface.withOpacity(0.55),
+              color: themeState.theme.onSurface.withValues(alpha: 0.55),
             ),
           ),
           const SizedBox(height: 24),
@@ -89,7 +89,7 @@ class _ThemePickerSheetState extends ConsumerState<ThemePickerSheet> {
             style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w700,
-              color: themeState.theme.onSurface.withOpacity(0.6),
+              color: themeState.theme.onSurface.withValues(alpha: 0.6),
               letterSpacing: 0.5,
             ),
           ),
@@ -119,7 +119,7 @@ class _ThemePickerSheetState extends ConsumerState<ThemePickerSheet> {
             style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w700,
-              color: themeState.theme.onSurface.withOpacity(0.6),
+              color: themeState.theme.onSurface.withValues(alpha: 0.6),
               letterSpacing: 0.5,
             ),
           ),
@@ -249,7 +249,7 @@ class _ThemePresetTile extends StatelessWidget {
           boxShadow: isSelected
               ? [
                   BoxShadow(
-                    color: theme.primary.withOpacity(0.5),
+                    color: theme.primary.withValues(alpha: 0.5),
                     blurRadius: 12,
                     offset: const Offset(0, 4),
                   ),
@@ -341,7 +341,7 @@ class _BackgroundPreview extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.all(6),
               decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.6),
+                color: Colors.black.withValues(alpha: 0.6),
                 shape: BoxShape.circle,
               ),
               child: const Icon(Icons.close, color: Colors.white, size: 16),
@@ -374,9 +374,9 @@ class _UploadButton extends StatelessWidget {
         width: double.infinity,
         padding: const EdgeInsets.symmetric(vertical: 16),
         decoration: BoxDecoration(
-          border: Border.all(color: theme.primary.withOpacity(0.5), width: 2),
+          border: Border.all(color: theme.primary.withValues(alpha: 0.5), width: 2),
           borderRadius: BorderRadius.circular(16),
-          color: theme.primary.withOpacity(0.08),
+          color: theme.primary.withValues(alpha: 0.08),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -418,7 +418,7 @@ class _UploadProgress extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: theme.primary.withOpacity(0.1),
+        color: theme.primary.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
@@ -458,7 +458,7 @@ class _UploadProgress extends StatelessWidget {
             borderRadius: BorderRadius.circular(4),
             child: LinearProgressIndicator(
               value: progress,
-              backgroundColor: theme.primary.withOpacity(0.2),
+              backgroundColor: theme.primary.withValues(alpha: 0.2),
               valueColor: AlwaysStoppedAnimation<Color>(theme.primary),
               minHeight: 6,
             ),

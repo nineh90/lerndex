@@ -143,10 +143,11 @@ class GeneratedTaskRepository {
       final status = (q.data())['status'] ?? 'pending';
       if (status == 'approved') {
         approved++;
-      } else if (status == 'rejected')
+      } else if (status == 'rejected') {
         rejected++;
-      else
+      } else {
         pending++;
+      }
     }
 
     // Schreibe Zähler ins Dokument
@@ -182,7 +183,7 @@ class GeneratedTaskRepository {
   /// Pending task count für ein spezifisches Kind
   Stream<int> watchPendingTaskCountForChild(String userId, String childId) {
     return watchBatchesForChild(userId, childId).map((batches) {
-      return batches.fold<int>(0, (sum, batch) => sum + batch.pendingTasks);
+      return batches.fold<int>(0, (acc, batch) => acc + batch.pendingTasks);
     });
   }
 
@@ -446,7 +447,7 @@ class GeneratedTaskRepository {
   /// Stream für Anzahl ausstehender Aufgaben
   Stream<int> watchPendingTaskCount(String userId) {
     return watchPendingBatches(userId).map((batches) {
-      return batches.fold<int>(0, (sum, batch) => sum + batch.pendingTasks);
+      return batches.fold<int>(0, (acc, batch) => acc + batch.pendingTasks);
     });
   }
 

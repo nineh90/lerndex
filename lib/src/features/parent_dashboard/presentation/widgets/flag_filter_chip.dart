@@ -28,9 +28,9 @@ class FlagFilterChip extends StatelessWidget {
         duration: const Duration(milliseconds: 150),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: isSelected ? color : color.withOpacity(0.1),
+          color: isSelected ? color : color.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: color.withOpacity(isSelected ? 1.0 : 0.4)),
+          border: Border.all(color: color.withValues(alpha: isSelected ? 1.0 : 0.4)),
         ),
         child: Text(
           label,

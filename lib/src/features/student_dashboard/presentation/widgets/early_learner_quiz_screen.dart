@@ -904,7 +904,7 @@ class _EarlyLearnerQuizScreenState extends ConsumerState<EarlyLearnerQuizScreen>
               width: 48,
               height: 48,
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.25),
+                color: Colors.white.withValues(alpha: 0.25),
                 shape: BoxShape.circle,
               ),
               child: const Icon(
@@ -943,7 +943,7 @@ class _EarlyLearnerQuizScreenState extends ConsumerState<EarlyLearnerQuizScreen>
               width: 48,
               height: 48,
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.25),
+                color: Colors.white.withValues(alpha: 0.25),
                 shape: BoxShape.circle,
               ),
               child: Icon(
@@ -997,7 +997,7 @@ class _EarlyLearnerQuizScreenState extends ConsumerState<EarlyLearnerQuizScreen>
                         borderRadius: BorderRadius.circular(32),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.15),
+                            color: Colors.black.withValues(alpha: 0.15),
                             blurRadius: 24,
                             offset: const Offset(0, 8),
                           ),
@@ -1120,7 +1120,7 @@ class _EarlyLearnerQuizScreenState extends ConsumerState<EarlyLearnerQuizScreen>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
       decoration: BoxDecoration(
-        color: widget.subjectColors.first.withOpacity(0.1),
+        color: widget.subjectColors.first.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
@@ -1188,58 +1188,6 @@ class _EarlyLearnerQuizScreenState extends ConsumerState<EarlyLearnerQuizScreen>
     );
   }
 
-  /// Extrahiert einzelne Emojis aus einem String.
-  /// Unterstützt: leerzeichen-getrennt, komma-getrennt, direkt aneinandergereiht,
-  /// sowie Strings mit eckigen Klammern wie "[🔴, 🔵, 🟢, 3️⃣]".
-  List<String> _extractEmojis(String input) {
-    // Schritt 1: JSON-Array-Notation komplett bereinigen
-    String cleaned = input
-        .replaceAll('[', '')
-        .replaceAll(']', '')
-        .replaceAll('"', '')
-        .replaceAll("'", '')
-        .trim();
-
-    // Schritt 2: Komma- oder leerzeichen-getrennte Teile versuchen
-    final parts = cleaned
-        .replaceAll(',', ' ')
-        .split(' ')
-        .map((s) => s.trim())
-        .where((s) => s.isNotEmpty)
-        .toList();
-
-    if (parts.length >= 2) return parts;
-
-    // Schritt 3: Fallback – Emojis via Characters-Grapheme-Cluster extrahieren
-    // Nutzt Dart's String.characters falls verfügbar, sonst Rune-Annäherung
-    final result = <String>[];
-    final chars = cleaned.runes.toList();
-    int i = 0;
-    while (i < chars.length) {
-      final cp = chars[i];
-      if (cp >= 0x1F300 ||
-          cp == 0x2764 ||
-          (cp >= 0x2600 && cp <= 0x27BF) ||
-          cp >= 0x1F900) {
-        String emoji = String.fromCharCode(cp);
-        i++;
-        // ZWJ-Sequences und Variation Selectors anhängen
-        while (i < chars.length &&
-            (chars[i] == 0xFE0F ||
-                chars[i] == 0x200D ||
-                chars[i] == 0x20E3 ||
-                chars[i] >= 0xDC00)) {
-          emoji += String.fromCharCode(chars[i]);
-          i++;
-        }
-        result.add(emoji);
-      } else {
-        i++;
-      }
-    }
-    return result.isNotEmpty ? result : (parts.isNotEmpty ? parts : [cleaned]);
-  }
-
   Widget _buildAnswerGrid(_EarlyQuestion question) {
     return GridView.count(
       crossAxisCount: 2,
@@ -1272,7 +1220,7 @@ class _EarlyLearnerQuizScreenState extends ConsumerState<EarlyLearnerQuizScreen>
             margin: const EdgeInsets.only(bottom: 12),
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
+              color: Colors.white.withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(20),
             ),
             child: Row(
@@ -1368,7 +1316,7 @@ class _EarlyLearnerQuizScreenState extends ConsumerState<EarlyLearnerQuizScreen>
 
         return SizedBox.expand(
           child: ColoredBox(
-            color: (_wasCorrect ? Colors.green : Colors.deepOrange).withOpacity(
+            color: (_wasCorrect ? Colors.green : Colors.deepOrange).withValues(alpha: 
               opacity,
             ),
             child: SafeArea(
@@ -1429,7 +1377,7 @@ class _EarlyLearnerQuizScreenState extends ConsumerState<EarlyLearnerQuizScreen>
                           borderRadius: BorderRadius.circular(28),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.2),
+                              color: Colors.black.withValues(alpha: 0.2),
                               blurRadius: 16,
                               offset: const Offset(0, 6),
                             ),
@@ -1466,7 +1414,7 @@ class _EarlyLearnerQuizScreenState extends ConsumerState<EarlyLearnerQuizScreen>
                         margin: const EdgeInsets.symmetric(horizontal: 40),
                         padding: const EdgeInsets.symmetric(vertical: 20),
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.25),
+                          color: Colors.white.withValues(alpha: 0.25),
                           borderRadius: BorderRadius.circular(28),
                           border: Border.all(color: Colors.white60, width: 2),
                         ),
@@ -1559,7 +1507,7 @@ class _EarlyLearnerQuizScreenState extends ConsumerState<EarlyLearnerQuizScreen>
                           borderRadius: BorderRadius.circular(32),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.15),
+                              color: Colors.black.withValues(alpha: 0.15),
                               blurRadius: 24,
                               offset: const Offset(0, 8),
                             ),
@@ -1660,7 +1608,7 @@ class _EarlyLearnerQuizScreenState extends ConsumerState<EarlyLearnerQuizScreen>
                             borderRadius: BorderRadius.circular(32),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withOpacity(0.18),
+                                color: Colors.black.withValues(alpha: 0.18),
                                 blurRadius: 20,
                                 offset: const Offset(0, 8),
                               ),
@@ -1782,14 +1730,14 @@ class _AnswerTileState extends State<_AnswerTile>
             borderRadius: BorderRadius.circular(24),
             boxShadow: [
               BoxShadow(
-                color: widget.colors.last.withOpacity(0.2),
+                color: widget.colors.last.withValues(alpha: 0.2),
                 blurRadius: 12,
                 offset: const Offset(0, 5),
               ),
             ],
             border: Border.all(
               color: widget.enabled
-                  ? widget.colors.first.withOpacity(0.3)
+                  ? widget.colors.first.withValues(alpha: 0.3)
                   : Colors.grey.shade200,
               width: 2,
             ),

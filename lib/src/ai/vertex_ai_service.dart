@@ -1351,8 +1351,9 @@ Antworte NUR mit einem JSON-Array, kein Text oder Markdown davor/danach:
     String cleaned = text.trim();
     if (cleaned.startsWith('```json')) {
       cleaned = cleaned.substring(7);
-    } else if (cleaned.startsWith('```'))
+    } else if (cleaned.startsWith('```')) {
       cleaned = cleaned.substring(3);
+    }
     if (cleaned.endsWith('```')) {
       cleaned = cleaned.substring(0, cleaned.length - 3);
     }

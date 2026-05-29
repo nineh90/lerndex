@@ -285,11 +285,11 @@ class _CreateRewardDialogState extends ConsumerState<CreateRewardDialog> {
                                 border: Border.all(
                                   color: isSelected
                                       ? avatar.color
-                                      : avatar.color.withOpacity(0.3),
+                                      : avatar.color.withValues(alpha: 0.3),
                                   width: isSelected ? 3 : 1.5,
                                 ),
                                 color: isSelected
-                                    ? avatar.color.withOpacity(0.1)
+                                    ? avatar.color.withValues(alpha: 0.1)
                                     : Colors.grey.shade50,
                               ),
                               child: Stack(

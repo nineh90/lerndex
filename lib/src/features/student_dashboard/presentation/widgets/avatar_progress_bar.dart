@@ -194,7 +194,7 @@ class _AvatarProgressBarState extends State<AvatarProgressBar>
                 child: Container(
                   height: 3,
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
+                    color: Colors.white.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -215,8 +215,8 @@ class _AvatarProgressBarState extends State<AvatarProgressBar>
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: [
-                        Colors.white.withOpacity(0.7),
-                        Colors.white.withOpacity(0.4),
+                        Colors.white.withValues(alpha: 0.7),
+                        Colors.white.withValues(alpha: 0.4),
                       ],
                     ),
                     borderRadius: BorderRadius.circular(2),
@@ -289,7 +289,7 @@ class _AvatarProgressBarState extends State<AvatarProgressBar>
         border: Border.all(color: widget.subjectColor, width: 2.5),
         boxShadow: [
           BoxShadow(
-            color: widget.subjectColor.withOpacity(0.4),
+            color: widget.subjectColor.withValues(alpha: 0.4),
             blurRadius: 10,
             offset: const Offset(0, 3),
           ),
@@ -325,7 +325,7 @@ class _AvatarProgressBarState extends State<AvatarProgressBar>
               shape: BoxShape.circle,
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFFFFD700).withOpacity(0.6),
+                  color: const Color(0xFFFFD700).withValues(alpha: 0.6),
                   blurRadius: 16,
                   spreadRadius: 4,
                 ),

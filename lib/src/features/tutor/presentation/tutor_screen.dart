@@ -343,7 +343,7 @@ class _TutorScreenState extends ConsumerState<TutorScreen> {
                 color: Colors.white,
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.08),
+                    color: Colors.black.withValues(alpha: 0.08),
                     blurRadius: 8,
                     offset: const Offset(0, -2),
                   ),
@@ -495,7 +495,7 @@ class _MicButtonState extends ConsumerState<_MicButton> {
             boxShadow: listening
                 ? [
                     BoxShadow(
-                      color: Colors.red.withOpacity(0.4),
+                      color: Colors.red.withValues(alpha: 0.4),
                       blurRadius: 12,
                       spreadRadius: 2,
                     ),

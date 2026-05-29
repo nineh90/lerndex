@@ -118,7 +118,7 @@ class MessageBubble extends StatelessWidget {
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.08),
+                    color: Colors.black.withValues(alpha: 0.08),
                     blurRadius: 4,
                     offset: const Offset(0, 2),
                   ),
@@ -226,7 +226,7 @@ class MessageBubble extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
-                color: isUser ? color.withOpacity(0.1) : Colors.white,
+                color: isUser ? color.withValues(alpha: 0.1) : Colors.white,
                 borderRadius: BorderRadius.only(
                   topLeft: const Radius.circular(16),
                   topRight: const Radius.circular(16),
@@ -238,11 +238,11 @@ class MessageBubble extends StatelessWidget {
                       : const Radius.circular(16),
                 ),
                 border: Border.all(
-                  color: isUser ? color.withOpacity(0.2) : Colors.grey.shade200,
+                  color: isUser ? color.withValues(alpha: 0.2) : Colors.grey.shade200,
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.04),
+                    color: Colors.black.withValues(alpha: 0.04),
                     blurRadius: 4,
                     offset: const Offset(0, 2),
                   ),

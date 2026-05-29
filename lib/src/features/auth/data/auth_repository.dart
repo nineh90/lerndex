@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'auth_repository.g.dart';
@@ -230,11 +231,11 @@ class AuthRepository {
 
 // NACHHER — authStateChanges mit keepAlive damit er nie disposed wird:
 @Riverpod(keepAlive: true)
-AuthRepository authRepository(AuthRepositoryRef ref) {
+AuthRepository authRepository(Ref ref) {
   return AuthRepository(FirebaseAuth.instance, FirebaseFirestore.instance);
 }
 
 @Riverpod(keepAlive: true)
-Stream<User?> authStateChanges(AuthStateChangesRef ref) {
+Stream<User?> authStateChanges(Ref ref) {
   return ref.watch(authRepositoryProvider).authStateChanges();
 }

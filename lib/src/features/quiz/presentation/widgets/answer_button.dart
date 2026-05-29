@@ -33,7 +33,7 @@ class AnswerButton extends StatelessWidget {
             side: BorderSide(
               color: onPressed == null
                   ? Colors.grey.shade300
-                  : color.withOpacity(0.3),
+                  : color.withValues(alpha: 0.3),
               width: 2,
             ),
           ),

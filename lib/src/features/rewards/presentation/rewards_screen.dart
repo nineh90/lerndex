@@ -116,7 +116,7 @@ class RewardsScreen extends ConsumerWidget {
                   indicatorColor: onPrimary,
                   indicatorWeight: 3,
                   labelColor: onPrimary,
-                  unselectedLabelColor: onPrimary.withOpacity(0.55),
+                  unselectedLabelColor: onPrimary.withValues(alpha: 0.55),
                   labelStyle: const TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
@@ -234,7 +234,7 @@ class RewardsScreen extends ConsumerWidget {
                   ? Icons.card_giftcard_outlined
                   : Icons.check_circle_outline,
               size: 72,
-              color: onSurface.withOpacity(0.2),
+              color: onSurface.withValues(alpha: 0.2),
             ),
             const SizedBox(height: 20),
             Text(
@@ -244,7 +244,7 @@ class RewardsScreen extends ConsumerWidget {
               style: TextStyle(
                 fontSize: 17,
                 fontWeight: FontWeight.bold,
-                color: onSurface.withOpacity(0.5),
+                color: onSurface.withValues(alpha: 0.5),
               ),
             ),
             if (isAvailable) ...[
@@ -253,7 +253,7 @@ class RewardsScreen extends ConsumerWidget {
                 'Schau ins Achievements-Tab 🏆',
                 style: TextStyle(
                   fontSize: 13,
-                  color: onSurface.withOpacity(0.35),
+                  color: onSurface.withValues(alpha: 0.35),
                 ),
               ),
             ],
@@ -274,7 +274,7 @@ class RewardsScreen extends ConsumerWidget {
           reward: reward,
           primaryColor: primary,
           onSurfaceColor: onSurface,
-          surfaceColor: primary.withOpacity(0.08),
+          surfaceColor: primary.withValues(alpha: 0.08),
           onClaim: canClaimNow
               ? () async {
                   await _claimReward(
@@ -319,7 +319,7 @@ class RewardsScreen extends ConsumerWidget {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: primary.withOpacity(0.08),
+                color: primary.withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Row(

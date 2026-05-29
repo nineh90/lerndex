@@ -182,7 +182,7 @@ class _TutorialOverlayState extends ConsumerState<TutorialOverlay>
               borderRadius: BorderRadius.circular(20),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.25),
+                  color: Colors.black.withValues(alpha: 0.25),
                   blurRadius: 24,
                   offset: const Offset(0, 8),
                 ),
@@ -200,7 +200,7 @@ class _TutorialOverlayState extends ConsumerState<TutorialOverlay>
                       Container(
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF6B21A8).withOpacity(0.1),
+                          color: const Color(0xFF6B21A8).withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: Icon(
@@ -330,7 +330,7 @@ class _SpotlightPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final overlayPaint = Paint()
-      ..color = Colors.black.withOpacity(0.65 * progress);
+      ..color = Colors.black.withValues(alpha: 0.65 * progress);
 
     if (highlightRect == null) {
       canvas.drawRect(Offset.zero & size, overlayPaint);
@@ -348,7 +348,7 @@ class _SpotlightPainter extends CustomPainter {
 
     // Leuchtender Rand um den Spotlight
     final borderPaint = Paint()
-      ..color = Colors.white.withOpacity(0.5 * progress)
+      ..color = Colors.white.withValues(alpha: 0.5 * progress)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2.5;
     canvas.drawRRect(

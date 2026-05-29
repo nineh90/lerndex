@@ -171,12 +171,12 @@ class _AvatarSettingsSheetState extends ConsumerState<AvatarSettingsSheet> {
                           color: isSelected
                               ? avatar.color
                               : isUnlocked
-                              ? avatar.color.withOpacity(0.4)
+                              ? avatar.color.withValues(alpha: 0.4)
                               : Colors.grey.shade300,
                           width: isSelected ? 3 : 1.5,
                         ),
                         color: isSelected
-                            ? avatar.color.withOpacity(0.1)
+                            ? avatar.color.withValues(alpha: 0.1)
                             : Colors.grey.shade50,
                       ),
                       child: Stack(
@@ -192,7 +192,7 @@ class _AvatarSettingsSheetState extends ConsumerState<AvatarSettingsSheet> {
                                 ),
                                 decoration: BoxDecoration(
                                   color: isUnlocked
-                                      ? avatar.color.withOpacity(0.12)
+                                      ? avatar.color.withValues(alpha: 0.12)
                                       : Colors.grey.shade200,
                                   borderRadius: const BorderRadius.only(
                                     topLeft: Radius.circular(14),
@@ -261,7 +261,7 @@ class _AvatarSettingsSheetState extends ConsumerState<AvatarSettingsSheet> {
                                       errorBuilder: (_, __, ___) => Icon(
                                         Icons.face,
                                         size: 42,
-                                        color: avatar.color.withOpacity(
+                                        color: avatar.color.withValues(alpha: 
                                           isUnlocked ? 1.0 : 0.3,
                                         ),
                                       ),

@@ -320,7 +320,7 @@ class _EarlyLearnerDashboardScreenState
         borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.08),
+            color: Colors.black.withValues(alpha: 0.08),
             blurRadius: 20,
             offset: const Offset(0, -4),
           ),
@@ -566,7 +566,7 @@ class _CompactHeader extends ConsumerWidget {
                   width: 42,
                   height: 42,
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.3),
+                    color: Colors.white.withValues(alpha: 0.3),
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(
@@ -605,7 +605,7 @@ class _CompactHeader extends ConsumerWidget {
                             color: Colors.white,
                             boxShadow: [
                               BoxShadow(
-                                color: const Color(0xFF512DA8).withOpacity(0.3),
+                                color: const Color(0xFF512DA8).withValues(alpha: 0.3),
                                 blurRadius: 12,
                                 offset: const Offset(0, 4),
                               ),
@@ -634,7 +634,7 @@ class _CompactHeader extends ConsumerWidget {
                               shape: BoxShape.circle,
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withOpacity(0.15),
+                                  color: Colors.black.withValues(alpha: 0.15),
                                   blurRadius: 4,
                                 ),
                               ],
@@ -677,7 +677,7 @@ class _CompactHeader extends ConsumerWidget {
                             vertical: 3,
                           ),
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.3),
+                            color: Colors.white.withValues(alpha: 0.3),
                             borderRadius: BorderRadius.circular(10),
                           ),
                           child: Row(
@@ -703,7 +703,7 @@ class _CompactHeader extends ConsumerWidget {
                             vertical: 3,
                           ),
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.3),
+                            color: Colors.white.withValues(alpha: 0.3),
                             borderRadius: BorderRadius.circular(10),
                           ),
                           child: Row(
@@ -740,8 +740,8 @@ class _CompactHeader extends ConsumerWidget {
                   height: 46,
                   decoration: BoxDecoration(
                     color: ttsEnabled
-                        ? Colors.white.withOpacity(0.35)
-                        : Colors.black.withOpacity(0.15),
+                        ? Colors.white.withValues(alpha: 0.35)
+                        : Colors.black.withValues(alpha: 0.15),
                     shape: BoxShape.circle,
                   ),
                   child: Center(
@@ -802,9 +802,6 @@ class _CarouselSubjectCardState extends State<_CarouselSubjectCard>
   late AnimationController _pressController;
   late Animation<double> _pressScale;
 
-  // Floating-Animation für das Emoji
-  late AnimationController _floatController;
-
   @override
   void initState() {
     super.initState();
@@ -845,7 +842,7 @@ class _CarouselSubjectCardState extends State<_CarouselSubjectCard>
             borderRadius: BorderRadius.circular(40),
             boxShadow: [
               BoxShadow(
-                color: widget.subject.colors.last.withOpacity(0.45),
+                color: widget.subject.colors.last.withValues(alpha: 0.45),
                 blurRadius: 24,
                 offset: const Offset(0, 12),
               ),
@@ -861,7 +858,7 @@ class _CarouselSubjectCardState extends State<_CarouselSubjectCard>
                   width: 120,
                   height: 120,
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.08),
+                    color: Colors.white.withValues(alpha: 0.08),
                     shape: BoxShape.circle,
                   ),
                 ),
@@ -873,7 +870,7 @@ class _CarouselSubjectCardState extends State<_CarouselSubjectCard>
                   width: 90,
                   height: 90,
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.06),
+                    color: Colors.white.withValues(alpha: 0.06),
                     shape: BoxShape.circle,
                   ),
                 ),
@@ -885,7 +882,7 @@ class _CarouselSubjectCardState extends State<_CarouselSubjectCard>
                   width: 40,
                   height: 40,
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.1),
+                    color: Colors.white.withValues(alpha: 0.1),
                     shape: BoxShape.circle,
                   ),
                 ),
@@ -941,10 +938,10 @@ class _CarouselSubjectCardState extends State<_CarouselSubjectCard>
                         vertical: 12,
                       ),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.3),
+                        color: Colors.white.withValues(alpha: 0.3),
                         borderRadius: BorderRadius.circular(28),
                         border: Border.all(
-                          color: Colors.white.withOpacity(0.4),
+                          color: Colors.white.withValues(alpha: 0.4),
                           width: 2,
                         ),
                       ),
@@ -995,12 +992,12 @@ class _PageIndicatorDots extends StatelessWidget {
           width: isActive ? 28 : 10,
           height: 10,
           decoration: BoxDecoration(
-            color: isActive ? color : color.withOpacity(0.25),
+            color: isActive ? color : color.withValues(alpha: 0.25),
             borderRadius: BorderRadius.circular(5),
             boxShadow: isActive
                 ? [
                     BoxShadow(
-                      color: color.withOpacity(0.4),
+                      color: color.withValues(alpha: 0.4),
                       blurRadius: 8,
                       offset: const Offset(0, 2),
                     ),
@@ -1084,7 +1081,7 @@ class _GiftTeaserState extends ConsumerState<_GiftTeaser>
           borderRadius: BorderRadius.circular(22),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFFEC407A).withOpacity(0.3),
+              color: const Color(0xFFEC407A).withValues(alpha: 0.3),
               blurRadius: 12,
               offset: const Offset(0, 4),
             ),
@@ -1118,7 +1115,7 @@ class _GiftTeaserState extends ConsumerState<_GiftTeaser>
                     'Tippe hier zum Anschauen',
                     style: TextStyle(
                       fontSize: 12,
-                      color: Colors.white.withOpacity(0.8),
+                      color: Colors.white.withValues(alpha: 0.8),
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -1196,7 +1193,7 @@ class _StarsContent extends ConsumerWidget {
                 borderRadius: BorderRadius.circular(32),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFF7C4DFF).withOpacity(0.4),
+                    color: const Color(0xFF7C4DFF).withValues(alpha: 0.4),
                     blurRadius: 20,
                     offset: const Offset(0, 8),
                   ),
@@ -1219,7 +1216,7 @@ class _StarsContent extends ConsumerWidget {
                     'Sterne gesammelt',
                     style: TextStyle(
                       fontSize: 14,
-                      color: Colors.white.withOpacity(0.75),
+                      color: Colors.white.withValues(alpha: 0.75),
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -1328,7 +1325,7 @@ class _LevelBadge extends StatelessWidget {
         boxShadow: isCurrent
             ? [
                 BoxShadow(
-                  color: const Color(0xFF7C4DFF).withOpacity(0.3),
+                  color: const Color(0xFF7C4DFF).withValues(alpha: 0.3),
                   blurRadius: 8,
                   offset: const Offset(0, 4),
                 ),
@@ -1385,7 +1382,7 @@ class _BigNavButton extends StatelessWidget {
         width: 80,
         height: 62,
         decoration: BoxDecoration(
-          color: isSelected ? color.withOpacity(0.15) : Colors.transparent,
+          color: isSelected ? color.withValues(alpha: 0.15) : Colors.transparent,
           borderRadius: BorderRadius.circular(22),
         ),
         child: Stack(

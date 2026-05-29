@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lerndex/src/features/subscription/data/subscription_model.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../domain/child_model.dart';
@@ -375,12 +376,12 @@ class ProfileRepository {
 
 /// Provider für ProfileRepository
 @riverpod
-ProfileRepository profileRepository(ProfileRepositoryRef ref) {
+ProfileRepository profileRepository(Ref ref) {
   return ProfileRepository(FirebaseFirestore.instance, FirebaseAuth.instance);
 }
 
 @riverpod
-Stream<List<ChildModel>> childrenList(ChildrenListRef ref) {
+Stream<List<ChildModel>> childrenList(Ref ref) {
   final authState = ref.watch(authStateChangesProvider);
   final user = authState.value;
   if (user == null) return Stream.value([]);

@@ -175,7 +175,7 @@ class _TreasureChestOverlayState extends State<TreasureChestOverlay>
     return FadeTransition(
       opacity: _fadeController,
       child: Material(
-        color: Colors.black.withOpacity(0.75),
+        color: Colors.black.withValues(alpha: 0.75),
         child: Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -236,7 +236,7 @@ class _TreasureChestOverlayState extends State<TreasureChestOverlay>
                                 BoxShadow(
                                   color: const Color(
                                     0xFFFFD700,
-                                  ).withOpacity(0.5),
+                                  ).withValues(alpha: 0.5),
                                   blurRadius: 40,
                                   spreadRadius: 10,
                                 ),
@@ -284,7 +284,7 @@ class _TreasureChestOverlayState extends State<TreasureChestOverlay>
                         vertical: 10,
                       ),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.15),
+                        color: Colors.white.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: const Row(
@@ -325,7 +325,7 @@ class _TreasureChestOverlayState extends State<TreasureChestOverlay>
                         borderRadius: BorderRadius.circular(24),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.orange.withOpacity(0.5),
+                            color: Colors.orange.withValues(alpha: 0.5),
                             blurRadius: 16,
                             offset: const Offset(0, 4),
                           ),
@@ -375,7 +375,7 @@ class _TreasureChestOverlayState extends State<TreasureChestOverlay>
                           borderRadius: BorderRadius.circular(28),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.2),
+                              color: Colors.black.withValues(alpha: 0.2),
                               blurRadius: 12,
                               offset: const Offset(0, 4),
                             ),

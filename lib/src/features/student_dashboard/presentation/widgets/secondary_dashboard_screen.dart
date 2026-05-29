@@ -145,7 +145,7 @@ class _SecondaryDashboardScreenState
       leading: IconButton(
         icon: Icon(
           Icons.arrow_back_ios_rounded,
-          color: theme.onPrimary.withOpacity(0.9),
+          color: theme.onPrimary.withValues(alpha: 0.9),
           size: 20,
         ),
         onPressed: () {
@@ -172,7 +172,7 @@ class _SecondaryDashboardScreenState
             icon: Container(
               padding: const EdgeInsets.all(6),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.15),
+                color: Colors.white.withValues(alpha: 0.15),
                 shape: BoxShape.circle,
               ),
               child: Icon(
@@ -193,13 +193,13 @@ class _SecondaryDashboardScreenState
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 border: Border.all(
-                  color: Colors.white.withOpacity(0.4),
+                  color: Colors.white.withValues(alpha: 0.4),
                   width: 2,
                 ),
               ),
               child: CircleAvatar(
                 radius: 17,
-                backgroundColor: theme.primary.withOpacity(0.6),
+                backgroundColor: theme.primary.withValues(alpha: 0.6),
                 backgroundImage: widget.child.selectedAvatar != null
                     ? AssetImage(
                         'assets/images/${widget.child.selectedAvatar}.png',
@@ -245,7 +245,7 @@ class _SecondaryDashboardScreenState
           // Dunkel-Overlay für Lesbarkeit
           Positioned.fill(
             child: Container(
-              color: Colors.black.withOpacity(theme.isDark ? 0.65 : 0.45),
+              color: Colors.black.withValues(alpha: theme.isDark ? 0.65 : 0.45),
             ),
           ),
           _buildTabContent(theme),
@@ -311,7 +311,7 @@ class _SecondaryDashboardScreenState
       decoration: BoxDecoration(
         color: theme.surface,
         border: Border(
-          top: BorderSide(color: theme.primary.withOpacity(0.15), width: 1),
+          top: BorderSide(color: theme.primary.withValues(alpha: 0.15), width: 1),
         ),
       ),
       child: BottomAppBar(
@@ -458,7 +458,7 @@ class _SecondaryDashboardScreenState
                 width: 80,
                 height: 80,
                 decoration: BoxDecoration(
-                  color: theme.primary.withOpacity(0.12),
+                  color: theme.primary.withValues(alpha: 0.12),
                   shape: BoxShape.circle,
                 ),
                 child: const Center(
@@ -480,7 +480,7 @@ class _SecondaryDashboardScreenState
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 15,
-                  color: theme.onSurface.withOpacity(0.7),
+                  color: theme.onSurface.withValues(alpha: 0.7),
                   height: 1.5,
                 ),
               ),
@@ -491,7 +491,7 @@ class _SecondaryDashboardScreenState
                   vertical: 8,
                 ),
                 decoration: BoxDecoration(
-                  color: theme.primary.withOpacity(0.1),
+                  color: theme.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Row(
@@ -678,8 +678,8 @@ class _SecondaryHeroHeader extends ConsumerWidget {
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            theme.primary.withOpacity(0.95),
-            theme.secondary.withOpacity(0.9),
+            theme.primary.withValues(alpha: 0.95),
+            theme.secondary.withValues(alpha: 0.9),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -697,7 +697,7 @@ class _SecondaryHeroHeader extends ConsumerWidget {
                   vertical: 4,
                 ),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.15),
+                  color: Colors.white.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Row(
@@ -721,7 +721,7 @@ class _SecondaryHeroHeader extends ConsumerWidget {
                 'Klasse ${child.grade} · ${child.schoolType}',
                 style: TextStyle(
                   fontSize: 12,
-                  color: Colors.white.withOpacity(0.65),
+                  color: Colors.white.withValues(alpha: 0.65),
                 ),
               ),
             ],
@@ -754,7 +754,7 @@ class _SecondaryHeroHeader extends ConsumerWidget {
               builder: (_, v, __) => LinearProgressIndicator(
                 value: v,
                 minHeight: 6,
-                backgroundColor: Colors.white.withOpacity(0.2),
+                backgroundColor: Colors.white.withValues(alpha: 0.2),
                 valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
               ),
             ),
@@ -785,7 +785,7 @@ class _HeaderStat extends StatelessWidget {
           label,
           style: TextStyle(
             fontSize: 11,
-            color: Colors.white.withOpacity(0.6),
+            color: Colors.white.withValues(alpha: 0.6),
             fontWeight: FontWeight.w500,
           ),
         ),
@@ -896,7 +896,7 @@ class _QuickStatCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: theme.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withOpacity(0.2), width: 1),
+        border: Border.all(color: color.withValues(alpha: 0.2), width: 1),
       ),
       child: Column(
         children: [
@@ -914,7 +914,7 @@ class _QuickStatCard extends StatelessWidget {
             label,
             style: TextStyle(
               fontSize: 10,
-              color: theme.onSurface.withOpacity(0.5),
+              color: theme.onSurface.withValues(alpha: 0.5),
             ),
             textAlign: TextAlign.center,
           ),
@@ -987,12 +987,12 @@ class _ModernSubjectCardState extends State<_ModernSubjectCard>
             color: widget.theme.surface,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: primaryColor.withOpacity(0.30),
+              color: primaryColor.withValues(alpha: 0.30),
               width: 1.5,
             ),
             boxShadow: [
               BoxShadow(
-                color: accentColor.withOpacity(0.20),
+                color: accentColor.withValues(alpha: 0.20),
                 blurRadius: 10,
                 offset: const Offset(0, 4),
               ),
@@ -1009,7 +1009,7 @@ class _ModernSubjectCardState extends State<_ModernSubjectCard>
                   width: 64,
                   height: 64,
                   decoration: BoxDecoration(
-                    color: primaryColor.withOpacity(0.18),
+                    color: primaryColor.withValues(alpha: 0.18),
                     shape: BoxShape.circle,
                   ),
                 ),
@@ -1022,7 +1022,7 @@ class _ModernSubjectCardState extends State<_ModernSubjectCard>
                   width: 36,
                   height: 36,
                   decoration: BoxDecoration(
-                    color: accentColor.withOpacity(0.15),
+                    color: accentColor.withValues(alpha: 0.15),
                     shape: BoxShape.circle,
                   ),
                 ),
@@ -1048,7 +1048,7 @@ class _ModernSubjectCardState extends State<_ModernSubjectCard>
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
-                            color: accentColor.withOpacity(0.45),
+                            color: accentColor.withValues(alpha: 0.45),
                             blurRadius: 8,
                             offset: const Offset(0, 3),
                           ),
@@ -1149,7 +1149,7 @@ class _SecondaryNavItem extends StatelessWidget {
                   selected ? activeIcon : icon,
                   color: selected
                       ? theme.primary
-                      : theme.onSurface.withOpacity(0.4),
+                      : theme.onSurface.withValues(alpha: 0.4),
                   size: 22,
                 ),
                 if (badgeCount > 0)
@@ -1187,7 +1187,7 @@ class _SecondaryNavItem extends StatelessWidget {
                 fontSize: 10,
                 color: selected
                     ? theme.primary
-                    : theme.onSurface.withOpacity(0.4),
+                    : theme.onSurface.withValues(alpha: 0.4),
                 fontWeight: selected ? FontWeight.w700 : FontWeight.normal,
               ),
             ),

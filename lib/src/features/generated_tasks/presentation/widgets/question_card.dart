@@ -35,7 +35,6 @@ class QuestionCard extends ConsumerStatefulWidget {
 
 class _QuestionCardState extends ConsumerState<QuestionCard> {
   bool _expanded = false;
-  final bool _showSolution = false;
   bool _isProcessing = false;
 
   @override

@@ -111,7 +111,7 @@ class _SecondaryOnboardingScreenState extends State<SecondaryOnboardingScreen>
           duration: const Duration(milliseconds: 400),
           decoration: BoxDecoration(
             gradient: LinearGradient(
-              colors: [page.color, page.color.withOpacity(0.7)],
+              colors: [page.color, page.color.withValues(alpha: 0.7)],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
@@ -127,7 +127,7 @@ class _SecondaryOnboardingScreenState extends State<SecondaryOnboardingScreen>
                     child: Text(
                       'Überspringen',
                       style: TextStyle(
-                        color: Colors.white.withOpacity(0.7),
+                        color: Colors.white.withValues(alpha: 0.7),
                         fontSize: 14,
                       ),
                     ),
@@ -161,7 +161,7 @@ class _SecondaryOnboardingScreenState extends State<SecondaryOnboardingScreen>
                       decoration: BoxDecoration(
                         color: i == _currentPage
                             ? Colors.white
-                            : Colors.white.withOpacity(0.4),
+                            : Colors.white.withValues(alpha: 0.4),
                         borderRadius: BorderRadius.circular(4),
                       ),
                     ),
@@ -183,7 +183,7 @@ class _SecondaryOnboardingScreenState extends State<SecondaryOnboardingScreen>
                         borderRadius: BorderRadius.circular(28),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.15),
+                            color: Colors.black.withValues(alpha: 0.15),
                             blurRadius: 16,
                             offset: const Offset(0, 6),
                           ),
@@ -260,7 +260,7 @@ class _SecondaryOnboardingScreenState extends State<SecondaryOnboardingScreen>
               page.subtitle,
               style: TextStyle(
                 fontSize: 16,
-                color: Colors.white.withOpacity(0.85),
+                color: Colors.white.withValues(alpha: 0.85),
                 height: 1.5,
               ),
               textAlign: TextAlign.center,

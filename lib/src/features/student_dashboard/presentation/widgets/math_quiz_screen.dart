@@ -482,7 +482,7 @@ class _MathQuizScreenState extends ConsumerState<MathQuizScreen>
                   width: 48,
                   height: 48,
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.25),
+                    color: Colors.white.withValues(alpha: 0.25),
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(
@@ -515,7 +515,7 @@ class _MathQuizScreenState extends ConsumerState<MathQuizScreen>
                   width: 48,
                   height: 48,
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.25),
+                    color: Colors.white.withValues(alpha: 0.25),
                     shape: BoxShape.circle,
                   ),
                   child: Icon(
@@ -540,7 +540,7 @@ class _MathQuizScreenState extends ConsumerState<MathQuizScreen>
                   vertical: 4,
                 ),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
+                  color: Colors.white.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Row(
@@ -601,7 +601,7 @@ class _MathQuizScreenState extends ConsumerState<MathQuizScreen>
                       borderRadius: BorderRadius.circular(32),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.15),
+                          color: Colors.black.withValues(alpha: 0.15),
                           blurRadius: 24,
                           offset: const Offset(0, 8),
                         ),
@@ -857,7 +857,7 @@ class _MathQuizScreenState extends ConsumerState<MathQuizScreen>
               height: 56,
               decoration: BoxDecoration(
                 color: hasValue
-                    ? widget.subjectColors.first.withOpacity(0.15)
+                    ? widget.subjectColors.first.withValues(alpha: 0.15)
                     : Colors.grey.shade100,
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
@@ -1088,7 +1088,7 @@ class _MathQuizScreenState extends ConsumerState<MathQuizScreen>
                       width: 52,
                       height: 52,
                       decoration: BoxDecoration(
-                        color: widget.subjectColors.first.withOpacity(0.08),
+                        color: widget.subjectColors.first.withValues(alpha: 0.08),
                         borderRadius: BorderRadius.circular(14),
                         border: Border.all(
                           color: widget.subjectColors.first,
@@ -1101,7 +1101,7 @@ class _MathQuizScreenState extends ConsumerState<MathQuizScreen>
                           style: TextStyle(
                             fontSize: 24,
                             fontWeight: FontWeight.w900,
-                            color: widget.subjectColors.first.withOpacity(0.4),
+                            color: widget.subjectColors.first.withValues(alpha: 0.4),
                           ),
                         ),
                       ),
@@ -1286,10 +1286,10 @@ class _MathQuizScreenState extends ConsumerState<MathQuizScreen>
             // Spur: weiß aktiv, halbtransparent inaktiv → gut sichtbar auf
             // jedem farbigen Hintergrund
             activeTrackColor: Colors.white,
-            inactiveTrackColor: Colors.white.withOpacity(0.35),
+            inactiveTrackColor: Colors.white.withValues(alpha: 0.35),
             // Thumb: weiß mit farbigem Schatten → klar vom Hintergrund trennbar
             thumbColor: Colors.white,
-            overlayColor: Colors.white.withOpacity(0.25),
+            overlayColor: Colors.white.withValues(alpha: 0.25),
             thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 22),
             overlayShape: const RoundSliderOverlayShape(overlayRadius: 36),
             trackHeight: 10,
@@ -1320,18 +1320,18 @@ class _MathQuizScreenState extends ConsumerState<MathQuizScreen>
             decoration: BoxDecoration(
               color: _sliderMoved
                   ? Colors.white
-                  : Colors.white.withOpacity(0.4),
+                  : Colors.white.withValues(alpha: 0.4),
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
                 color: _sliderMoved
                     ? widget.subjectColors.first
-                    : Colors.white.withOpacity(0.3),
+                    : Colors.white.withValues(alpha: 0.3),
                 width: 2,
               ),
               boxShadow: _sliderMoved
                   ? [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.12),
+                        color: Colors.black.withValues(alpha: 0.12),
                         blurRadius: 10,
                         offset: const Offset(0, 4),
                       ),
@@ -1348,7 +1348,7 @@ class _MathQuizScreenState extends ConsumerState<MathQuizScreen>
                   fontWeight: FontWeight.w900,
                   color: _sliderMoved
                       ? widget.subjectColors.first
-                      : Colors.white.withOpacity(0.5),
+                      : Colors.white.withValues(alpha: 0.5),
                 ),
               ),
             ),
@@ -1435,12 +1435,12 @@ class _MathQuizScreenState extends ConsumerState<MathQuizScreen>
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(24),
                 border: Border.all(
-                  color: widget.subjectColors.first.withOpacity(0.35),
+                  color: widget.subjectColors.first.withValues(alpha: 0.35),
                   width: 2,
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.08),
+                    color: Colors.black.withValues(alpha: 0.08),
                     blurRadius: 12,
                     offset: const Offset(0, 4),
                   ),
@@ -1462,7 +1462,7 @@ class _MathQuizScreenState extends ConsumerState<MathQuizScreen>
                     // Lade-Overlay
                     if (_isEvaluating)
                       Container(
-                        color: Colors.white.withOpacity(0.8),
+                        color: Colors.white.withValues(alpha: 0.8),
                         child: Center(
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
@@ -1537,19 +1537,19 @@ class _MathQuizScreenState extends ConsumerState<MathQuizScreen>
                     color:
                         (_drawStrokes.isNotEmpty || _currentStroke.isNotEmpty)
                         ? Colors.white
-                        : Colors.white.withOpacity(0.4),
+                        : Colors.white.withValues(alpha: 0.4),
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
                       color:
                           (_drawStrokes.isNotEmpty || _currentStroke.isNotEmpty)
                           ? widget.subjectColors.first
-                          : Colors.white.withOpacity(0.3),
+                          : Colors.white.withValues(alpha: 0.3),
                       width: 2,
                     ),
                     boxShadow: (_drawStrokes.isNotEmpty)
                         ? [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.1),
+                              color: Colors.black.withValues(alpha: 0.1),
                               blurRadius: 8,
                               offset: const Offset(0, 3),
                             ),
@@ -1566,7 +1566,7 @@ class _MathQuizScreenState extends ConsumerState<MathQuizScreen>
                             (_drawStrokes.isNotEmpty ||
                                 _currentStroke.isNotEmpty)
                             ? widget.subjectColors.first
-                            : Colors.white.withOpacity(0.4),
+                            : Colors.white.withValues(alpha: 0.4),
                       ),
                     ),
                   ),
@@ -1702,7 +1702,7 @@ class _MathQuizScreenState extends ConsumerState<MathQuizScreen>
           child: Container(
             decoration: BoxDecoration(
               color: (_wasCorrect ? Colors.green.shade400 : Colors.red.shade400)
-                  .withOpacity(0.92),
+                  .withValues(alpha: 0.92),
             ),
             child: Center(
               child: Column(
@@ -1836,7 +1836,7 @@ class _MathQuizScreenState extends ConsumerState<MathQuizScreen>
                         borderRadius: BorderRadius.circular(32),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.15),
+                            color: Colors.black.withValues(alpha: 0.15),
                             blurRadius: 24,
                             offset: const Offset(0, 8),
                           ),
@@ -1926,7 +1926,7 @@ class _MathQuizScreenState extends ConsumerState<MathQuizScreen>
                         width: double.infinity,
                         padding: const EdgeInsets.all(20),
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.15),
+                          color: Colors.white.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(24),
                         ),
                         child: Column(
@@ -1970,7 +1970,7 @@ class _MathQuizScreenState extends ConsumerState<MathQuizScreen>
                                         vertical: 4,
                                       ),
                                       decoration: BoxDecoration(
-                                        color: Colors.white.withOpacity(0.25),
+                                        color: Colors.white.withValues(alpha: 0.25),
                                         borderRadius: BorderRadius.circular(10),
                                       ),
                                       child: Text(
@@ -2007,7 +2007,7 @@ class _MathQuizScreenState extends ConsumerState<MathQuizScreen>
                           borderRadius: BorderRadius.circular(32),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.18),
+                              color: Colors.black.withValues(alpha: 0.18),
                               blurRadius: 20,
                               offset: const Offset(0, 8),
                             ),
@@ -2109,7 +2109,7 @@ class _NumberBubble extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: color.withOpacity(0.4),
+            color: color.withValues(alpha: 0.4),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -2198,20 +2198,20 @@ class _MathAnswerButtonState extends State<_MathAnswerButton>
             padding: const EdgeInsets.symmetric(vertical: 18),
             decoration: BoxDecoration(
               color: widget.faded
-                  ? Colors.white.withOpacity(0.15)
+                  ? Colors.white.withValues(alpha: 0.15)
                   : Colors.white,
               borderRadius: BorderRadius.circular(20),
               border: widget.faded
                   ? null
                   : Border.all(
-                      color: widget.colors.first.withOpacity(0.3),
+                      color: widget.colors.first.withValues(alpha: 0.3),
                       width: 2,
                     ),
               boxShadow: widget.faded
                   ? null
                   : [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.12),
+                        color: Colors.black.withValues(alpha: 0.12),
                         blurRadius: 10,
                         offset: const Offset(0, 4),
                       ),
@@ -2224,7 +2224,7 @@ class _MathAnswerButtonState extends State<_MathAnswerButton>
                   fontSize: widget.fontSize,
                   fontWeight: FontWeight.w900,
                   color: widget.faded
-                      ? Colors.white.withOpacity(0.5)
+                      ? Colors.white.withValues(alpha: 0.5)
                       : widget.colors.first,
                 ),
               ),
@@ -2262,7 +2262,7 @@ class _RetryButton extends StatelessWidget {
           borderRadius: BorderRadius.circular(24),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.2),
+              color: Colors.black.withValues(alpha: 0.2),
               blurRadius: 12,
               offset: const Offset(0, 4),
             ),
@@ -2307,7 +2307,6 @@ class _NumberLineWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final count = max - min + 1;
     // Zeige nur jeden 2. oder 5. Tick bei großem Bereich
     final showEvery = max > 20
         ? 10
@@ -2349,7 +2348,7 @@ class _NumberLinePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final linePaint = Paint()
-      ..color = color.withOpacity(0.8)
+      ..color = color.withValues(alpha: 0.8)
       ..strokeWidth = 3
       ..strokeCap = StrokeCap.round;
 
@@ -2542,7 +2541,7 @@ class _BalanceScalePainter extends CustomPainter {
     final armHalf = size.width * 0.32;
 
     final polePaint = Paint()
-      ..color = color.withOpacity(0.7)
+      ..color = color.withValues(alpha: 0.7)
       ..strokeWidth = 4
       ..strokeCap = StrokeCap.round;
 
@@ -2552,7 +2551,7 @@ class _BalanceScalePainter extends CustomPainter {
       ..strokeCap = StrokeCap.round;
 
     final platePaint = Paint()
-      ..color = color.withOpacity(0.15)
+      ..color = color.withValues(alpha: 0.15)
       ..style = PaintingStyle.fill;
 
     final plateBorder = Paint()
@@ -2628,7 +2627,7 @@ class _BalanceScalePainter extends CustomPainter {
       style: TextStyle(
         fontSize: 22,
         fontWeight: FontWeight.w900,
-        color: color.withOpacity(0.5),
+        color: color.withValues(alpha: 0.5),
       ),
     );
     tp.layout();
@@ -2686,7 +2685,7 @@ class _FormulaText extends StatelessWidget {
               width: 60,
               height: 52,
               decoration: BoxDecoration(
-                color: accentColor.withOpacity(0.08),
+                color: accentColor.withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: accentColor, width: 3),
               ),
@@ -2696,7 +2695,7 @@ class _FormulaText extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 28,
                     fontWeight: FontWeight.w900,
-                    color: accentColor.withOpacity(0.4),
+                    color: accentColor.withValues(alpha: 0.4),
                   ),
                 ),
               ),

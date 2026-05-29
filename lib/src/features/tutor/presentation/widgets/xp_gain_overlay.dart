@@ -65,7 +65,7 @@ class _XpGainOverlayState extends State<XpGainOverlay>
               borderRadius: BorderRadius.circular(20),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.deepPurple.withOpacity(0.4),
+                  color: Colors.deepPurple.withValues(alpha: 0.4),
                   blurRadius: 12,
                   offset: const Offset(0, 4),
                 ),

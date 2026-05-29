@@ -137,7 +137,7 @@ class _SetupDialogState extends ConsumerState<SetupDialog> {
                         decoration: BoxDecoration(
                           color: i <= _page
                               ? Colors.white
-                              : Colors.white.withOpacity(0.3),
+                              : Colors.white.withValues(alpha: 0.3),
                           borderRadius: BorderRadius.circular(2),
                         ),
                       ),
@@ -302,10 +302,10 @@ class _SetupDialogState extends ConsumerState<SetupDialog> {
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF6B21A8).withOpacity(0.08),
+                        color: const Color(0xFF6B21A8).withValues(alpha: 0.08),
                         borderRadius: BorderRadius.circular(10),
                         border: Border.all(
-                          color: const Color(0xFF6B21A8).withOpacity(0.2),
+                          color: const Color(0xFF6B21A8).withValues(alpha: 0.2),
                         ),
                       ),
                       child: const Row(

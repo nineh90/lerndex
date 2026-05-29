@@ -414,11 +414,11 @@ class _PlanCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(14),
           border: Border.all(color: borderColor, width: borderWidth),
           boxShadow: isSelected
-              ? [BoxShadow(color: _purple.withOpacity(0.15), blurRadius: 8)]
+              ? [BoxShadow(color: _purple.withValues(alpha: 0.15), blurRadius: 8)]
               : isActive
               ? [
                   BoxShadow(
-                    color: Colors.green.withOpacity(0.15),
+                    color: Colors.green.withValues(alpha: 0.15),
                     blurRadius: 8,
                   ),
                 ]

@@ -569,7 +569,7 @@ class _LetterQuizScreenState extends ConsumerState<LetterQuizScreen>
                   width: 48,
                   height: 48,
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.25),
+                    color: Colors.white.withValues(alpha: 0.25),
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(
@@ -602,7 +602,7 @@ class _LetterQuizScreenState extends ConsumerState<LetterQuizScreen>
                   width: 48,
                   height: 48,
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.25),
+                    color: Colors.white.withValues(alpha: 0.25),
                     shape: BoxShape.circle,
                   ),
                   child: Icon(
@@ -620,7 +620,7 @@ class _LetterQuizScreenState extends ConsumerState<LetterQuizScreen>
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
+              color: Colors.white.withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(20),
             ),
             child: Row(
@@ -681,7 +681,7 @@ class _LetterQuizScreenState extends ConsumerState<LetterQuizScreen>
                       borderRadius: BorderRadius.circular(32),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.15),
+                          color: Colors.black.withValues(alpha: 0.15),
                           blurRadius: 24,
                           offset: const Offset(0, 8),
                         ),
@@ -760,10 +760,10 @@ class _LetterQuizScreenState extends ConsumerState<LetterQuizScreen>
             width: 100,
             height: 100,
             decoration: BoxDecoration(
-              color: widget.subjectColors.first.withOpacity(0.1),
+              color: widget.subjectColors.first.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(24),
               border: Border.all(
-                color: widget.subjectColors.first.withOpacity(0.4),
+                color: widget.subjectColors.first.withValues(alpha: 0.4),
                 width: 3,
               ),
             ),
@@ -814,7 +814,7 @@ class _LetterQuizScreenState extends ConsumerState<LetterQuizScreen>
                       width: 38,
                       height: 44,
                       decoration: BoxDecoration(
-                        color: widget.subjectColors.first.withOpacity(0.08),
+                        color: widget.subjectColors.first.withValues(alpha: 0.08),
                         borderRadius: BorderRadius.circular(10),
                         border: Border.all(
                           color: widget.subjectColors.first,
@@ -827,7 +827,7 @@ class _LetterQuizScreenState extends ConsumerState<LetterQuizScreen>
                           style: TextStyle(
                             fontSize: 20,
                             fontWeight: FontWeight.w900,
-                            color: widget.subjectColors.first.withOpacity(0.4),
+                            color: widget.subjectColors.first.withValues(alpha: 0.4),
                           ),
                         ),
                       ),
@@ -933,7 +933,7 @@ class _LetterQuizScreenState extends ConsumerState<LetterQuizScreen>
                       width: 52,
                       height: 52,
                       decoration: BoxDecoration(
-                        color: widget.subjectColors.first.withOpacity(0.08),
+                        color: widget.subjectColors.first.withValues(alpha: 0.08),
                         borderRadius: BorderRadius.circular(14),
                         border: Border.all(
                           color: widget.subjectColors.first,
@@ -946,7 +946,7 @@ class _LetterQuizScreenState extends ConsumerState<LetterQuizScreen>
                           style: TextStyle(
                             fontSize: 24,
                             fontWeight: FontWeight.w900,
-                            color: widget.subjectColors.first.withOpacity(0.4),
+                            color: widget.subjectColors.first.withValues(alpha: 0.4),
                           ),
                         ),
                       ),
@@ -1135,12 +1135,12 @@ class _LetterQuizScreenState extends ConsumerState<LetterQuizScreen>
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(24),
                 border: Border.all(
-                  color: widget.subjectColors.first.withOpacity(0.35),
+                  color: widget.subjectColors.first.withValues(alpha: 0.35),
                   width: 2,
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.08),
+                    color: Colors.black.withValues(alpha: 0.08),
                     blurRadius: 12,
                     offset: const Offset(0, 4),
                   ),
@@ -1160,7 +1160,7 @@ class _LetterQuizScreenState extends ConsumerState<LetterQuizScreen>
                     ),
                     if (_isEvaluating)
                       Container(
-                        color: Colors.white.withOpacity(0.8),
+                        color: Colors.white.withValues(alpha: 0.8),
                         child: Center(
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
@@ -1232,19 +1232,19 @@ class _LetterQuizScreenState extends ConsumerState<LetterQuizScreen>
                     color:
                         (_drawStrokes.isNotEmpty || _currentStroke.isNotEmpty)
                         ? Colors.white
-                        : Colors.white.withOpacity(0.4),
+                        : Colors.white.withValues(alpha: 0.4),
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
                       color:
                           (_drawStrokes.isNotEmpty || _currentStroke.isNotEmpty)
                           ? widget.subjectColors.first
-                          : Colors.white.withOpacity(0.3),
+                          : Colors.white.withValues(alpha: 0.3),
                       width: 2,
                     ),
                     boxShadow: _drawStrokes.isNotEmpty
                         ? [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.1),
+                              color: Colors.black.withValues(alpha: 0.1),
                               blurRadius: 8,
                               offset: const Offset(0, 3),
                             ),
@@ -1261,7 +1261,7 @@ class _LetterQuizScreenState extends ConsumerState<LetterQuizScreen>
                             (_drawStrokes.isNotEmpty ||
                                 _currentStroke.isNotEmpty)
                             ? widget.subjectColors.first
-                            : Colors.white.withOpacity(0.4),
+                            : Colors.white.withValues(alpha: 0.4),
                       ),
                     ),
                   ),
@@ -1284,7 +1284,7 @@ class _LetterQuizScreenState extends ConsumerState<LetterQuizScreen>
         child: Container(
           decoration: BoxDecoration(
             color: (_wasCorrect ? Colors.green.shade400 : Colors.red.shade400)
-                .withOpacity(0.92),
+                .withValues(alpha: 0.92),
           ),
           child: Center(
             child: Column(
@@ -1411,7 +1411,7 @@ class _LetterQuizScreenState extends ConsumerState<LetterQuizScreen>
                         borderRadius: BorderRadius.circular(32),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.15),
+                            color: Colors.black.withValues(alpha: 0.15),
                             blurRadius: 24,
                             offset: const Offset(0, 8),
                           ),
@@ -1496,7 +1496,7 @@ class _LetterQuizScreenState extends ConsumerState<LetterQuizScreen>
                         width: double.infinity,
                         padding: const EdgeInsets.all(20),
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.15),
+                          color: Colors.white.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(24),
                         ),
                         child: Column(
@@ -1538,7 +1538,7 @@ class _LetterQuizScreenState extends ConsumerState<LetterQuizScreen>
                                         vertical: 4,
                                       ),
                                       decoration: BoxDecoration(
-                                        color: Colors.white.withOpacity(0.25),
+                                        color: Colors.white.withValues(alpha: 0.25),
                                         borderRadius: BorderRadius.circular(10),
                                       ),
                                       child: Text(
@@ -1572,7 +1572,7 @@ class _LetterQuizScreenState extends ConsumerState<LetterQuizScreen>
                           borderRadius: BorderRadius.circular(32),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.18),
+                              color: Colors.black.withValues(alpha: 0.18),
                               blurRadius: 20,
                               offset: const Offset(0, 8),
                             ),
@@ -1716,12 +1716,12 @@ class _LetterAnswerButtonState extends State<_LetterAnswerButton>
             color: Colors.white,
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
-              color: widget.colors.first.withOpacity(0.3),
+              color: widget.colors.first.withValues(alpha: 0.3),
               width: 2,
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.12),
+                color: Colors.black.withValues(alpha: 0.12),
                 blurRadius: 10,
                 offset: const Offset(0, 4),
               ),
@@ -1768,7 +1768,7 @@ class _RetryBtn extends StatelessWidget {
           borderRadius: BorderRadius.circular(24),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.2),
+              color: Colors.black.withValues(alpha: 0.2),
               blurRadius: 12,
               offset: const Offset(0, 4),
             ),

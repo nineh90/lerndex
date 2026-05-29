@@ -146,11 +146,13 @@ class SubscriptionService {
           debugPrint(
             '🔄 Plan-Wechsel: $oldProductId → ${package.storeProduct.identifier}',
           );
-          result = await Purchases.purchasePackage(
-            package,
-            googleProductChangeInfo: GoogleProductChangeInfo(
-              oldProductId,
-              prorationMode: GoogleProrationMode.immediateWithTimeProration,
+          result = await Purchases.purchase(
+            PurchaseParams.package(
+              package,
+              googleProductChangeInfo: GoogleProductChangeInfo(
+                oldProductId,
+                prorationMode: GoogleProrationMode.immediateWithTimeProration,
+              ),
             ),
           );
         } else {
@@ -221,7 +223,7 @@ class SubscriptionService {
             'Bitte sicherstellen, dass es in RevenueCat konfiguriert ist.';
       }
 
-      await Purchases.purchaseStoreProduct(product);
+      await Purchases.purchase(PurchaseParams.storeProduct(product));
 
       // Kauf erfolgreich → Slot-Zähler in Firestore atomar erhöhen
       await _incrementExtraChildSlot();

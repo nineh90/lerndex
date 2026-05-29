@@ -468,7 +468,7 @@ class _ParentRewardTileState extends ConsumerState<_ParentRewardTile>
             borderRadius: BorderRadius.circular(28),
             boxShadow: [
               BoxShadow(
-                color: tileColors[0].withOpacity(isLocked ? 0.2 : 0.45),
+                color: tileColors[0].withValues(alpha: isLocked ? 0.2 : 0.45),
                 blurRadius: isLocked ? 8 : 16,
                 offset: const Offset(0, 6),
               ),
@@ -486,7 +486,7 @@ class _ParentRewardTileState extends ConsumerState<_ParentRewardTile>
                   width: 80,
                   height: 80,
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(isLocked ? 0.06 : 0.12),
+                    color: Colors.white.withValues(alpha: isLocked ? 0.06 : 0.12),
                     shape: BoxShape.circle,
                   ),
                 ),
@@ -499,7 +499,7 @@ class _ParentRewardTileState extends ConsumerState<_ParentRewardTile>
                   width: 55,
                   height: 55,
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(isLocked ? 0.04 : 0.08),
+                    color: Colors.white.withValues(alpha: isLocked ? 0.04 : 0.08),
                     shape: BoxShape.circle,
                   ),
                 ),
@@ -518,7 +518,7 @@ class _ParentRewardTileState extends ConsumerState<_ParentRewardTile>
                           emoji,
                           style: TextStyle(
                             fontSize: 32,
-                            color: Colors.white.withOpacity(
+                            color: Colors.white.withValues(alpha: 
                               isLocked ? 0.4 : 1.0,
                             ),
                           ),
@@ -531,7 +531,7 @@ class _ParentRewardTileState extends ConsumerState<_ParentRewardTile>
                               shape: BoxShape.circle,
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withOpacity(0.15),
+                                  color: Colors.black.withValues(alpha: 0.15),
                                   blurRadius: 4,
                                 ),
                               ],
@@ -575,12 +575,12 @@ class _ParentRewardTileState extends ConsumerState<_ParentRewardTile>
                           value: progress,
                           minHeight: 7,
                           backgroundColor: isLocked
-                              ? const Color(0xFF37205A).withOpacity(0.15)
-                              : Colors.white.withOpacity(0.2),
+                              ? const Color(0xFF37205A).withValues(alpha: 0.15)
+                              : Colors.white.withValues(alpha: 0.2),
                           valueColor: AlwaysStoppedAnimation<Color>(
                             isLocked
-                                ? const Color(0xFF37205A).withOpacity(0.7)
-                                : Colors.white.withOpacity(0.9),
+                                ? const Color(0xFF37205A).withValues(alpha: 0.7)
+                                : Colors.white.withValues(alpha: 0.9),
                           ),
                         ),
                       ),
@@ -592,7 +592,7 @@ class _ParentRewardTileState extends ConsumerState<_ParentRewardTile>
                           fontWeight: FontWeight.w900,
                           color: isLocked
                               ? const Color(0xFF37205A)
-                              : Colors.white.withOpacity(0.9),
+                              : Colors.white.withValues(alpha: 0.9),
                           shadows: isLocked
                               ? null
                               : const [
@@ -611,7 +611,7 @@ class _ParentRewardTileState extends ConsumerState<_ParentRewardTile>
                           vertical: 4,
                         ),
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.3),
+                          color: Colors.white.withValues(alpha: 0.3),
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: const Text(
@@ -699,7 +699,7 @@ class _ClaimDialog extends StatelessWidget {
                         borderRadius: BorderRadius.circular(20),
                         boxShadow: [
                           BoxShadow(
-                            color: const Color(0xFF7C4DFF).withOpacity(0.4),
+                            color: const Color(0xFF7C4DFF).withValues(alpha: 0.4),
                             blurRadius: 12,
                             offset: const Offset(0, 4),
                           ),
@@ -792,7 +792,7 @@ class _SystemAchievements extends StatelessWidget {
                   vertical: 10,
                 ),
                 decoration: BoxDecoration(
-                  color: cat.color.withOpacity(0.1),
+                  color: cat.color.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: Row(
@@ -808,7 +808,7 @@ class _SystemAchievements extends StatelessWidget {
                             child: LinearProgressIndicator(
                               value: total > 0 ? doneCount / total : 0,
                               minHeight: 12,
-                              backgroundColor: cat.color.withOpacity(0.15),
+                              backgroundColor: cat.color.withValues(alpha: 0.15),
                               valueColor: AlwaysStoppedAnimation<Color>(
                                 cat.color,
                               ),
@@ -959,16 +959,16 @@ class _AchievCard extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
-        color: done ? color.withOpacity(0.08) : Colors.white,
+        color: done ? color.withValues(alpha: 0.08) : Colors.white,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: done ? color.withOpacity(0.35) : const Color(0xFFE0D8FF),
+          color: done ? color.withValues(alpha: 0.35) : const Color(0xFFE0D8FF),
           width: done ? 2 : 1.5,
         ),
         boxShadow: done
             ? [
                 BoxShadow(
-                  color: color.withOpacity(0.12),
+                  color: color.withValues(alpha: 0.12),
                   blurRadius: 8,
                   offset: const Offset(0, 3),
                 ),
@@ -984,7 +984,7 @@ class _AchievCard extends StatelessWidget {
               width: 60,
               height: 60,
               decoration: BoxDecoration(
-                color: done ? color.withOpacity(0.15) : const Color(0xFFF3F0FF),
+                color: done ? color.withValues(alpha: 0.15) : const Color(0xFFF3F0FF),
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Center(
@@ -1022,7 +1022,7 @@ class _AchievCard extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
-                        color: color.withOpacity(0.8),
+                        color: color.withValues(alpha: 0.8),
                       ),
                     ),
                   ] else if (label.isNotEmpty) ...[

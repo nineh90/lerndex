@@ -24,7 +24,7 @@ const Color _kBrandLight = Color(0xFF9333EA);
 const Color _kBrandDeep = Color(0xFF4C1D95);
 const Color _kBrandSoft = Color(0xFFA855F7);
 const Color _kBrandAccent = Color(0xFFC026D3);
-final Color _kBrandTint = const Color(0xFF6B21A8).withOpacity(0.10);
+final Color _kBrandTint = const Color(0xFF6B21A8).withValues(alpha: 0.10);
 
 /// Detail-Statistiken für ein Kind
 class ChildStatisticsScreen extends ConsumerWidget {
@@ -476,7 +476,7 @@ class ChildStatisticsScreen extends ConsumerWidget {
               decoration: BoxDecoration(
                 color: _kBrandTint,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: _kBrand.withOpacity(0.25), width: 1),
+                border: Border.all(color: _kBrand.withValues(alpha: 0.25), width: 1),
               ),
               child: Row(
                 children: [
@@ -732,10 +732,10 @@ class _LearningTimeStatsCard extends StatelessWidget {
                   vertical: 20,
                 ),
                 decoration: BoxDecoration(
-                  color: _kBrandSoft.withOpacity(0.10),
+                  color: _kBrandSoft.withValues(alpha: 0.10),
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
-                    color: _kBrandSoft.withOpacity(0.30),
+                    color: _kBrandSoft.withValues(alpha: 0.30),
                     width: 2,
                   ),
                 ),

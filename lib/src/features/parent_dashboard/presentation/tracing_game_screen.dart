@@ -170,7 +170,6 @@ class _TracingGameScreenState extends ConsumerState<TracingGameScreen>
   late List<_TracingTask> _tasks;
   int _taskIndex = 0;
   int _correctCount = 0;
-  int _totalAnswered = 0;
 
   // Canvas
   final _canvasKey = GlobalKey();
@@ -413,7 +412,6 @@ class _TracingGameScreenState extends ConsumerState<TracingGameScreen>
       _feedbackEmoji = isCorrect ? '🌟' : '💪';
       _feedbackText = isCorrect ? 'Super gemalt!' : 'Nochmal versuchen!';
       if (isCorrect) _correctCount++;
-      _totalAnswered++;
     });
     _feedbackCtrl.forward(from: 0);
     if (!isCorrect) _shakeCtrl.forward(from: 0);
@@ -501,7 +499,6 @@ class _TracingGameScreenState extends ConsumerState<TracingGameScreen>
           _buildTaskList();
           _taskIndex = 0;
           _correctCount = 0;
-          _totalAnswered = 0;
           _strokes.clear();
           _currentStroke = [];
           _showHint = true;
@@ -552,7 +549,7 @@ class _TracingGameScreenState extends ConsumerState<TracingGameScreen>
               width: 42,
               height: 42,
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.3),
+                color: Colors.white.withValues(alpha: 0.3),
                 shape: BoxShape.circle,
               ),
               child: const Icon(
@@ -579,7 +576,7 @@ class _TracingGameScreenState extends ConsumerState<TracingGameScreen>
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.3),
+              color: Colors.white.withValues(alpha: 0.3),
               borderRadius: BorderRadius.circular(20),
             ),
             child: Text(
@@ -610,7 +607,7 @@ class _TracingGameScreenState extends ConsumerState<TracingGameScreen>
                 borderRadius: BorderRadius.circular(22),
                 boxShadow: [
                   BoxShadow(
-                    color: widget.subjectColors.first.withOpacity(0.15),
+                    color: widget.subjectColors.first.withValues(alpha: 0.15),
                     blurRadius: 12,
                     offset: const Offset(0, 4),
                   ),
@@ -643,7 +640,7 @@ class _TracingGameScreenState extends ConsumerState<TracingGameScreen>
                     child: Container(
                       padding: const EdgeInsets.all(6),
                       decoration: BoxDecoration(
-                        color: widget.subjectColors.first.withOpacity(0.1),
+                        color: widget.subjectColors.first.withValues(alpha: 0.1),
                         shape: BoxShape.circle,
                       ),
                       child: Icon(
@@ -687,13 +684,13 @@ class _TracingGameScreenState extends ConsumerState<TracingGameScreen>
                     borderRadius: BorderRadius.circular(28),
                     boxShadow: [
                       BoxShadow(
-                        color: widget.subjectColors.first.withOpacity(0.2),
+                        color: widget.subjectColors.first.withValues(alpha: 0.2),
                         blurRadius: 20,
                         offset: const Offset(0, 6),
                       ),
                     ],
                     border: Border.all(
-                      color: widget.subjectColors.first.withOpacity(0.3),
+                      color: widget.subjectColors.first.withValues(alpha: 0.3),
                       width: 2,
                     ),
                   ),
@@ -709,7 +706,7 @@ class _TracingGameScreenState extends ConsumerState<TracingGameScreen>
                               style: TextStyle(
                                 fontSize: 180,
                                 fontWeight: FontWeight.w900,
-                                color: widget.subjectColors.first.withOpacity(
+                                color: widget.subjectColors.first.withValues(alpha: 
                                   0.07,
                                 ),
                               ),
@@ -754,7 +751,7 @@ class _TracingGameScreenState extends ConsumerState<TracingGameScreen>
                                 (_status == _TracingStatus.correct
                                         ? Colors.green
                                         : Colors.orange)
-                                    .withOpacity(0.3),
+                                    .withValues(alpha: 0.3),
                             blurRadius: 24,
                             spreadRadius: 2,
                           ),
@@ -790,7 +787,7 @@ class _TracingGameScreenState extends ConsumerState<TracingGameScreen>
               Positioned.fill(
                 child: Container(
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.7),
+                    color: Colors.white.withValues(alpha: 0.7),
                     borderRadius: BorderRadius.circular(28),
                   ),
                   child: Column(
@@ -837,7 +834,7 @@ class _TracingGameScreenState extends ConsumerState<TracingGameScreen>
                   borderRadius: BorderRadius.circular(22),
                   boxShadow: [
                     BoxShadow(
-                      color: widget.subjectColors.first.withOpacity(0.4),
+                      color: widget.subjectColors.first.withValues(alpha: 0.4),
                       blurRadius: 16,
                       offset: const Offset(0, 6),
                     ),
@@ -871,7 +868,7 @@ class _TracingGameScreenState extends ConsumerState<TracingGameScreen>
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(22),
                   border: Border.all(
-                    color: widget.subjectColors.first.withOpacity(0.3),
+                    color: widget.subjectColors.first.withValues(alpha: 0.3),
                     width: 2,
                   ),
                 ),
@@ -917,7 +914,7 @@ class _TracingGameScreenState extends ConsumerState<TracingGameScreen>
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
+                    color: Colors.black.withValues(alpha: 0.1),
                     blurRadius: 12,
                     offset: const Offset(0, 4),
                   ),
@@ -950,7 +947,7 @@ class _TracingGameScreenState extends ConsumerState<TracingGameScreen>
                   boxShadow: canSubmit
                       ? [
                           BoxShadow(
-                            color: widget.subjectColors.first.withOpacity(0.4),
+                            color: widget.subjectColors.first.withValues(alpha: 0.4),
                             blurRadius: 16,
                             offset: const Offset(0, 6),
                           ),
@@ -1122,7 +1119,7 @@ class _FinishedView extends StatelessWidget {
                       borderRadius: BorderRadius.circular(24),
                       boxShadow: [
                         BoxShadow(
-                          color: colors.first.withOpacity(0.4),
+                          color: colors.first.withValues(alpha: 0.4),
                           blurRadius: 16,
                           offset: const Offset(0, 6),
                         ),
@@ -1157,7 +1154,7 @@ class _FinishedView extends StatelessWidget {
                       borderRadius: BorderRadius.circular(24),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.08),
+                          color: Colors.black.withValues(alpha: 0.08),
                           blurRadius: 12,
                           offset: const Offset(0, 4),
                         ),

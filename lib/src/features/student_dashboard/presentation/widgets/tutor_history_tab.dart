@@ -104,7 +104,7 @@ class TutorHistoryTab extends ConsumerWidget {
                       Container(
                         padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(
-                          color: _topicColor(topic).withOpacity(0.12),
+                          color: _topicColor(topic).withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: Icon(

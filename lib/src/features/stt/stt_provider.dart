@@ -181,13 +181,13 @@ class SttController extends StateNotifier<SttState> {
             _accumulatedText = combined;
           }
         },
-        listenFor: const Duration(minutes: 5),
-        pauseFor: const Duration(seconds: 30),
-        localeId: 'de_DE',
         listenOptions: stt.SpeechListenOptions(
           partialResults: true,
           cancelOnError: false,
           listenMode: stt.ListenMode.dictation,
+          listenFor: const Duration(minutes: 5),
+          pauseFor: const Duration(seconds: 30),
+          localeId: 'de_DE',
         ),
         onSoundLevelChange: (level) {
           final normalized = ((level + 2) / 12).clamp(0.0, 1.0);

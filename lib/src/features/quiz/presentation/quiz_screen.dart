@@ -487,7 +487,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 20,
             offset: const Offset(0, 5),
           ),
@@ -537,7 +537,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
       animation: _feedbackController,
       builder: (context, child) {
         return Container(
-          color: (wasCorrect ? Colors.green : Colors.red).withOpacity(
+          color: (wasCorrect ? Colors.green : Colors.red).withValues(alpha: 
             _fadeAnimation.value * 0.9,
           ),
           child: Center(
@@ -550,7 +550,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.3),
+                      color: Colors.black.withValues(alpha: 0.3),
                       blurRadius: 30,
                     ),
                   ],
@@ -583,7 +583,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
           borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.15),
+              color: Colors.black.withValues(alpha: 0.15),
               blurRadius: 20,
               offset: const Offset(0, -4),
             ),
@@ -704,7 +704,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [subjectColor, subjectColor.withOpacity(0.75)],
+              colors: [subjectColor, subjectColor.withValues(alpha: 0.75)],
             ),
           ),
           child: SafeArea(
@@ -724,7 +724,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
                               width: 120,
                               height: 120,
                               decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.2),
+                                color: Colors.white.withValues(alpha: 0.2),
                                 shape: BoxShape.circle,
                               ),
                             ),
@@ -763,7 +763,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
                             borderRadius: BorderRadius.circular(24),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withOpacity(0.12),
+                                color: Colors.black.withValues(alpha: 0.12),
                                 blurRadius: 20,
                                 offset: const Offset(0, 6),
                               ),
@@ -835,7 +835,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
                               borderRadius: BorderRadius.circular(24),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withOpacity(0.08),
+                                  color: Colors.black.withValues(alpha: 0.08),
                                   blurRadius: 16,
                                   offset: const Offset(0, 4),
                                 ),
@@ -966,7 +966,7 @@ class _TutorUnlockedDialog extends StatelessWidget {
                 width: 90,
                 height: 90,
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.15),
+                  color: Colors.white.withValues(alpha: 0.15),
                   shape: BoxShape.circle,
                 ),
                 child: const Center(
@@ -990,7 +990,7 @@ class _TutorUnlockedDialog extends StatelessWidget {
                 'er erklärt alles auf deine Art.',
                 style: TextStyle(
                   fontSize: 14,
-                  color: Colors.white.withOpacity(0.9),
+                  color: Colors.white.withValues(alpha: 0.9),
                   height: 1.6,
                 ),
                 textAlign: TextAlign.center,
@@ -1002,7 +1002,7 @@ class _TutorUnlockedDialog extends StatelessWidget {
                   vertical: 10,
                 ),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.15),
+                  color: Colors.white.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: const Row(

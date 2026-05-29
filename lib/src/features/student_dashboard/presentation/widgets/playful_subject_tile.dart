@@ -64,7 +64,7 @@ class _PlayfulSubjectTileState extends State<PlayfulSubjectTile>
             borderRadius: BorderRadius.circular(24),
             boxShadow: [
               BoxShadow(
-                color: widget.config.gradientColors.last.withOpacity(0.4),
+                color: widget.config.gradientColors.last.withValues(alpha: 0.4),
                 blurRadius: 14,
                 offset: const Offset(0, 7),
               ),
@@ -80,7 +80,7 @@ class _PlayfulSubjectTileState extends State<PlayfulSubjectTile>
                   width: 72,
                   height: 72,
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.12),
+                    color: Colors.white.withValues(alpha: 0.12),
                     shape: BoxShape.circle,
                   ),
                 ),
@@ -92,7 +92,7 @@ class _PlayfulSubjectTileState extends State<PlayfulSubjectTile>
                   width: 60,
                   height: 60,
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.08),
+                    color: Colors.white.withValues(alpha: 0.08),
                     shape: BoxShape.circle,
                   ),
                 ),
@@ -126,7 +126,7 @@ class _PlayfulSubjectTileState extends State<PlayfulSubjectTile>
                         Container(
                           padding: const EdgeInsets.all(5),
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.25),
+                            color: Colors.white.withValues(alpha: 0.25),
                             shape: BoxShape.circle,
                           ),
                           child: const Icon(

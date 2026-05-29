@@ -390,7 +390,7 @@ class _LerndexSplashScreenState extends ConsumerState<LerndexSplashScreen>
           'Lernen macht Spaß! 🚀',
           style: TextStyle(
             fontSize: 16,
-            color: Colors.white.withOpacity(0.8),
+            color: Colors.white.withValues(alpha: 0.8),
             letterSpacing: 0.5,
           ),
         ),
@@ -412,7 +412,7 @@ class _LerndexSplashScreenState extends ConsumerState<LerndexSplashScreen>
               child: LinearProgressIndicator(
                 value: value,
                 minHeight: 6,
-                backgroundColor: Colors.white.withOpacity(0.2),
+                backgroundColor: Colors.white.withValues(alpha: 0.2),
                 valueColor: const AlwaysStoppedAnimation<Color>(
                   Color(0xFFC084FC),
                 ),
@@ -426,7 +426,7 @@ class _LerndexSplashScreenState extends ConsumerState<LerndexSplashScreen>
               _statusText,
               key: ValueKey(_statusText),
               style: TextStyle(
-                color: Colors.white.withOpacity(0.75),
+                color: Colors.white.withValues(alpha: 0.75),
                 fontSize: 13,
               ),
             ),

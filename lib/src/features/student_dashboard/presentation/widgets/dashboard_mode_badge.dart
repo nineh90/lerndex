@@ -19,9 +19,9 @@ class DashboardModeBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: _color(mode).withOpacity(0.12),
+        color: _color(mode).withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: _color(mode).withOpacity(0.4)),
+        border: Border.all(color: _color(mode).withValues(alpha: 0.4)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
