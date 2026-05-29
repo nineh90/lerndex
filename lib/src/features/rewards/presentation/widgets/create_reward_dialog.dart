@@ -387,10 +387,8 @@ class _CreateRewardDialogState extends ConsumerState<CreateRewardDialog> {
                 ),
                 items: RewardTrigger.values
                     .where((t) => t != RewardTrigger.avatarUnlock)
-                    // Manual-Trigger ausgeblendet: Eltern brauchen kein
-                    // "sofort verfügbar" — alle Belohnungen sollten an
-                    // einer Lern-Bedingung hängen.
-                    .where((t) => t != RewardTrigger.manual)
+                    // 'manual' = sofort verfügbar ohne Bedingung – das Kind
+                    // sieht die Belohnung direkt als einlösbar im Dashboard.
                     .map((trigger) {
                       return DropdownMenuItem(
                         value: trigger,

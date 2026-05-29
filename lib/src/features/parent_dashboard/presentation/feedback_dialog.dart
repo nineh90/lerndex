@@ -1,6 +1,9 @@
+import 'dart:io';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 import '../data/feedback_repository.dart';
 
 class FeedbackDialog extends ConsumerStatefulWidget {
@@ -14,14 +17,38 @@ class _FeedbackDialogState extends ConsumerState<FeedbackDialog> {
   final _subjectCtrl = TextEditingController();
   final _messageCtrl = TextEditingController();
   final _formKey = GlobalKey<FormState>();
+  final _picker = ImagePicker();
 
   bool _isSending = false;
+  File? _screenshot;
 
   @override
   void dispose() {
     _subjectCtrl.dispose();
     _messageCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickScreenshot() async {
+    try {
+      final picked = await _picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1920,
+        maxHeight: 1920,
+        imageQuality: 85,
+      );
+      if (picked != null) {
+        setState(() => _screenshot = File(picked.path));
+      }
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Bild konnte nicht geladen werden.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   Future<void> _submit() async {
@@ -34,6 +61,7 @@ class _FeedbackDialogState extends ConsumerState<FeedbackDialog> {
       await ref.read(feedbackRepositoryProvider).sendFeedback(
             subject: _subjectCtrl.text,
             message: _messageCtrl.text,
+            screenshot: _screenshot,
           );
 
       if (!mounted) return;
@@ -141,6 +169,8 @@ class _FeedbackDialogState extends ConsumerState<FeedbackDialog> {
                   ),
                 ],
               ),
+              const SizedBox(height: 12),
+              _buildAttachmentSection(),
             ],
           ),
         ),
@@ -168,6 +198,46 @@ class _FeedbackDialogState extends ConsumerState<FeedbackDialog> {
                 )
               : const Icon(Icons.send, size: 18),
           label: Text(_isSending ? 'Senden…' : 'Absenden'),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAttachmentSection() {
+    if (_screenshot == null) {
+      return Align(
+        alignment: Alignment.centerLeft,
+        child: TextButton.icon(
+          onPressed: _isSending ? null : _pickScreenshot,
+          icon: const Icon(Icons.image_outlined, size: 18),
+          label: const Text('Screenshot anhängen (optional)'),
+          style: TextButton.styleFrom(foregroundColor: Colors.deepPurple),
+        ),
+      );
+    }
+    return Row(
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: Image.file(
+            _screenshot!,
+            width: 56,
+            height: 56,
+            fit: BoxFit.cover,
+          ),
+        ),
+        const SizedBox(width: 10),
+        const Expanded(
+          child: Text(
+            'Screenshot angehängt',
+            style: TextStyle(fontSize: 13),
+          ),
+        ),
+        IconButton(
+          onPressed: _isSending ? null : () => setState(() => _screenshot = null),
+          icon: const Icon(Icons.close, size: 20),
+          tooltip: 'Entfernen',
+          color: Colors.grey.shade700,
         ),
       ],
     );

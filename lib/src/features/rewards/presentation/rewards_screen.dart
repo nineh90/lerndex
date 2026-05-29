@@ -78,8 +78,20 @@ class RewardsScreen extends ConsumerWidget {
         final parentRewards = allRewards
             .where((r) => r.type == RewardType.parent)
             .toList();
-        final approvedRewards = parentRewards
-            .where((r) => r.status == RewardStatus.approved)
+        // "Verfügbar"-Tab: alle noch nicht eingelösten Eltern-Belohnungen.
+        // Freigeschaltete (approved) sind einlösbar, noch gesperrte (pending)
+        // werden mit ihrer Bedingung angezeigt. Einlösbare zuerst.
+        final availableRewards =
+            parentRewards
+                .where((r) => r.status != RewardStatus.claimed)
+                .toList()
+              ..sort((a, b) {
+                if (a.canClaim != b.canClaim) return a.canClaim ? -1 : 1;
+                return b.createdAt.compareTo(a.createdAt);
+              });
+        // Badge zählt nur einlösbare (= sofort erledigbar fürs Kind).
+        final approvedRewards = availableRewards
+            .where((r) => r.canClaim)
             .toList();
         final claimedRewards = parentRewards
             .where((r) => r.status == RewardStatus.claimed)
@@ -170,7 +182,7 @@ class RewardsScreen extends ConsumerWidget {
                       _buildParentRewardTab(
                         context,
                         ref,
-                        approvedRewards,
+                        availableRewards,
                         user.uid,
                         activeChild.id,
                         isAvailable: true,
@@ -255,12 +267,15 @@ class RewardsScreen extends ConsumerWidget {
       itemCount: rewards.length,
       itemBuilder: (context, index) {
         final reward = rewards[index];
+        // Einlösen nur im Verfügbar-Tab UND nur wenn freigeschaltet.
+        // Gesperrte (pending) Belohnungen zeigen nur ihre Bedingung.
+        final canClaimNow = isAvailable && reward.canClaim;
         return RewardCard(
           reward: reward,
           primaryColor: primary,
           onSurfaceColor: onSurface,
           surfaceColor: primary.withOpacity(0.08),
-          onClaim: isAvailable
+          onClaim: canClaimNow
               ? () async {
                   await _claimReward(
                     context,

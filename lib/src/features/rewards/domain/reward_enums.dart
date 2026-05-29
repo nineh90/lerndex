@@ -135,7 +135,7 @@ extension RewardTriggerExtension on RewardTrigger {
       case RewardTrigger.quizCount:
         return 'Anzahl Quizze';
       case RewardTrigger.manual:
-        return 'Manuell';
+        return 'Sofort verfügbar (ohne Bedingung)';
       case RewardTrigger.avatarUnlock:
         return '🎭 Avatar freischalten';
     }

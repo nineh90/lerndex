@@ -29,18 +29,22 @@ class RewardCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isClaimed = reward.status == RewardStatus.claimed;
+    // Noch nicht freigeschaltet: Belohnung wird gesperrt mit Bedingung gezeigt.
+    final isPending = reward.status == RewardStatus.pending;
+    // Gedämpfte Darstellung für nicht-einlösbare Belohnungen.
+    final muted = isClaimed || isPending;
 
     // Theme-Farben mit Fallback auf Standard-Lila
     final accent = primaryColor ?? const Color(0xFF7C4DFF);
     final textColor = onSurfaceColor ?? Colors.black87;
     final cardSurface = surfaceColor ?? const Color(0xFFF3F0FF);
-    final borderColor = isClaimed
-        ? Colors.grey.shade200
+    final borderColor = muted
+        ? Colors.grey.shade300
         : primaryColor?.withOpacity(0.6) ?? const Color(0xFF9C64FF);
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
-      elevation: isClaimed ? 1 : 3,
+      elevation: muted ? 1 : 3,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
         side: BorderSide(color: borderColor, width: 2),
@@ -63,7 +67,7 @@ class RewardCard extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
-                          color: isClaimed ? Colors.grey : textColor,
+                          color: muted ? Colors.grey : textColor,
                         ),
                       ),
                       if (reward.description.isNotEmpty)
@@ -71,7 +75,7 @@ class RewardCard extends StatelessWidget {
                           reward.description,
                           style: TextStyle(
                             fontSize: 14,
-                            color: isClaimed
+                            color: muted
                                 ? Colors.grey.shade500
                                 : textColor.withOpacity(0.6),
                           ),
@@ -80,21 +84,23 @@ class RewardCard extends StatelessWidget {
                   ),
                 ),
                 if (isClaimed)
-                  const Icon(Icons.check_circle, color: Colors.green, size: 32),
+                  const Icon(Icons.check_circle, color: Colors.green, size: 32)
+                else if (isPending)
+                  Icon(Icons.lock_outline, color: Colors.grey.shade400, size: 28),
               ],
             ),
             const SizedBox(height: 12),
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: isClaimed ? Colors.grey.shade100 : cardSurface,
+                color: muted ? Colors.grey.shade100 : cardSurface,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Row(
                 children: [
                   Icon(
                     Icons.card_giftcard,
-                    color: isClaimed ? Colors.grey : accent,
+                    color: muted ? Colors.grey : accent,
                   ),
                   const SizedBox(width: 8),
                   Expanded(
@@ -103,13 +109,32 @@ class RewardCard extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
-                        color: isClaimed ? Colors.grey : textColor,
+                        color: muted ? Colors.grey : textColor,
                       ),
                     ),
                   ),
                 ],
               ),
             ),
+            if (isPending) ...[
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Icon(Icons.lock_outline, size: 18, color: Colors.grey.shade600),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      'Freischalten: ${reward.conditionText}',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.grey.shade700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
             if (onClaim != null) ...[
               const SizedBox(height: 12),
               SizedBox(
