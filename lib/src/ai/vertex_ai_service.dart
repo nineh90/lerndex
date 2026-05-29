@@ -330,6 +330,7 @@ class VertexAIService {
     required String subject,
     int count = 10,
     List<String> recentTopics = const [],
+    List<String> recentQuestions = const [],
   }) async {
     await _ensureQuizInitialized();
 
@@ -339,6 +340,7 @@ class VertexAIService {
         subject: subject,
         count: count,
         recentTopics: recentTopics,
+        recentQuestions: recentQuestions,
       );
 
       debugPrint(
@@ -712,8 +714,12 @@ WICHTIG: Antworte NUR mit diesem JSON-Array, ohne Markdown oder Text davor/danac
     required String subject,
     required int count,
     required List<String> recentTopics,
+    List<String> recentQuestions = const [],
   }) {
     final subjectDisplay = _subjectDisplayName(subject);
+    // Ab Klasse 3 strenge Vielfalt erzwingen; Klasse 1–2 darf bewusst
+    // wiederholungsfreundlicher sein (Übungseffekt für Erstleser).
+    final strictVariety = child.grade >= 3;
 
     final curriculumContext = CurriculumData.buildCurriculumContext(
       schoolType: child.schoolType,
@@ -734,11 +740,53 @@ WICHTIG: Antworte NUR mit diesem JSON-Array, ohne Markdown oder Text davor/danac
       level: child.level,
     );
 
-    final topicAvoidance = recentTopics.isNotEmpty
-        ? 'THEMEN-VARIATION:\n'
-              'Das Kind hatte kürzlich viele Fragen zu: ${recentTopics.join(", ")}.\n'
-              'Bevorzuge ANDERE Unterthemen innerhalb des Lehrplans.\n'
-        : '';
+    // Vermeiden-Block: kürzlich abgefragte Themen + bereits gestellte
+    // Fragetexte (gegen Wiederholung über mehrere Quiz-Sessions hinweg).
+    final avoidance = StringBuffer();
+    if (recentTopics.isNotEmpty) {
+      avoidance
+        ..writeln('THEMEN-VARIATION:')
+        ..writeln(
+          'Kürzlich abgefragte Unterthemen: ${recentTopics.join(", ")}.',
+        )
+        ..writeln('Bevorzuge ANDERE Unterthemen innerhalb des Lehrplans.');
+    }
+    if (recentQuestions.isNotEmpty) {
+      final recent = recentQuestions
+          .take(12)
+          .map((q) {
+            final t = q.trim();
+            return t.length > 90 ? '${t.substring(0, 90)}…' : t;
+          })
+          .toList();
+      avoidance
+        ..writeln()
+        ..writeln(
+          'BEREITS GESTELLTE FRAGEN — stelle KEINE inhaltlich gleiche Frage '
+          '(auch nicht sinngemäß oder nur mit anderen Zahlen/Namen):',
+        );
+      for (final q in recent) {
+        avoidance.writeln('  - $q');
+      }
+    }
+    final topicAvoidance = avoidance.toString();
+
+    final varietyRules = strictVariety
+        ? '''
+VIELFALT (KRITISCH — höchste Priorität neben der Fach-Bindung):
+- Jede der $count Fragen MUSS eine ANDERE Kompetenz bzw. ein anderes Unterthema prüfen.
+- Verteile die Fragen über MEHRERE der oben genannten Lehrplanthemen — niemals alle aus einem einzigen Thema.
+- VERBOTEN: zwei Fragen, die dieselbe Aufgabe mit nur anderen Zahlen, Namen oder Objekten sind (z.B. "Was ist 3+4?" und "Was ist 6+2?").
+- VERBOTEN: dieselbe Frage-Schablone mehrfach. Frage $count darf nicht dasselbe Prinzip abfragen wie Frage 1.
+- Variiere das Frageformat: Berechnung, Sachaufgabe im Alltagskontext, Vergleich/Zuordnung, Begriff/Definition, Anwendung.
+- Variiere die Kontexte (nicht mehrfach dasselbe Szenario).
+- Selbstprüfung vor der Ausgabe: Sind zwei Fragen zu ähnlich? Dann ersetze die Dopplung durch ein anderes Unterthema.
+'''
+        : '''
+VIELFALT:
+- Wechsle Zahlen, Wörter und Aufgabentypen ab.
+- Vermeide zwei fast identische Fragen direkt hintereinander.
+''';
 
     final gesamtschulNote = child.schoolType == 'Gesamtschule'
         ? '\nWICHTIG — GESAMTSCHULE:\n'
@@ -788,6 +836,8 @@ REGELN:
 - Abwechslungsreiche Alltagskontexte
 - Falsche Antworten: plausibel, typische Schülerfehler
 
+$varietyRules
+
 $exampleQuestions
 
 ⚠️ FACH-BINDUNG (KRITISCH):
@@ -803,6 +853,7 @@ SETZE das Feld "emoji" mit EINEM ODER MEHREREN dieser exakten Emojis:
 $_emojiWhitelistForPrompt
 
 REGELN für emoji:
+- Der emoji-Wert MUSS wie jeder JSON-String in Anführungszeichen stehen: "emoji": "☀️" (niemals "emoji": ☀️).
 - NUR Emojis aus obiger Liste verwenden. Andere Emojis werden verworfen.
 - Bei Zähl-Aufgaben: Emoji wiederholen ("🍎🍎🍎" für 3 Äpfel) — max. 5 Stück.
 - Wenn das Bild die Frage trägt (z.B. "Wie viele 🍎?"), darf der Fragetext
@@ -1306,7 +1357,17 @@ Antworte NUR mit einem JSON-Array, kein Text oder Markdown davor/danach:
       cleaned = cleaned.substring(0, cleaned.length - 3);
     }
     cleaned = cleaned.trim();
-    return _fixJsonNewlines(cleaned);
+    return _quoteBareEmoji(_fixJsonNewlines(cleaned));
+  }
+
+  /// Repariert einen häufigen KI-Fehler: der emoji-Wert wird ohne
+  /// Anführungszeichen geliefert, was das ganze JSON-Array unparsbar macht:
+  ///   "emoji": ☀️,        →   "emoji": "☀️",
+  ///   "emoji": 🍎🍎🍎,     →   "emoji": "🍎🍎🍎",
+  /// Bereits korrekt gequotete Werte und `null` werden nicht angefasst.
+  String _quoteBareEmoji(String json) {
+    final re = RegExp(r'("emoji"\s*:\s*)(?!"|null\b)([^"\s,}\]]+)');
+    return json.replaceAllMapped(re, (m) => '${m[1]}"${m[2]}"');
   }
 
   String _fixJsonNewlines(String json) {
@@ -1430,15 +1491,26 @@ Antworte NUR mit einem JSON-Array, kein Text oder Markdown davor/danach:
       return 'Generiere abwechslungsreiche Fragen zum Fach $subject für Klasse $grade.';
     }
 
+    // Ab Klasse 3 über mehr Themen streuen (gegen Wiederholung im Batch);
+    // Klasse 1–2 bleibt fokussiert (Übungseffekt).
+    final isOlder = grade >= 3;
+    final maxTopics = isOlder ? 5 : 2;
+    final maxGoals = isOlder ? 2 : 3;
+
     final shuffled = List.from(topics)..shuffle(_random);
-    final focusTopics = shuffled.take(min(2, shuffled.length));
+    final focusTopics = shuffled.take(min(maxTopics, shuffled.length));
 
     final buffer = StringBuffer();
-    buffer.writeln('Fokussiere diesen Batch auf:');
+    buffer.writeln(
+      isOlder
+          ? 'Streue die Fragen über diese Themen — pro Thema verschiedene '
+                'Fragen, keine Häufung auf einem Thema:'
+          : 'Fokussiere diesen Batch auf:',
+    );
     for (final topic in focusTopics) {
       buffer.writeln('  * ${topic.topic}');
       final goals = List<String>.from(topic.learningGoals)..shuffle(_random);
-      for (final goal in goals.take(min(3, goals.length))) {
+      for (final goal in goals.take(min(maxGoals, goals.length))) {
         buffer.writeln('    -> $goal');
       }
     }

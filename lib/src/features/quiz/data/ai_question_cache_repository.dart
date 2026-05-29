@@ -92,13 +92,14 @@ class AiQuestionCacheRepository {
         '🔮 Pre-Fill: ${unplayed.length}/$_refillThreshold Fragen für $subject '
         '(Level ${child.level}) – generiere $_fullBatchSize neue...',
       );
-      final recentTopics = await _loadRecentTopics(userId, childId, subject);
+      final recent = await _loadRecentContext(userId, childId, subject);
 
       final questions = await _generator.generateQuizQuestions(
         child: child,
         subject: subject,
         count: _fullBatchSize,
-        recentTopics: recentTopics,
+        recentTopics: recent.topics,
+        recentQuestions: recent.questions,
       );
 
       if (questions.isNotEmpty) {
@@ -147,13 +148,14 @@ class AiQuestionCacheRepository {
     debugPrint(
       '🚀 Schnell-Batch: Generiere $_quickBatchSize Fragen für $subject...',
     );
-    final recentTopics = await _loadRecentTopics(userId, childId, subject);
+    final recent = await _loadRecentContext(userId, childId, subject);
 
     final quickQuestions = await _generator.generateQuizQuestions(
       child: child,
       subject: subject,
       count: _quickBatchSize,
-      recentTopics: recentTopics,
+      recentTopics: recent.topics,
+      recentQuestions: recent.questions,
     );
 
     if (quickQuestions.isNotEmpty) {
@@ -383,7 +385,10 @@ class AiQuestionCacheRepository {
     }
   }
 
-  Future<List<String>> _loadRecentTopics(
+  /// Lädt in EINEM Read den jüngsten Quiz-Kontext für die Anti-Wiederholungs-
+  /// Hinweise an die KI: die zuletzt abgefragten Unterthemen UND die zuletzt
+  /// gestellten Fragetexte (damit neue Batches inhaltlich nicht doppeln).
+  Future<({List<String> topics, List<String> questions})> _loadRecentContext(
     String userId,
     String childId,
     String subject,
@@ -396,15 +401,21 @@ class AiQuestionCacheRepository {
       ).orderBy('createdAt', descending: true).limit(30).get();
 
       final topics = <String>{};
+      final questions = <String>[];
       for (final doc in snapshot.docs) {
-        final topic = doc.data()['topic'] as String?;
+        final data = doc.data();
+        final topic = data['topic'] as String?;
         if (topic != null && topic.isNotEmpty) {
           topics.add(topic);
         }
+        final question = data['question'] as String?;
+        if (question != null && question.trim().isNotEmpty && questions.length < 20) {
+          questions.add(question.trim());
+        }
       }
-      return topics.toList();
+      return (topics: topics.toList(), questions: questions);
     } catch (e) {
-      return [];
+      return (topics: const <String>[], questions: const <String>[]);
     }
   }
 
@@ -461,13 +472,14 @@ class AiQuestionCacheRepository {
     _inflightSubjects.add(key);
 
     try {
-      final recentTopics = await _loadRecentTopics(userId, childId, subject);
+      final recent = await _loadRecentContext(userId, childId, subject);
 
       final questions = await _generator.generateQuizQuestions(
         child: child,
         subject: subject,
         count: count,
-        recentTopics: recentTopics,
+        recentTopics: recent.topics,
+        recentQuestions: recent.questions,
       );
 
       if (questions.isEmpty) return;

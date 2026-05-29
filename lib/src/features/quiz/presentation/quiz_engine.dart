@@ -374,6 +374,17 @@ class QuizEngine extends StateNotifier<QuizState> {
 
     state = state.copyWith(phase: QuizPhase.finished);
 
+    // State-Werte JETZT festhalten: finish() hat lange await-Phasen
+    // (Reward-Check, Level-Up-Dialog mit 30s-Timeout). Navigiert der Nutzer
+    // in dieser Zeit weg, wird die autoDispose-Engine entsorgt und ein
+    // späterer `state`-Zugriff würfe "used after dispose". Die Persistenz
+    // (XP/Streak/Rewards) soll aber trotzdem sauber zu Ende laufen.
+    final isPerfect = state.isPerfect;
+    final correctAnswers = state.correctAnswers;
+    final totalQuestions = state.questions.length;
+    final earnedXP = state.earnedXP;
+    final wrongCount = state.wrongQuestions.length;
+
     final userId = _userId;
     final child = _child;
     if (userId == null || child == null) return;
@@ -400,7 +411,7 @@ class QuizEngine extends StateNotifier<QuizState> {
       await _xpService.updateQuizStats(
         userId: userId,
         childId: child.id,
-        isPerfect: state.isPerfect,
+        isPerfect: isPerfect,
       );
 
       // 4. Kind neu laden (mit aktuellem Streak) + Rewards prüfen
@@ -425,7 +436,7 @@ class QuizEngine extends StateNotifier<QuizState> {
         final unlockedRewards = await _rewardService.checkAndApproveRewards(
           userId: userId,
           child: updatedChild,
-          isPerfectQuiz: state.isPerfect,
+          isPerfectQuiz: isPerfect,
         );
 
         // Kind nochmal laden – Bonus-XP könnten Level verändert haben
@@ -454,9 +465,9 @@ class QuizEngine extends StateNotifier<QuizState> {
       }
 
       debugPrint(
-        '✅ Quiz abgeschlossen: ${state.correctAnswers}/${state.questions.length} '
-        'richtig | ${state.earnedXP} XP | '
-        '${state.wrongQuestions.length} endgültig falsch',
+        '✅ Quiz abgeschlossen: $correctAnswers/$totalQuestions '
+        'richtig | $earnedXP XP | '
+        '$wrongCount endgültig falsch',
       );
     } catch (e, st) {
       debugPrint('❌ QuizEngine.finish Fehler: $e\n$st');
