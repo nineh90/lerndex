@@ -176,6 +176,67 @@ class AiQuestionCacheRepository {
     return _pickAndMark(allAvailable, count, userId, childId, subject);
   }
 
+  /// Speist Aufgaben, die aus einem Tutor-Gespräch abgeleitet wurden, in den
+  /// Quiz-Cache des passenden Fachs ein. Generiert [count] themenpassende
+  /// Aufgaben (gesteuert über [focusHint]) und schreibt nur Nicht-Duplikate.
+  ///
+  /// [subject] muss der Quiz-Fach-Schlüssel sein (z.B. 'mathe', 'deutsch').
+  /// Läuft im Hintergrund (fire-and-forget aus dem Tutor) und ist gegen
+  /// Doppel-Aufrufe via [_inflightSubjects] geschützt.
+  Future<void> injectTutorQuestions({
+    required String userId,
+    required String childId,
+    required ChildModel child,
+    required String subject,
+    required String focusHint,
+    int count = 3,
+  }) async {
+    final key = '$childId|$subject|tutor';
+    if (_inflightSubjects.contains(key)) return;
+    _inflightSubjects.add(key);
+
+    try {
+      final recent = await _loadRecentContext(userId, childId, subject);
+
+      final questions = await _generator.generateQuizQuestions(
+        child: child,
+        subject: subject,
+        count: count,
+        recentTopics: recent.topics,
+        recentQuestions: recent.questions,
+        focusHint: focusHint,
+      );
+
+      if (questions.isEmpty) {
+        debugPrint('⚠️ injectTutorQuestions: keine Aufgaben für $subject');
+        return;
+      }
+
+      // Duplikat-Prüfung gegen bereits gecachte (ungespielte) Fragen
+      final existing = await _loadUnplayed(userId, childId, subject);
+      final existingTexts = existing
+          .map((cq) => cq.question.question.toLowerCase().trim())
+          .toSet();
+
+      final unique = questions
+          .where(
+            (q) => !existingTexts.contains(q.question.toLowerCase().trim()),
+          )
+          .toList();
+
+      if (unique.isNotEmpty) {
+        await _writeToCache(userId, childId, child, subject, unique);
+        debugPrint(
+          '🎓 ${unique.length} Tutor-Aufgaben in Quiz-Cache ($subject) eingespeist',
+        );
+      }
+    } catch (e) {
+      debugPrint('⚠️ injectTutorQuestions Fehler: $e');
+    } finally {
+      _inflightSubjects.remove(key);
+    }
+  }
+
   Future<void> markAsPlayed({
     required String userId,
     required String childId,

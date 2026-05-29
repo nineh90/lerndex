@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:lerndex/src/ai/vertex_ai_service.dart';
@@ -7,7 +8,10 @@ import '../domain/chat_message.dart';
 import '../data/tutor_session_model.dart';
 import '../../auth/presentation/active_child_provider.dart';
 import '../../auth/data/auth_repository.dart';
+import '../../auth/domain/child_model.dart';
 import '../../rewards/data/xp_service.dart';
+import '../../quiz/data/ai_question_cache_repository.dart';
+import '../../generated_tasks/data/generated_task_models.dart' show Subject, SubjectExtension;
 
 class TutorNotifier extends StateNotifier<List<ChatMessage>> {
   TutorNotifier(this._aiService, this._ref, this._childId, this._userId)
@@ -23,6 +27,10 @@ class TutorNotifier extends StateNotifier<List<ChatMessage>> {
   bool _isLoadingHistory = false;
   String? _currentSessionId;
   bool _hasUserSentMessage = false;
+
+  /// Verhindert, dass pro Tutor-Session mehr als einmal Quiz-Aufgaben aus dem
+  /// Gespräch generiert werden (ein zusätzlicher KI-Aufruf reicht pro Session).
+  bool _quizInjectedThisSession = false;
 
   static const int maxXpPerDay = 50;
 
@@ -108,6 +116,7 @@ class TutorNotifier extends StateNotifier<List<ChatMessage>> {
             isUser: data['isUser'] ?? false,
             timestamp:
                 (data['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now(),
+            imageUrl: data['imageUrl'] as String?,
           );
         }).toList();
 
@@ -166,6 +175,7 @@ class TutorNotifier extends StateNotifier<List<ChatMessage>> {
           isUser: data['isUser'] ?? false,
           timestamp:
               (data['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now(),
+          imageUrl: data['imageUrl'] as String?,
         );
       }).toList();
 
@@ -235,8 +245,9 @@ class TutorNotifier extends StateNotifier<List<ChatMessage>> {
     }
   }
 
-  Future<void> sendMessage(String text) async {
-    if (text.trim().isEmpty) return;
+  Future<void> sendMessage(String text, {File? imageFile}) async {
+    // Mit Foto ist ein leerer Begleittext erlaubt.
+    if (text.trim().isEmpty && imageFile == null) return;
 
     final child = _ref.read(activeChildProvider);
     if (child == null) return;
@@ -255,9 +266,27 @@ class TutorNotifier extends StateNotifier<List<ChatMessage>> {
 
     _hasUserSentMessage = true;
 
-    final userMessage = ChatMessage.user(text);
+    // User-Nachricht sofort anzeigen (mit lokaler Bild-Vorschau falls Foto).
+    final userMessage = ChatMessage.user(
+      text,
+      localImagePath: imageFile?.path,
+    );
     state = [...state, userMessage];
-    _saveChatMessage(userMessage);
+
+    // Foto in Firebase Storage hochladen → URL persistieren (Eltern-Ansicht).
+    String? imageUrl;
+    if (imageFile != null) {
+      try {
+        imageUrl = await _aiService.uploadTutorWorksheet(
+          imageFile: imageFile,
+          userId: _userId,
+          childId: _childId,
+        );
+      } catch (e) {
+        debugPrint('⚠️ Tutor-Aufgabenblatt-Upload fehlgeschlagen: $e');
+      }
+    }
+    _saveChatMessage(userMessage.copyWith(imageUrl: imageUrl));
 
     // History für KI: State VOR der aktuellen userMessage (ohne loading).
     // Die userMessage wird separat via chat.sendMessage() übergeben.
@@ -272,6 +301,7 @@ class TutorNotifier extends StateNotifier<List<ChatMessage>> {
         child: child,
         userMessage: text,
         conversationHistory: historyBeforeCurrentMessage,
+        imageFile: imageFile,
       );
 
       final tutorMessage = ChatMessage.tutor(tutorResponse.text);
@@ -329,11 +359,14 @@ class TutorNotifier extends StateNotifier<List<ChatMessage>> {
       if (isSchool) {
         // Topic nur beim ersten Mal setzen – verhindert Überschreiben mit falschem Fach
         if (topicNeedsUpdate) unawaited(_setSessionTopic(detectedSubject));
-        if (tutorResponse.isCorrect) {
-          await _awardTutorXP();
-        } else {
-          debugPrint('⏭️ Kein XP: Antwort war nicht korrekt');
-        }
+
+        // XP gibt es, sobald über ein Schulthema geredet wird – nicht nur bei
+        // einer korrekt beantworteten Aufgabe. Korrekte Antworten geben Bonus.
+        await _awardTutorXP(isCorrect: tutorResponse.isCorrect);
+
+        // Einmal pro Session: passende Quiz-Aufgaben aus dem Gespräch ableiten
+        // und in den Quiz-Cache des Fachs einspeisen (Hintergrund).
+        _maybeInjectQuizQuestions(child, detectedSubject, text);
       } else {
         debugPrint(
           '⛔ Kein XP: Kein Schulfach erkannt (subject=$detectedSubject)',
@@ -360,6 +393,7 @@ class TutorNotifier extends StateNotifier<List<ChatMessage>> {
         'text': message.text,
         'isUser': message.isUser,
         'timestamp': Timestamp.fromDate(DateTime.now()),
+        if (message.imageUrl != null) 'imageUrl': message.imageUrl,
       };
 
       final sessionId = await _getOrCreateSession();
@@ -459,8 +493,10 @@ class TutorNotifier extends StateNotifier<List<ChatMessage>> {
     return schoolSubjects.contains(topic);
   }
 
-  /// Vergib XP via XPService und updated den reaktiven Tages-XP-Provider
-  Future<void> _awardTutorXP() async {
+  /// Vergib XP via XPService und updated den reaktiven Tages-XP-Provider.
+  /// Beschäftigung mit einem Schulthema gibt Basis-XP; eine korrekt
+  /// beantwortete Aufgabe gibt einen kleinen Bonus.
+  Future<void> _awardTutorXP({bool isCorrect = false}) async {
     final xpService = _ref.read(xpServiceProvider);
     // Immer frisch aus Firestore lesen damit kein veralteter lokaler State
     // das Tageslimit fälschlicherweise blockiert (z.B. nach Resume).
@@ -480,6 +516,7 @@ class TutorNotifier extends StateNotifier<List<ChatMessage>> {
         userId: _userId,
         childId: _childId,
         dailyXpSoFar: currentDailyXP,
+        xpPerMessage: isCorrect ? 5 : 2,
       );
 
       if (result != null && result.xpGained > 0) {
@@ -515,6 +552,86 @@ class TutorNotifier extends StateNotifier<List<ChatMessage>> {
     } catch (e) {
       debugPrint('❌ _awardTutorXP: Netzwerkfehler, XP nicht vergeben: $e');
     }
+  }
+
+  /// Speist – einmal pro Session – passende Quiz-Aufgaben aus dem Tutor-
+  /// Gespräch in den Quiz-Cache des erkannten Fachs ein (Hintergrund).
+  void _maybeInjectQuizQuestions(
+    ChildModel child,
+    String germanSubject,
+    String focusText,
+  ) {
+    if (_quizInjectedThisSession) return;
+
+    final subject = _quizSubjectFor(germanSubject, child.grade);
+    if (subject == null) {
+      debugPrint(
+        'ℹ️ Quiz-Einspeisung übersprungen: "$germanSubject" ist für Klasse '
+        '${child.grade} kein verfügbares Quiz-Fach',
+      );
+      return;
+    }
+
+    _quizInjectedThisSession = true;
+    final hint = focusText.trim().isNotEmpty ? focusText.trim() : germanSubject;
+    final repo = _ref.read(aiQuestionCacheRepositoryProvider);
+    debugPrint(
+      '🎓 Speise Tutor-Thema in Quiz ein: Fach=${subject.value}, Fokus="$hint"',
+    );
+    unawaited(
+      repo.injectTutorQuestions(
+        userId: _userId,
+        childId: _childId,
+        child: child,
+        subject: subject.value,
+        focusHint: hint,
+      ),
+    );
+  }
+
+  /// Mappt den vom Tutor erkannten deutschen Fachnamen auf das passende
+  /// Quiz-[Subject] – aber nur, wenn das Fach für die Klasse verfügbar ist.
+  /// Gibt null zurück, wenn es kein Quiz-Fach dafür gibt.
+  static Subject? _quizSubjectFor(String germanSubject, int grade) {
+    Subject? s;
+    switch (germanSubject) {
+      case 'Mathematik':
+        s = Subject.mathe;
+        break;
+      case 'Deutsch':
+        s = Subject.deutsch;
+        break;
+      case 'Englisch':
+        s = Subject.englisch;
+        break;
+      case 'Sachkunde':
+        s = Subject.sachkunde;
+        break;
+      case 'Biologie':
+        s = Subject.biologie;
+        break;
+      case 'Chemie':
+        s = Subject.chemie;
+        break;
+      case 'Physik':
+        s = Subject.physik;
+        break;
+      case 'Geschichte':
+        s = Subject.geschichte;
+        break;
+      default:
+        // Fächer ohne eigenes Quiz (z.B. Geographie, Latein, Musik) → kein Quiz.
+        return null;
+    }
+
+    if (s.isAvailableForGrade(grade)) return s;
+
+    // detectTopic liefert für Grundschüler manchmal 'Biologie' (Pflanze/Tier),
+    // wo im Lehrplan 'Sachkunde' das passende Fach ist.
+    if (s == Subject.biologie && Subject.sachkunde.isAvailableForGrade(grade)) {
+      return Subject.sachkunde;
+    }
+    return null;
   }
 
   /// Erkennt das Schulfach aus dem Text.
@@ -2068,6 +2185,7 @@ class TutorNotifier extends StateNotifier<List<ChatMessage>> {
       await completeCurrentSession();
 
       _hasUserSentMessage = false;
+      _quizInjectedThisSession = false;
 
       final welcomeMessage = ChatMessage.tutor(
         VertexAIService.buildWelcomeMessage(child),
@@ -2097,6 +2215,7 @@ class TutorNotifier extends StateNotifier<List<ChatMessage>> {
 
       _currentSessionId = sessionId;
       _hasUserSentMessage = true;
+      _quizInjectedThisSession = false;
       // Nachrichten laden
       final messagesSnapshot = await _firestore
           .collection('users')
@@ -2118,6 +2237,7 @@ class TutorNotifier extends StateNotifier<List<ChatMessage>> {
           isUser: data['isUser'] ?? false,
           timestamp:
               (data['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now(),
+          imageUrl: data['imageUrl'] as String?,
         );
       }).toList();
 

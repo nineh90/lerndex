@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_math_fork/flutter_math.dart';
@@ -130,12 +131,22 @@ class MessageBubble extends StatelessWidget {
                   vertical: 10,
                 ),
                 child: isUser
-                    ? Text(
-                        message.text,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 15,
-                        ),
+                    ? Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (message.hasImage) _buildMessageImage(),
+                          if (message.text.trim().isNotEmpty) ...[
+                            if (message.hasImage) const SizedBox(height: 6),
+                            Text(
+                              message.text,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 15,
+                              ),
+                            ),
+                          ],
+                        ],
                       )
                     : _MathAwareContent(
                         text: message.text,
@@ -188,6 +199,47 @@ class MessageBubble extends StatelessWidget {
           fontWeight: FontWeight.bold,
           fontSize: 16,
         ),
+      ),
+    );
+  }
+
+  /// Rendert das Aufgabenblatt-Foto einer Nachricht.
+  /// Bevorzugt die lokale Datei (sofortige Vorschau), sonst die Remote-URL.
+  Widget _buildMessageImage() {
+    final local = message.localImagePath;
+    final url = message.imageUrl;
+
+    Widget img;
+    if (local != null && local.isNotEmpty && File(local).existsSync()) {
+      img = Image.file(File(local), fit: BoxFit.cover);
+    } else if (url != null && url.isNotEmpty) {
+      img = Image.network(
+        url,
+        fit: BoxFit.cover,
+        loadingBuilder: (c, child, progress) => progress == null
+            ? child
+            : const SizedBox(
+                width: 180,
+                height: 120,
+                child: Center(
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              ),
+        errorBuilder: (_, __, ___) => const SizedBox(
+          width: 180,
+          height: 120,
+          child: Icon(Icons.broken_image, color: Colors.white70),
+        ),
+      );
+    } else {
+      return const SizedBox.shrink();
+    }
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(12),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 220, maxHeight: 220),
+        child: img,
       ),
     );
   }
@@ -248,10 +300,20 @@ class MessageBubble extends StatelessWidget {
                   ),
                 ],
               ),
-              child: _MathAwareContent(
-                text: message.text,
-                textColor: Colors.black87,
-                fontSize: 14,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (message.hasImage) _buildMessageImage(),
+                  if (message.text.trim().isNotEmpty) ...[
+                    if (message.hasImage) const SizedBox(height: 6),
+                    _MathAwareContent(
+                      text: message.text,
+                      textColor: Colors.black87,
+                      fontSize: 14,
+                    ),
+                  ],
+                ],
               ),
             ),
             if (message.timestamp != DateTime(0))

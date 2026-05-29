@@ -6,21 +6,37 @@ class ChatMessage {
   final DateTime timestamp;
   final bool isLoading;        // Zeigt Lade-Animation
 
+  /// Remote-URL eines hochgeladenen Aufgabenblatt-Fotos (Firebase Storage).
+  /// Wird in Firestore persistiert → Eltern können das Bild im Verlauf sehen.
+  final String? imageUrl;
+
+  /// Lokaler Pfad des gerade gewählten Fotos (nur In-Memory, für die sofortige
+  /// Vorschau bevor der Upload fertig ist). Wird nicht persistiert.
+  final String? localImagePath;
+
   ChatMessage({
     required this.id,
     required this.text,
     required this.isUser,
     required this.timestamp,
     this.isLoading = false,
+    this.imageUrl,
+    this.localImagePath,
   });
 
+  /// True wenn diese Nachricht ein Foto enthält (remote oder lokal)
+  bool get hasImage =>
+      (imageUrl != null && imageUrl!.isNotEmpty) ||
+      (localImagePath != null && localImagePath!.isNotEmpty);
+
   /// Erstellt eine User-Nachricht
-  factory ChatMessage.user(String text) {
+  factory ChatMessage.user(String text, {String? localImagePath}) {
     return ChatMessage(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       text: text,
       isUser: true,
       timestamp: DateTime.now(),
+      localImagePath: localImagePath,
     );
   }
 
@@ -52,6 +68,8 @@ class ChatMessage {
     bool? isUser,
     DateTime? timestamp,
     bool? isLoading,
+    String? imageUrl,
+    String? localImagePath,
   }) {
     return ChatMessage(
       id: id ?? this.id,
@@ -59,6 +77,8 @@ class ChatMessage {
       isUser: isUser ?? this.isUser,
       timestamp: timestamp ?? this.timestamp,
       isLoading: isLoading ?? this.isLoading,
+      imageUrl: imageUrl ?? this.imageUrl,
+      localImagePath: localImagePath ?? this.localImagePath,
     );
   }
 }

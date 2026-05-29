@@ -159,8 +159,11 @@ class VertexAIService {
     required ChildModel child,
     required String userMessage,
     required List<ChatMessage> conversationHistory,
+    File? imageFile,
   }) async {
-    // Sicherheitschecks
+    final hasImage = imageFile != null;
+
+    // Sicherheitschecks – greifen immer auf den (ggf. leeren) Begleittext.
     if (!_isAppropriateQuestion(userMessage)) {
       return const TutorResponse(
         text:
@@ -169,20 +172,25 @@ class VertexAIService {
       );
     }
 
-    if (_isNonSchoolQuestion(userMessage)) {
-      return TutorResponse(
-        text:
-            'Das ist eine interessante Frage, ${child.name}! Aber ich bin Lexi, dein Lernbegleiter, und helfe dir nur bei Schulfächern. 📚 Hast du vielleicht eine Frage zu Mathe, Deutsch, Englisch oder einem anderen Schulfach? 🎓',
-        subject: 'kein_schulfach',
-      );
-    }
+    // Text-basierte Filter nur ohne Bild anwenden – ein Foto eines Aufgaben-
+    // blattes lässt sich nicht per Stichwort beurteilen. Bei Bildern verlässt
+    // sich der Schutz auf die Vertex-Safety-Settings + den System-Prompt.
+    if (!hasImage) {
+      if (_isNonSchoolQuestion(userMessage)) {
+        return TutorResponse(
+          text:
+              'Das ist eine interessante Frage, ${child.name}! Aber ich bin Lexi, dein Lernbegleiter, und helfe dir nur bei Schulfächern. 📚 Hast du vielleicht eine Frage zu Mathe, Deutsch, Englisch oder einem anderen Schulfach? 🎓',
+          subject: 'kein_schulfach',
+        );
+      }
 
-    if (userMessage.length > 500) {
-      return const TutorResponse(
-        text:
-            'Deine Frage ist etwas zu lang. Kannst du sie kürzer formulieren? 😊',
-        subject: 'kein_schulfach',
-      );
+      if (userMessage.length > 500) {
+        return const TutorResponse(
+          text:
+              'Deine Frage ist etwas zu lang. Kannst du sie kürzer formulieren? 😊',
+          subject: 'kein_schulfach',
+        );
+      }
     }
 
     try {
@@ -205,15 +213,33 @@ class VertexAIService {
       debugPrint('📜 History an KI (${history.length} Nachrichten):');
       for (final h in history) {
         final role = h.role;
-        final txt = (h.parts.first as TextPart).text;
+        final firstPart = h.parts.first;
+        final txt = firstPart is TextPart ? firstPart.text : '[Bild]';
         debugPrint(
           '  [$role]: ${txt.length > 80 ? "${txt.substring(0, 80)}..." : txt}',
         );
       }
-      debugPrint('  [user/neu]: $userMessage');
+      debugPrint('  [user/neu]: ${hasImage ? "📷 + " : ""}$userMessage');
 
       final chat = model.startChat(history: history);
-      final response = await chat.sendMessage(Content.text(userMessage));
+
+      // Nachrichten-Content zusammenbauen: bei Foto multimodal (Bild + Text),
+      // sonst reiner Text.
+      final Content message;
+      if (hasImage) {
+        final imageBytes = await imageFile.readAsBytes();
+        final caption = userMessage.trim().isEmpty
+            ? 'Hier ist mein Aufgabenblatt. Kannst du mir erklären, was ich tun muss?'
+            : userMessage.trim();
+        message = Content.multi([
+          TextPart(caption),
+          InlineDataPart('image/jpeg', imageBytes),
+        ]);
+      } else {
+        message = Content.text(userMessage);
+      }
+
+      final response = await chat.sendMessage(message);
       final text = response.text;
 
       if (text == null || text.isEmpty) {
@@ -331,6 +357,7 @@ class VertexAIService {
     int count = 10,
     List<String> recentTopics = const [],
     List<String> recentQuestions = const [],
+    String? focusHint,
   }) async {
     await _ensureQuizInitialized();
 
@@ -341,6 +368,7 @@ class VertexAIService {
         count: count,
         recentTopics: recentTopics,
         recentQuestions: recentQuestions,
+        focusHint: focusHint,
       );
 
       debugPrint(
@@ -405,6 +433,14 @@ Du bist Lexi, der persönliche KI-Lernbegleiter der Lerndex-App für ${child.nam
 - Wenn ${child.name} die richtige Antwort selbst nennt → dann und nur dann bestätige sie freudig!
 - Ausnahme: Vokabeln / Fremdwörter / Fakten (z.B. "Was bedeutet 'apple'?") dürfen direkt beantwortet werden, da es hier kein Lösungsdenken gibt.
 
+📷 AUFGABENBLÄTTER / FOTOS:
+- ${child.name} darf dir ein Foto von einem Aufgabenblatt oder Schulbuch schicken.
+- Deine Aufgabe: Lies die Aufgaben vor bzw. fasse zusammen, was verlangt wird, und ERKLÄRE, WIE man herangeht.
+- ABSOLUT VERBOTEN: das fertige Ergebnis oder die Lösung einer Aufgabe vom Blatt zu nennen oder auszurechnen – auch nicht teilweise.
+- Gehe IMMER nur EINE Aufgabe nach der anderen an. Frage ${child.name}, mit welcher Aufgabe ihr anfangt.
+- Gib höchstens den ERSTEN Denk-Schritt vor und stelle dann eine Rückfrage, damit ${child.name} selbst weiterdenkt.
+- Wenn auf dem Foto kein Schulinhalt zu erkennen ist: lehne freundlich ab und leite zurück zu Schulthemen.
+
 💬 KOMMUNIKATIONSSTIL:
 - Einfache, kindgerechte Sprache (passend für ${child.age} Jahre)
 - Kurze, klare Antworten (max. 3-4 Sätze)
@@ -412,13 +448,15 @@ Du bist Lexi, der persönliche KI-Lernbegleiter der Lerndex-App für ${child.nam
 - Lobe Fortschritte, ermutige zum Weiterlernen
 - Mathematische Formeln IMMER in LaTeX: \$\\frac{1}{2}\$, \$\\sqrt{4}\$, \$x^2\$
 
-PFLICHT BEI JEDER ANTWORT:
-Füge als ALLERLETZTE Zeile exakt diese zwei Tags an (werden automatisch entfernt, für den Nutzer unsichtbar):
+PFLICHT BEI JEDER ANTWORT (SEHR WICHTIG – NIEMALS VERGESSEN):
+Füge als ALLERLETZTE Zeile IMMER das Schulfach-Tag an (wird automatisch entfernt, für den Nutzer unsichtbar):
 - Schulfach: [FACH:Mathematik] / [FACH:Deutsch] / [FACH:Englisch]${child.grade <= 4 ? ' / [FACH:Sachkunde]' : ''}${child.grade >= 5 ? ' / [FACH:Biologie] / [FACH:Chemie] / [FACH:Physik] / [FACH:Geschichte]' : ''}
-- Kein Schulfach / unklar / Smalltalk / Ablehnung: [FACH:kein_schulfach]
-- Nur wenn der Schüler eine Aufgabe FALSCH beantwortet hat: [KORREKT:nein]
-- Nur wenn der Schüler eine Aufgabe RICHTIG beantwortet hat: [KORREKT:ja]
-- Frage stellen / Erklärung bitten / kein Lösungsversuch: kein KORREKT-Tag
+- Sobald es im Gespräch um EINES dieser Schulfächer geht – egal ob ${child.name} eine Aufgabe rechnet, nur eine Erklärung will oder über das Thema redet – setzt du das passende [FACH:...]-Tag. Im Zweifel: ordne das nächstliegende Schulfach zu.
+- NUR bei echtem Nicht-Schul-Thema / Smalltalk / Ablehnung: [FACH:kein_schulfach]
+- Zusätzlich, falls (und nur falls) ${child.name} eine konkrete Aufgabe beantwortet hat:
+  • RICHTIG beantwortet: [KORREKT:ja]
+  • FALSCH beantwortet: [KORREKT:nein]
+  • Reine Frage / Erklärung erbeten / kein Lösungsversuch: KEIN KORREKT-Tag
 ''';
   }
 
@@ -715,6 +753,7 @@ WICHTIG: Antworte NUR mit diesem JSON-Array, ohne Markdown oder Text davor/danac
     required int count,
     required List<String> recentTopics,
     List<String> recentQuestions = const [],
+    String? focusHint,
   }) {
     final subjectDisplay = _subjectDisplayName(subject);
     // Ab Klasse 3 strenge Vielfalt erzwingen; Klasse 1–2 darf bewusst
@@ -739,6 +778,20 @@ WICHTIG: Antworte NUR mit diesem JSON-Array, ohne Markdown oder Text davor/danac
       subject: subject,
       level: child.level,
     );
+
+    // Optionaler Themen-Fokus aus dem Tutor-Gespräch: lenkt die Generierung
+    // gezielt auf das, womit sich das Kind gerade beschäftigt hat – ohne den
+    // Originaltext 1:1 zu übernehmen (neue, eigenständige Aufgaben).
+    final focusBlock = (focusHint != null && focusHint.trim().isNotEmpty)
+        ? '''
+
+🎯 AKTUELLER FOKUS AUS DEM LERN-GESPRÄCH (HOHE PRIORITÄT):
+Das Kind hat sich gerade mit folgendem Thema beschäftigt: "${focusHint.trim()}".
+Lege den Schwerpunkt dieses Batches auf GENAU dieses Thema bzw. diese Aufgabenart.
+Erstelle dazu EIGENSTÄNDIGE, neue Aufgaben (nicht die Originalaufgabe wiederholen),
+die zum Lehrplan und Niveau passen.
+'''
+        : '';
 
     // Vermeiden-Block: kürzlich abgefragte Themen + bereits gestellte
     // Fragetexte (gegen Wiederholung über mehrere Quiz-Sessions hinweg).
@@ -823,7 +876,7 @@ $curriculumContext
 
 THEMEN-FOKUS FÜR DIESEN BATCH:
 $topicFocus
-
+$focusBlock
 $topicAvoidance
 
 SCHWIERIGKEITSPROFIL: $profile
@@ -1421,6 +1474,23 @@ Antworte NUR mit einem JSON-Array, kein Text oder Markdown davor/danach:
     await ref.putFile(imageFile);
     final url = await ref.getDownloadURL();
     debugPrint('✅ Bild hochgeladen: $path');
+    return url;
+  }
+
+  /// Lädt ein vom Kind im Tutor hochgeladenes Aufgabenblatt-Foto in Firebase
+  /// Storage und gibt die Download-URL zurück. Liegt unter eigenem Pfad
+  /// (`tutor_worksheets/...`), damit Eltern es im Verlauf einsehen können.
+  Future<String> uploadTutorWorksheet({
+    required File imageFile,
+    required String userId,
+    required String childId,
+  }) async {
+    final timestamp = DateTime.now().millisecondsSinceEpoch;
+    final path = 'tutor_worksheets/$userId/$childId/$timestamp.jpg';
+    final ref = _storage.ref().child(path);
+    await ref.putFile(imageFile);
+    final url = await ref.getDownloadURL();
+    debugPrint('✅ Tutor-Aufgabenblatt hochgeladen: $path');
     return url;
   }
 

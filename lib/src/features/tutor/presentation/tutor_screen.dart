@@ -1,5 +1,8 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:lerndex/src/shared/widgets/message_bubble.dart';
 import '../domain/chat_message.dart';
 import 'tutor_provider.dart';
@@ -25,8 +28,13 @@ class TutorScreen extends ConsumerStatefulWidget {
 class _TutorScreenState extends ConsumerState<TutorScreen> {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  final ImagePicker _picker = ImagePicker();
   LearningTimeTracker? _timeTracker;
   OverlayEntry? _xpOverlay;
+
+  /// Aktuell gewähltes Aufgabenblatt-Foto, das mit der nächsten Nachricht
+  /// an den Tutor geschickt wird (null = kein Foto).
+  File? _selectedImage;
 
   // Werden in initState gespeichert – kein ref in dispose nötig
   XPService? _xpService;
@@ -210,13 +218,15 @@ class _TutorScreenState extends ConsumerState<TutorScreen> {
 
   void _sendMessage() {
     final text = _messageController.text.trim();
-    if (text.isEmpty) return;
+    final image = _selectedImage;
+    if (text.isEmpty && image == null) return;
 
     final providerInstance = ref.read(tutorProvider);
     if (providerInstance != null) {
-      ref.read(providerInstance.notifier).sendMessage(text);
+      ref.read(providerInstance.notifier).sendMessage(text, imageFile: image);
     }
     _messageController.clear();
+    setState(() => _selectedImage = null);
 
     Future.delayed(const Duration(milliseconds: 100), () {
       if (_scrollController.hasClients) {
@@ -227,6 +237,95 @@ class _TutorScreenState extends ConsumerState<TutorScreen> {
         );
       }
     });
+  }
+
+  /// Auswahl-Sheet: Aufgabenblatt fotografieren oder aus Galerie wählen.
+  void _showImageSourceSheet() {
+    showModalBottomSheet<void>(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Padding(
+              padding: EdgeInsets.all(16),
+              child: Text(
+                'Aufgabenblatt hochladen',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.camera_alt, color: Colors.deepPurple),
+              title: const Text('Foto aufnehmen'),
+              onTap: () {
+                Navigator.pop(ctx);
+                _pickImage(ImageSource.camera);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library, color: Colors.deepPurple),
+              title: const Text('Aus Galerie wählen'),
+              onTap: () {
+                Navigator.pop(ctx);
+                _pickImage(ImageSource.gallery);
+              },
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _pickImage(ImageSource source) async {
+    final permission = source == ImageSource.camera
+        ? Permission.camera
+        : Permission.photos;
+
+    final status = await permission.request();
+    if (status.isDenied || status.isPermanentlyDenied) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              source == ImageSource.camera
+                  ? 'Kamera-Zugriff verweigert. Bitte in den Einstellungen erlauben.'
+                  : 'Foto-Zugriff verweigert. Bitte in den Einstellungen erlauben.',
+            ),
+            backgroundColor: Colors.red,
+            action: status.isPermanentlyDenied
+                ? const SnackBarAction(
+                    label: 'Einstellungen',
+                    textColor: Colors.white,
+                    onPressed: openAppSettings,
+                  )
+                : null,
+          ),
+        );
+      }
+      return;
+    }
+
+    try {
+      final image = await _picker.pickImage(
+        source: source,
+        maxWidth: 1920,
+        maxHeight: 1080,
+        imageQuality: 85,
+      );
+      if (image != null && mounted) {
+        setState(() => _selectedImage = File(image.path));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Fehler beim Laden des Bildes: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   @override
@@ -349,9 +448,16 @@ class _TutorScreenState extends ConsumerState<TutorScreen> {
                   ),
                 ],
               ),
-              child: Row(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (_selectedImage != null) _buildImagePreview(),
+                  Row(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
+                  // Foto-Button: Aufgabenblatt fotografieren/hochladen
+                  _AttachButton(onTap: _showImageSourceSheet),
+                  const SizedBox(width: 4),
                   // Mikrofon-Button (Tap-Toggle)
                   // 1x tippen → Aufnahme START, nochmal tippen → STOP.
                   // Bei erneutem Start wird an bestehenden Text angehängt,
@@ -410,8 +516,44 @@ class _TutorScreenState extends ConsumerState<TutorScreen> {
                     ),
                   ),
                 ],
+                  ),
+                ],
               ),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Vorschau des gewählten Aufgabenblatt-Fotos mit Entfernen-Button.
+  Widget _buildImagePreview() {
+    final image = _selectedImage;
+    if (image == null) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8, left: 4, right: 4),
+      child: Row(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(10),
+            child: Image.file(
+              image,
+              width: 56,
+              height: 56,
+              fit: BoxFit.cover,
+            ),
+          ),
+          const SizedBox(width: 10),
+          const Expanded(
+            child: Text(
+              'Aufgabenblatt bereit – schreib dazu, was du wissen willst (oder schick es direkt).',
+              style: TextStyle(fontSize: 12, color: Colors.black54),
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.close, size: 20),
+            color: Colors.grey,
+            onPressed: () => setState(() => _selectedImage = null),
           ),
         ],
       ),
@@ -509,6 +651,39 @@ class _MicButtonState extends ConsumerState<_MicButton> {
               color: Colors.white,
               size: 20,
             ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ============================================================================
+// FOTO-BUTTON – Aufgabenblatt hochladen
+// ============================================================================
+
+class _AttachButton extends StatelessWidget {
+  final VoidCallback onTap;
+  const _AttachButton({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 2),
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: Colors.deepPurple.shade50,
+            border: Border.all(color: Colors.deepPurple.shade200),
+          ),
+          child: const Icon(
+            Icons.add_a_photo_outlined,
+            color: Colors.deepPurple,
+            size: 20,
           ),
         ),
       ),
