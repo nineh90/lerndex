@@ -16,6 +16,10 @@ dependencies:
   # Google Login
   google_sign_in: ^6.2.1
 
+  # Apple Login (Pflicht auf iOS, da Google-Login angeboten wird – Guideline 4.8)
+  sign_in_with_apple: ^6.1.4
+  crypto: ^3.0.3 # SHA256-Nonce für Sign in with Apple
+
   # State Management
   flutter_riverpod: ^2.5.1
   riverpod_annotation: ^2.3.5
@@ -78,6 +82,9 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^3.0.0
+
+  # In-Memory Firestore-Fake fuer Unit-Tests (XP-, Streak-, Reward-Logik)
+  fake_cloud_firestore: ^3.1.0
 
   # Code-Generatoren
   build_runner: ^2.4.8

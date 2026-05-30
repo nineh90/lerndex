@@ -1,5 +1,7 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import '../data/auth_repository.dart';
 import 'register_screen.dart';
 import 'setup_dialog.dart';
@@ -21,6 +23,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _passwordController = TextEditingController();
   bool _isLoading = false;
   bool _isGoogleLoading = false;
+  bool _isAppleLoading = false;
   bool _obscurePassword = true;
 
   @override
@@ -80,49 +83,69 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   Future<void> _googleLogin() async {
     setState(() => _isGoogleLoading = true);
-
     try {
       final result = await ref.read(authRepositoryProvider).signInWithGoogle();
-
-      if (!mounted) return;
-
-      // NEU: RevenueCat identifizieren + Abo-Status laden
-      final uid = result.credential.user?.uid;
-      if (uid != null) {
-        await ref.read(subscriptionServiceProvider).identifyUser(uid);
-        await ref.read(subscriptionStatusProvider.notifier).refresh();
-      }
-
-      if (!mounted) return;
-
-      // Neuer Google-User → Onboarding
-      if (result.isNewUser) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const SetupDialog()),
-        );
-        return;
-      }
-
-      // Bestehender User: Onboarding abgeschlossen?
-      final onboardingDone = await ref
-          .read(authRepositoryProvider)
-          .isOnboardingComplete();
-      if (!mounted) return;
-
-      if (!onboardingDone) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const SetupDialog()),
-        );
-      } else {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const FamilyDashboardScreen()),
-        );
-      }
+      await _continueAfterAuth(
+        isNewUser: result.isNewUser,
+        uid: result.credential.user?.uid,
+      );
     } catch (e) {
       _showError(e.toString());
     } finally {
       if (mounted) setState(() => _isGoogleLoading = false);
     }
+  }
+
+  Future<void> _appleLogin() async {
+    if (_isAppleLoading) return;
+    setState(() => _isAppleLoading = true);
+    try {
+      final result = await ref.read(authRepositoryProvider).signInWithApple();
+      await _continueAfterAuth(
+        isNewUser: result.isNewUser,
+        uid: result.credential.user?.uid,
+      );
+    } catch (e) {
+      _showError(e.toString());
+    } finally {
+      if (mounted) setState(() => _isAppleLoading = false);
+    }
+  }
+
+  /// Gemeinsamer Ablauf nach erfolgreichem Social-Login (Google/Apple):
+  /// RevenueCat identifizieren, Abo laden, dann zu Onboarding oder Dashboard.
+  Future<void> _continueAfterAuth({
+    required bool isNewUser,
+    required String? uid,
+  }) async {
+    if (!mounted) return;
+
+    // RevenueCat identifizieren + Abo-Status laden
+    if (uid != null) {
+      await ref.read(subscriptionServiceProvider).identifyUser(uid);
+      await ref.read(subscriptionStatusProvider.notifier).refresh();
+    }
+    if (!mounted) return;
+
+    // Neuer User → Onboarding
+    if (isNewUser) {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const SetupDialog()),
+      );
+      return;
+    }
+
+    // Bestehender User: Onboarding abgeschlossen?
+    final onboardingDone =
+        await ref.read(authRepositoryProvider).isOnboardingComplete();
+    if (!mounted) return;
+
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(
+        builder: (_) =>
+            onboardingDone ? const FamilyDashboardScreen() : const SetupDialog(),
+      ),
+    );
   }
 
   Future<void> _forgotPassword() async {
@@ -379,6 +402,22 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               ),
                             ),
                           ),
+
+                          // Apple-Button (nur iOS – auf iOS Pflicht wegen Google-Login)
+                          if (Platform.isIOS) ...[
+                            const SizedBox(height: 12),
+                            SizedBox(
+                              width: double.infinity,
+                              height: 50,
+                              child: SignInWithAppleButton(
+                                onPressed: _appleLogin,
+                                text: 'Mit Apple anmelden',
+                                height: 50,
+                                style: SignInWithAppleButtonStyle.black,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                          ],
                           const SizedBox(height: 20),
 
                           // Zu Registrierung wechseln

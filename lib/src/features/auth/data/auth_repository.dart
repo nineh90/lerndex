@@ -1,5 +1,9 @@
+import 'dart:convert';
+import 'dart:math';
+import 'package:crypto/crypto.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
@@ -7,7 +11,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 part 'auth_repository.g.dart';
 
 /// Repository für Authentication (Login, Registrierung, Logout)
-/// Unterstützt: E-Mail/Passwort + Google Sign-In
+/// Unterstützt: E-Mail/Passwort + Google Sign-In + Sign in with Apple
 class AuthRepository {
   AuthRepository(this._auth, this._firestore);
 
@@ -128,6 +132,83 @@ class AuthRepository {
     } catch (e) {
       throw e.toString();
     }
+  }
+
+  // =========================================================================
+  // SIGN IN WITH APPLE
+  // =========================================================================
+
+  /// Login / Registrierung mit Apple (Pflicht auf iOS – Guideline 4.8).
+  /// Gibt zurück ob es ein NEUER User ist (für Onboarding-Entscheidung).
+  Future<({UserCredential credential, bool isNewUser})>
+  signInWithApple() async {
+    try {
+      // Sicherheits-Nonce: rawNonce geht an Apple (gehasht), rawNonce an Firebase.
+      final rawNonce = _generateNonce();
+      final hashedNonce = _sha256ofString(rawNonce);
+
+      final appleCredential = await SignInWithApple.getAppleIDCredential(
+        scopes: const [
+          AppleIDAuthorizationScopes.email,
+          AppleIDAuthorizationScopes.fullName,
+        ],
+        nonce: hashedNonce,
+      );
+
+      final oauthCredential = OAuthProvider('apple.com').credential(
+        idToken: appleCredential.identityToken,
+        rawNonce: rawNonce,
+      );
+
+      final credential = await _auth.signInWithCredential(oauthCredential);
+      final isNewUser = credential.additionalUserInfo?.isNewUser ?? false;
+
+      // Apple liefert Vor-/Nachname NUR beim allerersten Login → sofort sichern.
+      final fullName = [
+        appleCredential.givenName,
+        appleCredential.familyName,
+      ].where((e) => e != null && e.isNotEmpty).join(' ').trim();
+
+      if (isNewUser) {
+        if (fullName.isNotEmpty) {
+          await credential.user?.updateDisplayName(fullName);
+        }
+        await _createUserDocument(
+          credential.user!,
+          displayName: fullName.isNotEmpty
+              ? fullName
+              : (credential.user!.displayName ?? ''),
+        );
+      }
+
+      return (credential: credential, isNewUser: isNewUser);
+    } on SignInWithAppleAuthorizationException catch (e) {
+      if (e.code == AuthorizationErrorCode.canceled) {
+        throw 'Apple-Login abgebrochen.';
+      }
+      throw 'Apple-Login fehlgeschlagen: ${e.message}';
+    } on FirebaseAuthException catch (e) {
+      throw _handleAuthException(e);
+    } catch (e) {
+      throw e.toString();
+    }
+  }
+
+  /// Erzeugt einen kryptografisch sicheren Zufalls-Nonce.
+  String _generateNonce([int length = 32]) {
+    const charset =
+        '0123456789ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmnopqrstuvwxyz-._';
+    final random = Random.secure();
+    return List.generate(
+      length,
+      (_) => charset[random.nextInt(charset.length)],
+    ).join();
+  }
+
+  /// SHA256-Hash eines Strings (für den an Apple übergebenen Nonce).
+  String _sha256ofString(String input) {
+    final bytes = utf8.encode(input);
+    return sha256.convert(bytes).toString();
   }
 
   // =========================================================================

@@ -1,6 +1,8 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../data/auth_repository.dart';
 import 'email_verification_screen.dart';
@@ -24,6 +26,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
   bool _isLoading = false;
   bool _isGoogleLoading = false;
+  bool _isAppleLoading = false;
   bool _obscurePassword = true;
   bool _obscureConfirm = true;
   bool _privacyAccepted = false;
@@ -210,6 +213,36 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       }
     } finally {
       if (mounted) setState(() => _isGoogleLoading = false);
+    }
+  }
+
+  /// Registrierung per Apple (iOS-Pflicht wegen Google-Login)
+  Future<void> _appleRegister() async {
+    if (_isAppleLoading) return;
+    if (!_privacyAccepted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Bitte akzeptiere die Datenschutzbestimmungen.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+    setState(() => _isAppleLoading = true);
+    try {
+      await ref.read(authRepositoryProvider).signInWithApple();
+      if (!mounted) return;
+      Navigator.of(
+        context,
+      ).pushReplacement(MaterialPageRoute(builder: (_) => const SetupDialog()));
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isAppleLoading = false);
     }
   }
 
@@ -679,6 +712,22 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                                     ),
                                   ),
                                 ),
+
+                                // Apple-Button (nur iOS – Pflicht wegen Google-Login)
+                                if (Platform.isIOS) ...[
+                                  const SizedBox(height: 12),
+                                  SizedBox(
+                                    width: double.infinity,
+                                    height: 50,
+                                    child: SignInWithAppleButton(
+                                      onPressed: _appleRegister,
+                                      text: 'Mit Apple registrieren',
+                                      height: 50,
+                                      style: SignInWithAppleButtonStyle.black,
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                  ),
+                                ],
                               ],
                             ),
                           ),

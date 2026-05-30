@@ -55,9 +55,7 @@
 		<key>NSPhotoLibraryUsageDescription</key>
 		<string>Lerndex benötigt Zugriff auf deine Fotos um Schulaufgaben hochzuladen.</string>
 
-		<!-- Mikrofon: flutter_tts Sprachausgabe kann auf iOS das Mikrofon-Entitlement triggern -->
-		<key>NSMicrophoneUsageDescription</key>
-		<string>Lerndex nutzt das Mikrofon für die Sprachausgabe des KI-Tutors.</string>
+		<!-- Hinweis: Der Mikrofon-Nutzungstext steht weiter unten (Spracheingabe Tutor) -->
 
 		<!-- Tracking: Pflicht wegen RevenueCat (IDFA). Ohne diesen Key lehnt Apple die App ab. -->
 		<!-- Wenn ihr kein personalisiertes Tracking wollt: einfach so lassen, ATT-Dialog erscheint nicht -->
@@ -90,6 +88,27 @@
 		<array>
 			<string>https</string>
 			<string>http</string>
+		</array>
+
+		<!-- ═══════════════════════════════════════════════════════════ -->
+		<!-- GOOGLE SIGN-IN: Rückleitungs-URL-Scheme                     -->
+		<!-- ═══════════════════════════════════════════════════════════ -->
+		<!-- WICHTIG (manueller Schritt auf dem Mac):                    -->
+		<!-- Den Platzhalter unten durch den Wert REVERSED_CLIENT_ID aus -->
+		<!-- der GoogleService-Info.plist (Firebase-Konsole → iOS-App)   -->
+		<!-- ersetzen. Format: com.googleusercontent.apps.<ID>           -->
+		<!-- Ohne diesen Eintrag kehrt der Google-Login nicht in die App -->
+		<!-- zurück (weißer Bildschirm nach Auswahl des Google-Kontos).  -->
+		<key>CFBundleURLTypes</key>
+		<array>
+			<dict>
+				<key>CFBundleTypeRole</key>
+				<string>Editor</string>
+				<key>CFBundleURLSchemes</key>
+				<array>
+					<string>com.googleusercontent.apps.REVERSED_CLIENT_ID_HIER_EINTRAGEN</string>
+				</array>
+			</dict>
 		</array>
 		<key>NSMicrophoneUsageDescription</key>
 <string>Lerndex benötigt das Mikrofon, damit dein Kind seine Frage an den Tutor sprechen kann.</string>

@@ -22,6 +22,11 @@ class SubscriptionService {
 
   static const _entitlementId = 'premium';
 
+  /// True sobald `Purchases.configure` erfolgreich lief. Solange false sind
+  /// keine IAP-Funktionen verfügbar (z.B. wenn der Plattform-API-Key fehlt) –
+  /// die App startet trotzdem normal.
+  static bool isConfigured = false;
+
   /// RevenueCat Produkt-ID für den zugekauften Kind-Slot (Consumable IAP).
   /// Muss exakt so in App Store Connect & Google Play Console angelegt sein.
   static const _extraChildSlotProductId = 'lerndex_extra_child_slot';
@@ -29,16 +34,31 @@ class SubscriptionService {
   static Future<void> initialize() async {
     final apiKey = Platform.isIOS ? _iosApiKey : _androidApiKey;
 
-    await Purchases.configure(PurchasesConfiguration(apiKey));
-
-    if (kDebugMode) {
-      await Purchases.setLogLevel(LogLevel.debug);
+    // Kein API-Key (z.B. Apple-Key noch nicht vorhanden) → IAP überspringen,
+    // damit die App trotzdem startet. Käufe sind dann schlicht deaktiviert.
+    if (apiKey.isEmpty) {
+      debugPrint(
+        '⚠️ RevenueCat: Kein API-Key für ${Platform.isIOS ? "iOS" : "Android"} '
+        '– In-App-Käufe deaktiviert, App läuft normal weiter.',
+      );
+      return;
     }
 
-    debugPrint('✅ RevenueCat initialisiert');
+    try {
+      await Purchases.configure(PurchasesConfiguration(apiKey));
+      if (kDebugMode) {
+        await Purchases.setLogLevel(LogLevel.debug);
+      }
+      isConfigured = true;
+      debugPrint('✅ RevenueCat initialisiert');
+    } catch (e) {
+      // Konfiguration darf den App-Start niemals verhindern.
+      debugPrint('❌ RevenueCat-Konfiguration fehlgeschlagen: $e');
+    }
   }
 
   Future<void> identifyUser(String uid) async {
+    if (!isConfigured) return;
     try {
       await Purchases.logIn(uid);
       debugPrint('✅ RevenueCat User identifiziert: $uid');
@@ -48,6 +68,7 @@ class SubscriptionService {
   }
 
   Future<void> logOut() async {
+    if (!isConfigured) return;
     try {
       await Purchases.logOut();
       debugPrint('✅ RevenueCat ausgeloggt');
@@ -76,6 +97,11 @@ class SubscriptionService {
 
   Stream<SubscriptionStatus> get customerInfoStream {
     final controller = StreamController<SubscriptionStatus>.broadcast();
+    if (!isConfigured) {
+      // Ohne RevenueCat-Konfiguration: leerer Status, kein Listener.
+      controller.add(SubscriptionStatus.empty);
+      return controller.stream;
+    }
     Purchases.addCustomerInfoUpdateListener((customerInfo) {
       final status = _parseCustomerInfo(customerInfo);
       // Immer in Firestore syncen – auch bei Kündigung (leerer Status),
