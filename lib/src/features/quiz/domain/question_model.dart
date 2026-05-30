@@ -1,6 +1,7 @@
 export 'quiz_data.dart';
 
 import 'safe_emojis.dart';
+import '../../../ai/ai_response_parser.dart';
 
 /// Repräsentiert eine Quiz-Frage.
 ///
@@ -55,7 +56,7 @@ class Question {
     // Frage-Text sanitisieren: Platzhalter wie "(Bild eines Apfels)"
     // werden entfernt, da wir stattdessen das emoji-Feld nutzen.
     final rawQuestion = json['question'] as String;
-    final cleanedQuestion = _stripImagePlaceholders(rawQuestion);
+    final cleanedQuestion = AiResponseParser.stripImagePlaceholders(rawQuestion);
 
     return Question(
       grade: json['grade'] as int? ?? 1,
@@ -68,26 +69,6 @@ class Question {
       parentTaskRef: json['parentTaskRef'] as String?,
       generatedTaskId: json['generatedTaskId'] as String?,
     );
-  }
-
-  /// Entfernt Klammer-Platzhalter wie "(Bild eines Apfels)" oder
-  /// "[Bild: Hund]" aus dem Fragetext. Diese kamen früher von der KI
-  /// wenn das Modell ein Bild "wollte" aber keines liefern konnte.
-  /// Jetzt nutzen wir das emoji-Feld dafür.
-  static String _stripImagePlaceholders(String text) {
-    final patterns = [
-      RegExp(r'\(\s*Bild[^)]*\)', caseSensitive: false),
-      RegExp(r'\[\s*Bild[^\]]*\]', caseSensitive: false),
-      RegExp(r'\(\s*siehe Bild[^)]*\)', caseSensitive: false),
-      RegExp(r'\(\s*Image[^)]*\)', caseSensitive: false),
-      RegExp(r'\[\s*Image[^\]]*\]', caseSensitive: false),
-    ];
-    var cleaned = text;
-    for (final p in patterns) {
-      cleaned = cleaned.replaceAll(p, '');
-    }
-    // Doppelte Leerzeichen + Whitespace bereinigen
-    return cleaned.replaceAll(RegExp(r'\s{2,}'), ' ').trim();
   }
 
   // ── Methoden ───────────────────────────────────────────────────────────────
