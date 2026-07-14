@@ -29,11 +29,11 @@ final _pendingRewardsForChildProvider = StreamProvider.family<int, String>((
 /// Gesamtzahl über alle Kinder – summiert die Einzel-Provider.
 /// Reaktiv: aktualisiert sich automatisch wenn sich ein Kind-Count ändert.
 final totalPendingRewardsProvider = Provider<int>((ref) {
-  final children = ref.watch(childrenListProvider).valueOrNull ?? [];
+  final children = ref.watch(childrenListProvider).value ?? [];
   var total = 0;
   for (final child in children) {
     total +=
-        ref.watch(_pendingRewardsForChildProvider(child.id)).valueOrNull ?? 0;
+        ref.watch(_pendingRewardsForChildProvider(child.id)).value ?? 0;
   }
   return total;
 });

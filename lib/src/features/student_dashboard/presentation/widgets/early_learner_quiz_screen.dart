@@ -1306,7 +1306,7 @@ class _EarlyLearnerQuizScreenState extends ConsumerState<EarlyLearnerQuizScreen>
   Widget _buildFeedbackOverlay() {
     return AnimatedBuilder(
       animation: _feedbackController,
-      builder: (_, __) {
+      builder: (_, _) {
         final opacity = _showRetryChoice
             ? 0.92
             : (_feedbackController.value * 2).clamp(0.0, 1.0);
@@ -1475,7 +1475,7 @@ class _EarlyLearnerQuizScreenState extends ConsumerState<EarlyLearnerQuizScreen>
                         tween: Tween(begin: 0.0, end: 1.0),
                         duration: const Duration(milliseconds: 600),
                         curve: Curves.elasticOut,
-                        builder: (_, v, __) => Transform.scale(
+                        builder: (_, v, _) => Transform.scale(
                           scale: v,
                           child: Text(
                             allCorrect ? '🏆' : '🌟',
@@ -1530,7 +1530,7 @@ class _EarlyLearnerQuizScreenState extends ConsumerState<EarlyLearnerQuizScreen>
                                       milliseconds: 400 + i * 150,
                                     ),
                                     curve: Curves.elasticOut,
-                                    builder: (_, v, __) => Transform.scale(
+                                    builder: (_, v, _) => Transform.scale(
                                       scale: v,
                                       child: Text(
                                         i < _correctAnswers ? '⭐' : '☆',

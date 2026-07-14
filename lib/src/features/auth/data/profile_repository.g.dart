@@ -6,43 +6,95 @@ part of 'profile_repository.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$profileRepositoryHash() => r'3b2e13126e182d964ca75c75c782f4e4782dcac0';
+// GENERATED CODE - DO NOT MODIFY BY HAND
+// ignore_for_file: type=lint, type=warning
+/// Provider für ProfileRepository
+
+@ProviderFor(profileRepository)
+final profileRepositoryProvider = ProfileRepositoryProvider._();
 
 /// Provider für ProfileRepository
-///
-/// Copied from [profileRepository].
-@ProviderFor(profileRepository)
-final profileRepositoryProvider =
-    AutoDisposeProvider<ProfileRepository>.internal(
-      profileRepository,
-      name: r'profileRepositoryProvider',
-      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-          ? null
-          : _$profileRepositoryHash,
-      dependencies: null,
-      allTransitiveDependencies: null,
+
+final class ProfileRepositoryProvider
+    extends
+        $FunctionalProvider<
+          ProfileRepository,
+          ProfileRepository,
+          ProfileRepository
+        >
+    with $Provider<ProfileRepository> {
+  /// Provider für ProfileRepository
+  ProfileRepositoryProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'profileRepositoryProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$profileRepositoryHash();
+
+  @$internal
+  @override
+  $ProviderElement<ProfileRepository> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  ProfileRepository create(Ref ref) {
+    return profileRepository(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(ProfileRepository value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<ProfileRepository>(value),
     );
+  }
+}
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef ProfileRepositoryRef = AutoDisposeProviderRef<ProfileRepository>;
-String _$childrenListHash() => r'9f9580d794737a33963508eb413c03a4e0d0572c';
+String _$profileRepositoryHash() => r'3aa54b7cf9d7220e922d36cee297e850f9941d06';
 
-/// See also [childrenList].
 @ProviderFor(childrenList)
-final childrenListProvider =
-    AutoDisposeStreamProvider<List<ChildModel>>.internal(
-      childrenList,
-      name: r'childrenListProvider',
-      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-          ? null
-          : _$childrenListHash,
-      dependencies: null,
-      allTransitiveDependencies: null,
-    );
+final childrenListProvider = ChildrenListProvider._();
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef ChildrenListRef = AutoDisposeStreamProviderRef<List<ChildModel>>;
-// ignore_for_file: type=lint
-// ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package
+final class ChildrenListProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<List<ChildModel>>,
+          List<ChildModel>,
+          Stream<List<ChildModel>>
+        >
+    with $FutureModifier<List<ChildModel>>, $StreamProvider<List<ChildModel>> {
+  ChildrenListProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'childrenListProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$childrenListHash();
+
+  @$internal
+  @override
+  $StreamProviderElement<List<ChildModel>> $createElement(
+    $ProviderPointer pointer,
+  ) => $StreamProviderElement(pointer);
+
+  @override
+  Stream<List<ChildModel>> create(Ref ref) {
+    return childrenList(ref);
+  }
+}
+
+String _$childrenListHash() => r'e6f7c79e450f4a3865ac85161c98630b1c29f3d2';

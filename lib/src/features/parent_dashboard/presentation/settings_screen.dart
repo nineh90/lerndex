@@ -791,7 +791,7 @@ class _SubscriptionTile extends ConsumerWidget {
         leading: Icon(Icons.star_outline, color: Colors.deepPurple),
         title: Text('Abo wird geladen...'),
       ),
-      error: (_, __) => const ListTile(
+      error: (_, _) => const ListTile(
         leading: Icon(Icons.star_outline, color: Colors.deepPurple),
         title: Text('Abo'),
         subtitle: Text('Fehler beim Laden'),

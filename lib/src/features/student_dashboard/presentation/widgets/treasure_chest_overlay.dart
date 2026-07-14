@@ -414,7 +414,7 @@ class _TreasureChestOverlayState extends State<TreasureChestOverlay>
 
       return AnimatedBuilder(
         animation: _starFlyController,
-        builder: (_, __) {
+        builder: (_, _) {
           final progress = Curves.easeOut.transform(
             (_starFlyController.value * 2 - i * 0.08).clamp(0.0, 1.0),
           );

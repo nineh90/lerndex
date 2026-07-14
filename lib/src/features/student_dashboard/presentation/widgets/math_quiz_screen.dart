@@ -1715,7 +1715,7 @@ class _MathQuizScreenState extends ConsumerState<MathQuizScreen>
                 children: [
                   AnimatedBuilder(
                     animation: _feedbackController,
-                    builder: (_, __) {
+                    builder: (_, _) {
                       final scale =
                           1.0 + sin(_feedbackController.value * pi) * 0.3;
                       return Transform.scale(
@@ -1812,7 +1812,7 @@ class _MathQuizScreenState extends ConsumerState<MathQuizScreen>
                       tween: Tween(begin: 0.0, end: 1.0),
                       duration: const Duration(milliseconds: 600),
                       curve: Curves.elasticOut,
-                      builder: (_, v, __) => Transform.scale(
+                      builder: (_, v, _) => Transform.scale(
                         scale: v,
                         child: Text(
                           allCorrect ? '🏆' : '🌟',
@@ -1864,7 +1864,7 @@ class _MathQuizScreenState extends ConsumerState<MathQuizScreen>
                                     milliseconds: 400 + i * 150,
                                   ),
                                   curve: Curves.elasticOut,
-                                  builder: (_, v, __) => Transform.scale(
+                                  builder: (_, v, _) => Transform.scale(
                                     scale: v,
                                     child: Text(
                                       i < _correctAnswers ? '⭐' : '☆',
@@ -2503,7 +2503,7 @@ class _BalanceScaleWidgetState extends State<_BalanceScaleWidget>
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: _tiltAnim,
-      builder: (_, __) {
+      builder: (_, _) {
         // Neigungswinkel: links schwerer → linke Schale tiefer
         final tilt = _tiltAnim.value * 0.12; // ~7 Grad
 

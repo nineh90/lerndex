@@ -210,7 +210,7 @@ class _PrimaryDashboardScreenState
   Widget build(BuildContext context) {
     final child = widget.child;
     final availableRewardsCount =
-        ref.watch(availableRewardsCountProvider).valueOrNull ?? 0;
+        ref.watch(availableRewardsCountProvider).value ?? 0;
 
     // Auf Navigation-Signal vom Quiz lauschen
     ref.listen<bool>(navigateToRewardsTabProvider, (_, shouldNavigate) {
@@ -385,7 +385,7 @@ class _PrimaryDashboardScreenState
                   width: 55,
                   height: 55,
                   fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) =>
+                  errorBuilder: (_, _, _) =>
                       const Icon(Icons.school, color: Colors.white, size: 32),
                 ),
               ),

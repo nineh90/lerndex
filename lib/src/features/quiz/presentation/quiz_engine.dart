@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'dart:async';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 import '../../auth/domain/child_model.dart';
 import '../domain/question_model.dart';
 import '../data/extended_quiz_repository.dart';

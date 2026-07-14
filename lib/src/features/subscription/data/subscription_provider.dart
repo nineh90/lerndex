@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 import 'subscription_model.dart';
 import 'subscription_service.dart';
@@ -106,7 +107,7 @@ final hasSubscriptionAccessProvider = Provider<bool>((ref) {
   return status.when(
     data: (s) => s.hasAccess,
     loading: () => true, // Im Zweifel Zugriff lassen (vermeidet Flackern)
-    error: (_, __) => true,
+    error: (_, _) => true,
   );
 });
 
@@ -116,7 +117,7 @@ final childLimitProvider = Provider<int>((ref) {
   return status.when(
     data: (s) => s.childLimit,
     loading: () => 4, // Im Zweifel großzügig
-    error: (_, __) => 4,
+    error: (_, _) => 4,
   );
 });
 
@@ -126,7 +127,7 @@ final currentPlanProvider = Provider<SubscriptionPlan>((ref) {
   return status.when(
     data: (s) => s.plan,
     loading: () => SubscriptionPlan.none,
-    error: (_, __) => SubscriptionPlan.none,
+    error: (_, _) => SubscriptionPlan.none,
   );
 });
 
@@ -136,7 +137,7 @@ final extraChildSlotsProvider = Provider<int>((ref) {
   return status.when(
     data: (s) => s.extraChildSlots,
     loading: () => 0,
-    error: (_, __) => 0,
+    error: (_, _) => 0,
   );
 });
 
@@ -147,6 +148,6 @@ final canPurchaseExtraSlotProvider = Provider<bool>((ref) {
   return status.when(
     data: (s) => s.canPurchaseExtraChildSlot,
     loading: () => false,
-    error: (_, __) => false,
+    error: (_, _) => false,
   );
 });

@@ -280,8 +280,8 @@ class _LerndexSplashScreenState extends ConsumerState<LerndexSplashScreen>
     if (!mounted) return;
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
-        pageBuilder: (_, __, ___) => target,
-        transitionsBuilder: (_, animation, __, child) => FadeTransition(
+        pageBuilder: (_, _, _) => target,
+        transitionsBuilder: (_, animation, _, child) => FadeTransition(
           opacity: CurvedAnimation(parent: animation, curve: Curves.easeOut),
           child: child,
         ),
@@ -311,7 +311,7 @@ class _LerndexSplashScreenState extends ConsumerState<LerndexSplashScreen>
             ..._buildBackgroundStars(size),
             AnimatedBuilder(
               animation: _particleCtrl,
-              builder: (_, __) => Stack(
+              builder: (_, _) => Stack(
                 children: _particles
                     .map((p) => _buildParticle(p, size))
                     .toList(),
@@ -324,7 +324,7 @@ class _LerndexSplashScreenState extends ConsumerState<LerndexSplashScreen>
                   const Spacer(flex: 2),
                   AnimatedBuilder(
                     animation: _logoCtrl,
-                    builder: (_, __) => Opacity(
+                    builder: (_, _) => Opacity(
                       opacity: _logoOpacity.value,
                       child: Transform.scale(
                         scale: _logoScale.value,
@@ -358,12 +358,12 @@ class _LerndexSplashScreenState extends ConsumerState<LerndexSplashScreen>
   Widget _buildLogo() {
     return AnimatedBuilder(
       animation: _twinkleCtrl,
-      builder: (_, __) => Image.asset(
+      builder: (_, _) => Image.asset(
         'assets/images/lerndex_logo.webp',
         width: 220,
         height: 220,
         fit: BoxFit.contain,
-        errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+        errorBuilder: (_, _, _) => const SizedBox.shrink(),
       ),
     );
   }
@@ -407,7 +407,7 @@ class _LerndexSplashScreenState extends ConsumerState<LerndexSplashScreen>
             tween: Tween(begin: 0.0, end: _progress),
             duration: const Duration(milliseconds: 400),
             curve: Curves.easeOut,
-            builder: (_, value, __) => ClipRRect(
+            builder: (_, value, _) => ClipRRect(
               borderRadius: BorderRadius.circular(8),
               child: LinearProgressIndicator(
                 value: value,
@@ -457,7 +457,7 @@ class _LerndexSplashScreenState extends ConsumerState<LerndexSplashScreen>
     return stars.map((s) {
       return AnimatedBuilder(
         animation: _twinkleCtrl,
-        builder: (_, __) {
+        builder: (_, _) {
           final opacity =
               (0.3 +
                       0.5 *

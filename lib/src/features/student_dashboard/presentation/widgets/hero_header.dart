@@ -111,7 +111,7 @@ class HeroHeader extends ConsumerWidget {
                 tween: Tween(begin: 0.0, end: progress),
                 duration: const Duration(milliseconds: 500),
                 curve: Curves.easeOut,
-                builder: (_, value, __) => LinearProgressIndicator(
+                builder: (_, value, _) => LinearProgressIndicator(
                   value: value,
                   minHeight: 14,
                   backgroundColor: Colors.white24,

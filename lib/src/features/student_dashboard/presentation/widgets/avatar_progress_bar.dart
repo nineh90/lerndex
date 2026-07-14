@@ -300,7 +300,7 @@ class _AvatarProgressBarState extends State<AvatarProgressBar>
               child: Image.asset(
                 'assets/images/${widget.avatarId}.webp',
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => _buildInitials(),
+                errorBuilder: (_, _, _) => _buildInitials(),
               ),
             )
           : _buildInitials(),
@@ -357,7 +357,7 @@ class _AvatarProgressBarState extends State<AvatarProgressBar>
           tween: Tween(begin: 0, end: 1),
           duration: Duration(milliseconds: 400 + i * 80),
           curve: Curves.easeOut,
-          builder: (_, v, __) => Opacity(
+          builder: (_, v, _) => Opacity(
             opacity: (1 - v).clamp(0, 1),
             child: Transform.scale(
               scale: 0.5 + v * 0.5,

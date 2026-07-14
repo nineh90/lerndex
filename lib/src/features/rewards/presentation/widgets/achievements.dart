@@ -345,7 +345,7 @@ class _AvatarShowcase extends StatelessWidget {
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               itemCount: rewardAvatars.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 10),
+              separatorBuilder: (_, _) => const SizedBox(width: 10),
               itemBuilder: (context, index) {
                 final avatar = rewardAvatars[index];
                 final isUnlocked = child.unlockedAvatars.contains(avatar.id);
@@ -416,7 +416,7 @@ class _AvatarChip extends StatelessWidget {
                 child: Image.asset(
                   'assets/images/${avatar.id}.webp',
                   fit: BoxFit.contain,
-                  errorBuilder: (_, __, ___) => Icon(
+                  errorBuilder: (_, _, _) => Icon(
                     isUnlocked ? Icons.face : Icons.lock,
                     size: 32,
                     color: isUnlocked ? avatar.color : Colors.grey.shade400,

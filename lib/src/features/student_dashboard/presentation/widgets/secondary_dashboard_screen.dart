@@ -95,7 +95,7 @@ class _SecondaryDashboardScreenState
     final themeState = ref.watch(dashboardThemeProvider(themeIds));
     final theme = themeState.theme;
     final rewardsCount =
-        ref.watch(availableRewardsCountProvider).valueOrNull ?? 0;
+        ref.watch(availableRewardsCountProvider).value ?? 0;
 
     // Auf Navigation-Signal vom Quiz lauschen
     ref.listen<bool>(navigateToRewardsTabProvider, (_, shouldNavigate) {
@@ -293,7 +293,7 @@ class _SecondaryDashboardScreenState
                   width: 48,
                   height: 48,
                   fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => Icon(
+                  errorBuilder: (_, _, _) => Icon(
                     Icons.school_rounded,
                     color: theme.onPrimary,
                     size: 28,
@@ -751,7 +751,7 @@ class _SecondaryHeroHeader extends ConsumerWidget {
               tween: Tween(begin: 0.0, end: progress),
               duration: const Duration(milliseconds: 700),
               curve: Curves.easeOut,
-              builder: (_, v, __) => LinearProgressIndicator(
+              builder: (_, v, _) => LinearProgressIndicator(
                 value: v,
                 minHeight: 6,
                 backgroundColor: Colors.white.withValues(alpha: 0.2),
@@ -1215,14 +1215,14 @@ class _BackgroundImage extends StatelessWidget {
       return Image.file(
         file,
         fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => Container(color: fallbackColor),
+        errorBuilder: (_, _, _) => Container(color: fallbackColor),
       );
     }
     // Netzwerk-URL (Fallback für alte Einträge)
     return Image.network(
       url,
       fit: BoxFit.cover,
-      errorBuilder: (_, __, ___) => Container(color: fallbackColor),
+      errorBuilder: (_, _, _) => Container(color: fallbackColor),
     );
   }
 }

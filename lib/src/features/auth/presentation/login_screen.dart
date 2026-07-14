@@ -278,7 +278,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               width: 160,
                               height: 160,
                               fit: BoxFit.contain,
-                              errorBuilder: (_, __, ___) =>
+                              errorBuilder: (_, _, _) =>
                                   const SizedBox.shrink(),
                             ),
                           ),
@@ -456,7 +456,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                       'assets/images/google_logo.png',
                                       height: 22,
                                       width: 22,
-                                      errorBuilder: (_, __, ___) => const Icon(
+                                      errorBuilder: (_, _, _) => const Icon(
                                         Icons.g_mobiledata,
                                         size: 24,
                                         color: Colors.red,

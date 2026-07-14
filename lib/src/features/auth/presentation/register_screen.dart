@@ -299,7 +299,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                                   width: 180,
                                   height: 180,
                                   fit: BoxFit.contain,
-                                  errorBuilder: (_, __, ___) =>
+                                  errorBuilder: (_, _, _) =>
                                       const SizedBox.shrink(),
                                 ),
                               ),
@@ -703,7 +703,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                                             'assets/images/google_logo.png',
                                             height: 22,
                                             width: 22,
-                                            errorBuilder: (_, __, ___) =>
+                                            errorBuilder: (_, _, _) =>
                                                 const Icon(
                                                   Icons.g_mobiledata,
                                                   size: 24,

@@ -99,7 +99,7 @@ class _ThemePickerSheetState extends ConsumerState<ThemePickerSheet> {
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               itemCount: DashboardThemes.all.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 10),
+              separatorBuilder: (_, _) => const SizedBox(width: 10),
               itemBuilder: (_, i) {
                 final t = DashboardThemes.all[i];
                 final isSelected = t.preset == themeState.theme.preset;
@@ -303,7 +303,7 @@ class _BackgroundPreview extends StatelessWidget {
         height: 100,
         width: double.infinity,
         fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => Container(
+        errorBuilder: (_, _, _) => Container(
           height: 100,
           color: theme.surface,
           child: Icon(Icons.broken_image_outlined, color: theme.primary),

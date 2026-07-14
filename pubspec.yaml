@@ -17,12 +17,12 @@ dependencies:
   google_sign_in: ^6.2.1
 
   # Apple Login (Pflicht auf iOS, da Google-Login angeboten wird – Guideline 4.8)
-  sign_in_with_apple: ^6.1.4
+  sign_in_with_apple: ^8.1.0
   crypto: ^3.0.3 # SHA256-Nonce für Sign in with Apple
 
   # State Management
-  flutter_riverpod: ^2.5.1
-  riverpod_annotation: ^2.3.5
+  flutter_riverpod: ^3.3.2
+  riverpod_annotation: ^4.0.3
 
   # Firebase Core
   firebase_core: ^4.0.0
@@ -40,7 +40,7 @@ dependencies:
 
   # Foto-Upload
   image_picker: ^1.1.2
-  permission_handler: ^11.3.1
+  permission_handler: ^12.0.3
 
   # File system (genutzt in theme_picker_sheet.dart zur LAUFZEIT – nicht dev!)
   path_provider: ^2.1.4
@@ -53,17 +53,15 @@ dependencies:
   firebase_crashlytics: ^5.0.0
 
   # UI
-  confetti: ^0.7.0
-  fl_chart: ^0.69.0
-  flutter_markdown: ^0.6.18
+  confetti: ^0.8.0
+  # ⚠️ flutter_markdown ist offiziell discontinued – mittelfristig auf einen
+  # gepflegten Fork (z.B. flutter_markdown_plus) migrieren.
+  flutter_markdown: ^0.7.7
 
   # HTTP
   http: ^1.2.0
 
-  # Code-Generatoren
-  freezed_annotation: ^2.4.4
-  json_annotation: ^4.9.0
-  flutter_tts: ^3.8.3
+  flutter_tts: ^4.2.5
   speech_to_text: ^7.0.0
 
   flutter_math_fork: ^0.7.2
@@ -74,7 +72,7 @@ dependencies:
   purchases_ui_flutter: ^9.13.2
 
   # App-Version / Build-Nummer aus dem nativen Bundle lesen (für Feedback-Mails)
-  package_info_plus: ^8.1.2
+  package_info_plus: ^10.2.0
 
   # Lokalisierung (benötigt für deutschen DatePicker u.a.)
   flutter_localizations:
@@ -84,16 +82,15 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^3.0.0
+  flutter_lints: ^6.0.0
 
   # In-Memory Firestore-Fake fuer Unit-Tests (XP-, Streak-, Reward-Logik)
   fake_cloud_firestore: ^4.0.0
 
-  # Code-Generatoren
-  build_runner: ^2.4.8
-  riverpod_generator: ^2.4.0
-  freezed: ^2.4.7
-  json_serializable: ^6.8.0
+  # Code-Generatoren (nur Riverpod – Freezed/json_serializable werden
+  # nicht mehr genutzt und wurden entfernt)
+  build_runner: ^2.15.0
+  riverpod_generator: ^4.0.4
 
 flutter:
   uses-material-design: true

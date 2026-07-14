@@ -1297,7 +1297,7 @@ class _LetterQuizScreenState extends ConsumerState<LetterQuizScreen>
               children: [
                 AnimatedBuilder(
                   animation: _feedbackController,
-                  builder: (_, __) {
+                  builder: (_, _) {
                     final scale =
                         1.0 + sin(_feedbackController.value * pi) * 0.3;
                     return Transform.scale(
@@ -1390,7 +1390,7 @@ class _LetterQuizScreenState extends ConsumerState<LetterQuizScreen>
                       tween: Tween(begin: 0.0, end: 1.0),
                       duration: const Duration(milliseconds: 600),
                       curve: Curves.elasticOut,
-                      builder: (_, v, __) => Transform.scale(
+                      builder: (_, v, _) => Transform.scale(
                         scale: v,
                         child: Text(
                           allCorrect ? '🏆' : '🌟',
@@ -1438,7 +1438,7 @@ class _LetterQuizScreenState extends ConsumerState<LetterQuizScreen>
                                     milliseconds: 400 + i * 150,
                                   ),
                                   curve: Curves.elasticOut,
-                                  builder: (_, v, __) => Transform.scale(
+                                  builder: (_, v, _) => Transform.scale(
                                     scale: v,
                                     child: Text(
                                       i < _correctAnswers ? '⭐' : '☆',

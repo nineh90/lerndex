@@ -734,7 +734,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
                                 width: 100,
                                 height: 100,
                                 fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) => Text(
+                                errorBuilder: (_, _, _) => Text(
                                   tutorEmoji,
                                   style: const TextStyle(fontSize: 64),
                                 ),

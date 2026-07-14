@@ -70,7 +70,7 @@ class StudentNotificationPopup extends StatefulWidget {
           ),
         );
       },
-      pageBuilder: (ctx, _, __) => StudentNotificationPopup(
+      pageBuilder: (ctx, _, _) => StudentNotificationPopup(
         type: type,
         reward: reward,
         onDismiss: () => Navigator.of(ctx).pop(),

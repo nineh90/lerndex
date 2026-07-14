@@ -235,7 +235,7 @@ class _SecondaryOnboardingScreenState extends State<SecondaryOnboardingScreen>
               tween: Tween(begin: 0.5, end: 1.0),
               duration: const Duration(milliseconds: 500),
               curve: Curves.elasticOut,
-              builder: (_, v, __) => Transform.scale(
+              builder: (_, v, _) => Transform.scale(
                 scale: v,
                 child: Text(page.emoji, style: const TextStyle(fontSize: 88)),
               ),

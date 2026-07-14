@@ -63,7 +63,7 @@ class TutorXpBanner extends ConsumerWidget {
                     tween: Tween(begin: 0.0, end: progress),
                     duration: const Duration(milliseconds: 400),
                     curve: Curves.easeOut,
-                    builder: (_, value, __) => LinearProgressIndicator(
+                    builder: (_, value, _) => LinearProgressIndicator(
                       value: value,
                       minHeight: 5,
                       backgroundColor: Colors.purple.shade100,

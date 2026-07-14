@@ -12,13 +12,13 @@ flutter run --dart-define-from-file=dart_defines.json
 
 ## Code-Generierung
 
-Riverpod-Provider, Freezed-Modelle und JSON-Serialisierung werden generiert:
+Riverpod-Provider werden generiert (Freezed und json_serializable werden nicht mehr genutzt):
 
 ```bash
 flutter pub run build_runner build --delete-conflicting-outputs
 ```
 
-Generierte Dateien enden auf `.g.dart` oder `.freezed.dart` — nie manuell bearbeiten.
+Generierte Dateien enden auf `.g.dart` — nie manuell bearbeiten.
 
 ## Build & Release
 
@@ -50,7 +50,9 @@ flutter build ipa --dart-define-from-file=dart_defines.json
 
 ### State Management
 
-Riverpod mit Code-Generierung via `@riverpod`-Annotation. Provider-Dateien enden auf `_provider.dart` oder `_repository.dart`. Die generierten Teile sind in `.g.dart`.
+Riverpod 3 mit Code-Generierung via `@riverpod`-Annotation. Provider-Dateien enden auf `_provider.dart` oder `_repository.dart`. Die generierten Teile sind in `.g.dart`.
+
+Der Großteil der Provider nutzt noch die Legacy-APIs (`StateNotifierProvider`, `StateProvider`) — die kommen seit Riverpod 3 aus `package:flutter_riverpod/legacy.dart`. Achtung Riverpod-3-Semantik: `AsyncValue.valueOrNull` heißt jetzt `.value`, und fehlgeschlagene Provider werden standardmäßig automatisch mit Backoff neu ausgeführt (retry).
 
 ### KI-Zugang (wichtig)
 

@@ -154,7 +154,7 @@ class _EarlyLearnerDashboardScreenState
   @override
   Widget build(BuildContext context) {
     final rewardsCount =
-        ref.watch(availableRewardsCountProvider).valueOrNull ?? 0;
+        ref.watch(availableRewardsCountProvider).value ?? 0;
 
     return PopScope(
       canPop: _currentTab == _EarlyTab.home,
@@ -200,9 +200,9 @@ class _EarlyLearnerDashboardScreenState
       Navigator.push(
         context,
         PageRouteBuilder(
-          pageBuilder: (_, animation, __) =>
+          pageBuilder: (_, animation, _) =>
               TracingGameScreen(subjectColors: subject.colors, mode: mode),
-          transitionsBuilder: (_, animation, __, child) {
+          transitionsBuilder: (_, animation, _, child) {
             return ScaleTransition(
               scale: CurvedAnimation(
                 parent: animation,
@@ -222,11 +222,11 @@ class _EarlyLearnerDashboardScreenState
       Navigator.push(
         context,
         PageRouteBuilder(
-          pageBuilder: (_, animation, __) => MathQuizScreen(
+          pageBuilder: (_, animation, _) => MathQuizScreen(
             grade: widget.child.grade,
             subjectColors: subject.colors,
           ),
-          transitionsBuilder: (_, animation, __, child) {
+          transitionsBuilder: (_, animation, _, child) {
             return ScaleTransition(
               scale: CurvedAnimation(
                 parent: animation,
@@ -246,11 +246,11 @@ class _EarlyLearnerDashboardScreenState
       Navigator.push(
         context,
         PageRouteBuilder(
-          pageBuilder: (_, animation, __) => LetterQuizScreen(
+          pageBuilder: (_, animation, _) => LetterQuizScreen(
             grade: widget.child.grade,
             subjectColors: subject.colors,
           ),
-          transitionsBuilder: (_, animation, __, child) {
+          transitionsBuilder: (_, animation, _, child) {
             return ScaleTransition(
               scale: CurvedAnimation(
                 parent: animation,
@@ -270,11 +270,11 @@ class _EarlyLearnerDashboardScreenState
       Navigator.push(
         context,
         PageRouteBuilder(
-          pageBuilder: (_, animation, __) => ColorShapeQuizScreen(
+          pageBuilder: (_, animation, _) => ColorShapeQuizScreen(
             grade: widget.child.grade,
             subjectColors: subject.colors,
           ),
-          transitionsBuilder: (_, animation, __, child) {
+          transitionsBuilder: (_, animation, _, child) {
             return ScaleTransition(
               scale: CurvedAnimation(
                 parent: animation,
@@ -292,12 +292,12 @@ class _EarlyLearnerDashboardScreenState
     Navigator.push(
       context,
       PageRouteBuilder(
-        pageBuilder: (_, animation, __) => EarlyLearnerQuizScreen(
+        pageBuilder: (_, animation, _) => EarlyLearnerQuizScreen(
           subject: subject.subject,
           subjectEmoji: subject.emoji,
           subjectColors: subject.colors,
         ),
-        transitionsBuilder: (_, animation, __, child) {
+        transitionsBuilder: (_, animation, _, child) {
           return ScaleTransition(
             scale: CurvedAnimation(
               parent: animation,
@@ -592,7 +592,7 @@ class _CompactHeader extends ConsumerWidget {
                 },
                 child: AnimatedBuilder(
                   animation: waveController,
-                  builder: (_, __) => Transform.translate(
+                  builder: (_, _) => Transform.translate(
                     offset: Offset(0, waveController.value * 3 - 1.5),
                     child: Stack(
                       clipBehavior: Clip.none,
@@ -616,7 +616,7 @@ class _CompactHeader extends ConsumerWidget {
                                   child: Image.asset(
                                     'assets/images/${child.selectedAvatar}.webp',
                                     fit: BoxFit.cover,
-                                    errorBuilder: (_, __, ___) =>
+                                    errorBuilder: (_, _, _) =>
                                         _initials(child.name),
                                   ),
                                 )
@@ -1050,7 +1050,7 @@ class _GiftTeaserState extends ConsumerState<_GiftTeaser>
   @override
   Widget build(BuildContext context) {
     final rewardsCount =
-        ref.watch(availableRewardsCountProvider).valueOrNull ?? 0;
+        ref.watch(availableRewardsCountProvider).value ?? 0;
 
     // Nichts anzeigen wenn keine Belohnungen verfügbar
     if (rewardsCount == 0) return const SizedBox.shrink();
@@ -1253,7 +1253,7 @@ class _StarsContent extends ConsumerWidget {
                     tween: Tween(begin: 0.0, end: progress),
                     duration: const Duration(milliseconds: 800),
                     curve: Curves.easeOut,
-                    builder: (_, value, __) => LinearProgressIndicator(
+                    builder: (_, value, _) => LinearProgressIndicator(
                       value: value,
                       minHeight: 22,
                       backgroundColor: Colors.grey.shade200,
@@ -1287,7 +1287,7 @@ class _StarsContent extends ConsumerWidget {
                   tween: Tween(begin: 0.0, end: 1.0),
                   duration: Duration(milliseconds: 300 + i * 120),
                   curve: Curves.elasticOut,
-                  builder: (_, v, __) => Transform.scale(
+                  builder: (_, v, _) => Transform.scale(
                     scale: filled ? v : 1.0,
                     child: Text(
                       filled ? '⭐' : '☆',

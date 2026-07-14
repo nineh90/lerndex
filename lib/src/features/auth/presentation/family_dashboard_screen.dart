@@ -45,7 +45,7 @@ class _FamilyDashboardScreenState extends ConsumerState<FamilyDashboardScreen> {
     final hasAccess = subscriptionAsync.when(
       data: (s) => s.hasAccess,
       loading: () => true,
-      error: (_, __) => true,
+      error: (_, _) => true,
     );
 
     // Kein Abo → Paywall als vollständiger Screen (nicht wegklickbar).

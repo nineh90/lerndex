@@ -112,7 +112,7 @@ class _ChildLimitExceededScreenState
               Expanded(
                 child: ListView.separated(
                   itemCount: widget.children.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 8),
+                  separatorBuilder: (_, _) => const SizedBox(height: 8),
                   itemBuilder: (_, index) {
                     final child = widget.children[index];
                     final isKept = _keptChildIds.contains(child.id);

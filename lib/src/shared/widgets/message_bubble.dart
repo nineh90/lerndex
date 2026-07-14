@@ -171,7 +171,7 @@ class MessageBubble extends StatelessWidget {
           width: 36,
           height: 36,
           fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) =>
+          errorBuilder: (_, _, _) =>
               const Icon(Icons.school, size: 20, color: Colors.deepPurple),
         ),
       ),
@@ -185,7 +185,7 @@ class MessageBubble extends StatelessWidget {
         radius: 18,
         backgroundColor: Colors.deepPurple.shade100,
         backgroundImage: AssetImage('assets/images/$childSelectedAvatar.webp'),
-        onBackgroundImageError: (_, __) {},
+        onBackgroundImageError: (_, _) {},
         child: null,
       );
     }
@@ -225,7 +225,7 @@ class MessageBubble extends StatelessWidget {
                   child: CircularProgressIndicator(strokeWidth: 2),
                 ),
               ),
-        errorBuilder: (_, __, ___) => const SizedBox(
+        errorBuilder: (_, _, _) => const SizedBox(
           width: 180,
           height: 120,
           child: Icon(Icons.broken_image, color: Colors.white70),
