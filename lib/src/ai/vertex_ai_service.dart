@@ -3,12 +3,6 @@ import 'dart:io';
 import 'dart:convert';
 import 'dart:math';
 import 'package:firebase_ai/firebase_ai.dart';
-// ThinkingConfig existiert in firebase_ai 2.3.0, steht aber noch nicht auf
-// der öffentlichen Export-Liste (erst ab 3.x, das firebase_core 4 braucht).
-// Bis zum großen Firebase-Major-Upgrade holen wir den Typ direkt aus src/ –
-// gepinnt via pubspec.lock ist das stabil. Danach: Import entfernen.
-// ignore: implementation_imports
-import 'package:firebase_ai/src/api.dart' show ThinkingConfig;
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -73,7 +67,7 @@ class VertexAIService {
   /// Denk-Tokens zählen zu maxOutputTokens – ohne Budget 0 werden sichtbare
   /// Antworten abgeschnitten (finishReason=MAX_TOKENS mitten im Satz) und
   /// jede Antwort wird langsamer/teurer. Für alle Modelle der App verwenden.
-  static ThinkingConfig noThinking() => ThinkingConfig(thinkingBudget: 0);
+  static ThinkingConfig noThinking() => ThinkingConfig.withThinkingBudget(0);
 
   /// Strengste Blockier-Stufe für alle Harm-Kategorien.
   /// Achtung Semantik: HarmBlockThreshold.low = „blocke ab niedriger

@@ -25,15 +25,18 @@ dependencies:
   riverpod_annotation: ^2.3.5
 
   # Firebase Core
-  firebase_core: ^3.15.2
-  firebase_auth: ^5.0.0
-  cloud_firestore: ^5.0.0
-  firebase_storage: ^12.0.0
+  firebase_core: ^4.0.0
+  firebase_auth: ^6.0.0
+  # <6.7.0: ab 6.7.0 ist WriteBatch.update generisch (withConverter-Support),
+  # womit fake_cloud_firestore 4.1.1 nicht kompiliert (Tests brechen).
+  # Obergrenze anheben, sobald fake_cloud_firestore > 4.1.1 das nachzieht.
+  cloud_firestore: '>=6.4.0 <6.7.0'
+  firebase_storage: ^13.0.0
 
   # Firebase AI - Vertex AI (DSGVO-konform fuer Kinderdaten)
   # Einziger KI-Zugang der App. Alle Calls laufen ueber VertexAIService.
   # ENTFERNT: firebase_vertexai, google_generative_ai, flutter_dotenv
-  firebase_ai: ^2.3.0
+  firebase_ai: ^3.14.0
 
   # Foto-Upload
   image_picker: ^1.1.2
@@ -47,7 +50,7 @@ dependencies:
   flutter_native_splash: ^2.4.0
 
   # Crashlytics
-  firebase_crashlytics: ^4.0.0
+  firebase_crashlytics: ^5.0.0
 
   # UI
   confetti: ^0.7.0
@@ -84,7 +87,7 @@ dev_dependencies:
   flutter_lints: ^3.0.0
 
   # In-Memory Firestore-Fake fuer Unit-Tests (XP-, Streak-, Reward-Logik)
-  fake_cloud_firestore: ^3.1.0
+  fake_cloud_firestore: ^4.0.0
 
   # Code-Generatoren
   build_runner: ^2.4.8
