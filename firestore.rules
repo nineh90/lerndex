@@ -1,0 +1,90 @@
+rules_version = '2';
+
+// Firestore Security Rules für Lerndex.
+//
+// Deployment: Inhalt in die Firebase Console kopieren (Firestore → Regeln)
+// oder per CLI: firebase deploy --only firestore:rules
+//
+// Grundprinzip: Jeder Nutzer (Eltern-Account) darf ausschließlich seine
+// eigenen Daten unter users/{uid} lesen und schreiben. Kinder-Profile laufen
+// unter der UID des Eltern-Accounts — es gibt daher KEINE Trennung zwischen
+// Kind- und Eltern-Session auf Rules-Ebene. Sicherheitskritische Felder
+// (hashedPin, premiumUntil, betaTester) sind damit für eine manipulierte
+// Kind-Session les-/schreibbar. Echte Absicherung dafür braucht Cloud
+// Functions (PIN-Verify serverseitig, Entitlements via RevenueCat-Webhook).
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    match /users/{userId} {
+      allow read, write: if isOwner(userId);
+
+      // Kinder-Profile inkl. aller Subcollections:
+      // tutor_sessions/{sid}/messages/{mid}, active_tutor_chat, rewards,
+      // learning_stats, ai_quiz_cache/{fach}/questions/{qid}
+      match /children/{childId} {
+        allow read, write: if isOwner(userId);
+
+        match /{subcollection}/{docId} {
+          allow read, write: if isOwner(userId);
+
+          match /{nested}/{nestedDocId} {
+            allow read, write: if isOwner(userId);
+          }
+        }
+      }
+
+      // Von Eltern generierte Aufgaben-Batches (Foto → KI-Aufgaben)
+      match /generated_batches/{batchId} {
+        allow read, write: if isOwner(userId);
+
+        match /{subcollection}/{subDocId} {
+          allow read, write: if isOwner(userId);
+        }
+      }
+    }
+
+    // Warteliste: nur serverseitig (Admin-SDK) zugreifbar.
+    match /waitlist/{docId} {
+      allow read, write: if false;
+    }
+
+    // Feedback-Mails aus der App (Trigger-Email-Extension).
+    // Read/Update/Delete bleiben verboten – die Extension liest serverseitig
+    // via Admin-SDK und umgeht diese Rules ohnehin.
+    // Create nur für eingeloggte Nutzer, nur an support@lerndex.de und nur
+    // mit plausiblen Feldern (verhindert Spam-/Relay-Missbrauch).
+    match /mail/{docId} {
+      allow read, update, delete: if false;
+      allow create: if isAuthenticated()
+        && request.resource.data.to is list
+        && request.resource.data.to.size() == 1
+        && request.resource.data.to[0] == 'support@lerndex.de'
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.message is map
+        && request.resource.data.message.text is string
+        && request.resource.data.message.text.size() >= 10
+        && request.resource.data.message.text.size() <= 2000
+        && request.resource.data.message.subject is string
+        && request.resource.data.message.subject.size() <= 200;
+    }
+
+    // Lehrer-Accounts (separater Zugang, gleiche Owner-Logik).
+    match /teachers/{teacherId} {
+      allow read, write, create: if isOwner(teacherId);
+    }
+
+    // Alles andere: explizit verboten (Default-Deny gilt zwar ohnehin,
+    // macht die Absicht aber sichtbar).
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

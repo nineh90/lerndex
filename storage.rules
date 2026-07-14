@@ -1,0 +1,52 @@
+rules_version = '2';
+
+// Firebase Storage Security Rules für Lerndex.
+//
+// Deployment: Inhalt in die Firebase Console kopieren (Storage → Regeln)
+// oder per CLI: firebase deploy --only storage
+//
+// Bisher gab es keine Storage-Rules im Projekt. Die App nutzt genau drei
+// Pfade, alle strikt pro Nutzer (Eltern-UID):
+//   task_images/{uid}/{childId}/{fach}/{ts}.jpg   – Eltern-Fotos für Aufgaben-Generierung
+//   tutor_worksheets/{uid}/{childId}/{ts}.jpg      – vom Kind hochgeladene Aufgabenblätter
+//   feedback/{uid}/{ts}.{ext}                      – optionale Feedback-Screenshots
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function isOwner(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+
+    // Nur Bilder, max. 10 MB (App komprimiert vor Upload auf 1920px/85 %,
+    // liegt also deutlich darunter — das Limit fängt manipulierte Clients ab).
+    function isValidImage() {
+      return request.resource.size < 10 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
+
+    match /task_images/{userId}/{allPaths=**} {
+      // read schließt list ein – nötig für den Storage-Cleanup bei
+      // Konto-Löschung (listAll in profile_repository).
+      allow read: if isOwner(userId);
+      allow create, update: if isOwner(userId) && isValidImage();
+      allow delete: if isOwner(userId);
+    }
+
+    match /tutor_worksheets/{userId}/{allPaths=**} {
+      allow read: if isOwner(userId);
+      allow create, update: if isOwner(userId) && isValidImage();
+      allow delete: if isOwner(userId);
+    }
+
+    match /feedback/{userId}/{allPaths=**} {
+      allow read: if isOwner(userId);
+      allow create, update: if isOwner(userId) && isValidImage();
+      allow delete: if isOwner(userId);
+    }
+
+    // Alles andere: verboten.
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
