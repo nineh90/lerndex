@@ -1,9 +1,33 @@
+import 'dart:io' show Platform;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lerndex/src/features/subscription/data/subscription_model.dart';
 import 'package:lerndex/src/features/subscription/data/subscription_provider.dart';
 import 'package:purchases_flutter/models/offering_wrapper.dart';
 import 'package:purchases_flutter/models/package_wrapper.dart';
+import 'package:url_launcher/url_launcher.dart';
+
+/// Sucht das RevenueCat-Package zu einem Plan im aktuellen Offering.
+Package? _packageForPlan(Offering offering, SubscriptionPlan plan) {
+  final packageId = plan.revenueCatPackageId;
+  if (packageId == null) return null;
+  try {
+    return offering.availablePackages.firstWhere(
+      (p) => p.identifier == packageId,
+    );
+  } catch (_) {
+    return null;
+  }
+}
+
+/// Preis-Anzeige IMMER aus dem Store (richtige Währung, aktuelle Preise).
+/// Die hardcodierten Werte aus [SubscriptionPlanExtension.priceLabel] sind
+/// nur noch Fallback, falls das Package nicht geladen werden konnte.
+String _storePriceLabel(Offering offering, SubscriptionPlan plan) {
+  final price = _packageForPlan(offering, plan)?.storeProduct.priceString;
+  return price != null ? '$price / Monat' : plan.priceLabel;
+}
 
 /// Paywall-Screen — wird angezeigt wenn der User kein aktives Abo hat
 /// oder ein bestehendes Abo ändern möchte.
@@ -122,7 +146,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    'Aktiver Plan: ${activePlan.displayName}  •  ${activePlan.priceLabel}',
+                    'Aktiver Plan: ${activePlan.displayName}  •  ${_storePriceLabel(offering, activePlan)}',
                     style: TextStyle(
                       color: Colors.green.shade700,
                       fontWeight: FontWeight.w600,
@@ -218,10 +242,29 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
             ),
 
           const SizedBox(height: 8),
-          const Text(
-            'Zahlung über Google Play. Automatische Verlängerung. Jederzeit kündbar.',
+          Text(
+            'Zahlung über ${Platform.isIOS ? 'den App Store' : 'Google Play'}. '
+            'Automatische Verlängerung. Jederzeit kündbar. '
+            'Hinweise zum Widerrufsrecht findest du in den AGB.',
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 11, color: Colors.black38),
+            style: const TextStyle(fontSize: 11, color: Colors.black38),
+          ),
+
+          // Apple 3.1.2: Links zu Datenschutzerklärung und Nutzungsbedingungen
+          // müssen direkt auf dem Abo-Screen erreichbar sein.
+          const Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _LegalLink(
+                label: 'Datenschutz',
+                url: 'https://lerndex.de/datenschutz.php',
+              ),
+              Text(
+                '  •  ',
+                style: TextStyle(fontSize: 11, color: Colors.black38),
+              ),
+              _LegalLink(label: 'AGB', url: 'https://lerndex.de/agb.php'),
+            ],
           ),
         ],
       ),
@@ -241,9 +284,10 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
       buttonLabel = '✓ Aktueller Plan';
     } else if (hasActivePlan) {
       buttonLabel =
-          'Zu ${_selectedPlan!.displayName} wechseln – ${_selectedPlan!.priceLabel}';
+          'Zu ${_selectedPlan!.displayName} wechseln – ${_storePriceLabel(offering, _selectedPlan!)}';
     } else {
-      buttonLabel = '14 Tage kostenlos starten – ${_selectedPlan!.priceLabel}';
+      buttonLabel =
+          '14 Tage kostenlos starten – ${_storePriceLabel(offering, _selectedPlan!)}';
     }
 
     return ElevatedButton(
@@ -297,18 +341,8 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
 
   // ── Helpers ─────────────────────────────────────────────────────────────────
 
-  Package? _findPackage(Offering offering, SubscriptionPlan plan) {
-    final packageId = plan.revenueCatPackageId;
-    if (packageId == null) return null;
-
-    try {
-      return offering.availablePackages.firstWhere(
-        (p) => p.identifier == packageId,
-      );
-    } catch (_) {
-      return null;
-    }
-  }
+  Package? _findPackage(Offering offering, SubscriptionPlan plan) =>
+      _packageForPlan(offering, plan);
 
   Future<void> _purchase(Package package, bool isUpgrade) async {
     setState(() => _isLoading = true);
@@ -389,7 +423,7 @@ class _PlanCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final priceString = plan.priceLabel;
+    final priceString = _storePriceLabel(offering, plan);
 
     // Aktiver Plan bekommt grünen Rand, ausgewählter lila
     final borderColor = isActive
@@ -529,6 +563,40 @@ class _PlanCard extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+// =============================================================================
+// RECHTS-LINK (Footer)
+// =============================================================================
+
+class _LegalLink extends StatelessWidget {
+  final String label;
+  final String url;
+
+  const _LegalLink({required this.label, required this.url});
+
+  @override
+  Widget build(BuildContext context) {
+    return TextButton(
+      style: TextButton.styleFrom(
+        padding: EdgeInsets.zero,
+        minimumSize: const Size(0, 32),
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      ),
+      onPressed: () => launchUrl(
+        Uri.parse(url),
+        mode: LaunchMode.externalApplication,
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(
+          fontSize: 11,
+          color: Colors.black45,
+          decoration: TextDecoration.underline,
         ),
       ),
     );

@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'generated_task_models.dart';
 import 'approved_questions_params.dart';
@@ -393,6 +394,18 @@ class GeneratedTaskRepository {
           .doc(userId)
           .collection('generated_batches')
           .doc(batchId);
+
+      // Zugehöriges Aufgaben-Foto in Storage mitlöschen (DSGVO):
+      // sonst bleibt das Bild nach dem Löschen des Batches verwaist liegen.
+      try {
+        final snapshot = await batchDoc.get();
+        final imageUrl = snapshot.data()?['imageUrl'] as String?;
+        if (imageUrl != null && imageUrl.isNotEmpty) {
+          await FirebaseStorage.instance.refFromURL(imageUrl).delete();
+        }
+      } catch (e) {
+        debugPrint('⚠️ Batch-Foto konnte nicht gelöscht werden: $e');
+      }
 
       // Lösche alle Fragen
       final questionsSnapshot = await batchDoc.collection('questions').get();

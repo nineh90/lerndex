@@ -59,29 +59,24 @@ void main() {
       );
     });
 
-    test('Heuristik erkennt eindeutig falsche Antwort', () {
-      expect(
-        AiResponseParser.extractCorrectTag('Das ist leider falsch, versuch es nochmal.'),
-        isFalse,
-      );
-      expect(
-        AiResponseParser.extractCorrectTag('Not quite, try again.'),
-        isFalse,
-      );
-    });
-
-    test('Heuristik erkennt eindeutig richtige Antwort', () {
+    test('ohne Tag zählt Lob-Text NICHT als korrekt (nicht manipulierbar)', () {
+      // Früherer Keyword-Fallback wurde entfernt: ein Kind konnte die KI
+      // zu Lobwörtern überreden und so XP erschleichen.
       expect(
         AiResponseParser.extractCorrectTag('Super, das ist genau richtig!'),
-        isTrue,
+        isFalse,
       );
-      expect(AiResponseParser.extractCorrectTag('Perfect, well done!'), isTrue);
+      expect(
+        AiResponseParser.extractCorrectTag('Perfect, well done!'),
+        isFalse,
+      );
     });
 
-    test('falsch wird vor richtig geprüft (sicher ist sicher)', () {
-      // "nicht ganz richtig" enthält sowohl "nicht ganz" als auch "richtig"
+    test('ohne Tag zählt Falsch-Text ebenfalls als false', () {
       expect(
-        AiResponseParser.extractCorrectTag('Das ist nicht ganz richtig'),
+        AiResponseParser.extractCorrectTag(
+          'Das ist leider falsch, versuch es nochmal.',
+        ),
         isFalse,
       );
     });

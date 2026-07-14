@@ -224,7 +224,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
     if (quizState.phase != QuizPhase.question) return;
 
     final engine = ref.read(quizEngineProvider(widget.subject).notifier);
-    final isCorrect = await engine.answerQuestion(selected);
+    final isCorrect = engine.answerQuestion(selected);
 
     // Feedback-Animation abspielen
     _feedbackController.forward().then((_) => _feedbackController.reverse());

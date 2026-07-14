@@ -17,6 +17,7 @@ import 'package:flutter/rendering.dart';
 import 'package:firebase_ai/firebase_ai.dart';
 import 'package:lerndex/src/features/quiz/presentation/quiz_finish_service.dart';
 import 'math_task_engine.dart';
+import 'package:lerndex/src/ai/vertex_ai_service.dart';
 
 // ============================================================================
 // MATH QUIZ SCREEN – Klasse 1 & 2
@@ -146,12 +147,16 @@ class _MathQuizScreenState extends ConsumerState<MathQuizScreen>
 
   Future<void> _initAI() async {
     try {
-      _aiModel = FirebaseAI.vertexAI().generativeModel(
-        model: 'gemini-2.0-flash',
+      _aiModel = VertexAIService.vertexEu().generativeModel(
+        model: VertexAIService.geminiModel,
         generationConfig: GenerationConfig(
           temperature: 0.1,
           maxOutputTokens: 20,
+          // gemini-2.5+: Denk-Tokens zählen zu maxOutputTokens –
+          // ohne Budget 0 wird die sichtbare Antwort abgeschnitten.
+          thinkingConfig: VertexAIService.noThinking(),
         ),
+        safetySettings: VertexAIService.kidSafetySettings(),
       );
     } catch (e) {
       debugPrint('MathQuiz: AI init failed: \$e');

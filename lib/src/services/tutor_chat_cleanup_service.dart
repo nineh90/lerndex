@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// 🗑️ TUTOR CHAT CLEANUP SERVICE
@@ -35,7 +36,9 @@ class TutorChatCleanupService {
     debugPrint('🗑️ Lösche Session $sessionId...');
 
     // 1. Session sofort als 'deleted' markieren → Schülerdashboard filtert sie
-    //    sofort aus, auch wenn der Delete noch läuft oder gecacht ist
+    //    sofort aus, auch wenn der Delete noch läuft oder gecacht ist.
+    //    set+merge statt update: wirft nicht, falls das Dokument bereits
+    //    gelöscht wurde (z.B. durch parallelen Auto-Cleanup).
     await _firestore
         .collection('users')
         .doc(userId)
@@ -43,7 +46,7 @@ class TutorChatCleanupService {
         .doc(childId)
         .collection('tutor_sessions')
         .doc(sessionId)
-        .update({'status': 'deleted'});
+        .set({'status': 'deleted'}, SetOptions(merge: true));
 
     // 2. Alle messages der Session löschen (Batch)
     await _deleteSubCollection(
@@ -141,14 +144,19 @@ class TutorChatCleanupService {
     for (final childDoc in childrenSnapshot.docs) {
       final childId = childDoc.id;
 
-      // Nur abgeschlossene Sessions löschen, nicht aktive
+      // ✅ FIX (DSGVO-Retention): Vorher wurden NUR Sessions mit
+      // status == 'completed' gelöscht. Sessions, die nie sauber beendet
+      // wurden (App gekillt, Absturz, status == 'active'), blieben für
+      // immer in Firestore liegen – inklusive aller Chat-Nachrichten.
+      // Jetzt werden ALLE Sessions gelöscht, deren Start länger als
+      // 14 Tage zurückliegt – egal welcher Status. Eine Session, die vor
+      // über 14 Tagen gestartet wurde, ist nie mehr "aktiv".
       final oldSessionsSnapshot = await _firestore
           .collection('users')
           .doc(userId)
           .collection('children')
           .doc(childId)
           .collection('tutor_sessions')
-          .where('status', isEqualTo: 'completed')
           .where('startedAt', isLessThan: cutoffTimestamp)
           .get();
 
@@ -179,6 +187,9 @@ class TutorChatCleanupService {
   // ──────────────────────────────────────────────────────────────────────────
 
   /// Löscht eine Firestore Sub-Collection in Batches (max 500 pro Batch).
+  /// Nachrichten mit Foto-Anhang (imageUrl): das Bild in Firebase Storage
+  /// wird mitgelöscht, sonst bleiben die vom Kind hochgeladenen
+  /// Aufgabenblätter nach Ablauf der 14 Tage verwaist liegen (DSGVO).
   Future<void> _deleteSubCollection({required String path}) async {
     const batchSize = 400;
 
@@ -189,11 +200,24 @@ class TutorChatCleanupService {
 
       final batch = _firestore.batch();
       for (final doc in snapshot.docs) {
+        await _deleteAttachedImage(doc.data());
         batch.delete(doc.reference);
       }
       await batch.commit();
 
       if (snapshot.docs.length < batchSize) break;
+    }
+  }
+
+  /// Löscht das in einer Message referenzierte Storage-Bild (best effort).
+  Future<void> _deleteAttachedImage(Map<String, dynamic> data) async {
+    final imageUrl = data['imageUrl'];
+    if (imageUrl is! String || imageUrl.isEmpty) return;
+    try {
+      await FirebaseStorage.instance.refFromURL(imageUrl).delete();
+    } catch (e) {
+      // Bild existiert nicht mehr o.ä. – Cleanup nicht blockieren
+      debugPrint('⚠️ Chat-Bild konnte nicht gelöscht werden: $e');
     }
   }
 

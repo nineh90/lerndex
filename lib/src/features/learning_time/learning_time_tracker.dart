@@ -10,7 +10,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 /// ❌ Dashboard-Browsing
 /// ❌ Einstellungen
 ///
-/// Schreibt alle 30s einen Heartbeat → Eltern sehen LIVE-Status.
+/// Schreibt alle 60s einen Heartbeat → Eltern sehen LIVE-Status.
 ///
 /// NEU: Optionaler `subject`-Parameter — bei `saveTime()` wird die Sekunden-
 /// Summe zusätzlich pro Fach in `learning_stats/{date}.subjects.{subject}`
@@ -52,8 +52,10 @@ class LearningTimeTracker {
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
       _secondsTracked++;
 
-      // Heartbeat alle 30 Sekunden → Eltern-Dashboard zeigt LIVE-Status
-      if (_secondsTracked % 30 == 0) {
+      // Heartbeat alle 60 Sekunden → Eltern-Dashboard zeigt LIVE-Status.
+      // (Das Dashboard wertet "LIVE" bei < 5 Min. Alter — 60s reicht dafür
+      // locker und halbiert die Firestore-Writes gegenüber 30s.)
+      if (_secondsTracked % 60 == 0) {
         _writeHeartbeat();
       }
     });
@@ -107,14 +109,22 @@ class LearningTimeTracker {
           updates['firstLearningDate'] = FieldValue.serverTimestamp();
         }
 
-        tx.update(childRef, updates);
+        // set+merge statt update: schlägt nicht fehl, falls das Dokument
+        // (z.B. durch Race mit einer Löschung) nicht mehr existiert.
+        tx.set(childRef, updates, SetOptions(merge: true));
       });
 
       // Tägliche Statistik (inkl. Fach-Aufschlüsselung)
       await _saveDailyStats(secondsToSave);
 
       debugPrint('✅ Lernzeit gespeichert: ${_formatTime(secondsToSave)}');
-      _secondsTracked = 0;
+
+      // ✅ FIX: Nicht hart auf 0 setzen, sondern nur die gespeicherten
+      // Sekunden abziehen. Der Timer läuft während des async-Speicherns
+      // weiter – ein hartes `= 0` würde die zwischenzeitlich getrackten
+      // Sekunden verwerfen (Lernzeit-Verlust bei jedem Zwischenspeichern).
+      _secondsTracked -= secondsToSave;
+      if (_secondsTracked < 0) _secondsTracked = 0;
     } catch (e) {
       debugPrint('❌ Fehler beim Speichern: $e');
       rethrow;
@@ -134,7 +144,7 @@ class LearningTimeTracker {
   // =========================================================================
 
   /// Schreibt einen Heartbeat-Timestamp nach Firestore.
-  /// Wird beim Start und dann alle 30 Sekunden aufgerufen.
+  /// Wird beim Start und dann alle 60 Sekunden aufgerufen.
   /// Das Elterndashboard liest diesen Wert und zeigt LIVE an,
   /// wenn er weniger als 5 Minuten alt ist.
   Future<void> _writeHeartbeat() async {

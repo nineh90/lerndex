@@ -257,11 +257,52 @@ class AuthRepository {
     }
   }
 
-  /// Account löschen
+  /// Version der Datenschutzerklärung, der aktuell zugestimmt wird.
+  /// Bei inhaltlichen Änderungen der Erklärung hochzählen – so ist
+  /// nachvollziehbar, welcher Fassung ein Nutzer zugestimmt hat (Art. 7 DSGVO).
+  static const String privacyPolicyVersion = '2026-07';
+
+  /// Protokolliert die Zustimmung zur Datenschutzerklärung mit Server-
+  /// Zeitstempel und Versionsnummer im User-Dokument.
+  Future<void> recordPrivacyConsent() async {
+    final user = _auth.currentUser;
+    if (user == null) return;
+    await _firestore.collection('users').doc(user.uid).set({
+      'privacyAcceptedAt': FieldValue.serverTimestamp(),
+      'privacyPolicyVersion': privacyPolicyVersion,
+    }, SetOptions(merge: true));
+  }
+
+  /// Bricht eine Social-Neuregistrierung ab, wenn der Nutzer der
+  /// Datenschutzerklärung NICHT zustimmt: löscht das eben angelegte
+  /// User-Dokument und den Auth-Account wieder, damit ohne Einwilligung
+  /// keine Daten zurückbleiben (DSGVO). Der Account ist frisch angemeldet,
+  /// daher ist kein Re-Auth nötig.
+  Future<void> abortNewSocialAccount() async {
+    final user = _auth.currentUser;
+    if (user == null) return;
+    await _firestore.collection('users').doc(user.uid).delete();
+    await user.delete();
+    await _googleSignIn.signOut();
+  }
+
+  /// Account löschen.
+  ///
+  /// ⚠️ ACHTUNG: Diese Methode löscht NUR den Firebase-Auth-Account.
+  /// Firestore-/Storage-Daten müssen VORHER über
+  /// `ProfileRepository.deleteAllUserData()` gelöscht werden – sonst bleiben
+  /// Kinderdaten als verwaiste Datensätze zurück (DSGVO-Verstoß).
+  /// Der vollständige Lösch-Flow liegt in `settings_screen.dart`.
+  /// Wirft 'requires-recent-login', wenn die letzte Anmeldung zu lange her
+  /// ist – dann muss vorher re-authentifiziert werden.
   Future<void> deleteAccount() async {
     final user = _auth.currentUser;
     if (user == null) throw Exception('Kein Benutzer angemeldet.');
-    await user.delete();
+    try {
+      await user.delete();
+    } on FirebaseAuthException catch (e) {
+      throw _handleAuthException(e);
+    }
   }
 
   // =========================================================================
@@ -304,6 +345,12 @@ class AuthRepository {
         return 'Zu viele Anfragen. Bitte später erneut versuchen.';
       case 'account-exists-with-different-credential':
         return 'Diese E-Mail ist bereits mit einer anderen Anmeldemethode verknüpft.';
+      case 'requires-recent-login':
+        return 'Bitte melde dich erneut an, um diese Aktion durchzuführen.';
+      case 'network-request-failed':
+        return 'Keine Internetverbindung. Bitte prüfe dein Netzwerk.';
+      case 'invalid-credential':
+        return 'E-Mail oder Passwort ist falsch.';
       default:
         return 'Fehler: ${e.message}';
     }

@@ -1,4 +1,5 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
     <uses-permission android:name="android.permission.RECORD_AUDIO"/>
     <uses-permission android:name="android.permission.INTERNET"/>
     <queries>
@@ -10,8 +11,12 @@
     <!-- BILLING & TRACKING                                                  -->
     <!-- ═══════════════════════════════════════════════════════════════════ -->
     <uses-permission android:name="com.android.vending.BILLING" />
-    <!-- AD_ID: Pflicht für RevenueCat auf Android (IDFA-Äquivalent) -->
-    <uses-permission android:name="com.google.android.gms.permission.AD_ID" />
+    <!-- AD_ID ist für Apps mit Kinder-Zielgruppe verboten (Play Families
+         Policy). RevenueCat funktioniert ohne. tools:node="remove" strippt
+         die Permission auch aus gemergten SDK-Manifesten. -->
+    <uses-permission
+        android:name="com.google.android.gms.permission.AD_ID"
+        tools:node="remove" />
 
     <!-- ═══════════════════════════════════════════════════════════════════ -->
     <!-- KAMERA                                                              -->
@@ -38,14 +43,8 @@
          auf Android 14+ korrekt funktioniert. -->
     <uses-permission android:name="android.permission.READ_MEDIA_VISUAL_USER_SELECTED"/>
 
-    <!-- ═══════════════════════════════════════════════════════════════════ -->
-    <!-- INTERNET (Firebase, RevenueCat, Vertex AI)                         -->
-    <!-- Flutter fügt INTERNET automatisch hinzu, hier zur Vollständigkeit   -->
-    <!-- ═══════════════════════════════════════════════════════════════════ -->
-    <uses-permission android:name="android.permission.INTERNET"/>
-
     <application
-        android:label="lerndex"
+        android:label="Lerndex"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

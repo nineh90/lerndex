@@ -120,7 +120,7 @@ class _ChildReactivationScreenState
                         radius: 22,
                         backgroundImage: child.selectedAvatar != null
                             ? AssetImage(
-                                'assets/images/${child.selectedAvatar}.png',
+                                'assets/images/${child.selectedAvatar}.webp',
                               )
                             : null,
                         child: child.selectedAvatar == null

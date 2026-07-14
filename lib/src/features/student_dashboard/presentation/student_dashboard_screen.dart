@@ -254,7 +254,7 @@ class _PrimaryDashboardScreenState
                   radius: 18,
                   backgroundColor: Colors.white24,
                   backgroundImage: child.selectedAvatar != null
-                      ? AssetImage('assets/images/${child.selectedAvatar}.png')
+                      ? AssetImage('assets/images/${child.selectedAvatar}.webp')
                       : null,
                   child: child.selectedAvatar == null
                       ? Text(
@@ -381,7 +381,7 @@ class _PrimaryDashboardScreenState
             ? const Icon(Icons.lock_rounded, color: Colors.white, size: 28)
             : ClipOval(
                 child: Image.asset(
-                  'assets/images/lerndex_logo.png',
+                  'assets/images/lerndex_logo.webp',
                   width: 55,
                   height: 55,
                   fit: BoxFit.cover,

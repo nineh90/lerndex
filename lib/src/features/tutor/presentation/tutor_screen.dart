@@ -364,7 +364,7 @@ class _TutorScreenState extends ConsumerState<TutorScreen> {
               backgroundColor: Colors.deepPurple.shade300,
               child: ClipOval(
                 child: Image.asset(
-                  'assets/images/lerndex_logo.png',
+                  'assets/images/lerndex_logo.webp',
                   width: 36,
                   height: 36,
                   fit: BoxFit.cover,

@@ -359,7 +359,7 @@ class _LerndexSplashScreenState extends ConsumerState<LerndexSplashScreen>
     return AnimatedBuilder(
       animation: _twinkleCtrl,
       builder: (_, __) => Image.asset(
-        'assets/images/lerndex_logo.png',
+        'assets/images/lerndex_logo.webp',
         width: 220,
         height: 220,
         fit: BoxFit.contain,

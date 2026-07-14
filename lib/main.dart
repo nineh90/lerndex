@@ -1,5 +1,6 @@
 import 'dart:ui';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -18,6 +19,12 @@ final accountDeletionInProgressProvider = StateProvider<bool>((ref) => false);
 void main() async {
   final binding = WidgetsFlutterBinding.ensureInitialized();
   FlutterNativeSplash.preserve(widgetsBinding: binding);
+
+  // debugPrint läuft sonst auch im Release-Build und würde UIDs, Kindernamen
+  // und Abo-Status ins System-Log schreiben (DSGVO). Im Release stummschalten.
+  if (kReleaseMode) {
+    debugPrint = (String? message, {int? wrapWidth}) {};
+  }
 
   // App auf Portrait-Modus beschränken
   await SystemChrome.setPreferredOrientations([

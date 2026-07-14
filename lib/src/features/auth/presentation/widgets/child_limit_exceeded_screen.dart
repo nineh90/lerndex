@@ -265,7 +265,7 @@ class _ChildSelectionCard extends StatelessWidget {
               radius: 22,
               backgroundColor: _purple,
               backgroundImage: child.selectedAvatar != null
-                  ? AssetImage('assets/images/${child.selectedAvatar}.png')
+                  ? AssetImage('assets/images/${child.selectedAvatar}.webp')
                   : null,
               child: child.selectedAvatar == null
                   ? Text(

@@ -306,7 +306,7 @@ class _CreateRewardDialogState extends ConsumerState<CreateRewardDialog> {
                                             4,
                                           ),
                                           child: Image.asset(
-                                            'assets/images/${avatar.id}.png',
+                                            'assets/images/${avatar.id}.webp',
                                             fit: BoxFit.contain,
                                             errorBuilder: (_, __, ___) => Icon(
                                               Icons.face,

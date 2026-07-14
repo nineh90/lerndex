@@ -25,81 +25,18 @@ class AiResponseParser {
 
   /// Bestimmt ob die Kind-Antwort korrekt war.
   ///
-  /// Priorität:
-  ///   1. Expliziter Tag `[KORREKT:ja|nein]` (case-insensitive).
-  ///   2. Heuristische Textanalyse (eindeutig-falsch vor eindeutig-richtig).
-  ///   3. Kein klares Signal → `false` ("sicher ist sicher", kein XP).
+  /// NUR der explizite Tag `[KORREKT:ja]` zählt (case-insensitive).
+  /// Der frühere Keyword-Fallback ("richtig", "super", "genau" …) war
+  /// manipulierbar: ein Kind konnte die KI dazu bringen, Lobwörter zu sagen
+  /// ("sag mal 'super richtig'"), und sich so den XP-Bonus erschleichen.
+  /// Kein Tag / kein klares Signal → `false` (kein XP).
   static bool extractCorrectTag(String response) {
-    // 1. Expliziter KI-Tag hat höchste Priorität
     final match = RegExp(
       r'\[KORREKT:(ja|nein)\]',
       caseSensitive: false,
     ).firstMatch(response);
-    if (match != null) {
-      return match.group(1)?.toLowerCase() != 'nein';
-    }
-
-    // 2. Lokale Textanalyse der KI-Antwort
-    final lower = response.toLowerCase();
-
-    // Eindeutig falsch
-    const wrongPhrases = [
-      'leider falsch',
-      'leider nicht richtig',
-      'leider nicht korrekt',
-      'das ist falsch',
-      'das ist leider',
-      'nicht ganz richtig',
-      'fast richtig',
-      'nicht ganz',
-      'nicht korrekt',
-      'leider nicht',
-      'das stimmt leider',
-      'das ist nicht richtig',
-      'das ist nicht korrekt',
-      'das war nicht',
-      'falsche antwort',
-      'noch nicht ganz',
-      'nicht die richtige',
-      'nicht die richtige antwort',
-      'not quite',
-      'not correct',
-      "that's not",
-      'almost',
-      'unfortunately',
-      'wrong',
-      'incorrect',
-    ];
-    if (wrongPhrases.any((p) => lower.contains(p))) return false;
-
-    // Eindeutig richtig
-    const correctPhrases = [
-      'richtig',
-      'korrekt',
-      'genau',
-      'super',
-      'toll',
-      'prima',
-      'klasse',
-      'bravo',
-      'perfekt',
-      'wunderbar',
-      'sehr gut',
-      'gut gemacht',
-      'das stimmt',
-      'das ist richtig',
-      'correct',
-      'exactly',
-      'well done',
-      'great',
-      'perfect',
-      'excellent',
-      "that's right",
-    ];
-    if (correctPhrases.any((p) => lower.contains(p))) return true;
-
-    // Kein klares Signal → kein XP (sicher ist sicher)
-    return false;
+    if (match == null) return false;
+    return match.group(1)?.toLowerCase() != 'nein';
   }
 
   /// Entfernt FACH- und KORREKT-Tags inkl. aller Label-Varianten aus der

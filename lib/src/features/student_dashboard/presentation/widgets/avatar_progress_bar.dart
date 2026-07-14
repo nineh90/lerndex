@@ -298,7 +298,7 @@ class _AvatarProgressBarState extends State<AvatarProgressBar>
       child: widget.avatarId != null
           ? ClipOval(
               child: Image.asset(
-                'assets/images/${widget.avatarId}.png',
+                'assets/images/${widget.avatarId}.webp',
                 fit: BoxFit.cover,
                 errorBuilder: (_, __, ___) => _buildInitials(),
               ),

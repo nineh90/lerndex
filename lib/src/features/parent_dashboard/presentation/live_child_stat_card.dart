@@ -265,7 +265,7 @@ class LiveChildStatCard extends ConsumerWidget {
                               backgroundColor: Colors.deepPurple.shade100,
                               backgroundImage: child.selectedAvatar != null
                                   ? AssetImage(
-                                      'assets/images/${child.selectedAvatar}.png',
+                                      'assets/images/${child.selectedAvatar}.webp',
                                     )
                                   : null,
                               child: child.selectedAvatar == null

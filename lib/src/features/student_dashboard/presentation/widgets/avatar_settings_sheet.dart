@@ -112,7 +112,7 @@ class _AvatarSettingsSheetState extends ConsumerState<AvatarSettingsSheet> {
               radius: 40,
               backgroundColor: Colors.deepPurple.shade100,
               backgroundImage: currentAvatar != null
-                  ? AssetImage('assets/images/$currentAvatar.png')
+                  ? AssetImage('assets/images/$currentAvatar.webp')
                   : null,
               child: currentAvatar == null
                   ? Text(
@@ -256,7 +256,7 @@ class _AvatarSettingsSheetState extends ConsumerState<AvatarSettingsSheet> {
                                             0,
                                           ]),
                                     child: Image.asset(
-                                      'assets/images/${avatar.id}.png',
+                                      'assets/images/${avatar.id}.webp',
                                       fit: BoxFit.contain,
                                       errorBuilder: (_, __, ___) => Icon(
                                         Icons.face,

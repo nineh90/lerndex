@@ -1,7 +1,9 @@
 import 'dart:io';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../data/auth_repository.dart';
 import 'register_screen.dart';
 import 'setup_dialog.dart';
@@ -127,8 +129,28 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
     if (!mounted) return;
 
-    // Neuer User → Onboarding
+    // Neuer User → erst Datenschutz-Zustimmung, dann Onboarding.
+    // Über den Login-Screen können via Google/Apple neue Accounts entstehen,
+    // die die Checkbox des Register-Screens nie gesehen haben (DSGVO Art. 7/8).
     if (isNewUser) {
+      final accepted = await _askPrivacyConsent();
+      if (!mounted) return;
+
+      if (!accepted) {
+        // Ohne Einwilligung kein Konto: eben angelegten Account wieder löschen.
+        await ref.read(authRepositoryProvider).abortNewSocialAccount();
+        if (mounted) {
+          _showError(
+            'Registrierung abgebrochen – ohne Zustimmung zur '
+            'Datenschutzerklärung können wir kein Konto anlegen.',
+          );
+        }
+        return;
+      }
+
+      await ref.read(authRepositoryProvider).recordPrivacyConsent();
+      if (!mounted) return;
+
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (_) => const SetupDialog()),
       );
@@ -146,6 +168,53 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             onboardingDone ? const FamilyDashboardScreen() : const SetupDialog(),
       ),
     );
+  }
+
+  /// Zeigt den Datenschutz-Zustimmungsdialog für neue Social-Login-Accounts.
+  /// Gibt true zurück, wenn der Nutzer zugestimmt hat.
+  Future<bool> _askPrivacyConsent() async {
+    final accepted = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Datenschutz'),
+        content: Text.rich(
+          TextSpan(
+            text: 'Um dein Lerndex-Konto anzulegen, brauchst du unsere ',
+            children: [
+              TextSpan(
+                text: 'Datenschutzerklärung',
+                style: const TextStyle(
+                  color: Colors.blue,
+                  decoration: TextDecoration.underline,
+                ),
+                recognizer: TapGestureRecognizer()
+                  ..onTap = () => launchUrl(
+                    Uri.parse('https://www.lerndex.de/datenschutz.php'),
+                    mode: LaunchMode.externalApplication,
+                  ),
+              ),
+              const TextSpan(
+                text:
+                    ' gelesen und akzeptiert. Sie beschreibt u.a., wie die '
+                    'Lerndaten deiner Kinder verarbeitet werden.',
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Ablehnen'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Ich akzeptiere'),
+          ),
+        ],
+      ),
+    );
+    return accepted ?? false;
   }
 
   Future<void> _forgotPassword() async {
@@ -205,7 +274,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           right: 0,
                           child: Center(
                             child: Image.asset(
-                              'assets/images/lerndex_logo.png',
+                              'assets/images/lerndex_logo.webp',
                               width: 160,
                               height: 160,
                               fit: BoxFit.contain,

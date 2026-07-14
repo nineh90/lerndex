@@ -1,15 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../shared/widgets/parental_gate.dart';
 import '../../../tutorial_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 /// Einstellungen im Family-Dashboard (für alle sichtbar – auch Kinder).
 /// Enthält nur unkritische Optionen: App-Tour & Rechtliches.
 /// Passwort, PIN und Konto-Löschung sind im Eltern-Dashboard (hinter PIN-Sperre).
+/// Externe Links öffnen erst nach Parental Gate (Apple Kids Category 1.3:
+/// Links, die die App verlassen, brauchen eine Erwachsenen-Schranke).
 class FamilySettingsScreen extends ConsumerWidget {
   const FamilySettingsScreen({super.key});
 
-  Future<void> _launchUrl(BuildContext context, String url) async {
+  Future<void> _launchUrl(
+    BuildContext context,
+    WidgetRef ref,
+    String url,
+  ) async {
+    final ok = await showParentalGate(context, ref);
+    if (!ok || !context.mounted) return;
+
     final uri = Uri.parse(url);
     if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
       if (context.mounted) {
@@ -72,7 +82,7 @@ class FamilySettingsScreen extends ConsumerWidget {
               color: Colors.grey,
             ),
             onTap: () =>
-                _launchUrl(context, 'https://lerndex.de/datenschutz.php'),
+                _launchUrl(context, ref, 'https://lerndex.de/datenschutz.php'),
           ),
 
           ListTile(
@@ -87,7 +97,7 @@ class FamilySettingsScreen extends ConsumerWidget {
               size: 18,
               color: Colors.grey,
             ),
-            onTap: () => _launchUrl(context, 'https://lerndex.de/agb.php'),
+            onTap: () => _launchUrl(context, ref, 'https://lerndex.de/agb.php'),
           ),
 
           ListTile(
@@ -103,7 +113,7 @@ class FamilySettingsScreen extends ConsumerWidget {
               color: Colors.grey,
             ),
             onTap: () =>
-                _launchUrl(context, 'https://lerndex.de/impressum.php'),
+                _launchUrl(context, ref, 'https://lerndex.de/impressum.php'),
           ),
         ],
       ),

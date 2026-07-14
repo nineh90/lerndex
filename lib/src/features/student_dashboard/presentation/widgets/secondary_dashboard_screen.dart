@@ -202,7 +202,7 @@ class _SecondaryDashboardScreenState
                 backgroundColor: theme.primary.withValues(alpha: 0.6),
                 backgroundImage: widget.child.selectedAvatar != null
                     ? AssetImage(
-                        'assets/images/${widget.child.selectedAvatar}.png',
+                        'assets/images/${widget.child.selectedAvatar}.webp',
                       )
                     : null,
                 child: widget.child.selectedAvatar == null
@@ -289,7 +289,7 @@ class _SecondaryDashboardScreenState
             ? const Icon(Icons.lock_rounded, color: Colors.white, size: 26)
             : ClipOval(
                 child: Image.asset(
-                  'assets/images/lerndex_logo.png',
+                  'assets/images/lerndex_logo.webp',
                   width: 48,
                   height: 48,
                   fit: BoxFit.cover,

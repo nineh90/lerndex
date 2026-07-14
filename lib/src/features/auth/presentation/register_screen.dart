@@ -169,6 +169,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             birthdate: _selectedBirthdate,
           );
 
+      // Zustimmung zur Datenschutzerklärung protokollieren (Art. 7 DSGVO)
+      await ref.read(authRepositoryProvider).recordPrivacyConsent();
+
       if (!mounted) return;
 
       Navigator.of(context).pushReplacement(
@@ -201,6 +204,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     setState(() => _isGoogleLoading = true);
     try {
       await ref.read(authRepositoryProvider).signInWithGoogle();
+      // Zustimmung zur Datenschutzerklärung protokollieren (Art. 7 DSGVO)
+      await ref.read(authRepositoryProvider).recordPrivacyConsent();
       if (!mounted) return;
       Navigator.of(
         context,
@@ -231,6 +236,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     setState(() => _isAppleLoading = true);
     try {
       await ref.read(authRepositoryProvider).signInWithApple();
+      // Zustimmung zur Datenschutzerklärung protokollieren (Art. 7 DSGVO)
+      await ref.read(authRepositoryProvider).recordPrivacyConsent();
       if (!mounted) return;
       Navigator.of(
         context,
@@ -288,7 +295,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                               right: 0,
                               child: Center(
                                 child: Image.asset(
-                                  'assets/images/lerndex_logo.png',
+                                  'assets/images/lerndex_logo.webp',
                                   width: 180,
                                   height: 180,
                                   fit: BoxFit.contain,

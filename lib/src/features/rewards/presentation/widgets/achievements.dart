@@ -414,7 +414,7 @@ class _AvatarChip extends StatelessWidget {
                         0,
                       ]),
                 child: Image.asset(
-                  'assets/images/${avatar.id}.png',
+                  'assets/images/${avatar.id}.webp',
                   fit: BoxFit.contain,
                   errorBuilder: (_, __, ___) => Icon(
                     isUnlocked ? Icons.face : Icons.lock,

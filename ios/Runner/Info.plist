@@ -57,10 +57,9 @@
 
 		<!-- Hinweis: Der Mikrofon-Nutzungstext steht weiter unten (Spracheingabe Tutor) -->
 
-		<!-- Tracking: Pflicht wegen RevenueCat (IDFA). Ohne diesen Key lehnt Apple die App ab. -->
-		<!-- Wenn ihr kein personalisiertes Tracking wollt: einfach so lassen, ATT-Dialog erscheint nicht -->
-		<key>NSUserTrackingUsageDescription</key>
-		<string>Lerndex nutzt diese Information ausschließlich um Käufe korrekt zu verarbeiten und dir passende Abo-Angebote anzuzeigen.</string>
+		<!-- Kein NSUserTrackingUsageDescription: Kids-Category-Apps dürfen kein
+		     Tracking/ATT enthalten (Guideline 1.3). RevenueCat braucht die IDFA
+		     nicht – es läuft über die Firebase-UID als appUserID. -->
 
 		<!-- ═══════════════════════════════════════════════════════════ -->
 		<!-- APP STORE / EXPORT COMPLIANCE                              -->

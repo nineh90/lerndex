@@ -614,7 +614,7 @@ class _CompactHeader extends ConsumerWidget {
                           child: child.selectedAvatar != null
                               ? ClipOval(
                                   child: Image.asset(
-                                    'assets/images/${child.selectedAvatar}.png',
+                                    'assets/images/${child.selectedAvatar}.webp',
                                     fit: BoxFit.cover,
                                     errorBuilder: (_, __, ___) =>
                                         _initials(child.name),

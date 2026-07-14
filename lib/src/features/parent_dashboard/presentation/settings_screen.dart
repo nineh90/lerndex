@@ -44,17 +44,26 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           // ── Abschnitt: Konto ─────────────────────────────────────────
           const _SectionHeader(title: 'Konto'),
 
-          // ── Passwort ändern ───────────────────────────────────────────
-          ListTile(
-            leading: const Icon(Icons.lock_outline, color: Colors.deepPurple),
-            title: const Text('Passwort ändern'),
-            subtitle: const Text(
-              'Lege ein neues Anmelde-Passwort fest',
-              style: TextStyle(fontSize: 12),
+          // ── Passwort ändern (nur für E-Mail/Passwort-Anmeldung) ───────
+          // ✅ FIX: Google-/Apple-Nutzer haben kein Passwort – für sie führte
+          // der Dialog ins Leere (Re-Auth schlug immer fehl).
+          if (FirebaseAuth.instance.currentUser?.providerData.any(
+                (p) => p.providerId == 'password',
+              ) ??
+              false)
+            ListTile(
+              leading: const Icon(
+                Icons.lock_outline,
+                color: Colors.deepPurple,
+              ),
+              title: const Text('Passwort ändern'),
+              subtitle: const Text(
+                'Lege ein neues Anmelde-Passwort fest',
+                style: TextStyle(fontSize: 12),
+              ),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => _showChangePasswordDialog(context),
             ),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => _showChangePasswordDialog(context),
-          ),
 
           // ── PIN ändern ────────────────────────────────────────────────
           ListTile(
@@ -460,11 +469,59 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
     if (confirmed == true && mounted) {
       // ignore: use_build_context_synchronously – mounted guard is correct here
-      await _askPasswordAndDelete(this.context);
+      await _startReauthAndDelete(this.context);
     }
   }
 
-  /// Schritt 2: Passwort abfragen und Re-Auth + Löschen durchführen
+  /// Schritt 2: Re-Authentifizierung je nach Anmelde-Provider starten.
+  ///
+  /// ✅ FIX (DSGVO Art. 17): Vorher wurde IMMER ein Passwort abgefragt.
+  /// Google- und Apple-Nutzer haben aber kein Passwort und konnten ihr
+  /// Konto dadurch gar nicht löschen. Jetzt wird je nach Provider die
+  /// passende Re-Auth-Methode verwendet.
+  Future<void> _startReauthAndDelete(BuildContext context) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    final providers = user.providerData.map((p) => p.providerId).toSet();
+
+    if (providers.contains('password')) {
+      await _askPasswordAndDelete(context);
+    } else if (providers.contains('google.com')) {
+      await _reauthWithProviderAndDelete(GoogleAuthProvider());
+    } else if (providers.contains('apple.com')) {
+      await _reauthWithProviderAndDelete(AppleAuthProvider());
+    } else {
+      if (!mounted) return;
+      ScaffoldMessenger.of(this.context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Konto-Löschung für diese Anmeldemethode nicht möglich. '
+            'Bitte kontaktiere den Support.',
+          ),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  /// Re-Auth über OAuth-Provider (Google/Apple) und anschließend löschen.
+  Future<void> _reauthWithProviderAndDelete(AuthProvider provider) async {
+    setState(() => _isDeletingAccount = true);
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) throw Exception('Kein Benutzer angemeldet.');
+
+      await user.reauthenticateWithProvider(provider);
+      await _wipeDataAndDeleteAuth();
+    } on FirebaseAuthException catch (e) {
+      _handleDeleteError(_mapDeleteAuthError(e));
+    } catch (e) {
+      _handleDeleteError('Fehler beim Löschen: $e');
+    }
+  }
+
+  /// Schritt 2 (E-Mail/Passwort): Passwort abfragen
   Future<void> _askPasswordAndDelete(BuildContext context) async {
     final passwordController = TextEditingController();
     bool obscure = true;
@@ -527,7 +584,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     await _deleteAccount(password);
   }
 
-  /// Schritt 3: Re-Authentifizierung + Daten löschen + Auth-Account löschen
+  /// Schritt 3 (E-Mail/Passwort): Re-Authentifizierung + Löschen
   Future<void> _deleteAccount(String password) async {
     setState(() => _isDeletingAccount = true);
 
@@ -543,54 +600,65 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       );
       await user.reauthenticateWithCredential(credential);
 
-      // Referenzen cachen
-      final profileRepo = ref.read(profileRepositoryProvider);
-
-      // Firestore-Daten löschen
-      await profileRepo.deleteAllUserData();
-
-      // Flag setzen damit MyApp nicht auf authStateChanges reagiert
-      ref.read(accountDeletionInProgressProvider.notifier).state = true;
-
-      // Auth-Account löschen
-      await FirebaseAuth.instance.currentUser?.delete();
-
-      // Zum Übergangs-Screen navigieren und ALLES aus dem Stack werfen
-      if (mounted) {
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (_) => const AccountDeletedScreen()),
-          (route) => false,
-        );
-      }
+      await _wipeDataAndDeleteAuth();
     } on FirebaseAuthException catch (e) {
-      if (!mounted) return;
-      setState(() => _isDeletingAccount = false);
-      ref.read(accountDeletionInProgressProvider.notifier).state = false;
-
-      String message;
-      if (e.code == 'wrong-password' || e.code == 'invalid-credential') {
-        message = 'Falsches Passwort. Bitte versuche es erneut.';
-      } else if (e.code == 'too-many-requests') {
-        message = 'Zu viele Versuche. Bitte warte kurz und versuche es erneut.';
-      } else {
-        message = 'Fehler: ${e.message}';
-      }
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message), backgroundColor: Colors.red),
-      );
+      _handleDeleteError(_mapDeleteAuthError(e));
     } catch (e) {
-      if (!mounted) return;
-      setState(() => _isDeletingAccount = false);
-      ref.read(accountDeletionInProgressProvider.notifier).state = false;
+      _handleDeleteError('Fehler beim Löschen: $e');
+    }
+  }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Fehler beim Löschen: $e'),
-          backgroundColor: Colors.red,
-        ),
+  /// Gemeinsamer letzter Schritt: Firestore-/Storage-Daten löschen,
+  /// dann Auth-Account löschen, dann zum Abschluss-Screen navigieren.
+  Future<void> _wipeDataAndDeleteAuth() async {
+    // Referenzen cachen
+    final profileRepo = ref.read(profileRepositoryProvider);
+
+    // Firestore- und Storage-Daten löschen
+    await profileRepo.deleteAllUserData();
+
+    // Flag setzen damit MyApp nicht auf authStateChanges reagiert
+    ref.read(accountDeletionInProgressProvider.notifier).state = true;
+
+    // Auth-Account löschen
+    await FirebaseAuth.instance.currentUser?.delete();
+
+    // Zum Übergangs-Screen navigieren und ALLES aus dem Stack werfen
+    if (mounted) {
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const AccountDeletedScreen()),
+        (route) => false,
       );
     }
+  }
+
+  String _mapDeleteAuthError(FirebaseAuthException e) {
+    switch (e.code) {
+      case 'wrong-password':
+      case 'invalid-credential':
+        return 'Falsches Passwort. Bitte versuche es erneut.';
+      case 'too-many-requests':
+        return 'Zu viele Versuche. Bitte warte kurz und versuche es erneut.';
+      case 'requires-recent-login':
+        return 'Bitte melde dich erneut an und versuche es dann noch einmal.';
+      case 'user-mismatch':
+        return 'Die Anmeldung gehört nicht zu diesem Konto.';
+      case 'web-context-canceled':
+      case 'canceled':
+        return 'Anmeldung abgebrochen.';
+      default:
+        return 'Fehler: ${e.message}';
+    }
+  }
+
+  void _handleDeleteError(String message) {
+    if (!mounted) return;
+    setState(() => _isDeletingAccount = false);
+    ref.read(accountDeletionInProgressProvider.notifier).state = false;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: Colors.red),
+    );
   }
 }
 

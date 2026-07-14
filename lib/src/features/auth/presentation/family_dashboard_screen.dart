@@ -18,6 +18,7 @@ import '../../../tutorial_overlay.dart';
 // NEU: Subscription
 import '../../subscription/data/subscription_provider.dart';
 import '../../subscription/presentation/paywall_screen.dart';
+import '../../../shared/widgets/parental_gate.dart';
 
 class FamilyDashboardScreen extends ConsumerStatefulWidget {
   const FamilyDashboardScreen({super.key});
@@ -47,9 +48,13 @@ class _FamilyDashboardScreenState extends ConsumerState<FamilyDashboardScreen> {
       error: (_, __) => true,
     );
 
-    // Kein Abo → Paywall als vollständiger Screen (nicht wegklickbar)
+    // Kein Abo → Paywall als vollständiger Screen (nicht wegklickbar).
+    // Parental Gate davor: Kinder können diesen Screen erreichen, Käufe
+    // brauchen in Kids-Apps eine Erwachsenen-Schranke (Apple 1.3).
     if (!hasAccess) {
-      return const PaywallScreen(canDismiss: false);
+      return ParentalGateScreen(
+        builder: (_) => const PaywallScreen(canDismiss: false),
+      );
     }
 
     // ── NEU: Downgrade-Check ────────────────────────────────────────────────
@@ -219,7 +224,7 @@ class _FamilyDashboardScreenState extends ConsumerState<FamilyDashboardScreen> {
                               radius: 24,
                               backgroundImage: child.selectedAvatar != null
                                   ? AssetImage(
-                                      'assets/images/${child.selectedAvatar}.png',
+                                      'assets/images/${child.selectedAvatar}.webp',
                                     )
                                   : null,
                               child: child.selectedAvatar == null
@@ -312,13 +317,19 @@ class _FamilyDashboardScreenState extends ConsumerState<FamilyDashboardScreen> {
                                 color: Color(0xFF6B21A8),
                               )
                             : GestureDetector(
-                                onTap: () => Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) =>
-                                        const PaywallScreen(canDismiss: true),
-                                  ),
-                                ),
+                                // Parental Gate vor der Paywall (Kids-App)
+                                onTap: () async {
+                                  final ok =
+                                      await showParentalGate(context, ref);
+                                  if (!ok || !context.mounted) return;
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) =>
+                                          const PaywallScreen(canDismiss: true),
+                                    ),
+                                  );
+                                },
                                 child: const Icon(
                                   Icons.upgrade,
                                   color: Color(0xFF6B21A8),
@@ -439,6 +450,11 @@ class _FamilyDashboardScreenState extends ConsumerState<FamilyDashboardScreen> {
     if (!context.mounted) return;
 
     if (!hasPin) {
+      // Erwachsenen-Schranke VOR der PIN-Ersteinrichtung: sonst könnte sich
+      // ein Kind, das zuerst hier tippt, selbst den Elternbereich freischalten.
+      final isAdult = await showAdultGateDialog(context);
+      if (isAdult != true || !context.mounted) return;
+
       final created = await showDialog<bool>(
         context: context,
         barrierDismissible: false,

@@ -167,7 +167,7 @@ class MessageBubble extends StatelessWidget {
       backgroundColor: Colors.deepPurple.shade100,
       child: ClipOval(
         child: Image.asset(
-          'assets/images/lerndex_logo.png',
+          'assets/images/lerndex_logo.webp',
           width: 36,
           height: 36,
           fit: BoxFit.cover,
@@ -184,7 +184,7 @@ class MessageBubble extends StatelessWidget {
       return CircleAvatar(
         radius: 18,
         backgroundColor: Colors.deepPurple.shade100,
-        backgroundImage: AssetImage('assets/images/$childSelectedAvatar.png'),
+        backgroundImage: AssetImage('assets/images/$childSelectedAvatar.webp'),
         onBackgroundImageError: (_, __) {},
         child: null,
       );

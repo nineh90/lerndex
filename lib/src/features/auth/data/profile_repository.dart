@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lerndex/src/features/subscription/data/subscription_model.dart';
@@ -309,68 +310,168 @@ class ProfileRepository {
         );
   }
 
-  /// Löscht ein Kind
+  /// Löscht ein Kind INKLUSIVE aller Subcollections.
+  ///
+  /// ✅ FIX (DSGVO): Vorher wurde nur das Kind-Dokument gelöscht – sämtliche
+  /// Subcollections (Tutor-Chats inkl. messages, Rewards, Lernstatistiken,
+  /// KI-Fragen-Cache) blieben als verwaiste Daten dauerhaft in Firestore.
   Future<void> deleteChild(String childId) async {
+    final uid = _uid;
+    if (uid.isEmpty) throw Exception('Kein Benutzer angemeldet.');
+
+    await _deleteChildData(uid, childId);
+
     await _firestore
         .collection('users')
-        .doc(_uid)
+        .doc(uid)
         .collection('children')
         .doc(childId)
         .delete();
   }
 
-  /// Löscht alle Firestore-Daten eines Users komplett
-  /// Wird vor dem Löschen des Firebase Auth Accounts aufgerufen
+  /// Löscht alle Firestore-Daten eines Users komplett.
+  /// Wird vor dem Löschen des Firebase Auth Accounts aufgerufen.
+  ///
+  /// ✅ FIX (DSGVO Art. 17): Löscht jetzt vollständig:
+  /// - tutor_sessions inkl. messages-Sub-Subcollection (vorher verwaist!)
+  /// - active_tutor_chat
+  /// - ai_quiz_cache/{fach}/questions
+  /// - generated_batches inkl. questions-Subcollection
+  /// - hochgeladene Aufgaben-Fotos in Firebase Storage (task_images/{uid})
   Future<void> deleteAllUserData() async {
     final user = _auth.currentUser;
     if (user == null) throw Exception('Kein Benutzer angemeldet.');
 
     final uid = user.uid;
+    final userRef = _firestore.collection('users').doc(uid);
 
-    // Alle Kinder laden
-    final childrenSnapshot = await _firestore
-        .collection('users')
-        .doc(uid)
-        .collection('children')
-        .get();
-
-    // Für jedes Kind: Subcollections per Batch löschen (max 500 Ops pro Batch)
+    // ── 1. Alle Kinder inkl. Subcollections ───────────────────────────────
+    final childrenSnapshot = await userRef.collection('children').get();
     for (final childDoc in childrenSnapshot.docs) {
-      final childId = childDoc.id;
-
-      for (final subcollection in [
-        'tutor_chat',
-        'tutor_sessions',
-        'rewards',
-        'learning_stats',
-      ]) {
-        final subDocs = await _firestore
-            .collection('users')
-            .doc(uid)
-            .collection('children')
-            .doc(childId)
-            .collection(subcollection)
-            .get();
-
-        // Batch-Delete: bis zu 400 pro Batch (Firestore-Limit ist 500)
-        for (var i = 0; i < subDocs.docs.length; i += 400) {
-          final batch = _firestore.batch();
-          final end = (i + 400 < subDocs.docs.length)
-              ? i + 400
-              : subDocs.docs.length;
-          for (var j = i; j < end; j++) {
-            batch.delete(subDocs.docs[j].reference);
-          }
-          await batch.commit();
-        }
-      }
-
-      // Kind-Dokument selbst löschen
+      await _deleteChildData(uid, childDoc.id);
       await childDoc.reference.delete();
     }
 
-    // Haupt-User-Dokument löschen (enthält PIN, etc.)
-    await _firestore.collection('users').doc(uid).delete();
+    // ── 2. Generierte Aufgaben-Batches (Top-Level unter users/{uid}) ──────
+    final batchesSnapshot = await userRef.collection('generated_batches').get();
+    for (final batchDoc in batchesSnapshot.docs) {
+      await _deleteCollectionInBatches(
+        batchDoc.reference.collection('questions'),
+      );
+      await batchDoc.reference.delete();
+    }
+
+    // ── 3. Hochgeladene Fotos in Firebase Storage ──────────────────────────
+    // task_images: Eltern-Fotos für Aufgaben-Generierung
+    // tutor_worksheets: vom Kind hochgeladene Aufgabenblätter
+    // feedback: optionale Screenshots aus dem Feedback-Formular
+    for (final folder in ['task_images', 'tutor_worksheets', 'feedback']) {
+      try {
+        await _deleteStorageFolder(
+          FirebaseStorage.instance.ref().child('$folder/$uid'),
+        );
+      } catch (e) {
+        // Storage-Fehler dürfen die Konto-Löschung nicht blockieren
+        debugPrint('⚠️ Storage-Cleanup ($folder) fehlgeschlagen: $e');
+      }
+    }
+
+    // ── 4. Haupt-User-Dokument löschen (enthält PIN, etc.) ─────────────────
+    await userRef.delete();
+  }
+
+  /// Löscht alle bekannten Subcollections eines Kindes.
+  Future<void> _deleteChildData(String uid, String childId) async {
+    final childRef = _firestore
+        .collection('users')
+        .doc(uid)
+        .collection('children')
+        .doc(childId);
+
+    // tutor_sessions: erst messages-Subcollection jeder Session, dann Session
+    final sessions = await childRef.collection('tutor_sessions').get();
+    for (final sessionDoc in sessions.docs) {
+      await _deleteCollectionInBatches(
+        sessionDoc.reference.collection('messages'),
+      );
+      await sessionDoc.reference.delete();
+    }
+
+    // ai_quiz_cache: pro Fach-Dokument die questions-Subcollection
+    final cacheDocs = await childRef.collection('ai_quiz_cache').get();
+    for (final cacheDoc in cacheDocs.docs) {
+      await _deleteCollectionInBatches(
+        cacheDoc.reference.collection('questions'),
+      );
+      await cacheDoc.reference.delete();
+    }
+
+    // Flache Subcollections
+    for (final name in [
+      'active_tutor_chat',
+      'rewards',
+      'learning_stats',
+      'tutor_chat', // Legacy-Collection, falls noch Altdaten existieren
+    ]) {
+      await _deleteCollectionInBatches(childRef.collection(name));
+    }
+
+    // Generierte Aufgaben-Batches dieses Kindes (liegen top-level unter
+    // users/{uid}/generated_batches, nicht unter dem Kind-Dokument)
+    final batches = await _firestore
+        .collection('users')
+        .doc(uid)
+        .collection('generated_batches')
+        .where('childId', isEqualTo: childId)
+        .get();
+    for (final batchDoc in batches.docs) {
+      await _deleteCollectionInBatches(batchDoc.reference.collection('questions'));
+      await batchDoc.reference.delete();
+    }
+
+    // Hochgeladene Fotos dieses Kindes in Firebase Storage (DSGVO Art. 17):
+    // Eltern-Fotos (task_images) und vom Kind fotografierte Aufgabenblätter
+    // (tutor_worksheets) liegen jeweils unter .../{uid}/{childId}/...
+    for (final folder in ['task_images', 'tutor_worksheets']) {
+      try {
+        await _deleteStorageFolder(
+          FirebaseStorage.instance.ref().child('$folder/$uid/$childId'),
+        );
+      } catch (e) {
+        debugPrint('⚠️ Storage-Cleanup ($folder/$childId) fehlgeschlagen: $e');
+      }
+    }
+  }
+
+  /// Löscht eine Collection in Batches (max. 400 Ops pro Batch,
+  /// Firestore-Limit ist 500). Paginiert, statt alles auf einmal zu laden.
+  Future<void> _deleteCollectionInBatches(
+    CollectionReference<Map<String, dynamic>> collection,
+  ) async {
+    const batchSize = 400;
+    while (true) {
+      final snapshot = await collection.limit(batchSize).get();
+      if (snapshot.docs.isEmpty) break;
+
+      final batch = _firestore.batch();
+      for (final doc in snapshot.docs) {
+        batch.delete(doc.reference);
+      }
+      await batch.commit();
+
+      if (snapshot.docs.length < batchSize) break;
+    }
+  }
+
+  /// Löscht rekursiv alle Dateien unter einer Storage-Referenz.
+  Future<void> _deleteStorageFolder(Reference ref) async {
+    final result = await ref.listAll();
+    for (final item in result.items) {
+      await item.delete();
+    }
+    for (final prefix in result.prefixes) {
+      await _deleteStorageFolder(prefix);
+    }
   }
 } // Ende ProfileRepository
 

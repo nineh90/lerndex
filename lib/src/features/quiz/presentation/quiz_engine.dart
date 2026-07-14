@@ -140,7 +140,12 @@ class QuizEngine extends StateNotifier<QuizState> {
 
   /// Verarbeitet eine Antwort des Kindes.
   /// Gibt zurück ob die Antwort korrekt war (für sofortige UI-Reaktion).
-  Future<bool> answerQuestion(String selectedAnswer) async {
+  ///
+  /// XP werden nur lokal aufsummiert (state.earnedXP) und in finish() mit
+  /// EINEM Firestore-Write vergeben – vorher lief pro richtiger Antwort eine
+  /// Transaction, auf die das Kind vor dem Feedback warten musste
+  /// (5 Netzwerk-Roundtrips pro Quiz statt 1).
+  bool answerQuestion(String selectedAnswer) {
     final current = state.currentQuestion;
     if (current == null || state.phase != QuizPhase.question) return false;
 
@@ -148,38 +153,26 @@ class QuizEngine extends StateNotifier<QuizState> {
     final isRetry = state.isRetry;
 
     int xpGained = 0;
-    bool leveledUp = false;
-    int newLevel = state.newLevel;
 
     if (isCorrect) {
       // Erster Versuch: 5 XP, Retry: 2 XP
-      final xpToAdd = isRetry ? 2 : 5;
+      xpGained = isRetry ? 2 : 5;
 
-      try {
-        final xpResult = await _xpService.addXP(
-          userId: _userId!,
-          childId: _child!.id,
-          xpToAdd: xpToAdd,
-        );
-        xpGained = xpToAdd;
-        leveledUp = xpResult.leveledUp;
-        newLevel = xpResult.newLevel;
-      } catch (e) {
-        debugPrint('⚠️ QuizEngine: XP-Vergabe fehlgeschlagen: $e');
-      }
-
-      // Eltern-Aufgabe als korrekt beantwortet markieren
+      // Eltern-Aufgabe als korrekt beantwortet markieren – fire-and-forget,
+      // das Feedback fürs Kind soll nicht am Netzwerk hängen.
       if (current.isParentTask) {
-        try {
-          await _taskRepo.markQuestionAnsweredCorrectly(
-            userId: _userId!,
-            parentTaskRef: current.parentTaskRef!,
-          );
-        } catch (e) {
-          debugPrint(
-            '⚠️ QuizEngine: Eltern-Aufgabe Markierung fehlgeschlagen: $e',
-          );
-        }
+        unawaited(
+          _taskRepo
+              .markQuestionAnsweredCorrectly(
+                userId: _userId!,
+                parentTaskRef: current.parentTaskRef!,
+              )
+              .catchError((Object e) {
+                debugPrint(
+                  '⚠️ QuizEngine: Eltern-Aufgabe Markierung fehlgeschlagen: $e',
+                );
+              }),
+        );
       }
     }
 
@@ -202,17 +195,9 @@ class QuizEngine extends StateNotifier<QuizState> {
           ? state.correctAnswers + 1
           : state.correctAnswers,
       earnedXP: state.earnedXP + xpGained,
-      leveledUp: leveledUp,
-      newLevel: newLevel,
       wrongQuestions: updatedWrong,
       retriedCorrectly: updatedRetriedCorrectly,
     );
-
-    if (leveledUp) {
-      // Completer aufsetzen bevor der Callback feuert – finish() wartet darauf
-      _levelUpCompleter = Completer<void>();
-      onLevelUp?.call(newLevel);
-    }
 
     return isCorrect;
   }
@@ -299,6 +284,25 @@ class QuizEngine extends StateNotifier<QuizState> {
     if (userId == null || child == null) return;
 
     try {
+      // 0. Aufsummierte Quiz-XP in EINEM Write vergeben.
+      //    Level-Up wird hier erkannt und der Dialog wie bisher über
+      //    onLevelUp + _levelUpCompleter angestoßen (jetzt am Quiz-Ende).
+      if (earnedXP > 0) {
+        try {
+          final xpResult = await _xpService.addXP(
+            userId: userId,
+            childId: child.id,
+            xpToAdd: earnedXP,
+          );
+          if (xpResult.leveledUp) {
+            _levelUpCompleter = Completer<void>();
+            onLevelUp?.call(xpResult.newLevel);
+          }
+        } catch (e) {
+          debugPrint('⚠️ QuizEngine: XP-Vergabe fehlgeschlagen: $e');
+        }
+      }
+
       // 1. Streak (MUSS vor saveTime kommen)
       final streakBefore = child.streak ?? 0;
       final newStreak = await _xpService.updateStreak(
@@ -385,6 +389,36 @@ class QuizEngine extends StateNotifier<QuizState> {
 
   @override
   void dispose() {
+    // Bricht das Kind mitten im Quiz ab (wegnavigieren), gehen weder die
+    // getrackte Lernzeit noch die bereits verdienten XP verloren –
+    // best effort, unawaited (dispose darf nicht blockieren).
+    if (!_finishCalled) {
+      final userId = _userId;
+      final child = _child;
+      final pendingXP = state.earnedXP;
+
+      final tracker = _timeTracker;
+      if (tracker != null) {
+        tracker.stopTracking();
+        unawaited(
+          tracker.saveTime().catchError((Object e) {
+            debugPrint('⚠️ QuizEngine: Lernzeit-Rettung fehlgeschlagen: $e');
+          }),
+        );
+      }
+
+      if (pendingXP > 0 && userId != null && child != null) {
+        unawaited(
+          _xpService
+              .addXP(userId: userId, childId: child.id, xpToAdd: pendingXP)
+              .then((_) {})
+              .catchError((Object e) {
+                debugPrint('⚠️ QuizEngine: XP-Rettung fehlgeschlagen: $e');
+              }),
+        );
+      }
+    }
+
     _timeTracker?.dispose();
     super.dispose();
   }

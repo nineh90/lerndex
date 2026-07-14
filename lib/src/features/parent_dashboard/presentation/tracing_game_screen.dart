@@ -10,6 +10,7 @@ import 'package:lerndex/src/features/auth/data/auth_repository.dart';
 import 'package:lerndex/src/features/tts/tts_provider.dart';
 import 'package:lerndex/src/features/auth/presentation/active_child_provider.dart';
 import 'package:lerndex/src/features/rewards/data/xp_service.dart';
+import 'package:lerndex/src/ai/vertex_ai_service.dart';
 
 // ============================================================================
 // TRACING GAME SCREEN – Klasse 1–2
@@ -242,12 +243,16 @@ class _TracingGameScreenState extends ConsumerState<TracingGameScreen>
 
   Future<void> _initAI() async {
     try {
-      _aiModel = FirebaseAI.vertexAI().generativeModel(
-        model: 'gemini-2.0-flash',
+      _aiModel = VertexAIService.vertexEu().generativeModel(
+        model: VertexAIService.geminiModel,
         generationConfig: GenerationConfig(
           temperature: 0.1,
           maxOutputTokens: 50,
+          // gemini-2.5+: Denk-Tokens zählen zu maxOutputTokens –
+          // ohne Budget 0 wird die sichtbare Antwort abgeschnitten.
+          thinkingConfig: VertexAIService.noThinking(),
         ),
+        safetySettings: VertexAIService.kidSafetySettings(),
       );
     } catch (e) {
       debugPrint('TracingGame: AI init failed: $e');

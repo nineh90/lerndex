@@ -17,6 +17,7 @@ import 'package:lerndex/src/features/student_dashboard/presentation/widgets/avat
 import 'package:lerndex/src/features/student_dashboard/presentation/widgets/treasure_chest_overlay.dart';
 import 'package:lerndex/src/features/quiz/presentation/quiz_finish_service.dart';
 import 'color_shape_task_engine.dart';
+import 'package:lerndex/src/ai/vertex_ai_service.dart';
 
 // ============================================================================
 // COLOR SHAPE QUIZ SCREEN – Klasse 1 & 2 (Farben & Formen)
@@ -153,12 +154,16 @@ class _ColorShapeQuizScreenState extends ConsumerState<ColorShapeQuizScreen>
 
   Future<void> _initAI() async {
     try {
-      _aiModel = FirebaseAI.vertexAI().generativeModel(
-        model: 'gemini-2.0-flash',
+      _aiModel = VertexAIService.vertexEu().generativeModel(
+        model: VertexAIService.geminiModel,
         generationConfig: GenerationConfig(
           temperature: 0.1,
           maxOutputTokens: 30,
+          // gemini-2.5+: Denk-Tokens zählen zu maxOutputTokens –
+          // ohne Budget 0 wird die sichtbare Antwort abgeschnitten.
+          thinkingConfig: VertexAIService.noThinking(),
         ),
+        safetySettings: VertexAIService.kidSafetySettings(),
       );
     } catch (e) {
       debugPrint('ColorShapeQuiz: AI init failed: $e');

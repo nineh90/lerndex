@@ -76,3 +76,4 @@ windows/flutter/generated_plugin_registrant.h
 windows/flutter/generated_plugins.cmake
 # Secrets – niemals committen!
 dart_defines.json
+dart-defines.json
