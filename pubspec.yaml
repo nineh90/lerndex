@@ -54,9 +54,8 @@ dependencies:
 
   # UI
   confetti: ^0.8.0
-  # ⚠️ flutter_markdown ist offiziell discontinued – mittelfristig auf einen
-  # gepflegten Fork (z.B. flutter_markdown_plus) migrieren.
-  flutter_markdown: ^0.7.7
+  # Gepflegter Fork des discontinued flutter_markdown (gleiche API)
+  flutter_markdown_plus: ^1.0.12
 
   # HTTP
   http: ^1.2.0
