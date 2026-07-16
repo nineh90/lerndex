@@ -145,6 +145,14 @@ class SubscriptionStatus {
     isActive: false,
   );
 
+  /// Voller Zugriff für Review-/Testaccounts (Play- und App-Store-Prüfer).
+  /// Wird ausschließlich über das Firestore-Feld `testAccess: true` am
+  /// User-Dokument aktiviert – niemals über RevenueCat.
+  static const SubscriptionStatus testAccess = SubscriptionStatus(
+    plan: SubscriptionPlan.family,
+    isActive: true,
+  );
+
   /// Hat Zugriff (aktives Abo oder laufender Trial)
   bool get hasAccess => isActive && plan.hasAccess;
 

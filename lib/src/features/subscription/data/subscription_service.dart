@@ -300,12 +300,34 @@ class SubscriptionService {
 
     try {
       final doc = await _firestore.collection('users').doc(uid).get();
-      final subscriptionData =
-          doc.data()?['subscription'] as Map<String, dynamic>?;
+      final data = doc.data();
+      // Review-Testaccount: Top-Level-Flag gewinnt über alles. Es liegt
+      // bewusst NICHT unter `subscription`, damit der RevenueCat-Sync
+      // (_syncToFirestore überschreibt nur `subscription.*`) es nie wegräumt.
+      if (data?['testAccess'] == true) {
+        return SubscriptionStatus.testAccess;
+      }
+      final subscriptionData = data?['subscription'] as Map<String, dynamic>?;
       return SubscriptionStatus.fromFirestore(subscriptionData);
     } catch (e) {
       debugPrint('❌ Fehler beim Laden aus Firestore: $e');
       return SubscriptionStatus.empty;
+    }
+  }
+
+  /// Ist der eingeloggte User ein Review-/Testaccount?
+  /// Gesteuert über `testAccess: true` am users/{uid}-Dokument – wird nur
+  /// manuell in der Firebase Console gesetzt und ist per Security Rules
+  /// gegen Selbst-Freischaltung durch Clients geschützt.
+  Future<bool> hasTestAccess() async {
+    final uid = _auth.currentUser?.uid;
+    if (uid == null) return false;
+
+    try {
+      final doc = await _firestore.collection('users').doc(uid).get();
+      return doc.data()?['testAccess'] == true;
+    } catch (_) {
+      return false;
     }
   }
 }

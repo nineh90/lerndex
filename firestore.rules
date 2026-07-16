@@ -23,8 +23,19 @@ service cloud.firestore {
       return isAuthenticated() && request.auth.uid == userId;
     }
 
+    // `testAccess` schaltet als Review-Testaccount die Paywall frei und darf
+    // deshalb NIE vom Client gesetzt oder geändert werden – nur manuell über
+    // die Firebase Console (Admin-Zugriff umgeht diese Rules).
+    function testAccessUnchanged() {
+      return request.resource.data.get('testAccess', false)
+          == resource.data.get('testAccess', false);
+    }
+
     match /users/{userId} {
-      allow read, write: if isOwner(userId);
+      allow read, delete: if isOwner(userId);
+      allow create: if isOwner(userId)
+        && !('testAccess' in request.resource.data);
+      allow update: if isOwner(userId) && testAccessUnchanged();
 
       // Kinder-Profile inkl. aller Subcollections:
       // tutor_sessions/{sid}/messages/{mid}, active_tutor_chat, rewards,

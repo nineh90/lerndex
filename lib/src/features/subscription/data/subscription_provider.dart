@@ -37,9 +37,15 @@ class SubscriptionNotifier
 
   final SubscriptionService _service;
 
+  /// Review-Testaccount (users/{uid}.testAccess == true): Status ist fest
+  /// "voller Zugriff" und darf von RevenueCat-Updates (die für so einen
+  /// Account immer "kein Abo" melden) nie überschrieben werden.
+  bool _testAccess = false;
+
   Future<void> _init() async {
     // 1. Sofort den gespeicherten Status aus Firestore laden (schnell, offline-fähig)
     final cachedStatus = await _service.getStatusFromFirestore();
+    _testAccess = identical(cachedStatus, SubscriptionStatus.testAccess);
     if (mounted) {
       state = AsyncValue.data(cachedStatus);
     }
@@ -49,13 +55,22 @@ class SubscriptionNotifier
 
     // 3. Auf zukünftige Änderungen hören (z.B. Kauf im Hintergrund)
     _service.customerInfoStream.listen((status) {
-      if (mounted) state = AsyncValue.data(status);
+      if (mounted && !_testAccess) state = AsyncValue.data(status);
     });
   }
 
-  /// Manuell aktualisieren (z.B. nach App-Resume oder nach Kauf)
+  /// Manuell aktualisieren (z.B. nach App-Resume oder nach Kauf).
+  /// Prüft das testAccess-Flag bei jedem Aufruf neu, weil der Notifier schon
+  /// vor dem Login existiert (Login-Screen ruft refresh() nach dem Login auf).
   Future<void> refresh() async {
     try {
+      _testAccess = await _service.hasTestAccess();
+      if (_testAccess) {
+        if (mounted) {
+          state = const AsyncValue.data(SubscriptionStatus.testAccess);
+        }
+        return;
+      }
       final status = await _service.getSubscriptionStatus();
       if (mounted) state = AsyncValue.data(status);
     } catch (e, st) {
