@@ -4,7 +4,7 @@ publish_to: 'none'
 
 # +14: Version-Code 13 wurde von Google Play abgelehnt (Photo-Picker-Policy) –
 # jeder neue Upload braucht einen höheren Code.
-version: 1.1.3+14
+version: 1.1.4+14
 
 environment:
   # Dart 3.12 = Flutter 3.44 (riverpod_generator 4 braucht analyzer 12 / meta 1.18)
