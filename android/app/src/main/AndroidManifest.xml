@@ -30,18 +30,11 @@
     <!-- ═══════════════════════════════════════════════════════════════════ -->
     <!-- FOTO / GALERIE-ZUGRIFF                                             -->
     <!-- ═══════════════════════════════════════════════════════════════════ -->
-    <!-- Android ≤ 12 (API 32): klassischer Storage-Zugriff -->
-    <uses-permission
-        android:name="android.permission.READ_EXTERNAL_STORAGE"
-        android:maxSdkVersion="32"/>
-
-    <!-- Android 13 (API 33): granularer Medienzugriff -->
-    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>
-
-    <!-- Android 14+ (API 34): "Partial Access" – User kann einzelne Fotos
-         freigeben statt der ganzen Galerie. Pflicht damit permission_handler
-         auf Android 14+ korrekt funktioniert. -->
-    <uses-permission android:name="android.permission.READ_MEDIA_VISUAL_USER_SELECTED"/>
+    <!-- KEINE Medien-Permissions: Die Galerie-Auswahl läuft über den
+         System-Photo-Picker (image_picker mit useAndroidPhotoPicker),
+         der ohne READ_MEDIA_IMAGES/READ_EXTERNAL_STORAGE auskommt.
+         Play-Policy verbietet diese Permissions bei nur gelegentlichem
+         Medienzugriff (Play-Rejection vom 16.07.2026). -->
 
     <application
         android:label="Lerndex"

@@ -10,6 +10,8 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'firebase_options.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
+import 'package:image_picker_android/image_picker_android.dart';
+import 'package:image_picker_platform_interface/image_picker_platform_interface.dart';
 import 'src/features/auth/presentation/account_deleted_screen.dart';
 import 'src/features/splash/splash_screen.dart';
 // NEU: RevenueCat
@@ -32,6 +34,16 @@ void main() async {
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
   ]);
+
+  // Android: System-Photo-Picker statt eigener Galerie-Permission.
+  // Pflicht laut Play-Policy (READ_MEDIA_IMAGES wurde abgelehnt) – der
+  // Picker braucht keinerlei Medien-Berechtigung. Auf Android < 11 fällt
+  // das Plugin automatisch auf ACTION_GET_CONTENT zurück (ebenfalls
+  // permission-frei).
+  final imagePicker = ImagePickerPlatform.instance;
+  if (imagePicker is ImagePickerAndroid) {
+    imagePicker.useAndroidPhotoPicker = true;
+  }
 
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 

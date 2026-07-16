@@ -605,35 +605,32 @@ class _TaskGeneratorScreenState extends ConsumerState<TaskGeneratorScreen> {
   // ---------------------------------------------------------------------------
 
   Future<void> _pickImage(ImageSource source) async {
-    // Runtime-Permission prüfen und ggf. anfordern
-    final permission = source == ImageSource.camera
-        ? Permission.camera
-        : Permission
-              .photos; // Android 13+: READ_MEDIA_IMAGES; älter: READ_EXTERNAL_STORAGE
+    // Nur die Kamera braucht eine Runtime-Permission. Die Galerie läuft über
+    // den System-Photo-Picker, der ganz ohne Medien-Berechtigung auskommt
+    // (Play-Policy: READ_MEDIA_IMAGES ist bei gelegentlichem Zugriff verboten).
+    if (source == ImageSource.camera) {
+      final status = await Permission.camera.request();
 
-    final status = await permission.request();
-
-    if (status.isDenied || status.isPermanentlyDenied) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              source == ImageSource.camera
-                  ? 'Kamera-Zugriff verweigert. Bitte in den Einstellungen erlauben.'
-                  : 'Foto-Zugriff verweigert. Bitte in den Einstellungen erlauben.',
+      if (status.isDenied || status.isPermanentlyDenied) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text(
+                'Kamera-Zugriff verweigert. Bitte in den Einstellungen erlauben.',
+              ),
+              backgroundColor: Colors.red,
+              action: status.isPermanentlyDenied
+                  ? const SnackBarAction(
+                      label: 'Einstellungen',
+                      textColor: Colors.white,
+                      onPressed: openAppSettings,
+                    )
+                  : null,
             ),
-            backgroundColor: Colors.red,
-            action: status.isPermanentlyDenied
-                ? const SnackBarAction(
-                    label: 'Einstellungen',
-                    textColor: Colors.white,
-                    onPressed: openAppSettings,
-                  )
-                : null,
-          ),
-        );
+          );
+        }
+        return;
       }
-      return;
     }
 
     try {

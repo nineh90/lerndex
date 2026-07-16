@@ -40,7 +40,9 @@
       "Bash(awk ' *)",
       "Bash(sort -t'\\(' -k1)",
       "Bash(python3 -c \"import xml.dom.minidom as m; m.parse\\('ios/Runner/Info.plist'\\); print\\('OK: Info.plist wohlgeformt'\\)\")",
-      "Bash(python3 -c \"import xml.dom.minidom as m; m.parse\\('ios/Runner/Runner.entitlements'\\); print\\('OK: Runner.entitlements wohlgeformt'\\)\")"
+      "Bash(python3 -c \"import xml.dom.minidom as m; m.parse\\('ios/Runner/Runner.entitlements'\\); print\\('OK: Runner.entitlements wohlgeformt'\\)\")",
+      "Bash(grep -nE \"name: firebase_core\\($| \\)|firebase_core_platform_interface\" -A2 pubspec.lock)",
+      "Read(//home/z0mb1/.pub-cache/hosted/pub.dev/**)"
     ]
   }
 }
