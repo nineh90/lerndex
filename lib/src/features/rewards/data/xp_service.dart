@@ -334,8 +334,10 @@ class XPService {
 
   /// Berechnet ob zwei DateTime-Werte genau einen Kalendertag auseinander liegen
   static bool _isYesterday(DateTime earlier, DateTime later) {
-    final earlierDay = DateTime(earlier.year, earlier.month, earlier.day);
-    final laterDay = DateTime(later.year, later.month, later.day);
+    // UTC-Kalendertage: lokale Mitternachten liegen über die Zeitumstellung
+    // im Frühjahr nur 23 h auseinander (inDays == 0) – Streak brach sonst.
+    final earlierDay = DateTime.utc(earlier.year, earlier.month, earlier.day);
+    final laterDay = DateTime.utc(later.year, later.month, later.day);
     return laterDay.difference(earlierDay).inDays == 1;
   }
 

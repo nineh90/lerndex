@@ -11,9 +11,9 @@ class ActiveChildNotifier extends StateNotifier<ChildModel?> {
   void select(ChildModel child) {
     state = child;
 
-    // Crashlytics-Kontext setzen → bei einem Crash sieht man welches Kind betroffen war
+    // Crashlytics-Kontext setzen → bei einem Crash sieht man welches Kind betroffen war.
+    // Bewusst nur pseudonyme ID + Klasse/Level – kein Name (Kinderdaten, DSGVO).
     FirebaseCrashlytics.instance.setUserIdentifier(child.id);
-    FirebaseCrashlytics.instance.setCustomKey('child_name', child.name);
     FirebaseCrashlytics.instance.setCustomKey('child_grade', child.grade);
     FirebaseCrashlytics.instance.setCustomKey('child_level', child.level);
   }
@@ -24,7 +24,6 @@ class ActiveChildNotifier extends StateNotifier<ChildModel?> {
 
     // Crashlytics-Kontext zurücksetzen → zurück in Eltern-Ansicht
     FirebaseCrashlytics.instance.setUserIdentifier('parent_view');
-    FirebaseCrashlytics.instance.setCustomKey('child_name', '-');
   }
 
   /// Kind-Daten aktualisieren (z.B. nach XP-Gewinn)

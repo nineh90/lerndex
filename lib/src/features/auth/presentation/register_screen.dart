@@ -4,6 +4,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../subscription/data/subscription_provider.dart';
 import '../data/auth_repository.dart';
 import 'email_verification_screen.dart';
 import 'setup_dialog.dart';
@@ -171,6 +172,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
       // Zustimmung zur Datenschutzerklärung protokollieren (Art. 7 DSGVO)
       await ref.read(authRepositoryProvider).recordPrivacyConsent();
+      await _identifySubscriber();
 
       if (!mounted) return;
 
@@ -190,6 +192,16 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     }
   }
 
+  /// Neues Konto bei RevenueCat identifizieren (wie im Login-Screen).
+  /// Ohne das landet ein Abo-Kauf direkt nach der Registrierung bei einer
+  /// anonymen RevenueCat-ID statt beim Firebase-Konto.
+  Future<void> _identifySubscriber() async {
+    final uid = ref.read(authRepositoryProvider).currentUser?.uid;
+    if (uid == null) return;
+    await ref.read(subscriptionServiceProvider).identifyUser(uid);
+    await ref.read(subscriptionStatusProvider.notifier).refresh();
+  }
+
   /// Registrierung per Google
   Future<void> _googleRegister() async {
     if (!_privacyAccepted) {
@@ -206,6 +218,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       await ref.read(authRepositoryProvider).signInWithGoogle();
       // Zustimmung zur Datenschutzerklärung protokollieren (Art. 7 DSGVO)
       await ref.read(authRepositoryProvider).recordPrivacyConsent();
+      await _identifySubscriber();
       if (!mounted) return;
       Navigator.of(
         context,
@@ -238,6 +251,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       await ref.read(authRepositoryProvider).signInWithApple();
       // Zustimmung zur Datenschutzerklärung protokollieren (Art. 7 DSGVO)
       await ref.read(authRepositoryProvider).recordPrivacyConsent();
+      await _identifySubscriber();
       if (!mounted) return;
       Navigator.of(
         context,
