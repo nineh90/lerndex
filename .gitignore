@@ -77,3 +77,5 @@ windows/flutter/generated_plugins.cmake
 # Secrets – niemals committen!
 dart_defines.json
 dart-defines.json
+# Node-Abhaengigkeiten (nicht Teil der Flutter-App)
+node_modules/

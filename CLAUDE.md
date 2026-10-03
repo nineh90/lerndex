@@ -5,7 +5,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Entwicklung starten
 
 ```bash
-flutter run --dart-define-from-file=dart_defines.json
+flutter run --dart-define-from-file=dart-defines.json
 ```
 
 `dart-defines.json` enthält die RevenueCat API-Keys und liegt in `.gitignore`. Ohne dieses Flag schlägt der App-Start fehl (leere API-Keys → RevenueCat-Fehler).
@@ -25,8 +25,8 @@ Generierte Dateien enden auf `.g.dart` — nie manuell bearbeiten.
 CI/CD läuft über Codemagic (`codemagic.yaml`). Lokaler Release-Build:
 
 ```bash
-flutter build apk --dart-define-from-file=dart_defines.json
-flutter build ipa --dart-define-from-file=dart_defines.json
+flutter build apk --dart-define-from-file=dart-defines.json
+flutter build ipa --dart-define-from-file=dart-defines.json
 ```
 
 ## Architektur

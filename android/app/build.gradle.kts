@@ -59,8 +59,6 @@ flutter {
     source = "../.."
 }
 
-dependencies {
-    implementation(platform("com.google.firebase:firebase-bom:33.1.0"))
-    implementation("com.google.firebase:firebase-crashlytics")
-    implementation("com.google.firebase:firebase-analytics")
-}
+// Keine nativen Firebase-Abhaengigkeiten: firebase_crashlytics & Co. bringen
+// ihre nativen SDKs (inkl. passender BoM) selbst mit. firebase-analytics wurde
+// bewusst entfernt (Kinder-App/DSGVO, Dart nutzt Analytics nirgends).

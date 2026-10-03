@@ -6,7 +6,7 @@ publish_to: 'none'
 # jeder neue Upload braucht einen höheren Code.
 # Codes 13 (Photo-Picker-Policy) und 14 (Testaccount/Paywall) sind bei Play
 # verbrannt – abgelehnte Version-Codes können nicht erneut hochgeladen werden.
-version: 1.1.4+15
+version: 1.1.5+15
 
 environment:
   # Dart 3.12 = Flutter 3.44 (riverpod_generator 4 braucht analyzer 12 / meta 1.18)
@@ -15,7 +15,6 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  cupertino_icons: ^1.0.8
   shared_preferences: ^2.3.0
 
   # Google Login
@@ -36,9 +35,8 @@ dependencies:
   # firebase_core_platform_interface 8.0.0 (Klasse FirebasePlugin) landet.
   # Die 7.1.0-Linie war intern kaputt (Plugins nutzen FirebasePlugin, deklarieren
   # aber ^7.1.0) und liess sich nicht konsistent aufloesen.
-  # ACHTUNG: fake_cloud_firestore 4.1.1 kompiliert nicht gegen 6.7.x
-  # (WriteBatch.update ist ab 6.7.0 generisch). Betroffene Tests sind vorerst
-  # deaktiviert (siehe *.disabled) bis fake_cloud_firestore nachzieht.
+  # Hinweis: fake_cloud_firestore < 4.3.0 kompiliert nicht gegen 6.7.x
+  # (WriteBatch.update ist ab 6.7.0 generisch) – daher dev-Dep >= 4.3.0.
   cloud_firestore: '>=6.7.1 <7.0.0'
   firebase_storage: ^13.0.0
 
@@ -69,18 +67,15 @@ dependencies:
   # Gepflegter Fork des discontinued flutter_markdown (gleiche API)
   flutter_markdown_plus: ^1.0.12
 
-  # HTTP
-  http: ^1.2.0
-
   flutter_tts: ^4.2.5
   speech_to_text: ^7.0.0
 
   flutter_math_fork: ^0.7.2
 
-  # File system (genutzt in theme_picker_sheet.dart)
+  # Externe Links (Datenschutz/AGB, Mail, Store-Abo-Verwaltung)
   url_launcher: ^6.3.2
+  # RevenueCat In-App-Abos
   purchases_flutter: ^9.13.2
-  purchases_ui_flutter: ^9.13.2
 
   # App-Version / Build-Nummer aus dem nativen Bundle lesen (für Feedback-Mails)
   package_info_plus: ^10.2.0
@@ -96,7 +91,7 @@ dev_dependencies:
   flutter_lints: ^6.0.0
 
   # In-Memory Firestore-Fake fuer Unit-Tests (XP-, Streak-, Reward-Logik)
-  fake_cloud_firestore: ^4.0.0
+  fake_cloud_firestore: ^4.3.0
 
   # Code-Generatoren (nur Riverpod – Freezed/json_serializable werden
   # nicht mehr genutzt und wurden entfernt)

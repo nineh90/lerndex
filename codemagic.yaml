@@ -9,10 +9,10 @@ workflows:
     instance_type: mac_mini_m2
 
     environment:
-      flutter: 3.38.7          # Pinne auf die Flutter-Version die du lokal nutzt
+      flutter: 3.44.6          # Pinne auf die Flutter-Version die du lokal nutzt (pubspec: Dart >=3.12)
       java: 17
       groups:
-        - firebase              # Gruppe mit GOOGLE_SERVICES_JSON (Base64)
+        - firebase              # Gruppe mit GOOGLE_SERVICES_JSON + FIREBASE_OPTIONS_DART (Base64)
         - revenuecat            # Gruppe mit REVENUECAT_ANDROID_KEY, REVENUECAT_IOS_KEY
         - dart_defines          # Gruppe mit DART_DEFINES_JSON (Base64 von dart_defines.json)
         - android_signing       # Gruppe mit Keystore-Variablen (s.u.)
@@ -32,6 +32,16 @@ workflows:
         script: |
           echo $GOOGLE_SERVICES_JSON | base64 --decode > \
             $CM_BUILD_DIR/android/app/google-services.json
+
+      # 1b. lib/firebase_options.dart aus Secret wiederherstellen
+      #     (liegt in .gitignore, wird aber von lib/main.dart importiert).
+      #     In Codemagic in der Gruppe "firebase" anlegen:
+      #     FIREBASE_OPTIONS_DART = Ausgabe von `base64 -w0 lib/firebase_options.dart`
+      #     (macOS: `base64 -i lib/firebase_options.dart`), als Secret markieren.
+      - name: Restore firebase_options.dart
+        script: |
+          echo $FIREBASE_OPTIONS_DART | base64 --decode > \
+            $CM_BUILD_DIR/lib/firebase_options.dart
 
       # 2. dart_defines.json aus Secret wiederherstellen
       #    (enthält REVENUECAT_ANDROID_KEY etc. – liegt in .gitignore)
@@ -61,6 +71,13 @@ workflows:
         script: |
           dart run build_runner build --delete-conflicting-outputs
 
+      # Statische Analyse + Unit-Tests – Build bricht bei Fehlern ab
+      - name: Flutter analyze
+        script: flutter analyze
+
+      - name: Flutter test
+        script: flutter test
+
       # 6. Build Android App Bundle
       - name: Build AAB
         script: |
@@ -70,7 +87,10 @@ workflows:
 
     artifacts:
       - build/app/outputs/bundle/release/*.aab
-      - build/app/outputs/mapping/release/mapping.txt   # ProGuard-Map für Crashlytics
+      # ProGuard/R8-Map für Crashlytics – existiert nur bei isMinifyEnabled=true
+      # (aktuell false in android/app/build.gradle.kts); Glob-Pattern schlägt
+      # nicht fehl, wenn die Datei fehlt.
+      - build/app/outputs/mapping/release/*.txt
 
     publishing:
       google_play:
@@ -94,11 +114,11 @@ workflows:
     instance_type: mac_mini_m2
 
     environment:
-      flutter: 3.38.7
+      flutter: 3.44.6
       xcode: latest
       cocoapods: default
       groups:
-        - firebase              # Gruppe mit GOOGLE_SERVICES_JSON + GOOGLESERVICE_INFO_PLIST
+        - firebase              # Gruppe mit GOOGLE_SERVICES_JSON + GOOGLESERVICE_INFO_PLIST + FIREBASE_OPTIONS_DART
         - revenuecat
         - dart_defines
         - ios_signing           # Gruppe mit Signing-Zertifikat & Provisioning Profile
@@ -119,6 +139,13 @@ workflows:
         script: |
           echo $GOOGLESERVICE_INFO_PLIST | base64 --decode > \
             $CM_BUILD_DIR/ios/Runner/GoogleService-Info.plist
+
+      # 1b. lib/firebase_options.dart aus Secret wiederherstellen
+      #     (gleiche Variable FIREBASE_OPTIONS_DART aus Gruppe "firebase", s. Android)
+      - name: Restore firebase_options.dart
+        script: |
+          echo $FIREBASE_OPTIONS_DART | base64 --decode > \
+            $CM_BUILD_DIR/lib/firebase_options.dart
 
       # 2. dart_defines.json wiederherstellen
       - name: Restore dart_defines.json
@@ -144,6 +171,13 @@ workflows:
       - name: Build Runner
         script: |
           dart run build_runner build --delete-conflicting-outputs
+
+      # Statische Analyse + Unit-Tests – Build bricht bei Fehlern ab
+      - name: Flutter analyze
+        script: flutter analyze
+
+      - name: Flutter test
+        script: flutter test
 
       # 7. Build IPA
       - name: Build IPA
