@@ -106,7 +106,8 @@ class TutorNotifier extends StateNotifier<List<ChatMessage>> {
             .doc(resumeId)
             .collection('messages')
             .orderBy('timestamp', descending: false)
-            .limit(50)
+            // limitToLast: beim Fortsetzen die NEUESTEN 50 Nachrichten laden.
+            .limitToLast(50)
             .get();
 
         final messages = messagesSnapshot.docs.map((doc) {
@@ -161,7 +162,8 @@ class TutorNotifier extends StateNotifier<List<ChatMessage>> {
           .doc(_currentSessionId)
           .collection('messages')
           .orderBy('timestamp', descending: false)
-          .limit(50)
+          // limitToLast: beim Fortsetzen die NEUESTEN 50 Nachrichten laden.
+          .limitToLast(50)
           .get();
 
       if (messagesSnapshot.docs.isEmpty) {
@@ -2227,7 +2229,8 @@ class TutorNotifier extends StateNotifier<List<ChatMessage>> {
           .doc(sessionId)
           .collection('messages')
           .orderBy('timestamp', descending: false)
-          .limit(50)
+          // limitToLast: beim Fortsetzen die NEUESTEN 50 Nachrichten laden.
+          .limitToLast(50)
           .get();
 
       final messages = messagesSnapshot.docs.map((doc) {

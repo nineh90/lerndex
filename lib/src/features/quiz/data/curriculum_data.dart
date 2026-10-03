@@ -615,19 +615,20 @@ class CurriculumData {
     );
     buffer.writeln();
 
-    // Schwierigkeitsverteilung
-    final easyCount = (profile.easyRatio * 10).round();
-    final mediumCount = (profile.mediumRatio * 10).round();
-    final hardCount = 10 - easyCount - mediumCount;
-    buffer.writeln('SCHWIERIGKEITSVERTEILUNG (von 10 Fragen):');
+    // Schwierigkeitsverteilung – als Anteile, weil je nach Aufruf 3–10
+    // Fragen bestellt werden.
+    final easyPct = (profile.easyRatio * 100).round();
+    final mediumPct = (profile.mediumRatio * 100).round();
+    final hardPct = 100 - easyPct - mediumPct;
+    buffer.writeln('SCHWIERIGKEITSVERTEILUNG (Anteile der Fragen):');
     buffer.writeln(
-      '- $easyCount× leicht (AFB I: Reproduzieren — nennen, angeben, berechnen)',
+      '- ca. $easyPct % leicht (AFB I: Reproduzieren — nennen, angeben, berechnen)',
     );
     buffer.writeln(
-      '- $mediumCount× mittel (AFB II: Transfer — erklären, vergleichen, begründen)',
+      '- ca. $mediumPct % mittel (AFB II: Transfer — erklären, vergleichen, begründen)',
     );
     buffer.writeln(
-      '- $hardCount× schwer (AFB III: Reflexion — analysieren, beurteilen, entwickeln)',
+      '- ca. $hardPct % schwer (AFB III: Reflexion — analysieren, beurteilen, entwickeln)',
     );
     buffer.writeln();
 

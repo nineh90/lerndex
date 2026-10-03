@@ -51,23 +51,67 @@ class VertexAIService {
   /// Ohne location-Parameter routet das SDK nach us-central1 – Kinderdaten
   /// müssen aber in der EU verarbeitet werden. Auch außerhalb dieses Service
   /// (Early-Learner-Screens) ausschließlich diese Instanz verwenden.
-  static FirebaseAI vertexEu() => FirebaseAI.vertexAI(location: 'europe-west4');
+  /// europe-west3 (Frankfurt): gemini-3.5-flash gibt es in der EU nur hier
+  /// (europe-west4 bietet es nicht an), und die ML-Verarbeitung bleibt in
+  /// Deutschland (Stand 10/2026, Vertex-AI-Doku „Data residency").
+  static FirebaseAI vertexEu() => FirebaseAI.vertexAI(location: 'europe-west3');
 
   /// Zentrales Gemini-Modell für ALLE KI-Aufrufe der App.
   /// Google zieht Modelle nach ~12 Monaten zurück (gemini-2.0-flash starb
-  /// am 01.06.2026 und riss unbemerkt den Tutor mit) – deshalb nur noch
-  /// diese eine Konstante statt 9 hartkodierter Strings.
-  /// ⚠️ gemini-2.5-flash wird am 16.10.2026 abgeschaltet – vorher auf den
-  /// Nachfolger migrieren, sobald der in EU-Regionen verfügbar ist
-  /// (gemini-3.5-flash gibt es Stand 07/2026 nur am global-Endpoint,
-  /// der keine EU-Datenresidenz garantiert).
-  static const String geminiModel = 'gemini-2.5-flash';
+  /// am 01.06.2026 und riss unbemerkt den Tutor mit, gemini-2.5-flash am
+  /// 20.10.2026) – deshalb nur diese eine Konstante.
+  /// gemini-3.5-flash ist GA mit Garantie bis mind. 19.05.2027. Die neueren
+  /// 3.6/3.7/3.8-flash sind „short-term"-Modelle (Abschaltung mit nur 45 Tagen
+  /// Vorlauf) – daher bewusst nicht verwendet.
+  static const String geminiModel = 'gemini-3.5-flash';
 
-  /// Deaktiviert das interne "Denken" der gemini-2.5+-Modelle.
-  /// Denk-Tokens zählen zu maxOutputTokens – ohne Budget 0 werden sichtbare
-  /// Antworten abgeschnitten (finishReason=MAX_TOKENS mitten im Satz) und
-  /// jede Antwort wird langsamer/teurer. Für alle Modelle der App verwenden.
-  static ThinkingConfig noThinking() => ThinkingConfig.withThinkingBudget(0);
+  /// Denk-Stufe für alle Modelle der App.
+  /// Gemini 3+ lässt sich nicht mehr per thinkingBudget 0 abschalten
+  /// (veraltet, wirft sporadisch 400 INVALID_ARGUMENT). MINIMAL wäre noch
+  /// sparsamer, verlangt im Multi-Turn aber Thought Signatures – der Tutor
+  /// baut seine History aus Firestore-Text neu auf, hat also keine. Deshalb
+  /// überall LOW. Denk-Tokens zählen weiter zu maxOutputTokens – Limits
+  /// daher großzügig wählen, die Antwortlänge steuert der Prompt.
+  static ThinkingConfig lowThinking() =>
+      ThinkingConfig.withThinkingLevel(ThinkingLevel.low);
+
+  /// Gemini 3: temperature/topP/topK NICHT setzen. Google empfiehlt dringend
+  /// die Standardwerte (temperature 1.0); niedrigere Werte können zu
+  /// Endlosschleifen und schlechteren Antworten führen, topK ist fest 64.
+  /// [maxOutputTokens] schließt die Denk-Tokens mit ein.
+  static GenerationConfig generationConfig({
+    required int maxOutputTokens,
+    String? responseMimeType,
+    Schema? responseSchema,
+  }) => GenerationConfig(
+    maxOutputTokens: maxOutputTokens,
+    thinkingConfig: lowThinking(),
+    responseMimeType: responseMimeType,
+    responseSchema: responseSchema,
+  );
+
+  /// Antwort-Schema der Early-Learner-Malprüfung (Zahlen, Buchstaben,
+  /// Formen): erzwingt valides JSON statt es aus Freitext zu fischen.
+  static final Schema drawingCheckSchema = Schema.object(
+    properties: {
+      'correct': Schema.boolean(),
+      'recognized': Schema.string(),
+    },
+    optionalProperties: ['recognized'],
+  );
+
+  /// Modell für die Prüfung von Kinder-Zeichnungen (Early-Learner-Screens,
+  /// Nachzeichnen-Spiel). Mit [responseSchema] antwortet es als JSON.
+  static GenerativeModel drawingCheckModel({Schema? responseSchema}) =>
+      vertexEu().generativeModel(
+        model: geminiModel,
+        generationConfig: generationConfig(
+          maxOutputTokens: 1024,
+          responseMimeType: responseSchema != null ? 'application/json' : null,
+          responseSchema: responseSchema,
+        ),
+        safetySettings: kidSafetySettings(),
+      );
 
   /// Strengste Blockier-Stufe für alle Harm-Kategorien.
   /// Achtung Semantik: HarmBlockThreshold.low = „blocke ab niedriger
@@ -151,15 +195,7 @@ class VertexAIService {
     );
     final model = vertexEu().generativeModel(
       model: VertexAIService.geminiModel,
-      generationConfig: GenerationConfig(
-        temperature: 0.7,
-        maxOutputTokens: 2048,
-        topP: 0.9,
-        topK: 40,
-        // gemini-2.5+: Denk-Tokens zählen zu maxOutputTokens –
-        // ohne Budget 0 wird die sichtbare Antwort abgeschnitten.
-        thinkingConfig: VertexAIService.noThinking(),
-      ),
+      generationConfig: generationConfig(maxOutputTokens: 4096),
       systemInstruction: Content.system(_buildTutorSystemPrompt(child)),
       safetySettings: kidSafetySettings(),
     );
@@ -176,14 +212,7 @@ class VertexAIService {
     // Für Vision-Calls (Bild + Text): KEIN responseMimeType!
     _taskGeneratorModel = vertexEu().generativeModel(
       model: VertexAIService.geminiModel,
-      generationConfig: GenerationConfig(
-        temperature: 0.7,
-        maxOutputTokens: 2048,
-        topP: 0.95,
-        // gemini-2.5+: Denk-Tokens zählen zu maxOutputTokens –
-        // ohne Budget 0 wird die sichtbare Antwort abgeschnitten.
-        thinkingConfig: VertexAIService.noThinking(),
-      ),
+      generationConfig: generationConfig(maxOutputTokens: 4096),
       safetySettings: kidSafetySettings(),
     );
     _taskInitialized = true;
@@ -195,14 +224,7 @@ class VertexAIService {
     debugPrint('🚀 Vertex AI Quiz-Modell wird initialisiert...');
     _quizModel = vertexEu().generativeModel(
       model: VertexAIService.geminiModel,
-      generationConfig: GenerationConfig(
-        temperature: 0.75,
-        maxOutputTokens: 4096,
-        topP: 0.92,
-        // gemini-2.5+: Denk-Tokens zählen zu maxOutputTokens –
-        // ohne Budget 0 wird die sichtbare Antwort abgeschnitten.
-        thinkingConfig: VertexAIService.noThinking(),
-      ),
+      generationConfig: generationConfig(maxOutputTokens: 8192),
       safetySettings: kidSafetySettings(),
     );
     _quizInitialized = true;
@@ -278,8 +300,18 @@ class VertexAIService {
 
       for (final msg in recentMessages) {
         if (msg.isLoading) continue;
+        // Foto-Nachrichten haben oft keinen Text. Leere TextParts lehnt
+        // Vertex mit 400 ab, das Bild selbst geht nicht mit in die History –
+        // also wenigstens vermerken, dass hier ein Aufgabenblatt kam.
+        var text = msg.text.trim();
+        if (msg.imageUrl != null) {
+          text = text.isEmpty
+              ? '[Foto vom Aufgabenblatt gesendet]'
+              : '[Foto vom Aufgabenblatt gesendet] $text';
+        }
+        if (text.isEmpty) continue;
         history.add(
-          Content(msg.isUser ? 'user' : 'model', [TextPart(msg.text)]),
+          Content(msg.isUser ? 'user' : 'model', [TextPart(text)]),
         );
       }
 
@@ -570,14 +602,7 @@ DEINE AUFGABE:
     try {
       final model = vertexEu().generativeModel(
         model: VertexAIService.geminiModel,
-        generationConfig: GenerationConfig(
-          temperature: 0.5,
-          maxOutputTokens: 512,
-          topP: 0.9,
-          // gemini-2.5+: Denk-Tokens zählen zu maxOutputTokens –
-          // ohne Budget 0 wird die sichtbare Antwort abgeschnitten.
-          thinkingConfig: VertexAIService.noThinking(),
-        ),
+        generationConfig: generationConfig(maxOutputTokens: 2048),
         systemInstruction: Content.system(systemPrompt),
         safetySettings: kidSafetySettings(),
       );
@@ -747,11 +772,6 @@ DEINE AUFGABE:
       level: child.level,
     );
 
-    final profile = CurriculumData.getDifficultyProfile(
-      schoolType: child.schoolType,
-      level: child.level,
-    );
-
     final subjectContext = _buildSubjectContext(subject, child);
 
     return '''
@@ -766,8 +786,6 @@ SCHÜLER:
 
 LEHRPLAN-KONTEXT:
 $curriculumContext
-
-SCHWIERIGKEITSPROFIL: $profile
 
 FACH-KONTEXT:
 $subjectContext
@@ -827,11 +845,6 @@ WICHTIG: Antworte NUR mit diesem JSON-Array, ohne Markdown oder Text davor/danac
       schoolType: child.schoolType,
       grade: child.grade,
       subject: subject,
-      level: child.level,
-    );
-
-    final profile = CurriculumData.getDifficultyProfile(
-      schoolType: child.schoolType,
       level: child.level,
     );
 
@@ -941,8 +954,6 @@ THEMEN-FOKUS FÜR DIESEN BATCH:
 $topicFocus
 $focusBlock
 $topicAvoidance
-
-SCHWIERIGKEITSPROFIL: $profile
 
 AUFGABE: Erstelle GENAU $count Multiple-Choice-Fragen.
 

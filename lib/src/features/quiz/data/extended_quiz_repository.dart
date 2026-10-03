@@ -94,7 +94,10 @@ class ExtendedQuizRepository {
         childId: childId,
         child: child,
         subject: subject,
-        count: remaining + 5, // Etwas mehr holen fuer Deduplizierung
+        // Exakt [remaining]: getQuestions markiert jede gelieferte Frage als
+        // gespielt. Mit Puffer (+5) wurde die Hälfte des Caches verbrannt und
+        // ständig nachgeneriert. Fallen Duplikate raus, füllt Schritt 3 auf.
+        count: remaining,
       );
 
       if (aiQuestions.isNotEmpty) {
