@@ -10,8 +10,7 @@ import '../../auth/presentation/active_child_provider.dart';
 // QUIZ FINISH SERVICE
 //
 // Kapselt den Quiz-Abschluss-Block (Streak, Lernzeit, Stats, Rewards)
-// der früher dupliziert in quiz_screen.dart UND early_learner_quiz_screen.dart
-// stand.
+// der früher dupliziert in mehreren Quiz-Screens stand.
 //
 // Nutzung:
 //   await QuizFinishService.finish(

@@ -17,8 +17,7 @@ export 'quiz_state.dart';
 // QUIZ ENGINE v1
 //
 // Zentrale State-Maschine für alle Quiz-Typen (Klasse 1–2, 3–4, 5–8+).
-// Ersetzt den duplizierten State in quiz_screen.dart und
-// early_learner_quiz_screen.dart.
+// Ersetzt den früher duplizierten State der Quiz-Screens.
 //
 // Zuständigkeiten:
 //   - Fragen laden (via ExtendedQuizRepository)

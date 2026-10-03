@@ -11,7 +11,6 @@ import 'package:lerndex/src/features/tts/tts_provider.dart';
 import 'package:lerndex/src/features/rewards/data/system_rewards_initializer.dart';
 import 'avatar_settings_sheet.dart';
 import 'rewards_count_provider.dart';
-import 'early_learner_quiz_screen.dart';
 import 'math_quiz_screen.dart';
 import 'letter_quiz_screen.dart';
 import 'color_shape_quiz_screen.dart';
@@ -191,118 +190,37 @@ class _EarlyLearnerDashboardScreenState
     // TTS stoppen bevor wir navigieren
     ref.read(ttsControllerProvider.notifier).stop();
 
-    // Sonderfall: Mal-Spiele (Buchstaben oder Zahlen malen)
-    if (subject.subject == 'MalenBuchstaben' ||
-        subject.subject == 'MalenZahlen') {
-      final mode = subject.subject == 'MalenBuchstaben'
-          ? TracingMode.letters
-          : TracingMode.numbers;
-      Navigator.push(
-        context,
-        PageRouteBuilder(
-          pageBuilder: (_, animation, _) =>
-              TracingGameScreen(subjectColors: subject.colors, mode: mode),
-          transitionsBuilder: (_, animation, _, child) {
-            return ScaleTransition(
-              scale: CurvedAnimation(
-                parent: animation,
-                curve: Curves.easeOutBack,
-              ),
-              child: child,
-            );
-          },
-          transitionDuration: const Duration(milliseconds: 400),
-        ),
-      );
-      return;
-    }
-
-    // Zahlen → neuer algorithmischer MathQuizScreen (Klasse 1 & 2)
-    if (subject.subject == 'Zahlen') {
-      Navigator.push(
-        context,
-        PageRouteBuilder(
-          pageBuilder: (_, animation, _) => MathQuizScreen(
-            grade: widget.child.grade,
-            subjectColors: subject.colors,
-          ),
-          transitionsBuilder: (_, animation, _, child) {
-            return ScaleTransition(
-              scale: CurvedAnimation(
-                parent: animation,
-                curve: Curves.easeOutBack,
-              ),
-              child: child,
-            );
-          },
-          transitionDuration: const Duration(milliseconds: 400),
-        ),
-      );
-      return;
-    }
-
-    // Buchstaben → neuer algorithmischer LetterQuizScreen (Klasse 1 & 2)
-    if (subject.subject == 'Buchstaben') {
-      Navigator.push(
-        context,
-        PageRouteBuilder(
-          pageBuilder: (_, animation, _) => LetterQuizScreen(
-            grade: widget.child.grade,
-            subjectColors: subject.colors,
-          ),
-          transitionsBuilder: (_, animation, _, child) {
-            return ScaleTransition(
-              scale: CurvedAnimation(
-                parent: animation,
-                curve: Curves.easeOutBack,
-              ),
-              child: child,
-            );
-          },
-          transitionDuration: const Duration(milliseconds: 400),
-        ),
-      );
-      return;
-    }
-
-    // FarbenFormen → neuer algorithmischer ColorShapeQuizScreen
-    if (subject.subject == 'FarbenFormen') {
-      Navigator.push(
-        context,
-        PageRouteBuilder(
-          pageBuilder: (_, animation, _) => ColorShapeQuizScreen(
-            grade: widget.child.grade,
-            subjectColors: subject.colors,
-          ),
-          transitionsBuilder: (_, animation, _, child) {
-            return ScaleTransition(
-              scale: CurvedAnimation(
-                parent: animation,
-                curve: Curves.easeOutBack,
-              ),
-              child: child,
-            );
-          },
-          transitionDuration: const Duration(milliseconds: 400),
-        ),
-      );
-      return;
-    }
+    final grade = widget.child.grade;
+    final Widget screen = switch (subject.subject) {
+      // Mal-Spiele (Buchstaben oder Zahlen malen)
+      'MalenBuchstaben' => TracingGameScreen(
+        subjectColors: subject.colors,
+        mode: TracingMode.letters,
+      ),
+      'MalenZahlen' => TracingGameScreen(
+        subjectColors: subject.colors,
+        mode: TracingMode.numbers,
+      ),
+      // Algorithmische Quiz-Screens (Klasse 1 & 2)
+      'Zahlen' => MathQuizScreen(grade: grade, subjectColors: subject.colors),
+      'Buchstaben' => LetterQuizScreen(
+        grade: grade,
+        subjectColors: subject.colors,
+      ),
+      'FarbenFormen' => ColorShapeQuizScreen(
+        grade: grade,
+        subjectColors: subject.colors,
+      ),
+      _ => throw StateError('Unbekanntes Early-Learner-Fach: ${subject.subject}'),
+    };
 
     Navigator.push(
       context,
       PageRouteBuilder(
-        pageBuilder: (_, animation, _) => EarlyLearnerQuizScreen(
-          subject: subject.subject,
-          subjectEmoji: subject.emoji,
-          subjectColors: subject.colors,
-        ),
+        pageBuilder: (_, animation, _) => screen,
         transitionsBuilder: (_, animation, _, child) {
           return ScaleTransition(
-            scale: CurvedAnimation(
-              parent: animation,
-              curve: Curves.easeOutBack,
-            ),
+            scale: CurvedAnimation(parent: animation, curve: Curves.easeOutBack),
             child: child,
           );
         },
