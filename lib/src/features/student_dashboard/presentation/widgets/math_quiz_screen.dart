@@ -147,19 +147,11 @@ class _MathQuizScreenState extends ConsumerState<MathQuizScreen>
 
   Future<void> _initAI() async {
     try {
-      _aiModel = VertexAIService.vertexEu().generativeModel(
-        model: VertexAIService.geminiModel,
-        generationConfig: GenerationConfig(
-          temperature: 0.1,
-          maxOutputTokens: 20,
-          // gemini-2.5+: Denk-Tokens zählen zu maxOutputTokens –
-          // ohne Budget 0 wird die sichtbare Antwort abgeschnitten.
-          thinkingConfig: VertexAIService.noThinking(),
-        ),
-        safetySettings: VertexAIService.kidSafetySettings(),
+      _aiModel = VertexAIService.drawingCheckModel(
+        responseSchema: VertexAIService.drawingCheckSchema,
       );
     } catch (e) {
-      debugPrint('MathQuiz: AI init failed: \$e');
+      debugPrint('MathQuiz: AI init failed: $e');
     }
   }
 
@@ -186,6 +178,20 @@ class _MathQuizScreenState extends ConsumerState<MathQuizScreen>
     _shakeController.dispose();
     _confettiController.dispose();
     _finishConfettiController.dispose();
+    // Abbruch mitten im Quiz (oder vor dem Schließen der Schatzkiste):
+    // Tracker stoppen und die bisherige Lernzeit sichern – best effort,
+    // unawaited. Regulär erledigt das QuizFinishService in _finishQuiz.
+    if (!_finishQuizCalled) {
+      final tracker = _timeTracker;
+      if (tracker != null) {
+        tracker.stopTracking();
+        unawaited(
+          tracker.saveTime().catchError((Object e) {
+            debugPrint('⚠️ MathQuiz: Lernzeit-Rettung fehlgeschlagen: $e');
+          }),
+        );
+      }
+    }
     try {
       ref.read(ttsControllerProvider.notifier).stop();
     } catch (_) {}
@@ -288,6 +294,7 @@ class _MathQuizScreenState extends ConsumerState<MathQuizScreen>
       _shakeController.forward().then((_) => _shakeController.reset());
     }
 
+    if (!mounted) return;
     _speakFeedback(_feedbackText);
     _feedbackController.forward().then((_) => _feedbackController.reverse());
 
@@ -1093,7 +1100,9 @@ class _MathQuizScreenState extends ConsumerState<MathQuizScreen>
                       width: 52,
                       height: 52,
                       decoration: BoxDecoration(
-                        color: widget.subjectColors.first.withValues(alpha: 0.08),
+                        color: widget.subjectColors.first.withValues(
+                          alpha: 0.08,
+                        ),
                         borderRadius: BorderRadius.circular(14),
                         border: Border.all(
                           color: widget.subjectColors.first,
@@ -1106,7 +1115,9 @@ class _MathQuizScreenState extends ConsumerState<MathQuizScreen>
                           style: TextStyle(
                             fontSize: 24,
                             fontWeight: FontWeight.w900,
-                            color: widget.subjectColors.first.withValues(alpha: 0.4),
+                            color: widget.subjectColors.first.withValues(
+                              alpha: 0.4,
+                            ),
                           ),
                         ),
                       ),
@@ -1591,93 +1602,100 @@ class _MathQuizScreenState extends ConsumerState<MathQuizScreen>
     HapticFeedback.mediumImpact();
     setState(() => _isEvaluating = true);
 
+    final expected = task.correctAnswer;
+    // null = nicht prüfbar (kein Modell/Bild, offline, Timeout, KI-Fehler,
+    // ungültiges JSON) → weder richtig noch falsch werten.
+    bool? isCorrect;
+    String recognized = '';
     try {
       final imageBytes = await _captureCanvas();
-      if (imageBytes == null || _aiModel == null) {
-        // Fallback: als richtig werten
-        setState(() => _isEvaluating = false);
-        await _checkAnswer(task.correctAnswer);
-        return;
-      }
+      if (imageBytes != null && _aiModel != null) {
+        final prompt =
+            'This is a handwritten number drawn by a young child (age 6-8). '
+            'Does this drawing clearly show the digit "$expected"? '
+            'STRICT RULES: '
+            '1. Orientation must be correct — a mirrored or reversed "$expected" is WRONG. '
+            '2. A "3" written backwards is WRONG. A "2" as mirror image is WRONG. '
+            '3. "6" has the loop at the BOTTOM, "9" has the loop at the TOP — do not confuse them. '
+            '4. The digit must be recognizable, but allow for typical child handwriting wobble. '
+            '5. If the canvas looks empty or has only random scribbles, answer "no". '
+            'Answer with ONLY the JSON: {"correct": true} or {"correct": false, "recognized": "<what you see>"}';
 
-      final expected = task.correctAnswer;
-      final prompt =
-          'This is a handwritten number drawn by a young child (age 6-8). '
-          'Does this drawing clearly show the digit "$expected"? '
-          'STRICT RULES: '
-          '1. Orientation must be correct — a mirrored or reversed "$expected" is WRONG. '
-          '2. A "3" written backwards is WRONG. A "2" as mirror image is WRONG. '
-          '3. "6" has the loop at the BOTTOM, "9" has the loop at the TOP — do not confuse them. '
-          '4. The digit must be recognizable, but allow for typical child handwriting wobble. '
-          '5. If the canvas looks empty or has only random scribbles, answer "no". '
-          'Answer with ONLY the JSON: {"correct": true} or {"correct": false, "recognized": "<what you see>"}';
+        final response = await _aiModel!
+            .generateContent([
+              Content.multi([
+                TextPart(prompt),
+                InlineDataPart('image/png', imageBytes),
+              ]),
+            ])
+            .timeout(const Duration(seconds: 12));
 
-      final response = await _aiModel!
-          .generateContent([
-            Content.multi([
-              TextPart(prompt),
-              InlineDataPart('image/png', imageBytes),
-            ]),
-          ])
-          .timeout(const Duration(seconds: 12));
-
-      setState(() => _isEvaluating = false);
-
-      final raw = response.text?.trim() ?? '{"correct": false}';
-      bool isCorrect = false;
-      String recognized = '?';
-      try {
         // Strip markdown fences if present
-        final json = raw.replaceAll('```json', '').replaceAll('```', '').trim();
+        final json = (response.text ?? '')
+            .replaceAll('```json', '')
+            .replaceAll('```', '')
+            .trim();
         final parsed = jsonDecode(json) as Map<String, dynamic>;
-        isCorrect = parsed['correct'] == true;
-        recognized = parsed['recognized']?.toString() ?? expected;
-      } catch (_) {
-        // Fallback: einfaches yes/no
-        isCorrect = raw.toLowerCase().contains('true');
-      }
-
-      if (isCorrect) {
-        await _checkAnswer(expected); // korrekte Antwort
-      } else {
-        _drawAttempts++;
-        if (_drawAttempts >= _maxDrawAttempts) {
-          // Max Versuche → als falsch werten
-          await _checkAnswer('__WRONG__');
-        } else {
-          // Nochmal versuchen
-          HapticFeedback.heavyImpact();
-          final msg = recognized != '?' && recognized != expected
-              ? 'Das sieht aus wie eine $recognized — versuch nochmal!'
-              : 'Ich kann die Zahl nicht lesen — nochmal!';
-          setState(() {
-            _drawStrokes = [];
-            _currentStroke = [];
-          });
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  msg,
-                  style: const TextStyle(fontWeight: FontWeight.w700),
-                ),
-                backgroundColor: Colors.orange.shade600,
-                duration: const Duration(seconds: 2),
-                behavior: SnackBarBehavior.floating,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            );
-          }
+        final correct = parsed['correct'];
+        if (correct is bool) {
+          isCorrect = correct;
+          recognized = parsed['recognized']?.toString().trim() ?? '';
         }
       }
     } catch (e) {
       debugPrint('MathQuiz: Draw evaluation error: $e');
-      setState(() => _isEvaluating = false);
-      // Bei Fehler positiv werten
-      await _checkAnswer(task.correctAnswer);
     }
+
+    if (!mounted) return;
+    setState(() => _isEvaluating = false);
+
+    if (isCorrect == null) {
+      // Kein Versuch verbraucht, Zeichnung bleibt → Kind kann neu abschicken.
+      HapticFeedback.heavyImpact();
+      const msg =
+          'Ups, das hat gerade nicht geklappt. Versuch es gleich nochmal!';
+      _showDrawHint(msg);
+      _speakFeedback(msg);
+      return;
+    }
+
+    if (isCorrect) {
+      await _checkAnswer(expected); // korrekte Antwort
+    } else {
+      _drawAttempts++;
+      if (_drawAttempts >= _maxDrawAttempts) {
+        // Max Versuche → als falsch werten
+        await _checkAnswer('__WRONG__');
+      } else {
+        // Nochmal versuchen
+        HapticFeedback.heavyImpact();
+        // `recognized` ist englischer Freitext der KI – nur anzeigen, wenn
+        // es wirklich nur eine Ziffer/Zahl ist.
+        final msg =
+            recognized.isNotEmpty &&
+                recognized.length <= 3 &&
+                recognized != expected
+            ? 'Das sieht aus wie eine $recognized — versuch nochmal!'
+            : 'Ich kann die Zahl nicht lesen — nochmal!';
+        setState(() {
+          _drawStrokes = [];
+          _currentStroke = [];
+        });
+        _showDrawHint(msg);
+      }
+    }
+  }
+
+  void _showDrawHint(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg, style: const TextStyle(fontWeight: FontWeight.w700)),
+        backgroundColor: Colors.orange.shade600,
+        duration: const Duration(seconds: 2),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
   }
 
   Future<Uint8List?> _captureCanvas() async {
@@ -1975,7 +1993,9 @@ class _MathQuizScreenState extends ConsumerState<MathQuizScreen>
                                         vertical: 4,
                                       ),
                                       decoration: BoxDecoration(
-                                        color: Colors.white.withValues(alpha: 0.25),
+                                        color: Colors.white.withValues(
+                                          alpha: 0.25,
+                                        ),
                                         borderRadius: BorderRadius.circular(10),
                                       ),
                                       child: Text(

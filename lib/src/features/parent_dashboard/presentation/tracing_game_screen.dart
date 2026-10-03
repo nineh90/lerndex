@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:async';
 import 'dart:math';
 import 'dart:ui' as ui;
@@ -243,16 +244,8 @@ class _TracingGameScreenState extends ConsumerState<TracingGameScreen>
 
   Future<void> _initAI() async {
     try {
-      _aiModel = VertexAIService.vertexEu().generativeModel(
-        model: VertexAIService.geminiModel,
-        generationConfig: GenerationConfig(
-          temperature: 0.1,
-          maxOutputTokens: 50,
-          // gemini-2.5+: Denk-Tokens zählen zu maxOutputTokens –
-          // ohne Budget 0 wird die sichtbare Antwort abgeschnitten.
-          thinkingConfig: VertexAIService.noThinking(),
-        ),
-        safetySettings: VertexAIService.kidSafetySettings(),
+      _aiModel = VertexAIService.drawingCheckModel(
+        responseSchema: VertexAIService.drawingCheckSchema,
       );
     } catch (e) {
       debugPrint('TracingGame: AI init failed: $e');
@@ -304,6 +297,9 @@ class _TracingGameScreenState extends ConsumerState<TracingGameScreen>
   }
 
   void _clearCanvas() {
+    // Während der KI-Prüfung nicht löschen – sonst kommt das alte Ergebnis
+    // nach dem Neuzeichnen noch an.
+    if (_status == _TracingStatus.evaluating) return;
     HapticFeedback.lightImpact();
     setState(() {
       _strokes.clear();
@@ -322,13 +318,8 @@ class _TracingGameScreenState extends ConsumerState<TracingGameScreen>
 
     try {
       final imageBytes = await _captureCanvas();
-      if (imageBytes == null) {
-        _showFallbackResult(success: true); // Fehlerfall → positiv
-        return;
-      }
-
-      if (_aiModel == null) {
-        _showFallbackResult(success: true);
+      if (imageBytes == null || _aiModel == null) {
+        _showCheckFailed();
         return;
       }
 
@@ -368,13 +359,13 @@ class _TracingGameScreenState extends ConsumerState<TracingGameScreen>
                 'A mirrored, flipped, or reversed version is WRONG – answer "no". '
                 'Only answer "yes" if the letter faces the correct direction. '
                 'Be generous with stroke thickness or slight wobble, but NEVER accept wrong orientation. '
-                'Answer with only "yes" or "no".'
+                'Answer with JSON: {"correct": true} or {"correct": false}.'
           : 'Does this handwritten drawing correctly show the digit "${task.character}"? '
                 'STRICT: orientation must be correct. '
                 'A backwards "3" is WRONG. A "2" drawn as a mirror image is WRONG. '
                 '"6" opens downward (the loop is at the bottom), "9" opens upward (loop at top) – do NOT confuse them. '
                 '"1" is a single near-vertical stroke only. '
-                'Answer with only "yes" or "no".';
+                'Answer with JSON: {"correct": true} or {"correct": false}.';
 
       final response = await _aiModel!
           .generateContent([
@@ -385,13 +376,25 @@ class _TracingGameScreenState extends ConsumerState<TracingGameScreen>
           ])
           .timeout(const Duration(seconds: 10));
 
-      final answer = response.text?.toLowerCase().trim() ?? 'no';
-      final isCorrect = answer.startsWith('yes') || answer.contains('ja');
-      _showResult(isCorrect: isCorrect);
+      // Structured Output (drawingCheckSchema): {"correct": bool}.
+      // Alles andere gilt als „nicht prüfbar", nie als richtig.
+      final raw = response.text?.trim() ?? '';
+      final Object? correct;
+      try {
+        correct = (jsonDecode(raw) as Map<String, dynamic>)['correct'];
+      } catch (_) {
+        _showCheckFailed();
+        return;
+      }
+      if (correct is! bool) {
+        _showCheckFailed();
+        return;
+      }
+      _showResult(isCorrect: correct);
     } catch (e) {
       debugPrint('TracingGame: AI evaluation error: $e');
-      // Bei Timeout oder Fehler → positiv werten (Kind nicht frustrieren)
-      _showFallbackResult(success: true);
+      // Timeout/offline/KI-Fehler: weder richtig noch falsch werten
+      _showCheckFailed();
     }
   }
 
@@ -437,9 +440,15 @@ class _TracingGameScreenState extends ConsumerState<TracingGameScreen>
     if (isCorrect) {
       final user = ref.read(authStateChangesProvider).value;
       if (user != null && child != null) {
-        ref
-            .read(xpServiceProvider)
-            .addXP(userId: user.uid, childId: child.id, xpToAdd: 10);
+        unawaited(
+          ref
+              .read(xpServiceProvider)
+              .addXP(userId: user.uid, childId: child.id, xpToAdd: 10)
+              .then((_) {})
+              .catchError((Object e) {
+                debugPrint('TracingGame: addXP fehlgeschlagen: $e');
+              }),
+        );
       }
     }
 
@@ -453,8 +462,27 @@ class _TracingGameScreenState extends ConsumerState<TracingGameScreen>
     // ── Falsch: KEIN auto-advance! Buttons werden angezeigt (see build)
   }
 
-  void _showFallbackResult({required bool success}) {
-    _showResult(isCorrect: success);
+  /// Prüfung nicht möglich (offline, Timeout, KI-Fehler): nichts werten,
+  /// Zeichnung behalten und das Kind einfach nochmal abschicken lassen.
+  void _showCheckFailed() {
+    if (!mounted) return;
+    setState(() => _status = _TracingStatus.idle);
+    HapticFeedback.heavyImpact();
+    const msg =
+        'Ups, das hat gerade nicht geklappt. Versuch es gleich nochmal!';
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg, style: const TextStyle(fontWeight: FontWeight.w700)),
+        backgroundColor: Colors.orange.shade600,
+        duration: const Duration(seconds: 3),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
+    final child = ref.read(activeChildProvider);
+    if (child != null && ref.read(ttsSettingsProvider(child.id))) {
+      ref.read(ttsControllerProvider.notifier).speak(msg);
+    }
   }
 
   void _nextTask() {
@@ -472,7 +500,9 @@ class _TracingGameScreenState extends ConsumerState<TracingGameScreen>
     });
     _feedbackCtrl.reset();
     _shakeCtrl.reset();
-    Future.delayed(const Duration(milliseconds: 300), _speakCurrentTask);
+    Future.delayed(const Duration(milliseconds: 300), () {
+      if (mounted) _speakCurrentTask();
+    });
   }
 
   /// Setzt den Canvas zurück damit das Kind die gleiche Aufgabe nochmal malen kann.
@@ -487,7 +517,9 @@ class _TracingGameScreenState extends ConsumerState<TracingGameScreen>
     });
     _feedbackCtrl.reset();
     _shakeCtrl.reset();
-    Future.delayed(const Duration(milliseconds: 300), _speakCurrentTask);
+    Future.delayed(const Duration(milliseconds: 300), () {
+      if (mounted) _speakCurrentTask();
+    });
   }
 
   // ── Build ─────────────────────────────────────────────────────────────────
@@ -508,7 +540,9 @@ class _TracingGameScreenState extends ConsumerState<TracingGameScreen>
           _currentStroke = [];
           _showHint = true;
           _status = _TracingStatus.idle;
-          Future.delayed(const Duration(milliseconds: 300), _speakCurrentTask);
+          Future.delayed(const Duration(milliseconds: 300), () {
+            if (mounted) _speakCurrentTask();
+          });
         }),
       );
     }
@@ -645,7 +679,9 @@ class _TracingGameScreenState extends ConsumerState<TracingGameScreen>
                     child: Container(
                       padding: const EdgeInsets.all(6),
                       decoration: BoxDecoration(
-                        color: widget.subjectColors.first.withValues(alpha: 0.1),
+                        color: widget.subjectColors.first.withValues(
+                          alpha: 0.1,
+                        ),
                         shape: BoxShape.circle,
                       ),
                       child: Icon(
@@ -689,7 +725,9 @@ class _TracingGameScreenState extends ConsumerState<TracingGameScreen>
                     borderRadius: BorderRadius.circular(28),
                     boxShadow: [
                       BoxShadow(
-                        color: widget.subjectColors.first.withValues(alpha: 0.2),
+                        color: widget.subjectColors.first.withValues(
+                          alpha: 0.2,
+                        ),
                         blurRadius: 20,
                         offset: const Offset(0, 6),
                       ),
@@ -711,8 +749,8 @@ class _TracingGameScreenState extends ConsumerState<TracingGameScreen>
                               style: TextStyle(
                                 fontSize: 180,
                                 fontWeight: FontWeight.w900,
-                                color: widget.subjectColors.first.withValues(alpha: 
-                                  0.07,
+                                color: widget.subjectColors.first.withValues(
+                                  alpha: 0.07,
                                 ),
                               ),
                             ),
@@ -952,7 +990,9 @@ class _TracingGameScreenState extends ConsumerState<TracingGameScreen>
                   boxShadow: canSubmit
                       ? [
                           BoxShadow(
-                            color: widget.subjectColors.first.withValues(alpha: 0.4),
+                            color: widget.subjectColors.first.withValues(
+                              alpha: 0.4,
+                            ),
                             blurRadius: 16,
                             offset: const Offset(0, 6),
                           ),

@@ -154,16 +154,8 @@ class _ColorShapeQuizScreenState extends ConsumerState<ColorShapeQuizScreen>
 
   Future<void> _initAI() async {
     try {
-      _aiModel = VertexAIService.vertexEu().generativeModel(
-        model: VertexAIService.geminiModel,
-        generationConfig: GenerationConfig(
-          temperature: 0.1,
-          maxOutputTokens: 30,
-          // gemini-2.5+: Denk-Tokens zählen zu maxOutputTokens –
-          // ohne Budget 0 wird die sichtbare Antwort abgeschnitten.
-          thinkingConfig: VertexAIService.noThinking(),
-        ),
-        safetySettings: VertexAIService.kidSafetySettings(),
+      _aiModel = VertexAIService.drawingCheckModel(
+        responseSchema: VertexAIService.drawingCheckSchema,
       );
     } catch (e) {
       debugPrint('ColorShapeQuiz: AI init failed: $e');
@@ -177,6 +169,22 @@ class _ColorShapeQuizScreenState extends ConsumerState<ColorShapeQuizScreen>
     _shakeController.dispose();
     _confettiController.dispose();
     _finishConfettiController.dispose();
+    // Abbruch mitten im Quiz (oder vor dem Schließen der Schatzkiste):
+    // Tracker stoppen und die bisherige Lernzeit sichern – best effort,
+    // unawaited. Regulär erledigt das QuizFinishService in _finishQuiz.
+    if (!_finishQuizCalled) {
+      final tracker = _timeTracker;
+      if (tracker != null) {
+        tracker.stopTracking();
+        unawaited(
+          tracker.saveTime().catchError((Object e) {
+            debugPrint(
+              '⚠️ ColorShapeQuiz: Lernzeit-Rettung fehlgeschlagen: $e',
+            );
+          }),
+        );
+      }
+    }
     try {
       ref.read(ttsControllerProvider.notifier).stop();
     } catch (_) {}
@@ -261,6 +269,7 @@ class _ColorShapeQuizScreenState extends ConsumerState<ColorShapeQuizScreen>
       _shakeController.forward().then((_) => _shakeController.reset());
     }
 
+    if (!mounted) return;
     _speakFeedback(_feedbackText);
     _feedbackController.forward().then((_) => _feedbackController.reverse());
 
@@ -351,98 +360,99 @@ class _ColorShapeQuizScreenState extends ConsumerState<ColorShapeQuizScreen>
     HapticFeedback.mediumImpact();
     setState(() => _isEvaluating = true);
 
+    final shape = task.correctAnswer;
+    // null = nicht prüfbar (kein Modell/Bild, offline, Timeout, KI-Fehler,
+    // ungültiges JSON) → weder richtig noch falsch werten.
+    // `recognized` wird hier bewusst nicht ausgewertet: bei Formen ist das
+    // englischer Freitext („a wobbly circle") und nicht kindgerecht.
+    bool? isCorrect;
     try {
       final imageBytes = await _captureCanvas();
-      if (imageBytes == null || _aiModel == null) {
-        setState(() => _isEvaluating = false);
-        await _checkAnswer(task.correctAnswer);
-        return;
-      }
+      if (imageBytes != null && _aiModel != null) {
+        final shapeHints = {
+          'Kreis':
+              'A Kreis (circle) is perfectly round with no corners or edges. A squiggly blob is WRONG.',
+          'Dreieck':
+              'A Dreieck (triangle) has exactly 3 straight sides and 3 corners.',
+          'Quadrat':
+              'A Quadrat (square) has 4 equal straight sides and 4 corners.',
+          'Rechteck':
+              'A Rechteck (rectangle) has 4 straight sides, two pairs of equal length.',
+          'Stern': 'A Stern (star) has 5 points.',
+          'Raute':
+              'A Raute (diamond) has 4 equal sides, pointed top and bottom.',
+        };
+        final hint = shapeHints[shape] ?? '';
 
-      final shape = task.correctAnswer;
-      final shapeHints = {
-        'Kreis':
-            'A Kreis (circle) is perfectly round with no corners or edges. A squiggly blob is WRONG.',
-        'Dreieck':
-            'A Dreieck (triangle) has exactly 3 straight sides and 3 corners.',
-        'Quadrat':
-            'A Quadrat (square) has 4 equal straight sides and 4 corners.',
-        'Rechteck':
-            'A Rechteck (rectangle) has 4 straight sides, two pairs of equal length.',
-        'Stern': 'A Stern (star) has 5 points.',
-        'Raute': 'A Raute (diamond) has 4 equal sides, pointed top and bottom.',
-      };
-      final hint = shapeHints[shape] ?? '';
+        final prompt =
+            'This is a drawing by a young child (age 6-8). '
+            'Does this drawing show a "$shape"? '
+            'RULES: $hint '
+            'Allow for imperfect child drawing (wobbly lines, not perfectly round). '
+            'If the canvas is mostly empty or just random scribbles, answer false. '
+            'Answer ONLY with JSON: {"correct": true} or {"correct": false, "recognized": "<what you see>"}';
 
-      final prompt =
-          'This is a drawing by a young child (age 6-8). '
-          'Does this drawing show a "$shape"? '
-          'RULES: $hint '
-          'Allow for imperfect child drawing (wobbly lines, not perfectly round). '
-          'If the canvas is mostly empty or just random scribbles, answer false. '
-          'Answer ONLY with JSON: {"correct": true} or {"correct": false, "recognized": "<what you see>"}';
+        final response = await _aiModel!
+            .generateContent([
+              Content.multi([
+                TextPart(prompt),
+                InlineDataPart('image/png', imageBytes),
+              ]),
+            ])
+            .timeout(const Duration(seconds: 12));
 
-      final response = await _aiModel!
-          .generateContent([
-            Content.multi([
-              TextPart(prompt),
-              InlineDataPart('image/png', imageBytes),
-            ]),
-          ])
-          .timeout(const Duration(seconds: 12));
-
-      setState(() => _isEvaluating = false);
-
-      final raw = response.text?.trim() ?? '{"correct": false}';
-      bool isCorrect = false;
-      String recognized = '?';
-      try {
-        final json = raw.replaceAll('```json', '').replaceAll('```', '').trim();
+        final json = (response.text ?? '')
+            .replaceAll('```json', '')
+            .replaceAll('```', '')
+            .trim();
         final parsed = jsonDecode(json) as Map<String, dynamic>;
-        isCorrect = parsed['correct'] == true;
-        recognized = parsed['recognized']?.toString() ?? shape;
-      } catch (_) {
-        isCorrect = raw.toLowerCase().contains('true');
-      }
-
-      if (isCorrect) {
-        await _checkAnswer(shape);
-      } else {
-        _drawAttempts++;
-        if (_drawAttempts >= _maxDrawAttempts) {
-          await _checkAnswer('__WRONG__');
-        } else {
-          HapticFeedback.heavyImpact();
-          final msg = recognized != '?' && recognized != shape
-              ? 'Das sieht aus wie $recognized – versuch nochmal!'
-              : 'Ich erkenne keinen $shape – nochmal!';
-          setState(() {
-            _drawStrokes = [];
-            _currentStroke = [];
-          });
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  msg,
-                  style: const TextStyle(fontWeight: FontWeight.w700),
-                ),
-                backgroundColor: Colors.orange.shade600,
-                duration: const Duration(seconds: 2),
-                behavior: SnackBarBehavior.floating,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            );
-          }
-        }
+        final correct = parsed['correct'];
+        if (correct is bool) isCorrect = correct;
       }
     } catch (e) {
       debugPrint('ColorShapeQuiz: Draw error: $e');
-      setState(() => _isEvaluating = false);
-      await _checkAnswer(task.correctAnswer);
     }
+
+    if (!mounted) return;
+    setState(() => _isEvaluating = false);
+
+    if (isCorrect == null) {
+      // Kein Versuch verbraucht, Zeichnung bleibt → Kind kann neu abschicken.
+      HapticFeedback.heavyImpact();
+      const msg =
+          'Ups, das hat gerade nicht geklappt. Versuch es gleich nochmal!';
+      _showDrawHint(msg);
+      _speakFeedback(msg);
+      return;
+    }
+
+    if (isCorrect) {
+      await _checkAnswer(shape);
+    } else {
+      _drawAttempts++;
+      if (_drawAttempts >= _maxDrawAttempts) {
+        await _checkAnswer('__WRONG__');
+      } else {
+        HapticFeedback.heavyImpact();
+        setState(() {
+          _drawStrokes = [];
+          _currentStroke = [];
+        });
+        _showDrawHint('Das erkenne ich noch nicht als $shape – nochmal!');
+      }
+    }
+  }
+
+  void _showDrawHint(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg, style: const TextStyle(fontWeight: FontWeight.w700)),
+        backgroundColor: Colors.orange.shade600,
+        duration: const Duration(seconds: 2),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
   }
 
   Future<Uint8List?> _captureCanvas() async {
@@ -1324,7 +1334,9 @@ class _ColorShapeQuizScreenState extends ConsumerState<ColorShapeQuizScreen>
                                         vertical: 4,
                                       ),
                                       decoration: BoxDecoration(
-                                        color: Colors.white.withValues(alpha: 0.25),
+                                        color: Colors.white.withValues(
+                                          alpha: 0.25,
+                                        ),
                                         borderRadius: BorderRadius.circular(10),
                                       ),
                                       child: Text(

@@ -150,16 +150,8 @@ class _LetterQuizScreenState extends ConsumerState<LetterQuizScreen>
 
   Future<void> _initAI() async {
     try {
-      _aiModel = VertexAIService.vertexEu().generativeModel(
-        model: VertexAIService.geminiModel,
-        generationConfig: GenerationConfig(
-          temperature: 0.1,
-          maxOutputTokens: 20,
-          // gemini-2.5+: Denk-Tokens zählen zu maxOutputTokens –
-          // ohne Budget 0 wird die sichtbare Antwort abgeschnitten.
-          thinkingConfig: VertexAIService.noThinking(),
-        ),
-        safetySettings: VertexAIService.kidSafetySettings(),
+      _aiModel = VertexAIService.drawingCheckModel(
+        responseSchema: VertexAIService.drawingCheckSchema,
       );
     } catch (e) {
       debugPrint('LetterQuiz: AI init failed: $e');
@@ -173,6 +165,20 @@ class _LetterQuizScreenState extends ConsumerState<LetterQuizScreen>
     _shakeController.dispose();
     _confettiController.dispose();
     _finishConfettiController.dispose();
+    // Abbruch mitten im Quiz (oder vor dem Schließen der Schatzkiste):
+    // Tracker stoppen und die bisherige Lernzeit sichern – best effort,
+    // unawaited. Regulär erledigt das QuizFinishService in _finishQuiz.
+    if (!_finishQuizCalled) {
+      final tracker = _timeTracker;
+      if (tracker != null) {
+        tracker.stopTracking();
+        unawaited(
+          tracker.saveTime().catchError((Object e) {
+            debugPrint('⚠️ LetterQuiz: Lernzeit-Rettung fehlgeschlagen: $e');
+          }),
+        );
+      }
+    }
     try {
       ref.read(ttsControllerProvider.notifier).stop();
     } catch (_) {}
@@ -261,6 +267,7 @@ class _LetterQuizScreenState extends ConsumerState<LetterQuizScreen>
       _shakeController.forward().then((_) => _shakeController.reset());
     }
 
+    if (!mounted) return;
     _speakFeedback(_feedbackText);
     _feedbackController.forward().then((_) => _feedbackController.reverse());
 
@@ -351,108 +358,118 @@ class _LetterQuizScreenState extends ConsumerState<LetterQuizScreen>
     HapticFeedback.mediumImpact();
     setState(() => _isEvaluating = true);
 
+    final letter = task.correctAnswer;
+    // null = nicht prüfbar (kein Modell/Bild, offline, Timeout, KI-Fehler,
+    // ungültiges JSON) → weder richtig noch falsch werten.
+    bool? isCorrect;
+    String recognized = '';
     try {
       final imageBytes = await _captureCanvas();
-      if (imageBytes == null || _aiModel == null) {
-        setState(() => _isEvaluating = false);
-        await _checkAnswer(task.correctAnswer);
-        return;
-      }
+      if (imageBytes != null && _aiModel != null) {
+        // Bekannte Verwechslungspaare explizit ansprechen
+        final confusables = {
+          'B':
+              'B has TWO bumps on the RIGHT. A mirrored B or the letter D is WRONG.',
+          'D': 'D has the bump on the RIGHT. A mirrored D is WRONG.',
+          'P': 'P has the bump on the RIGHT side top. A mirrored P is WRONG.',
+          'Q':
+              'Q is like O with a small tail at bottom-right. A mirrored Q is WRONG.',
+          'S': 'S curves right at top, left at bottom. A reversed S is WRONG.',
+          'Z':
+              'Z goes top-right to bottom-left diagonally. A reversed Z is WRONG.',
+          'N': 'N diagonal goes DOWN-RIGHT. A mirrored N is WRONG.',
+          'J': 'J hooks to the LEFT at the bottom. A mirrored J is WRONG.',
+          'L': 'L has horizontal going RIGHT at bottom. A mirrored L is WRONG.',
+          'F': 'F has horizontals going RIGHT. A mirrored F is WRONG.',
+          'E': 'E has horizontals going RIGHT. A mirrored E is WRONG.',
+          'K': 'K diagonals go RIGHT. A mirrored K is WRONG.',
+          'R': 'R leg goes RIGHT. A mirrored R is WRONG.',
+          'G': 'G opens LEFT with an inward bar. A mirrored G is WRONG.',
+        };
+        final hint = confusables[letter] ?? '';
 
-      final letter = task.correctAnswer;
-      // Bekannte Verwechslungspaare explizit ansprechen
-      final confusables = {
-        'B':
-            'B has TWO bumps on the RIGHT. A mirrored B or the letter D is WRONG.',
-        'D': 'D has the bump on the RIGHT. A mirrored D is WRONG.',
-        'P': 'P has the bump on the RIGHT side top. A mirrored P is WRONG.',
-        'Q':
-            'Q is like O with a small tail at bottom-right. A mirrored Q is WRONG.',
-        'S': 'S curves right at top, left at bottom. A reversed S is WRONG.',
-        'Z':
-            'Z goes top-right to bottom-left diagonally. A reversed Z is WRONG.',
-        'N': 'N diagonal goes DOWN-RIGHT. A mirrored N is WRONG.',
-        'J': 'J hooks to the LEFT at the bottom. A mirrored J is WRONG.',
-        'L': 'L has horizontal going RIGHT at bottom. A mirrored L is WRONG.',
-        'F': 'F has horizontals going RIGHT. A mirrored F is WRONG.',
-        'E': 'E has horizontals going RIGHT. A mirrored E is WRONG.',
-        'K': 'K diagonals go RIGHT. A mirrored K is WRONG.',
-        'R': 'R leg goes RIGHT. A mirrored R is WRONG.',
-        'G': 'G opens LEFT with an inward bar. A mirrored G is WRONG.',
-      };
-      final hint = confusables[letter] ?? '';
+        final prompt =
+            'This is a handwritten letter drawn by a young child (age 6-8). '
+            'Does this drawing clearly show the uppercase letter "$letter"? '
+            'STRICT RULES: '
+            '1. Orientation must be correct. ${hint.isNotEmpty ? hint : ""} '
+            '2. Allow for typical child handwriting wobble and imperfect strokes. '
+            '3. The letter must be clearly recognizable as "$letter" and not another letter. '
+            '4. If the canvas looks empty or has only random scribbles, answer false. '
+            'Answer ONLY with JSON: {"correct": true} or {"correct": false, "recognized": "<what letter you see>"}';
 
-      final prompt =
-          'This is a handwritten letter drawn by a young child (age 6-8). '
-          'Does this drawing clearly show the uppercase letter "$letter"? '
-          'STRICT RULES: '
-          '1. Orientation must be correct. ${hint.isNotEmpty ? hint : ""} '
-          '2. Allow for typical child handwriting wobble and imperfect strokes. '
-          '3. The letter must be clearly recognizable as "$letter" and not another letter. '
-          '4. If the canvas looks empty or has only random scribbles, answer false. '
-          'Answer ONLY with JSON: {"correct": true} or {"correct": false, "recognized": "<what letter you see>"}';
+        final response = await _aiModel!
+            .generateContent([
+              Content.multi([
+                TextPart(prompt),
+                InlineDataPart('image/png', imageBytes),
+              ]),
+            ])
+            .timeout(const Duration(seconds: 12));
 
-      final response = await _aiModel!
-          .generateContent([
-            Content.multi([
-              TextPart(prompt),
-              InlineDataPart('image/png', imageBytes),
-            ]),
-          ])
-          .timeout(const Duration(seconds: 12));
-
-      setState(() => _isEvaluating = false);
-
-      final raw = response.text?.trim() ?? '{"correct": false}';
-      bool isCorrect = false;
-      String recognized = '?';
-      try {
-        final json = raw.replaceAll('```json', '').replaceAll('```', '').trim();
+        final json = (response.text ?? '')
+            .replaceAll('```json', '')
+            .replaceAll('```', '')
+            .trim();
         final parsed = jsonDecode(json) as Map<String, dynamic>;
-        isCorrect = parsed['correct'] == true;
-        recognized = parsed['recognized']?.toString() ?? letter;
-      } catch (_) {
-        isCorrect = raw.toLowerCase().contains('true');
-      }
-
-      if (isCorrect) {
-        await _checkAnswer(letter);
-      } else {
-        _drawAttempts++;
-        if (_drawAttempts >= _maxDrawAttempts) {
-          await _checkAnswer('__WRONG__');
-        } else {
-          HapticFeedback.heavyImpact();
-          final msg = recognized != '?' && recognized != letter
-              ? 'Das sieht aus wie ein $recognized – versuch nochmal!'
-              : 'Ich kann den Buchstaben nicht lesen – nochmal!';
-          setState(() {
-            _drawStrokes = [];
-            _currentStroke = [];
-          });
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  msg,
-                  style: const TextStyle(fontWeight: FontWeight.w700),
-                ),
-                backgroundColor: Colors.orange.shade600,
-                duration: const Duration(seconds: 2),
-                behavior: SnackBarBehavior.floating,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            );
-          }
+        final correct = parsed['correct'];
+        if (correct is bool) {
+          isCorrect = correct;
+          recognized = parsed['recognized']?.toString().trim() ?? '';
         }
       }
     } catch (e) {
       debugPrint('LetterQuiz: Draw error: $e');
-      setState(() => _isEvaluating = false);
-      await _checkAnswer(task.correctAnswer);
     }
+
+    if (!mounted) return;
+    setState(() => _isEvaluating = false);
+
+    if (isCorrect == null) {
+      // Kein Versuch verbraucht, Zeichnung bleibt → Kind kann neu abschicken.
+      HapticFeedback.heavyImpact();
+      const msg =
+          'Ups, das hat gerade nicht geklappt. Versuch es gleich nochmal!';
+      _showDrawHint(msg);
+      _speakFeedback(msg);
+      return;
+    }
+
+    if (isCorrect) {
+      await _checkAnswer(letter);
+    } else {
+      _drawAttempts++;
+      if (_drawAttempts >= _maxDrawAttempts) {
+        await _checkAnswer('__WRONG__');
+      } else {
+        HapticFeedback.heavyImpact();
+        // `recognized` ist englischer Freitext der KI – nur anzeigen, wenn
+        // es wirklich nur ein Buchstabe ist.
+        final msg =
+            recognized.isNotEmpty &&
+                recognized.length <= 3 &&
+                recognized.toUpperCase() != letter.toUpperCase()
+            ? 'Das sieht aus wie ein $recognized – versuch nochmal!'
+            : 'Ich kann den Buchstaben nicht lesen – nochmal!';
+        setState(() {
+          _drawStrokes = [];
+          _currentStroke = [];
+        });
+        _showDrawHint(msg);
+      }
+    }
+  }
+
+  void _showDrawHint(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg, style: const TextStyle(fontWeight: FontWeight.w700)),
+        backgroundColor: Colors.orange.shade600,
+        duration: const Duration(seconds: 2),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
   }
 
   Future<Uint8List?> _captureCanvas() async {
@@ -819,7 +836,9 @@ class _LetterQuizScreenState extends ConsumerState<LetterQuizScreen>
                       width: 38,
                       height: 44,
                       decoration: BoxDecoration(
-                        color: widget.subjectColors.first.withValues(alpha: 0.08),
+                        color: widget.subjectColors.first.withValues(
+                          alpha: 0.08,
+                        ),
                         borderRadius: BorderRadius.circular(10),
                         border: Border.all(
                           color: widget.subjectColors.first,
@@ -832,7 +851,9 @@ class _LetterQuizScreenState extends ConsumerState<LetterQuizScreen>
                           style: TextStyle(
                             fontSize: 20,
                             fontWeight: FontWeight.w900,
-                            color: widget.subjectColors.first.withValues(alpha: 0.4),
+                            color: widget.subjectColors.first.withValues(
+                              alpha: 0.4,
+                            ),
                           ),
                         ),
                       ),
@@ -938,7 +959,9 @@ class _LetterQuizScreenState extends ConsumerState<LetterQuizScreen>
                       width: 52,
                       height: 52,
                       decoration: BoxDecoration(
-                        color: widget.subjectColors.first.withValues(alpha: 0.08),
+                        color: widget.subjectColors.first.withValues(
+                          alpha: 0.08,
+                        ),
                         borderRadius: BorderRadius.circular(14),
                         border: Border.all(
                           color: widget.subjectColors.first,
@@ -951,7 +974,9 @@ class _LetterQuizScreenState extends ConsumerState<LetterQuizScreen>
                           style: TextStyle(
                             fontSize: 24,
                             fontWeight: FontWeight.w900,
-                            color: widget.subjectColors.first.withValues(alpha: 0.4),
+                            color: widget.subjectColors.first.withValues(
+                              alpha: 0.4,
+                            ),
                           ),
                         ),
                       ),
@@ -1543,7 +1568,9 @@ class _LetterQuizScreenState extends ConsumerState<LetterQuizScreen>
                                         vertical: 4,
                                       ),
                                       decoration: BoxDecoration(
-                                        color: Colors.white.withValues(alpha: 0.25),
+                                        color: Colors.white.withValues(
+                                          alpha: 0.25,
+                                        ),
                                         borderRadius: BorderRadius.circular(10),
                                       ),
                                       child: Text(
