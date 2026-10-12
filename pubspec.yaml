@@ -6,7 +6,7 @@ publish_to: 'none'
 # jeder neue Upload braucht einen höheren Code.
 # Codes 13 (Photo-Picker-Policy) und 14 (Testaccount/Paywall) sind bei Play
 # verbrannt – abgelehnte Version-Codes können nicht erneut hochgeladen werden.
-version: 1.1.5+15
+version: 1.1.5+16
 
 environment:
   # Dart 3.12 = Flutter 3.44 (riverpod_generator 4 braucht analyzer 12 / meta 1.18)
