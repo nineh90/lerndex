@@ -63,6 +63,8 @@ Der Großteil der Provider nutzt noch die Legacy-APIs (`StateNotifierProvider`, 
 2. `generateTasksFromImage()` — Aufgaben aus Foto generieren (für Eltern)
 3. `generateQuizQuestions()` — Quiz-Fragen dynamisch generieren
 
+**Live-Check:** `flutter test tool/ai_live_check/ai_live_check_test.dart` schickt alle KI-Stellen (Tutor, Quiz, Aufgaben aus Foto, Malprüfung) mit dem echten App-Code an die echte API. Kostet ein paar Cent und läuft deshalb nicht in der CI. Pflicht nach jedem Wechsel von Modell, Region, Safety-Settings oder Token-Limits.
+
 ### Quiz-System
 
 `QuizEngine` (`lib/src/features/quiz/presentation/quiz_engine.dart`) ist eine State Machine mit `QuizPhase`-Enum. Fragen kommen aus zwei Quellen:
