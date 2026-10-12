@@ -119,7 +119,7 @@ class AiQuestionCacheRepository {
 
   /// Gibt [count] ungespielte Fragen zurück.
   /// Wenn Cache voll: Sofort aus Firestore (0 Wartezeit).
-  /// Wenn Cache leer: Schnell-Batch (~1-2s).
+  /// Wenn Cache leer: Schnell-Batch (~5-8s mit gemini-3.5-flash).
   ///
   /// Level-Check läuft hier (nicht in prefillIfEmpty) da getQuestions()
   /// auch nach einem Level-Up mitten im Tag aufgerufen wird.

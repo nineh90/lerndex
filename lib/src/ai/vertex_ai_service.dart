@@ -113,19 +113,24 @@ class VertexAIService {
         safetySettings: kidSafetySettings(),
       );
 
-  /// Strengste Blockier-Stufe für alle Harm-Kategorien.
+  /// Safety-Settings für jedes Modell, das Kindern Inhalte liefert.
   /// Achtung Semantik: HarmBlockThreshold.low = „blocke ab niedriger
-  /// Wahrscheinlichkeit" = STRENGSTE Stufe. Der Output geht an Kinder,
-  /// deshalb überall low – für jedes Modell, das Kindern Inhalte liefert.
+  /// Wahrscheinlichkeit" = STRENGSTE Stufe.
+  /// Sexuelles und Gefährliches bleiben auf low. Belästigung und Hassrede
+  /// stehen auf medium: gemini-3.5-flash stuft praktisch jede längere Antwort
+  /// (Quiz mit 10 Fragen, alle Fächer) dort als LOW ein (Score ~0,05,
+  /// Schweregrad NEGLIGIBLE) und ignoriert HarmBlockMethod.severity – mit low
+  /// wurde fast jedes KI-Quiz geblockt (Live-Test 12.10.2026, siehe
+  /// tool/ai_live_check/).
   static List<SafetySetting> kidSafetySettings() => [
     SafetySetting(
       HarmCategory.harassment,
-      HarmBlockThreshold.low,
+      HarmBlockThreshold.medium,
       HarmBlockMethod.severity,
     ),
     SafetySetting(
       HarmCategory.hateSpeech,
-      HarmBlockThreshold.low,
+      HarmBlockThreshold.medium,
       HarmBlockMethod.severity,
     ),
     SafetySetting(
@@ -143,6 +148,11 @@ class VertexAIService {
   /// Timeout für alle KI-Aufrufe: ohne hängt bei Netz-/Backend-Problemen
   /// der Lade-Spinner endlos.
   static const Duration _aiTimeout = Duration(seconds: 30);
+
+  /// Quiz-Generierung denkt mit gemini-3.5-flash deutlich länger: 10 Fragen
+  /// brauchen 15–28 s (Biologie/Geschichte Kl. 7). Der 10er-Batch läuft im
+  /// Hintergrund, synchron wartet das Kind nur auf den 2er-Schnell-Batch.
+  static const Duration _quizTimeout = Duration(seconds: 60);
 
   /// KI-Fehler als non-fatal an Crashlytics melden – sonst sind Ausfälle
   /// im Produktivbetrieb unsichtbar (Fehler werden hier bewusst geschluckt
@@ -224,7 +234,8 @@ class VertexAIService {
     debugPrint('🚀 Vertex AI Quiz-Modell wird initialisiert...');
     _quizModel = vertexEu().generativeModel(
       model: VertexAIService.geminiModel,
-      generationConfig: generationConfig(maxOutputTokens: 8192),
+      // 10 Fragen: bis ~3.700 Denk- + ~2.300 Antwort-Tokens gemessen.
+      generationConfig: generationConfig(maxOutputTokens: 16384),
       safetySettings: kidSafetySettings(),
     );
     _quizInitialized = true;
@@ -485,7 +496,7 @@ class VertexAIService {
 
       final response = await _quizModel!
           .generateContent([Content.text(prompt)])
-          .timeout(_aiTimeout);
+          .timeout(_quizTimeout);
       final text = response.text ?? '';
 
       return _parseQuizResponse(text, child.grade, subject: subject);
