@@ -34,6 +34,7 @@ Erledigt:
 - Eigenes Hintergrundbild im Browser ausgeblendet, weil es als Datei im App-Verzeichnis liegt.
 - `web/`: Icons, Manifest (zum Home-Bildschirm hinzufügbar), Ladebildschirm.
 - `firebase.json`: Firebase Hosting mit `build/web`.
+- Keine fremden Server beim Start (siehe unten „Fremde Server im Browser“).
 
 Offen, nur Kevin kann das machen (Konsolen und Zugänge):
 
@@ -47,8 +48,13 @@ Offen, nur Kevin kann das machen (Konsolen und Zugänge):
    Google-Login in Safari scheitern, weil Safari Cookies fremder Domains blockiert.
 3. **RevenueCat Web Billing:** Stripe verbinden, Web-Produkte anlegen, Web-API-Key als
    `REVENUECAT_WEB_KEY` eintragen. Für die Schule nicht nötig, dort per Rechnung.
-4. **Deploy:** `flutter build web --dart-define-from-file=dart-defines.json` und dann
-   `firebase deploy --only hosting`.
+   Dann zusätzlich die Import-Map in `web/index.html` entfernen (sonst bleibt RevenueCat im
+   Browser abgeschaltet) und vorher klären, ob dafür ein Cookie-/Einwilligungsbanner nötig
+   ist: Stripe.js lädt Telemetrie von Stripe-Servern.
+4. **Deploy:**
+   `flutter build web --no-web-resources-cdn --dart-define-from-file=dart-defines.json`
+   und dann `firebase deploy --only hosting`. Ohne `--no-web-resources-cdn` lädt der Browser
+   die Grafik-Engine von www.gstatic.com.
 5. **Testen auf echten Geräten:** iPhone mit Safari, Android mit Chrome, ein Schul-Tablet,
    ein PC. Besonders Tastatur, Kamera (Foto im Tutor), Mikrofon und Vorlesen prüfen.
 
@@ -58,6 +64,27 @@ Bekannte Einschränkungen im Browser:
 - Spracheingabe gibt es in Chrome und Safari, aber nicht in Firefox.
 - Safari spricht erst nach dem ersten Tipp. Das ist abgefangen: Der Tipp auf „Senden“ bzw. auf
   den Vorlesen-Schalter schaltet die Ausgabe frei.
+
+### Fremde Server im Browser
+
+Flutter Web und einige Plugins laden standardmäßig Dateien von fremden Servern. Für eine App,
+die Kinder in der Schule nutzen, ist das abgestellt:
+
+| Was | Vorher | Jetzt |
+|---|---|---|
+| Grafik-Engine (CanvasKit) | www.gstatic.com | lokal, Build mit `--no-web-resources-cdn` |
+| Schrift Roboto, Emojis, Symbole | fonts.gstatic.com | lokal aus `web/fonts/` (`fontFallbackBaseUrl`) |
+| RevenueCat-Skript | cdn.jsdelivr.net, lädt Stripe.js nach | leeres Modul per Import-Map in `web/index.html` |
+
+`test/web/web_third_party_test.dart` schlägt an, wenn ein Update von `purchases_flutter`
+die Skript-Adresse ändert.
+
+Noch offen, beides Google und Teil von Firebase:
+
+- `www.gstatic.com/firebasejs/…`: Das Firebase-JS-SDK, das FlutterFire im Browser nachlädt.
+  Ließe sich selbst hosten.
+- `accounts.google.com/gsi/client`: Das google_sign_in-Plugin lädt das Google-Login-Skript beim
+  Start, obwohl der Web-Login über Firebase läuft.
 
 ## Phase 2: Lexi vorlesen ✅ (Branch `web`)
 

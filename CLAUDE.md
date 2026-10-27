@@ -27,7 +27,12 @@ CI/CD läuft über Codemagic (`codemagic.yaml`). Lokaler Release-Build:
 ```bash
 flutter build apk --dart-define-from-file=dart-defines.json
 flutter build ipa --dart-define-from-file=dart-defines.json
+flutter build web --no-web-resources-cdn --dart-define-from-file=dart-defines.json
 ```
+
+Web: `--no-web-resources-cdn` ist Pflicht, sonst lädt der Browser die Grafik-Engine von Google
+(Kinderdaten, Schulen). Warum und was sonst noch lokal liegt: `docs/PLAN-schule-web.md`,
+Abschnitt „Fremde Server im Browser“. Hosting über Firebase (`firebase deploy --only hosting`).
 
 ## Architektur
 
