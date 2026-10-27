@@ -24,12 +24,21 @@ class MessageBubble extends StatelessWidget {
   /// Wenn null: Tutor-Chat-Style.
   final Color? topicColor;
 
+  /// Lautsprecher-Knopf neben Lexis Nachricht (nur Tutor-Chat-Style).
+  /// null = kein Knopf.
+  final VoidCallback? onSpeak;
+
+  /// Diese Nachricht wird gerade vorgelesen → Stopp-Knopf statt Lautsprecher.
+  final bool isSpeaking;
+
   const MessageBubble({
     super.key,
     required this.message,
     required this.childName,
     this.childSelectedAvatar,
     this.topicColor,
+    this.onSpeak,
+    this.isSpeaking = false,
   });
 
   bool get _isParentReviewMode => topicColor != null;
@@ -103,8 +112,9 @@ class MessageBubble extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.end,
-        mainAxisAlignment:
-            isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+        mainAxisAlignment: isUser
+            ? MainAxisAlignment.end
+            : MainAxisAlignment.start,
         children: [
           if (!isUser) ...[_buildTutorAvatar(), const SizedBox(width: 8)],
           Flexible(
@@ -159,7 +169,21 @@ class MessageBubble extends StatelessWidget {
             ),
           ),
           if (isUser) ...[const SizedBox(width: 8), _buildChildAvatar()],
+          if (!isUser && onSpeak != null) _buildSpeakButton(),
         ],
+      ),
+    );
+  }
+
+  Widget _buildSpeakButton() {
+    return IconButton(
+      onPressed: onSpeak,
+      tooltip: isSpeaking ? 'Vorlesen stoppen' : 'Vorlesen',
+      visualDensity: VisualDensity.compact,
+      iconSize: 22,
+      color: Colors.deepPurple,
+      icon: Icon(
+        isSpeaking ? Icons.stop_circle_outlined : Icons.volume_up_outlined,
       ),
     );
   }
@@ -228,9 +252,7 @@ class MessageBubble extends StatelessWidget {
             : const SizedBox(
                 width: 180,
                 height: 120,
-                child: Center(
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                ),
+                child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
               ),
         errorBuilder: (_, _, _) => const SizedBox(
           width: 180,
@@ -268,8 +290,9 @@ class MessageBubble extends StatelessWidget {
           maxWidth: MediaQuery.of(context).size.width * 0.78,
         ),
         child: Column(
-          crossAxisAlignment:
-              isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+          crossAxisAlignment: isUser
+              ? CrossAxisAlignment.end
+              : CrossAxisAlignment.start,
           children: [
             Padding(
               padding: const EdgeInsets.only(bottom: 4),
@@ -297,7 +320,9 @@ class MessageBubble extends StatelessWidget {
                       : const Radius.circular(16),
                 ),
                 border: Border.all(
-                  color: isUser ? color.withValues(alpha: 0.2) : Colors.grey.shade200,
+                  color: isUser
+                      ? color.withValues(alpha: 0.2)
+                      : Colors.grey.shade200,
                 ),
                 boxShadow: [
                   BoxShadow(
@@ -367,7 +392,9 @@ class _MathAwareContent extends StatelessWidget {
         if (seg.isBlockMath) {
           return Padding(
             padding: const EdgeInsets.symmetric(vertical: 6),
-            child: Center(child: _safeMath(seg.content, fontSize: fontSize + 3)),
+            child: Center(
+              child: _safeMath(seg.content, fontSize: fontSize + 3),
+            ),
           );
         } else if (seg.isInlineMath) {
           return Padding(
@@ -456,8 +483,7 @@ class _MathAwareContent extends StatelessWidget {
           segments.add(_TextSegment.text(input.substring(nextInline)));
           break;
         }
-        final mathContent =
-            input.substring(nextInline + 1, endInline).trim();
+        final mathContent = input.substring(nextInline + 1, endInline).trim();
         segments.add(_TextSegment.inlineMath(mathContent));
         pos = endInline + 1;
       }

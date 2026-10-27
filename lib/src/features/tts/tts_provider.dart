@@ -5,6 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../shared/platform_info.dart';
+import 'speakable_text.dart';
 
 // ============================================================================
 // TTS PROVIDER – Zentraler Text-to-Speech Service für Lerndex
@@ -35,14 +37,31 @@ class TtsState {
   final bool isSpeaking;
   final bool isInitialized;
 
-  const TtsState({this.isSpeaking = false, this.isInitialized = false});
+  /// Kennung des gerade gesprochenen Textes (z.B. ID der Tutor-Nachricht),
+  /// damit genau dort der Stopp-Knopf erscheint.
+  final String? utteranceId;
 
-  TtsState copyWith({bool? isSpeaking, bool? isInitialized}) {
+  const TtsState({
+    this.isSpeaking = false,
+    this.isInitialized = false,
+    this.utteranceId,
+  });
+
+  TtsState copyWith({
+    bool? isSpeaking,
+    bool? isInitialized,
+    String? utteranceId,
+    bool clearUtterance = false,
+  }) {
     return TtsState(
       isSpeaking: isSpeaking ?? this.isSpeaking,
       isInitialized: isInitialized ?? this.isInitialized,
+      utteranceId: clearUtterance ? null : (utteranceId ?? this.utteranceId),
     );
   }
+
+  /// True, solange der Text mit dieser Kennung gesprochen wird.
+  bool isSpeakingId(String id) => isSpeaking && utteranceId == id;
 }
 
 // ── TTS Controller ────────────────────────────────────────────────────────────
@@ -53,6 +72,17 @@ class TtsController extends StateNotifier<TtsState> {
   }
 
   final FlutterTts _tts = FlutterTts();
+
+  /// Kennung für die nächste Ausgabe, siehe [speakTutor].
+  String? _pendingUtteranceId;
+
+  /// Zustand erst nach dem nächsten Frame ändern (verhindert setState auf
+  /// defunct Elementen) und diesen Frame auch anstoßen – sonst bliebe z.B. der
+  /// Stopp-Knopf stehen, bis das Kind den Bildschirm berührt.
+  void _afterFrame(VoidCallback fn) {
+    SchedulerBinding.instance.addPostFrameCallback((_) => fn());
+    SchedulerBinding.instance.scheduleFrame();
+  }
 
   // TTS-Konfiguration für Kinder (Klasse 1–2)
   // Weniger Pitch-Tweaking = weniger Roboter-Klang
@@ -73,43 +103,63 @@ class TtsController extends StateNotifier<TtsState> {
       await _tts.setVolume(_volume);
 
       // iOS: playback-Kategorie für bessere Audio-Qualität
-      // (ambient schneidet Frequenzen ab → klingt dumpfer/roboterhafter)
-      await _tts.setIosAudioCategory(
-        IosTextToSpeechAudioCategory.playback,
-        [
-          IosTextToSpeechAudioCategoryOptions.allowBluetooth,
-          IosTextToSpeechAudioCategoryOptions.allowBluetoothA2DP,
-          IosTextToSpeechAudioCategoryOptions.mixWithOthers,
-        ],
-        IosTextToSpeechAudioMode.defaultMode,
-      );
+      // (ambient schneidet Frequenzen ab → klingt dumpfer/roboterhafter).
+      // Nur in der iOS-App: das Plugin fragt intern Platform.isIOS ab, was im
+      // Browser einen Fehler wirft und TTS dort komplett abschalten würde.
+      if (isIOSApp) {
+        await _tts.setIosAudioCategory(
+          IosTextToSpeechAudioCategory.playback,
+          [
+            IosTextToSpeechAudioCategoryOptions.allowBluetooth,
+            IosTextToSpeechAudioCategoryOptions.allowBluetoothA2DP,
+            IosTextToSpeechAudioCategoryOptions.mixWithOthers,
+          ],
+          IosTextToSpeechAudioMode.defaultMode,
+        );
+      }
 
       // Beste verfügbare deutsche Stimme wählen
       // iOS: Siri/Neural-Stimmen klingen deutlich natürlicher
       await _selectBestVoice();
 
       _tts.setStartHandler(() {
+        // Kennung jetzt übernehmen: der Abbruch der vorigen Ausgabe (Cancel-
+        // Handler) hat sie davor schon wieder gelöscht.
+        final id = _pendingUtteranceId;
+        _pendingUtteranceId = null;
         // Scheduling über SchedulerBinding verhindert setState auf defunct Elementen
-        SchedulerBinding.instance.addPostFrameCallback((_) {
-          if (mounted) state = state.copyWith(isSpeaking: true);
+        _afterFrame(() {
+          if (mounted) {
+            state = state.copyWith(
+              isSpeaking: true,
+              utteranceId: id,
+              clearUtterance: id == null,
+            );
+          }
         });
       });
 
       _tts.setCompletionHandler(() {
-        SchedulerBinding.instance.addPostFrameCallback((_) {
-          if (mounted) state = state.copyWith(isSpeaking: false);
+        _afterFrame(() {
+          if (mounted) {
+            state = state.copyWith(isSpeaking: false, clearUtterance: true);
+          }
         });
       });
 
       _tts.setCancelHandler(() {
-        SchedulerBinding.instance.addPostFrameCallback((_) {
-          if (mounted) state = state.copyWith(isSpeaking: false);
+        _afterFrame(() {
+          if (mounted) {
+            state = state.copyWith(isSpeaking: false, clearUtterance: true);
+          }
         });
       });
 
       _tts.setErrorHandler((msg) {
-        SchedulerBinding.instance.addPostFrameCallback((_) {
-          if (mounted) state = state.copyWith(isSpeaking: false);
+        _afterFrame(() {
+          if (mounted) {
+            state = state.copyWith(isSpeaking: false, clearUtterance: true);
+          }
         });
       });
 
@@ -132,12 +182,36 @@ class TtsController extends StateNotifier<TtsState> {
     await _tts.speak(text);
   }
 
+  /// Liest eine Antwort von Lexi vor (Formeln, Markdown und Emojis werden
+  /// in sprechbaren Text übersetzt). [id] ist die ID der Nachricht.
+  Future<void> speakTutor(String text, {required String id}) async {
+    if (!state.isInitialized) return;
+    final clean = speakableText(text);
+    if (clean.isEmpty) return;
+
+    _pendingUtteranceId = id;
+    await _tts.stop();
+    await _tts.setSpeechRate(_speechRate);
+    await _tts.setPitch(_pitch);
+    await _tts.speak(clean);
+  }
+
+  /// Safari (iPhone/iPad) spricht erst, nachdem einmal innerhalb eines Tipps
+  /// gesprochen wurde. Antworten von Lexi kommen aber erst Sekunden später.
+  /// Deshalb beim Tippen auf „Senden“ einmal leer sprechen.
+  bool _webAudioUnlocked = false;
+  Future<void> unlockWebAudio() async {
+    if (!kIsWeb || _webAudioUnlocked || !state.isInitialized) return;
+    _webAudioUnlocked = true;
+    await _tts.speak(' ');
+  }
+
   /// Liest eine Quiz-Frage vor.
   /// Entfernt Emojis aus dem Text für natürlichere Sprachausgabe.
   Future<void> speakQuestion(String questionText) async {
     if (!state.isInitialized || questionText.isEmpty) return;
 
-    final cleanText = _stripEmojis(questionText);
+    final cleanText = stripEmojis(questionText);
     await _tts.stop();
     await _tts.setSpeechRate(_speechRate);
     await _tts.setPitch(_pitch);
@@ -148,7 +222,7 @@ class TtsController extends StateNotifier<TtsState> {
   Future<void> speakFeedback(String feedbackText) async {
     if (!state.isInitialized || feedbackText.isEmpty) return;
 
-    final cleanText = _stripEmojis(feedbackText);
+    final cleanText = stripEmojis(feedbackText);
     await _tts.stop();
     await _tts.setSpeechRate(_feedbackRate);
     await _tts.setPitch(_feedbackPitch);
@@ -203,31 +277,12 @@ class TtsController extends StateNotifier<TtsState> {
   /// Stoppt die aktuelle Sprachausgabe sofort.
   Future<void> stop() async {
     await _tts.stop();
-    if (mounted) state = state.copyWith(isSpeaking: false);
+    if (mounted) {
+      state = state.copyWith(isSpeaking: false, clearUtterance: true);
+    }
   }
 
   // ── Hilfsmethoden ─────────────────────────────────────────────────────────
-
-  /// Entfernt Emojis aus Text für natürlichere TTS-Ausgabe.
-  /// "🌟 Ja, 3 Äpfel!" → "Ja, 3 Äpfel!"
-  String _stripEmojis(String text) {
-    // Entferne Unicode-Emoji-Ranges
-    return text
-        .replaceAll(
-          RegExp(
-            r'[\u{1F300}-\u{1FAFF}]|[\u{2600}-\u{27BF}]|[\u{FE00}-\u{FE0F}]|'
-            r'[\u{1F900}-\u{1F9FF}]|[\u{1FA00}-\u{1FA6F}]|[\u{2700}-\u{27BF}]|'
-            r'[\u{E000}-\u{F8FF}]|[\u{200D}]|[\u{20E3}]|[\u{FE0F}]|'
-            r'[\u{D83C}-\u{DBFF}][\u{DC00}-\u{DFFF}]|[\u{2B50}]|[\u{2B05}-\u{2B07}]|'
-            r'[\u{2934}-\u{2935}]|[\u{3030}]|[\u{303D}]|[\u{25A0}-\u{25FF}]|'
-            r'[\u{2300}-\u{23FF}]',
-            unicode: true,
-          ),
-          '',
-        )
-        .replaceAll(RegExp(r'\s{2,}'), ' ') // Doppelte Leerzeichen entfernen
-        .trim();
-  }
 
   /// Wählt die best verfügbare deutsche Stimme.
   /// iOS: Siri/Neural-Stimmen bevorzugen (klingen deutlich natürlicher)
@@ -335,17 +390,24 @@ final ttsControllerProvider = StateNotifierProvider<TtsController, TtsState>((
 class TtsSettingsNotifier extends StateNotifier<bool> {
   final String childId;
 
-  TtsSettingsNotifier(this.childId) : super(true) {
+  /// Schlüssel-Präfix in SharedPreferences und Startwert – so dient die
+  /// Klasse auch für „Lexi automatisch vorlesen“ (tutorAutoReadProvider).
+  final String prefix;
+  final bool defaultValue;
+
+  TtsSettingsNotifier(
+    this.childId, {
+    this.prefix = 'tts_enabled_',
+    this.defaultValue = true,
+  }) : super(defaultValue) {
     _load();
   }
-
-  static const _prefix = 'tts_enabled_';
 
   Future<void> _load() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final value = prefs.getBool('$_prefix$childId');
-      if (mounted) state = value ?? true; // Default: an
+      final value = prefs.getBool('$prefix$childId');
+      if (mounted) state = value ?? defaultValue;
     } catch (_) {
       // SharedPreferences nicht verfügbar → Default beibehalten
     }
@@ -357,7 +419,7 @@ class TtsSettingsNotifier extends StateNotifier<bool> {
     state = newValue;
     try {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool('$_prefix$childId', newValue);
+      await prefs.setBool('$prefix$childId', newValue);
     } catch (_) {}
   }
 
@@ -366,7 +428,7 @@ class TtsSettingsNotifier extends StateNotifier<bool> {
     state = enabled;
     try {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool('$_prefix$childId', enabled);
+      await prefs.setBool('$prefix$childId', enabled);
     } catch (_) {}
   }
 }
@@ -379,6 +441,20 @@ final ttsSettingsProvider =
       childId,
     ) {
       return TtsSettingsNotifier(childId);
+    });
+
+/// Lexi liest ihre Antworten automatisch vor (pro Kind, Standard: aus).
+/// Der Lautsprecher-Knopf an jeder Nachricht geht unabhängig davon immer.
+final tutorAutoReadProvider =
+    StateNotifierProvider.family<TtsSettingsNotifier, bool, String>((
+      ref,
+      childId,
+    ) {
+      return TtsSettingsNotifier(
+        childId,
+        prefix: 'tutor_auto_read_',
+        defaultValue: false,
+      );
     });
 
 // ── Convenience Extension ─────────────────────────────────────────────────────
