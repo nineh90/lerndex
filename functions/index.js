@@ -9,20 +9,13 @@
 //    users/{uid}/private/pin, das kein Client lesen kann. Vorher lag der Hash
 //    im users-Dokument – ein Kindergerät, das dieses Dokument lesen darf
 //    (Abo-Status), hätte den PIN offline durchprobieren können.
+// 3. Schule (school.js): Lehrkräfte, Schülerkarten.
 
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const functionsV1 = require("firebase-functions/v1");
-const { setGlobalOptions } = require("firebase-functions/v2");
-const { initializeApp } = require("firebase-admin/app");
-const { getAuth } = require("firebase-admin/auth");
-const { getFirestore, FieldValue, Timestamp } = require("firebase-admin/firestore");
+const { FieldValue, Timestamp } = require("firebase-admin/firestore");
 const crypto = require("node:crypto");
-
-initializeApp();
-setGlobalOptions({ region: "europe-west3", maxInstances: 10 });
-
-const db = getFirestore();
-const auth = getAuth();
+const { db, auth } = require("./lib/firebase");
 
 const {
   kidUid,
@@ -35,12 +28,16 @@ const {
 
 // ── Hilfen ───────────────────────────────────────────────────────────────────
 
-/** Nur Eltern-Konten (kein Kindergerät, später auch keine Schul-Rollen). */
+/**
+ * Nur Eltern-Konten, kein Kinder-/Schülergerät. Lehrkräfte sind normale
+ * Konten mit zusätzlichen Schul-Claims und dürfen hier ebenfalls (die
+ * Lehrerin ist oft selbst Mutter).
+ */
 function requireParent(request) {
   if (!request.auth) {
     throw new HttpsError("unauthenticated", "Bitte zuerst anmelden.");
   }
-  if (request.auth.token.role) {
+  if (request.auth.token.role === "student") {
     throw new HttpsError("permission-denied", "Nur für Eltern.");
   }
   return request.auth.uid;
@@ -322,8 +319,8 @@ exports.setParentPin = onCall(async (request) => {
 
 /**
  * Die App löscht beim Kontolöschen alle Daten, an die sie herankommt. Den PIN
- * (private/pin) und offene Kopplungscodes darf sie nicht anfassen – das
- * erledigt dieser Trigger. (Auth-Trigger gibt es nur als 1. Generation.)
+ * (private/pin), offene Kopplungscodes und den Eintrag in der Lehrerliste
+ * einer Schule darf sie nicht anfassen – das erledigt dieser Trigger. (Auth-Trigger gibt es nur als 1. Generation.)
  */
 exports.cleanupDeletedParent = functionsV1
   .region("europe-west3")
@@ -337,5 +334,12 @@ exports.cleanupDeletedParent = functionsV1
       .get();
     const batch = db.batch();
     codes.docs.forEach((doc) => batch.delete(doc.ref));
+    // Lehrkraft: aus der Lehrerliste der Schule austragen
+    const schoolId = user.customClaims?.schoolId;
+    if (schoolId) batch.delete(db.doc(`schools/${schoolId}/members/${user.uid}`));
     await batch.commit();
   });
+
+// ── 4. Schule ────────────────────────────────────────────────────────────────
+
+Object.assign(exports, require("./school"));

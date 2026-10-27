@@ -59,7 +59,31 @@ function newSalt() {
   return base64UrlPadded(crypto.randomBytes(16));
 }
 
+/** Token für eine Schüler-QR-Karte (20 Zeichen, ~100 Bit). */
+function newCardToken() {
+  let token = "";
+  for (let i = 0; i < 20; i++) {
+    token += CODE_ALPHABET[crypto.randomInt(CODE_ALPHABET.length)];
+  }
+  return token;
+}
+
+function sha256Hex(value) {
+  return crypto.createHash("sha256").update(value, "utf8").digest("hex");
+}
+
+/**
+ * „Besitzer-Konto“ der Schüler einer Schule: users/school_<id>, analog zu
+ * users/{uid} bei Eltern (gleich in lib/.../account.dart).
+ */
+function schoolOwnerUid(schoolId) {
+  return `school_${schoolId}`;
+}
+
 module.exports = {
+  newCardToken,
+  sha256Hex,
+  schoolOwnerUid,
   kidUid,
   CODE_ALPHABET,
   newPairingCode,

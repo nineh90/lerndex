@@ -48,6 +48,30 @@ service cloud.firestore {
       return isStudentOf(userId) && request.auth.token.childId == childId;
     }
 
+    // Lehrkraft (Claims schoolId + schoolRole, gesetzt von den Functions in
+    // functions/school.js). Lehrkräfte sind normale Konten, für die eigene
+    // Familie also weiter „Eltern“. Die Schüler einer Schule liegen unter
+    // users/school_<schoolId>/children – wie Kinder unter users/{uid}.
+    function isSchoolMember(schoolId) {
+      return isParent()
+        && request.auth.token.get('schoolId', '') == schoolId
+        && request.auth.token.get('schoolRole', '') in ['admin', 'teacher'];
+    }
+
+    // Lehrkraft der Schule, der dieses „Besitzer-Konto“ gehört.
+    // Alle Lehrkräfte sehen alle Klassen ihrer Schule.
+    function isTeacherOf(userId) {
+      return isParent()
+        && request.auth.token.get('schoolRole', '') in ['admin', 'teacher']
+        && userId == 'school_' + request.auth.token.get('schoolId', '');
+    }
+
+    // Lexi-Chats bleiben privat: Lehrkräfte sehen sie nicht (offene Frage
+    // an die Schule, siehe docs/PLAN-schule-web.md).
+    function isPrivateForTeachers(subcollection) {
+      return subcollection in ['tutor_sessions', 'active_tutor_chat', 'devices'];
+    }
+
     // Felder am users-Dokument, die nur der Server setzt: testAccess
     // (Review-Testaccount, nur über die Console) und pinSet (Cloud Functions).
     //
@@ -62,7 +86,8 @@ service cloud.firestore {
     }
 
     match /users/{userId} {
-      allow read: if isOwner(userId) || isStudentOf(userId);
+      // Schul-Konto (users/school_<id>): Lizenz und Name setzt nur der Server
+      allow read: if isOwner(userId) || isStudentOf(userId) || isTeacherOf(userId);
       allow delete: if isOwner(userId);
       allow create: if isOwner(userId)
         && !('testAccess' in request.resource.data)
@@ -82,6 +107,8 @@ service cloud.firestore {
         // Kindergerät: eigenes Profil lesen und Fortschritt speichern,
         // aber nicht anlegen oder löschen.
         allow read, update: if isStudentFor(userId, childId);
+        // Lehrkraft: Schüler anlegen, bearbeiten, löschen
+        allow read, write: if isTeacherOf(userId);
 
         // Gekoppelte Geräte: schreibt nur die Cloud Function
         match /devices/{deviceId} {
@@ -90,10 +117,12 @@ service cloud.firestore {
 
         match /{subcollection}/{docId} {
           allow read, write: if isOwner(userId)
-            || (isStudentFor(userId, childId) && subcollection != 'devices');
+            || (isStudentFor(userId, childId) && subcollection != 'devices')
+            || (isTeacherOf(userId) && !isPrivateForTeachers(subcollection));
 
           match /{nested}/{nestedDocId} {
-            allow read, write: if isOwner(userId) || isStudentFor(userId, childId);
+            allow read, write: if isOwner(userId) || isStudentFor(userId, childId)
+              || (isTeacherOf(userId) && !isPrivateForTeachers(subcollection));
           }
         }
       }
@@ -102,12 +131,12 @@ service cloud.firestore {
       // Das Kindergerät liest die Batches seines Kindes und markiert
       // freigegebene Aufgaben als gelöst.
       match /generated_batches/{batchId} {
-        allow read, write: if isOwner(userId);
+        allow read, write: if isOwner(userId) || isTeacherOf(userId);
         allow read: if isStudentOf(userId)
           && resource.data.childId == request.auth.token.childId;
 
         match /{subcollection}/{subDocId} {
-          allow read, write: if isOwner(userId);
+          allow read, write: if isOwner(userId) || isTeacherOf(userId);
           allow read, update: if isStudentOf(userId)
             && get(/databases/$(database)/documents/users/$(userId)/generated_batches/$(batchId)).data.childId
               == request.auth.token.childId;
@@ -115,9 +144,29 @@ service cloud.firestore {
       }
     }
 
-    // Kopplungscodes: nur Cloud Functions
+    // Kopplungscodes, Schul-Einladungen, Schülerkarten: nur Cloud Functions
     match /pairingCodes/{code} {
       allow read, write: if false;
+    }
+    match /schoolInvites/{code} {
+      allow read, write: if false;
+    }
+    match /studentCards/{tokenHash} {
+      allow read, write: if false;
+    }
+
+    // Schule: Name und Lehrerliste schreiben nur die Functions,
+    // Klassen pflegen die Lehrkräfte selbst.
+    match /schools/{schoolId} {
+      allow read: if isSchoolMember(schoolId);
+
+      match /members/{memberId} {
+        allow read: if isSchoolMember(schoolId);
+      }
+
+      match /classes/{classId} {
+        allow read, write: if isSchoolMember(schoolId);
+      }
     }
 
     // Warteliste: nur serverseitig (Admin-SDK) zugreifbar.
