@@ -178,22 +178,60 @@ gespeicherte Konto dann gegen den echten Server. Mit echten Konten passiert das 
 - **Android-App-Link:** Auf Android öffnet der QR-Code die Web-App im Browser, nicht die
   installierte App. In der App geht der Code über „Ich bin ein Kind“.
 
-## Phase 4: Schule
+## Phase 4: Schule ✅ (Branch `schule`, noch nicht deployt)
+
+Datenmodell:
 
 ```
-schools/{schoolId}                    Name, Lizenz
-schools/{sid}/members/{uid}           role: admin | teacher
-schools/{sid}/classes/{classId}       "5b", Jahrgang
-schools/{sid}/students/{studentId}    wie ChildModel + classId
+schools/{schoolId}                     Name
+schools/{sid}/members/{uid}            role: admin | teacher  (schreiben nur Functions)
+schools/{sid}/classes/{classId}        Name „5b“, Klassenstufe, Schulform
+users/school_{sid}                     „Besitzer-Konto“ der Schüler, Lizenz (schoolLicenseUntil)
+users/school_{sid}/children/{id}       Schüler, wie ChildModel + classId
+studentCards/{sha256(token)}           QR-Karten (nur Hash, nur Functions)
+schoolInvites/{code}                   Einladungen für Lehrkräfte (nur Functions)
 ```
 
-- Ein Schul-Admin lädt Lehrkräfte per Mail ein. Alle Lehrkräfte sehen alle Klassen.
-- Schüler per CSV/Excel-Import.
-- Schüler-Login über ausdruckbare QR-Karten. Auf geteilten Tablets schneller Kinderwechsel.
-- Schullizenz per Rechnung. Freischaltung über die Schulzugehörigkeit, serverseitig gesetzt.
+Die Schüler liegen bewusst wie Kinder einer Familie unter `users/school_<id>/children`. Damit
+laufen Quiz, Lexi, XP und Belohnungen für Schüler ohne jeden Umbau. Ein Schülergerät hat dieselben
+Claims wie ein gekoppeltes Kindergerät.
 
-Vorher klären: **Auftragsverarbeitungsvertrag (AVV)** mit Schule bzw. Schulträger, Zustimmung
-des Datenschutzbeauftragten. Klären, ob Lehrkräfte die Lexi-Chats der Kinder sehen dürfen.
+Erledigt:
+
+- **Schule anlegen:** Einstellungen → Schule → „Schule anlegen“. Wer anlegt, ist Schulleitung.
+- **Lehrkräfte:** Die Schulleitung erzeugt einen Einladungscode (7 Tage, einmalig), die Lehrkraft
+  gibt ihn unter Einstellungen → „Einer Schule beitreten“ ein. Alle Lehrkräfte sehen alle Klassen.
+  Eine Lehrkraft bleibt für ihre eigene Familie ganz normal Elternteil. Die Schulleitung kann
+  Lehrkräfte entfernen.
+- **Klassen und Schüler:** Klasse mit Klassenstufe und Schulform anlegen, Schüler als Namensliste
+  (ein Name pro Zeile) eintragen. Empfehlung in der App: Vorname + Anfangsbuchstabe.
+- **QR-Karten:** Im Browser öffnet „Drucken“ eine A4-Seite mit 8 Karten pro Blatt. Das Kind scannt
+  seine Karte mit der Tablet-Kamera und ist angemeldet. Karten sind wiederverwendbar (geteilte
+  Tablets). „Neue Karte“ macht die alte ungültig.
+- **Schul-Tablet:** Oben links „Abmelden“, damit das nächste Kind seine Karte scannen kann.
+- **Schüler löschen:** komplett auf dem Server, inklusive Lexi-Gesprächen, Fotos, Karten und
+  Gerätekonto.
+- **Lizenz:** `schoolLicenseUntil` (Zeitstempel) am Dokument `users/school_<id>` gibt allen
+  Schülern vollen Zugriff. Setzt nur Lerndex, z.B. in der Firebase Console.
+- **Lexi-Chats bleiben privat:** Lehrkräfte sehen sie nicht (Rules). Freischalten ist eine
+  Zeile in `firestore.rules` (`isPrivateForTeachers`), wenn die Schule es will und darf.
+- **KI-Kosten:** Beim Anlegen einer Klasse werden keine KI-Fragen vorgeladen. Das passiert erst
+  beim ersten Start auf dem Schülergerät, und nur für dieses Kind.
+- **Tests:** 11 Schul-Tests im Emulator (insgesamt 41), Druckseite mit QR-Decoder geprüft,
+  kompletter Ablauf im Browser gegen den Emulator durchgeklickt.
+
+Offen:
+
+- **Vor echten Schülerdaten:** Auftragsverarbeitungsvertrag (AVV) mit Schule bzw. Schulträger,
+  Zustimmung des Datenschutzbeauftragten.
+- **Import aus der Schulverwaltung:** Bisher Namen per Kopieren und Einfügen. Ein CSV-Import
+  lohnt sich, wenn klar ist, welches Format die Schule exportiert.
+- **Eltern ↔ Schule:** Sehen Eltern den Lernstand aus der Schule? Noch nicht verknüpft.
+- **Lehrer-Ansicht am PC:** Die App ist im Browser auf Handybreite zentriert. Für den Lehrer-
+  bereich wäre eine breitere Ansicht schöner.
+- **Kartenwechsel ohne Abmelden:** Scannt ein Kind seine Karte, während noch ein anderes Kind
+  angemeldet ist, meldet die App das erste ab. Im Emulator ließ sich das wegen der Neulade-
+  Eigenheit (siehe Phase 3) nicht prüfen, nach dem Deploy testen.
 
 ## Phase 5: Arbeitsverhalten, Stufen, Privilegien
 

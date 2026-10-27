@@ -74,6 +74,8 @@ dependencies:
   confetti: ^0.8.0
   # QR-Code zum Koppeln eines Kindergeräts
   qr_flutter: ^4.1.0
+  # QR-Codes als SVG für die druckbaren Schülerkarten (Web)
+  qr: ^3.0.2
   # Gepflegter Fork des discontinued flutter_markdown (gleiche API)
   flutter_markdown_plus: ^1.0.12
   # Eigene Inline-Syntax für Formeln ($...$) in Lexis Antworten

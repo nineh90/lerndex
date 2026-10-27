@@ -194,6 +194,25 @@ class _LerndexSplashScreenState extends ConsumerState<LerndexSplashScreen>
         }
       }
 
+      // Schüler-QR-Karte (…/s/TOKEN): auf geteilten Schul-Tablets meldet
+      // die Karte das Kind an – auch wenn vorher ein anderes Kind dran war.
+      final cardToken = kIsWeb ? studentCardFromPath(Uri.base.path) : null;
+      if (cardToken != null) {
+        replaceBrowserPath('/');
+        if (user == null || user.isSchoolDevice) {
+          _setProgress(_bootstrapShare * 0.5, 'Anmelden...');
+          try {
+            if (user != null) await authRepo.signOut();
+            await ref
+                .read(childDeviceRepositoryProvider)
+                .redeemStudentCard(cardToken);
+          } on PairingException catch (e) {
+            _pairingError = e.message;
+          }
+          user = authRepo.currentUser;
+        }
+      }
+
       if (user == null) {
         destination = _pairingError != null ? 'pairing' : 'login';
         _setProgress(1.0, 'Los geht\'s! ✨');

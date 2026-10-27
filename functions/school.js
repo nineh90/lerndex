@@ -18,6 +18,7 @@
 
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { FieldValue, Timestamp } = require("firebase-admin/firestore");
+const { getStorage } = require("firebase-admin/storage");
 const { db, auth } = require("./lib/firebase");
 const {
   kidUid,
@@ -271,16 +272,8 @@ exports.redeemStudentCard = onCall(async (request) => {
   return { token: customToken, childName: student.get("name") || "" };
 });
 
-/**
- * Lehrkraft: Karten eines Schülers ungültig machen und sein Gerätekonto
- * löschen – vor dem Löschen des Schülers oder wenn eine Karte verloren ging.
- */
-exports.revokeStudent = onCall(async (request) => {
-  const schoolId = requireTeacher(request);
-  const studentId = request.data?.studentId;
-  if (typeof studentId !== "string" || !studentId) {
-    throw new HttpsError("invalid-argument", "studentId fehlt.");
-  }
+/** Karten eines Schülers löschen und sein Gerätekonto entfernen. */
+async function revokeCardsAndAccount(schoolId, studentId) {
   const cards = await db
     .collection("studentCards")
     .where("schoolId", "==", schoolId)
@@ -297,6 +290,40 @@ exports.revokeStudent = onCall(async (request) => {
   } catch (e) {
     if (e.code !== "auth/user-not-found") throw e;
   }
-  return { revokedCards: cards.size };
+  return cards.size;
+}
+
+/**
+ * Lehrkraft: Karten eines Schülers ungültig machen und sein Gerätekonto
+ * löschen – vor dem Löschen des Schülers oder wenn eine Karte verloren ging.
+ */
+exports.revokeStudent = onCall(async (request) => {
+  const schoolId = requireTeacher(request);
+  const studentId = request.data?.studentId;
+  if (typeof studentId !== "string" || !studentId) {
+    throw new HttpsError("invalid-argument", "studentId fehlt.");
+  }
+  const revokedCards = await revokeCardsAndAccount(schoolId, studentId);
+  return { revokedCards };
 });
 
+/**
+ * Lehrkraft: Schüler komplett löschen – Karten, Gerätekonto, alle Daten
+ * inklusive Lexi-Chats (die Lehrkräfte selbst nicht lesen dürfen) und
+ * hochgeladene Aufgabenblätter.
+ */
+exports.deleteStudent = onCall(async (request) => {
+  const schoolId = requireTeacher(request);
+  const studentId = request.data?.studentId;
+  if (typeof studentId !== "string" || !studentId || studentId.includes("/")) {
+    throw new HttpsError("invalid-argument", "studentId fehlt.");
+  }
+  await revokeCardsAndAccount(schoolId, studentId);
+
+  const owner = schoolOwnerUid(schoolId);
+  await db.recursiveDelete(db.doc(`users/${owner}/children/${studentId}`));
+  await getStorage()
+    .bucket()
+    .deleteFiles({ prefix: `tutor_worksheets/${owner}/${studentId}/` });
+  return { deleted: true };
+});

@@ -24,6 +24,10 @@ String ownerUidFor(String uid) => _parseKidUid(uid)?.parentUid ?? uid;
 /// Kind-ID, wenn [uid] ein gekoppeltes Kindergerät ist, sonst null.
 String? pairedChildIdFor(String uid) => _parseKidUid(uid)?.childId;
 
+/// „Besitzer-Konto“ der Schüler einer Schule (`users/school_<id>`), analog zu
+/// users/{uid} bei Eltern (gleich in functions/lib/helpers.js).
+String schoolOwnerUid(String schoolId) => 'school_$schoolId';
+
 /// UID des Kontos für ein gekoppeltes Kindergerät (gleiche Form wie in
 /// functions/index.js).
 String kidUid(String parentUid, String childId) =>
@@ -47,4 +51,8 @@ extension AccountUser on User {
   /// Läuft die App auf einem gekoppelten Kindergerät? Dann gibt es keinen
   /// Elternbereich, keine Kinderauswahl und keine Käufe.
   bool get isChildDevice => pairedChildId != null;
+
+  /// Schülergerät einer Schule (QR-Karte). Anders als zu Hause darf man sich
+  /// hier abmelden – Schul-Tablets werden geteilt.
+  bool get isSchoolDevice => isChildDevice && ownerUid.startsWith('school_');
 }

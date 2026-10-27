@@ -16,6 +16,7 @@ import 'letter_quiz_screen.dart';
 import 'color_shape_quiz_screen.dart';
 import 'package:lerndex/src/features/auth/domain/account.dart';
 import 'package:lerndex/src/features/auth/presentation/active_child_provider.dart';
+import 'package:lerndex/src/features/auth/presentation/widgets/school_device_logout_button.dart';
 
 // ============================================================================
 // EARLY LEARNER DASHBOARD – Klasse 1–2 (v2: Carousel-Layout)
@@ -480,8 +481,10 @@ class _CompactHeader extends ConsumerWidget {
           Row(
             children: [
               // ── Zurück-Button (nicht auf dem Kindergerät, dort ist das
-              // Dashboard die Startseite) ───────────────────────────────
-              if (!ref.watch(isChildDeviceProvider))
+              // Dashboard die Startseite; Schul-Tablet: Abmelden) ─────────
+              if (ref.watch(isSchoolDeviceProvider))
+                const SchoolDeviceLogoutButton(color: Colors.white)
+              else if (!ref.watch(isChildDeviceProvider))
               GestureDetector(
                 onTap: () => Navigator.of(context).pop(),
                 child: Container(

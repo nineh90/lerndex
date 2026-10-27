@@ -13,6 +13,8 @@ import '../../../tutorial_overlay.dart';
 import '../../subscription/data/subscription_service.dart';
 import '../../subscription/data/subscription_provider.dart';
 import '../../subscription/presentation/paywall_screen.dart';
+import '../../school/data/school_repository.dart';
+import '../../school/presentation/school_home_screen.dart';
 
 /// Haupt-Dashboard für Eltern mit Statistiken & Verwaltung
 class ParentDashboardScreen extends ConsumerStatefulWidget {
@@ -62,6 +64,20 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
         title: const Text('Eltern-Dashboard'),
         backgroundColor: Colors.deepPurple,
         foregroundColor: Colors.white,
+        actions: [
+          // Lehrkräfte: direkt in den Lehrerbereich
+          if (ref.watch(schoolMembershipProvider).value case final m?)
+            IconButton(
+              tooltip: 'Lehrerbereich',
+              icon: const Icon(Icons.school),
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => SchoolHomeScreen(membership: m),
+                ),
+              ),
+            ),
+        ],
       ),
       body: Stack(
         children: [

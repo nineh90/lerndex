@@ -78,3 +78,8 @@ final activeChildProvider =
 final isChildDeviceProvider = Provider<bool>((ref) {
   return ref.watch(authStateChangesProvider).value?.isChildDevice ?? false;
 });
+
+/// Schülergerät einer Schule (QR-Karte): hier gibt es einen Abmelde-Knopf.
+final isSchoolDeviceProvider = Provider<bool>((ref) {
+  return ref.watch(authStateChangesProvider).value?.isSchoolDevice ?? false;
+});

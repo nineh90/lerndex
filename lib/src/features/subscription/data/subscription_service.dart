@@ -336,6 +336,17 @@ class SubscriptionService {
       if (data?['testAccess'] == true) {
         return SubscriptionStatus.testAccess;
       }
+      // Schul-Lizenz (users/school_<id>): setzt nur Lerndex, z.B. in der
+      // Firebase Console – gilt für alle Schüler der Schule.
+      final licenseUntil = (data?['schoolLicenseUntil'] as Timestamp?)
+          ?.toDate();
+      if (licenseUntil != null && licenseUntil.isAfter(DateTime.now())) {
+        return SubscriptionStatus(
+          plan: SubscriptionPlan.family,
+          isActive: true,
+          expiresAt: licenseUntil,
+        );
+      }
       final subscriptionData = data?['subscription'] as Map<String, dynamic>?;
       return SubscriptionStatus.fromFirestore(subscriptionData);
     } catch (e) {

@@ -48,6 +48,12 @@ String? pairingCodeFromPath(String path) {
   return match?.group(1);
 }
 
+/// Token einer Schüler-QR-Karte aus einem Pfad wie /s/ABCD… lesen.
+String? studentCardFromPath(String path) {
+  final match = RegExp(r'^/s/([A-Za-z0-9]{16,64})/?$').firstMatch(path);
+  return match?.group(1);
+}
+
 class ChildDeviceRepository {
   ChildDeviceRepository(this._functions, this._auth, this._firestore);
 
@@ -82,6 +88,28 @@ class ChildDeviceRepository {
         throw const PairingException(
           'Der Code stimmt nicht oder ist abgelaufen. '
           'Bitte deine Eltern um einen neuen Code.',
+        );
+      }
+      throw const PairingException(
+        'Das hat gerade nicht geklappt. Bitte versuch es gleich nochmal.',
+      );
+    }
+  }
+
+  /// Schülergerät: QR-Karte der Schule einlösen und als Schüler anmelden.
+  Future<String> redeemStudentCard(String token) async {
+    try {
+      final result = await _functions.httpsCallable('redeemStudentCard').call({
+        'token': token,
+      });
+      final data = Map<String, dynamic>.from(result.data as Map);
+      await _auth.signInWithCustomToken(data['token'] as String);
+      return data['childName'] as String? ?? '';
+    } on FirebaseFunctionsException catch (e) {
+      if (e.code == 'not-found') {
+        throw const PairingException(
+          'Diese Karte gilt nicht mehr. Bitte frag deine Lehrerin oder '
+          'deinen Lehrer nach einer neuen.',
         );
       }
       throw const PairingException(

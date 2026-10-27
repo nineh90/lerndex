@@ -89,14 +89,22 @@ Der Großteil der Provider nutzt noch die Legacy-APIs (`StateNotifierProvider`, 
 - `users/{uid}/children/{childId}` — Kinder-Profile (`ChildModel`)
 - `users/{uid}/children/{childId}/devices` — gekoppelte Kindergeräte (schreibt nur die Function)
 - `pairingCodes/{code}` — offene Kopplungscodes, nur für Cloud Functions
+- `schools/{sid}` mit `members` (Lehrkräfte, nur Functions) und `classes` — Schule
+- `users/school_{sid}` und `users/school_{sid}/children/{id}` — Schul-Konto (Lizenz
+  `schoolLicenseUntil`) und Schüler, aufgebaut wie Eltern-Konto und Kinder
+- `studentCards/{sha256}`, `schoolInvites/{code}` — QR-Karten und Einladungen, nur Functions
 - Kinder-Limit hängt vom Abo-Plan ab (Starter: 1, Single: 1, Family: 3 + käufliche Slots)
 
 ### Konten und Rollen
 
 - **Eltern:** E-Mail/Google/Apple, kein `role`-Claim.
+- **Lehrkraft:** normales (Eltern-)Konto mit zusätzlichen Claims `{ schoolId, schoolRole }`
+  (`admin` oder `teacher`), gesetzt von `functions/school.js`. Sieht alle Klassen der Schule,
+  aber keine Lexi-Chats der Schüler.
 - **Kindergerät:** eigenes Konto `kid:<parentUid>:<childId>` mit Claims
   `{ role: "student", parentUid, childId }`, angelegt von der Cloud Function
-  `redeemPairingCode` (QR-Code/Code aus dem Elternbereich).
+  `redeemPairingCode` (QR-Code/Code aus dem Elternbereich). Schülergeräte genauso
+  (`kid:school_<sid>:<studentId>`, über die QR-Karte und `redeemStudentCard`).
 - **Datenpfade immer über `user.ownerUid`** (`lib/src/features/auth/domain/account.dart`), nie
   über `user.uid`. Für Eltern ist das dieselbe ID, für ein Kindergerät die der Eltern.
 - Was wer darf, steht in `firestore.rules`/`storage.rules`. Tests dafür und für die Functions:
@@ -105,7 +113,8 @@ Der Großteil der Provider nutzt noch die Legacy-APIs (`StateNotifierProvider`, 
 ### Cloud Functions
 
 `functions/index.js` (Node 22, Region europe-west3): Kindergeräte koppeln/abmelden, Eltern-PIN
-setzen/prüfen, Aufräumen beim Löschen eines Elternkontos. Deploy-Reihenfolge (Functions → IAM →
+setzen/prüfen, Aufräumen beim Löschen eines Elternkontos. `functions/school.js`: Schule, Lehrkräfte,
+Schülerkarten, Schüler löschen. Deploy-Reihenfolge (Functions → IAM →
 Rules → App) steht in `docs/PLAN-schule-web.md`, Phase 3.
 
 ### Tutor-Sicherheit

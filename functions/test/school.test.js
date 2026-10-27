@@ -197,3 +197,20 @@ test("Lehrerkonto gelöscht: aus der Lehrerliste ausgetragen", async () => {
   assert.equal(left, 1);
 });
 
+
+test("Schüler löschen: Daten inkl. Lexi-Chats, Karten und Konto weg", async () => {
+  const admin = await schoolAdmin();
+  await addStudent(admin, admin.owner, "s1", "Mia");
+  const { cards } = await admin.call("createStudentCards", { studentIds: ["s1"] });
+  const mia = await studentDevice(cards[0].token);
+  await setDoc(doc(mia.db, `users/${admin.owner}/children/s1/tutor_sessions/t1`), { a: 1 });
+  await setDoc(doc(mia.db, `users/${admin.owner}/children/s1/tutor_sessions/t1/messages/m1`), { t: "hi" });
+
+  await admin.call("deleteStudent", { studentId: "s1" });
+
+  assert.equal((await adb.doc(`users/${admin.owner}/children/s1`).get()).exists, false);
+  assert.equal((await adb.doc(`users/${admin.owner}/children/s1/tutor_sessions/t1/messages/m1`).get()).exists, false);
+  await expectError(device().call("redeemStudentCard", { token: cards[0].token }), "not-found");
+  await assert.rejects(adminAuth().getUser(`kid:${admin.owner}:s1`));
+  await expectError((await parentWithChildren()).call("deleteStudent", { studentId: "s1" }), "permission-denied");
+});

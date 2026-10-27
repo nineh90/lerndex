@@ -13,6 +13,7 @@ import '../data/pin_repository.dart';
 import '../../subscription/data/subscription_provider.dart';
 import '../../subscription/presentation/paywall_screen.dart';
 import 'feedback_dialog.dart';
+import '../../school/presentation/school_section.dart';
 import 'package:lerndex/src/features/auth/domain/account.dart';
 
 /// Einstellungsbereich im Elterndashboard
@@ -77,6 +78,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             trailing: const Icon(Icons.chevron_right),
             onTap: () => _showChangePinDialog(context),
           ),
+
+          const Divider(indent: 16, endIndent: 16),
+
+          // ── Abschnitt: Schule ────────────────────────────────────────
+          const _SectionHeader(title: 'Schule'),
+          const SchoolSection(),
 
           const Divider(indent: 16, endIndent: 16),
 
