@@ -1,5 +1,5 @@
-import 'dart:io' show Platform;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lerndex/src/features/subscription/data/subscription_model.dart';
@@ -7,6 +7,7 @@ import 'package:lerndex/src/features/subscription/data/subscription_provider.dar
 import 'package:purchases_flutter/models/offering_wrapper.dart';
 import 'package:purchases_flutter/models/package_wrapper.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../../shared/platform_info.dart';
 
 /// Sucht das RevenueCat-Package zu einem Plan im aktuellen Offering.
 Package? _packageForPlan(Offering offering, SubscriptionPlan plan) {
@@ -243,7 +244,11 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
 
           const SizedBox(height: 8),
           Text(
-            'Zahlung über ${Platform.isIOS ? 'den App Store' : 'Google Play'}. '
+            'Zahlung über ${kIsWeb
+                ? 'Stripe'
+                : isIOSApp
+                ? 'den App Store'
+                : 'Google Play'}. '
             'Automatische Verlängerung. Jederzeit kündbar. '
             'Hinweise zum Widerrufsrecht findest du in den AGB.',
             textAlign: TextAlign.center,

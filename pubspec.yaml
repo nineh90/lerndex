@@ -44,12 +44,16 @@ dependencies:
   # Einziger KI-Zugang der App. Alle Calls laufen ueber VertexAIService.
   # ENTFERNT: firebase_vertexai, google_generative_ai, flutter_dotenv
   firebase_ai: ^3.14.0
+  # Schützt die KI-Aufrufe vor fremden Clients (im Web liegt der API-Key offen)
+  firebase_app_check: ^0.4.5
 
   # Foto-Upload – Android-Implementierung direkt eingebunden, um den
   # System-Photo-Picker zu aktivieren (Play-Policy, s. main.dart)
   image_picker: ^1.1.2
   image_picker_android: ^0.8.13
   image_picker_platform_interface: ^2.10.0
+  # XFile statt dart:io File – funktioniert auch im Browser
+  cross_file: ^0.3.5
   permission_handler: ^12.0.3
 
   # File system (genutzt in theme_picker_sheet.dart zur LAUFZEIT – nicht dev!)

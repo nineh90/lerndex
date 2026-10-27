@@ -1,9 +1,10 @@
-import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:lerndex/src/shared/widgets/message_bubble.dart';
+import 'package:lerndex/src/shared/widgets/picked_image.dart';
 import '../domain/chat_message.dart';
 import 'tutor_provider.dart';
 import '../../auth/presentation/active_child_provider.dart';
@@ -34,7 +35,7 @@ class _TutorScreenState extends ConsumerState<TutorScreen> {
 
   /// Aktuell gewähltes Aufgabenblatt-Foto, das mit der nächsten Nachricht
   /// an den Tutor geschickt wird (null = kein Foto).
-  File? _selectedImage;
+  XFile? _selectedImage;
 
   // Werden in initState gespeichert – kein ref in dispose nötig
   XPService? _xpService;
@@ -281,7 +282,8 @@ class _TutorScreenState extends ConsumerState<TutorScreen> {
     // Nur die Kamera braucht eine Runtime-Permission. Die Galerie läuft über
     // den System-Photo-Picker, der ganz ohne Medien-Berechtigung auskommt
     // (Play-Policy: READ_MEDIA_IMAGES ist bei gelegentlichem Zugriff verboten).
-    if (source == ImageSource.camera) {
+    // Im Browser fragt der Browser selbst nach der Kamera.
+    if (source == ImageSource.camera && !kIsWeb) {
       final status = await Permission.camera.request();
       if (status.isDenied || status.isPermanentlyDenied) {
         if (mounted) {
@@ -313,7 +315,7 @@ class _TutorScreenState extends ConsumerState<TutorScreen> {
         imageQuality: 85,
       );
       if (image != null && mounted) {
-        setState(() => _selectedImage = File(image.path));
+        setState(() => _selectedImage = image);
       }
     } catch (e) {
       if (mounted) {
@@ -535,8 +537,8 @@ class _TutorScreenState extends ConsumerState<TutorScreen> {
         children: [
           ClipRRect(
             borderRadius: BorderRadius.circular(10),
-            child: Image.file(
-              image,
+            child: pickedImage(
+              image.path,
               width: 56,
               height: 56,
               fit: BoxFit.cover,

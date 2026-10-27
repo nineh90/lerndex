@@ -780,7 +780,7 @@ class _DeleteAccountDialogState extends State<_DeleteAccountDialog> {
 class _SubscriptionTile extends ConsumerWidget {
   static const _purple = Colors.deepPurple;
 
-  // Google Play Abo-Verwaltung — öffnet die offizielle Google Play Seite
+  // Abo-Verwaltung — öffnet die Seite des Stores, in dem gekauft wurde
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -883,7 +883,7 @@ class _SubscriptionTile extends ConsumerWidget {
 
                   if (status.hasAccess && plan != SubscriptionPlan.none) ...[
                     const SizedBox(width: 10),
-                    // Abo bei Google Play verwalten (kündigen etc.)
+                    // Abo im jeweiligen Store verwalten (kündigen etc.)
                     Expanded(
                       child: OutlinedButton.icon(
                         icon: const Icon(Icons.open_in_new, size: 18),
@@ -896,7 +896,7 @@ class _SubscriptionTile extends ConsumerWidget {
                           side: BorderSide(color: Colors.grey.shade400),
                           padding: const EdgeInsets.symmetric(vertical: 10),
                         ),
-                        onPressed: () => _openGooglePlaySubscriptions(context),
+                        onPressed: () => _openSubscriptionManagement(context, ref),
                       ),
                     ),
                   ],
@@ -909,17 +909,25 @@ class _SubscriptionTile extends ConsumerWidget {
     );
   }
 
-  Future<void> _openGooglePlaySubscriptions(BuildContext context) async {
-    // Öffnet Google Play → Meine Abos direkt für diese App
+  Future<void> _openSubscriptionManagement(
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
+    // RevenueCat kennt den Store des Kaufs (Google Play, App Store oder das
+    // Stripe-Portal bei Web-Käufen). Fallback: Google Play → Meine Abos.
+    final managementUrl = await ref
+        .read(subscriptionServiceProvider)
+        .getManagementUrl();
     final uri = Uri.parse(
-      'https://play.google.com/store/account/subscriptions'
-      '?package=de.nilsdigital.lerndex',
+      managementUrl ??
+          'https://play.google.com/store/account/subscriptions'
+              '?package=de.nilsdigital.lerndex',
     );
     if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Google Play konnte nicht geöffnet werden.'),
+            content: Text('Die Abo-Verwaltung konnte nicht geöffnet werden.'),
           ),
         );
       }

@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
-import 'dart:io';
 import 'dart:convert';
 import 'dart:math';
+import 'package:cross_file/cross_file.dart';
 import 'package:firebase_ai/firebase_ai.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:firebase_storage/firebase_storage.dart';
@@ -159,6 +159,7 @@ class VertexAIService {
   /// und durch kindgerechte Fallback-Texte ersetzt).
   static void _reportAiError(Object e, StackTrace st, String context) {
     debugPrint('❌ $context: $e');
+    if (kIsWeb) return; // Crashlytics gibt es nur in den nativen Apps
     FirebaseCrashlytics.instance.recordError(
       e,
       st,
@@ -250,7 +251,7 @@ class VertexAIService {
     required ChildModel child,
     required String userMessage,
     required List<ChatMessage> conversationHistory,
-    File? imageFile,
+    XFile? imageFile,
   }) async {
     final hasImage = imageFile != null;
 
@@ -348,7 +349,7 @@ class VertexAIService {
             : userMessage.trim();
         message = Content.multi([
           TextPart(caption),
-          InlineDataPart('image/jpeg', imageBytes),
+          InlineDataPart(_imageMimeType(imageFile), imageBytes),
         ]);
       } else {
         message = Content.text(userMessage);
@@ -390,7 +391,7 @@ class VertexAIService {
   // --------------------------------------------------------------------------
 
   Future<GeneratedTaskResult> generateTasksFromImage({
-    required File imageFile,
+    required XFile imageFile,
     required ChildModel child,
     required String userId,
     required Subject subject,
@@ -425,7 +426,7 @@ class VertexAIService {
       final content = [
         Content.multi([
           TextPart(prompt),
-          InlineDataPart('image/jpeg', imageBytes),
+          InlineDataPart(_imageMimeType(imageFile), imageBytes),
         ]),
       ];
 
@@ -1474,8 +1475,25 @@ Antworte NUR mit einem JSON-Array, kein Text oder Markdown davor/danach:
   // UPLOAD
   // --------------------------------------------------------------------------
 
+  /// Lädt ein Foto als Bytes hoch. putFile gibt es im Browser nicht, und die
+  /// Storage-Rules verlangen einen image/*-Content-Type.
+  Future<void> _putImage(Reference ref, XFile imageFile) async {
+    await ref.putData(
+      await imageFile.readAsBytes(),
+      SettableMetadata(contentType: _imageMimeType(imageFile)),
+    );
+  }
+
+  /// Im Browser kann der Picker auch PNG liefern, die Apps liefern JPEG.
+  static String _imageMimeType(XFile imageFile) {
+    final mimeType = imageFile.mimeType;
+    return mimeType != null && mimeType.startsWith('image/')
+        ? mimeType
+        : 'image/jpeg';
+  }
+
   Future<String> _uploadImage(
-    File imageFile,
+    XFile imageFile,
     String userId,
     String childId,
     Subject subject,
@@ -1483,7 +1501,7 @@ Antworte NUR mit einem JSON-Array, kein Text oder Markdown davor/danach:
     final timestamp = DateTime.now().millisecondsSinceEpoch;
     final path = 'task_images/$userId/$childId/${subject.value}/$timestamp.jpg';
     final ref = _storage.ref().child(path);
-    await ref.putFile(imageFile);
+    await _putImage(ref, imageFile);
     final url = await ref.getDownloadURL();
     debugPrint('✅ Bild hochgeladen: $path');
     return url;
@@ -1493,14 +1511,14 @@ Antworte NUR mit einem JSON-Array, kein Text oder Markdown davor/danach:
   /// Storage und gibt die Download-URL zurück. Liegt unter eigenem Pfad
   /// (`tutor_worksheets/...`), damit Eltern es im Verlauf einsehen können.
   Future<String> uploadTutorWorksheet({
-    required File imageFile,
+    required XFile imageFile,
     required String userId,
     required String childId,
   }) async {
     final timestamp = DateTime.now().millisecondsSinceEpoch;
     final path = 'tutor_worksheets/$userId/$childId/$timestamp.jpg';
     final ref = _storage.ref().child(path);
-    await ref.putFile(imageFile);
+    await _putImage(ref, imageFile);
     final url = await ref.getDownloadURL();
     debugPrint('✅ Tutor-Aufgabenblatt hochgeladen: $path');
     return url;

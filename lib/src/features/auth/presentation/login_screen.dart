@@ -1,4 +1,4 @@
-import 'dart:io';
+import '../../../shared/platform_info.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -473,7 +473,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           ),
 
                           // Apple-Button (nur iOS – auf iOS Pflicht wegen Google-Login)
-                          if (Platform.isIOS) ...[
+                          if (isIOSApp) ...[
                             const SizedBox(height: 12),
                             SizedBox(
                               width: double.infinity,

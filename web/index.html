@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <!-- Wird beim Build durch --base-href ersetzt (Standard: "/"). -->
+  <base href="$FLUTTER_BASE_HREF">
+
+  <meta charset="UTF-8">
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Lernen mit Lexi, dem KI-Tutor für Kinder.">
+  <meta name="theme-color" content="#6B21A8">
+
+  <!-- Als App auf dem Home-Bildschirm (iPhone/iPad) -->
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Lerndex">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+
+  <link rel="icon" type="image/png" href="favicon.png"/>
+
+  <title>Lerndex</title>
+  <link rel="manifest" href="manifest.json">
+
+  <style>
+    html, body { margin: 0; height: 100%; background: #6B21A8; }
+    /* Ladebildschirm, bis Flutter das erste Bild zeichnet (flutter_bootstrap.js) */
+    #loading {
+      position: fixed; inset: 0;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 20px; color: #fff;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    }
+    #loading img { width: 128px; height: 128px; border-radius: 28px; }
+    #loading p { margin: 0; font-size: 16px; opacity: .85; }
+    #loading .bar { width: 160px; height: 4px; border-radius: 2px; background: rgba(255,255,255,.25); overflow: hidden; }
+    #loading .bar::after {
+      content: ""; display: block; width: 40%; height: 100%; background: #fff; border-radius: 2px;
+      animation: lade 1.2s ease-in-out infinite;
+    }
+    @keyframes lade { from { transform: translateX(-100%); } to { transform: translateX(250%); } }
+  </style>
+</head>
+<body>
+  <div id="loading">
+    <img src="icons/Icon-192.png" alt="">
+    <p>Lerndex wird geladen …</p>
+    <div class="bar"></div>
+  </div>
+  <script src="flutter_bootstrap.js" async></script>
+</body>
+</html>

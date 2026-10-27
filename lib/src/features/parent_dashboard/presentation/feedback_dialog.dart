@@ -1,9 +1,8 @@
-import 'dart:io';
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
+import '../../../shared/widgets/picked_image.dart';
 import '../data/feedback_repository.dart';
 
 class FeedbackDialog extends ConsumerStatefulWidget {
@@ -20,7 +19,7 @@ class _FeedbackDialogState extends ConsumerState<FeedbackDialog> {
   final _picker = ImagePicker();
 
   bool _isSending = false;
-  File? _screenshot;
+  XFile? _screenshot;
 
   @override
   void dispose() {
@@ -38,7 +37,7 @@ class _FeedbackDialogState extends ConsumerState<FeedbackDialog> {
         imageQuality: 85,
       );
       if (picked != null) {
-        setState(() => _screenshot = File(picked.path));
+        setState(() => _screenshot = picked);
       }
     } catch (_) {
       if (!mounted) return;
@@ -219,8 +218,8 @@ class _FeedbackDialogState extends ConsumerState<FeedbackDialog> {
       children: [
         ClipRRect(
           borderRadius: BorderRadius.circular(8),
-          child: Image.file(
-            _screenshot!,
+          child: pickedImage(
+            _screenshot!.path,
             width: 56,
             height: 56,
             fit: BoxFit.cover,

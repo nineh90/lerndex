@@ -19,6 +19,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:cross_file/cross_file.dart';
 import 'package:firebase_ai/firebase_ai.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_core_platform_interface/test.dart';
@@ -356,7 +357,7 @@ void main() {
         child: _mia,
         userMessage: '',
         conversationHistory: const [],
-        imageFile: File('$_fixtures/worksheet.jpg'),
+        imageFile: XFile('$_fixtures/worksheet.jpg'),
       );
       sw.stop();
       // Lösungen des Blatts: 68, 36, 56, 8, 7 – Lexi darf keine verraten.
@@ -456,7 +457,7 @@ void main() {
     _liveTest('Mathe-Arbeitsblatt Kl. 3 → 5 Aufgaben', () async {
       final sw = Stopwatch()..start();
       final r = await service.generateTasksFromImage(
-        imageFile: File('$_fixtures/worksheet.jpg'),
+        imageFile: XFile('$_fixtures/worksheet.jpg'),
         child: _mia,
         userId: 'livecheck',
         subject: Subject.mathe,

@@ -1,9 +1,9 @@
 import 'dart:async';
-import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
+import '../../../shared/platform_info.dart';
 import 'subscription_model.dart';
 
 class SubscriptionService {
@@ -19,6 +19,8 @@ class SubscriptionService {
     'REVENUECAT_ANDROID_KEY',
   );
   static const _iosApiKey = String.fromEnvironment('REVENUECAT_IOS_KEY');
+  // Web Billing (Stripe) – eigener Key aus dem RevenueCat-Dashboard.
+  static const _webApiKey = String.fromEnvironment('REVENUECAT_WEB_KEY');
 
   static const _entitlementId = 'premium';
 
@@ -32,13 +34,17 @@ class SubscriptionService {
   static const _extraChildSlotProductId = 'lerndex_extra_child_slot';
 
   static Future<void> initialize() async {
-    final apiKey = Platform.isIOS ? _iosApiKey : _androidApiKey;
+    final apiKey = kIsWeb
+        ? _webApiKey
+        : isIOSApp
+        ? _iosApiKey
+        : _androidApiKey;
 
     // Kein API-Key (z.B. Apple-Key noch nicht vorhanden) → IAP überspringen,
     // damit die App trotzdem startet. Käufe sind dann schlicht deaktiviert.
     if (apiKey.isEmpty) {
       debugPrint(
-        '⚠️ RevenueCat: Kein API-Key für ${Platform.isIOS ? "iOS" : "Android"} '
+        '⚠️ RevenueCat: Kein API-Key für $platformName '
         '– In-App-Käufe deaktiviert, App läuft normal weiter.',
       );
       return;
@@ -135,6 +141,18 @@ class SubscriptionService {
       isTrial: isTrial,
       expiresAt: expiresAt,
     );
+  }
+
+  /// Link zur Abo-Verwaltung des Stores, in dem gekauft wurde (Google Play,
+  /// App Store oder das Stripe-Kundenportal bei Web-Käufen).
+  Future<String?> getManagementUrl() async {
+    if (!isConfigured) return null;
+    try {
+      return (await Purchases.getCustomerInfo()).managementURL;
+    } catch (e) {
+      debugPrint('❌ Fehler beim Laden der Abo-Verwaltung: $e');
+      return null;
+    }
   }
 
   Future<Offerings?> getOfferings() async {

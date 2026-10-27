@@ -1,4 +1,5 @@
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import '../domain/child_model.dart';
 
@@ -13,6 +14,8 @@ class ActiveChildNotifier extends StateNotifier<ChildModel?> {
 
     // Crashlytics-Kontext setzen → bei einem Crash sieht man welches Kind betroffen war.
     // Bewusst nur pseudonyme ID + Klasse/Level – kein Name (Kinderdaten, DSGVO).
+    // Im Browser gibt es kein Crashlytics.
+    if (kIsWeb) return;
     FirebaseCrashlytics.instance.setUserIdentifier(child.id);
     FirebaseCrashlytics.instance.setCustomKey('child_grade', child.grade);
     FirebaseCrashlytics.instance.setCustomKey('child_level', child.level);
@@ -23,6 +26,7 @@ class ActiveChildNotifier extends StateNotifier<ChildModel?> {
     state = null;
 
     // Crashlytics-Kontext zurücksetzen → zurück in Eltern-Ansicht
+    if (kIsWeb) return;
     FirebaseCrashlytics.instance.setUserIdentifier('parent_view');
   }
 

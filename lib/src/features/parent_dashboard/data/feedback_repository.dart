@@ -1,10 +1,11 @@
-import 'dart:io';
-
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cross_file/cross_file.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+
+import '../../../shared/platform_info.dart';
 
 /// Schreibt Feedback-Nachrichten in die `mail/` Collection.
 ///
@@ -24,7 +25,7 @@ class FeedbackRepository {
   Future<void> sendFeedback({
     required String subject,
     required String message,
-    File? screenshot,
+    XFile? screenshot,
   }) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
@@ -56,7 +57,7 @@ class FeedbackRepository {
       'userId': user.uid,
       'userEmail': user.email,
       'appVersion': appVersion,
-      'platform': Platform.isIOS ? 'ios' : 'android',
+      'platform': platformName,
       'createdAt': FieldValue.serverTimestamp(),
     };
 
@@ -71,8 +72,15 @@ class FeedbackRepository {
 
   /// Lädt den Screenshot nach `feedback/{uid}/...` und gibt das nodemailer-
   /// Attachment ({filename, path}) mit Download-URL zurück.
-  Future<Map<String, String>> _uploadScreenshot(File file, String uid) async {
-    final ext = file.path.split('.').last.toLowerCase();
+  Future<Map<String, String>> _uploadScreenshot(XFile file, String uid) async {
+    // Im Browser ist der Pfad eine blob:-URL ohne Endung, dort zählt der
+    // MIME-Typ bzw. der Dateiname.
+    final ext = switch (file.mimeType) {
+      'image/png' => 'png',
+      'image/webp' => 'webp',
+      'image/jpeg' => 'jpg',
+      _ => file.name.split('.').last.toLowerCase(),
+    };
     final safeExt = (ext == 'png' || ext == 'jpg' || ext == 'jpeg' || ext == 'webp')
         ? ext
         : 'jpg';
@@ -84,7 +92,10 @@ class FeedbackRepository {
 
     final stamp = DateTime.now().millisecondsSinceEpoch;
     final ref = _storage.ref('feedback/$uid/$stamp.$safeExt');
-    await ref.putFile(file, SettableMetadata(contentType: contentType));
+    await ref.putData(
+      await file.readAsBytes(),
+      SettableMetadata(contentType: contentType),
+    );
     final url = await ref.getDownloadURL();
 
     return {'filename': 'screenshot.$safeExt', 'path': url};

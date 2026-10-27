@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
@@ -113,6 +114,9 @@ class _ThemePickerSheetState extends ConsumerState<ThemePickerSheet> {
           const SizedBox(height: 28),
 
           // ── Hintergrundbild ────────────────────────────────────────────
+          // Das Bild liegt als Datei im App-Verzeichnis. Im Browser gibt es
+          // das nicht, dort fällt die Option weg.
+          if (!kIsWeb) ...[
           Text(
             'Hintergrundbild',
             style: TextStyle(
@@ -143,6 +147,7 @@ class _ThemePickerSheetState extends ConsumerState<ThemePickerSheet> {
               hasBackground: themeState.backgroundImageUrl != null,
               onTap: () => _pickAndUpload(themeNotifier, user.uid, child.id),
             ),
+          ],
         ],
       ),
     );
@@ -274,7 +279,7 @@ class _BackgroundPreview extends StatelessWidget {
   });
 
   Widget _buildPreviewImage(String url, DashboardThemeData theme) {
-    if (url.startsWith('file://')) {
+    if (url.startsWith('file://') && !kIsWeb) {
       final path = url.replaceFirst('file://', '');
       return Image.file(
         File(path),

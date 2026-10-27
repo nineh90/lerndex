@@ -1,8 +1,11 @@
 import 'dart:io';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:flutter_math_fork/flutter_math.dart';
 import '../../features/tutor/domain/chat_message.dart';
+import 'picked_image.dart';
 
 // ============================================================================
 // UNIFIED MESSAGE BUBBLE
@@ -210,8 +213,12 @@ class MessageBubble extends StatelessWidget {
     final url = message.imageUrl;
 
     Widget img;
-    if (local != null && local.isNotEmpty && File(local).existsSync()) {
-      img = Image.file(File(local), fit: BoxFit.cover);
+    // Im Browser ist der lokale Pfad eine blob:-URL, die es nur in dieser
+    // Sitzung gibt.
+    if (local != null &&
+        local.isNotEmpty &&
+        (kIsWeb || File(local).existsSync())) {
+      img = pickedImage(local, fit: BoxFit.cover);
     } else if (url != null && url.isNotEmpty) {
       img = Image.network(
         url,

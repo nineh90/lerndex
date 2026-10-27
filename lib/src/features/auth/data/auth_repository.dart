@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:math';
 import 'package:crypto/crypto.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -16,7 +17,14 @@ class AuthRepository {
 
   final FirebaseAuth _auth;
   final FirebaseFirestore _firestore;
-  final GoogleSignIn _googleSignIn = GoogleSignIn();
+  // Nur in den Apps. Im Browser läuft Google-Login über das Popup von
+  // Firebase Auth – das google_sign_in-Plugin bräuchte dort eine eigene
+  // Client-ID und würde schon beim signOut() einen Fehler werfen.
+  late final GoogleSignIn _googleSignIn = GoogleSignIn();
+
+  Future<void> _googleSignOut() async {
+    if (!kIsWeb) await _googleSignIn.signOut();
+  }
 
   /// Stream der aktuellen User-Status überwacht
   Stream<User?> authStateChanges() => _auth.authStateChanges();
@@ -103,6 +111,11 @@ class AuthRepository {
   Future<({UserCredential credential, bool isNewUser})>
   signInWithGoogle() async {
     try {
+      if (kIsWeb) {
+        final credential = await _auth.signInWithPopup(GoogleAuthProvider());
+        return _finishSocialSignIn(credential);
+      }
+
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
       if (googleUser == null) throw 'Google-Login abgebrochen.';
 
@@ -115,22 +128,26 @@ class AuthRepository {
       );
 
       final credential = await _auth.signInWithCredential(oauthCredential);
-      final isNewUser = credential.additionalUserInfo?.isNewUser ?? false;
-
-      // Bei neuem User: Firestore-Dokument anlegen
-      if (isNewUser) {
-        await _createUserDocument(
-          credential.user!,
-          displayName: credential.user!.displayName ?? '',
-        );
-      }
-
-      return (credential: credential, isNewUser: isNewUser);
+      return _finishSocialSignIn(credential);
     } on FirebaseAuthException catch (e) {
       throw _handleAuthException(e);
     } catch (e) {
       throw e.toString();
     }
+  }
+
+  /// Bei neuem User: Firestore-Dokument anlegen
+  Future<({UserCredential credential, bool isNewUser})> _finishSocialSignIn(
+    UserCredential credential,
+  ) async {
+    final isNewUser = credential.additionalUserInfo?.isNewUser ?? false;
+    if (isNewUser) {
+      await _createUserDocument(
+        credential.user!,
+        displayName: credential.user!.displayName ?? '',
+      );
+    }
+    return (credential: credential, isNewUser: isNewUser);
   }
 
   // =========================================================================
@@ -244,7 +261,7 @@ class AuthRepository {
 
   /// Logout (E-Mail + Google)
   Future<void> signOut() async {
-    await Future.wait([_auth.signOut(), _googleSignIn.signOut()]);
+    await Future.wait([_auth.signOut(), _googleSignOut()]);
   }
 
   /// Passwort zurücksetzen
@@ -282,7 +299,7 @@ class AuthRepository {
     if (user == null) return;
     await _firestore.collection('users').doc(user.uid).delete();
     await user.delete();
-    await _googleSignIn.signOut();
+    await _googleSignOut();
   }
 
   /// Account löschen.
@@ -350,6 +367,12 @@ class AuthRepository {
         return 'Keine Internetverbindung. Bitte prüfe dein Netzwerk.';
       case 'invalid-credential':
         return 'E-Mail oder Passwort ist falsch.';
+      // Google-Login im Browser (Popup)
+      case 'popup-closed-by-user':
+      case 'cancelled-popup-request':
+        return 'Google-Login abgebrochen.';
+      case 'popup-blocked':
+        return 'Der Browser hat das Anmeldefenster blockiert. Bitte Popups für Lerndex erlauben.';
       default:
         return 'Fehler: ${e.message}';
     }

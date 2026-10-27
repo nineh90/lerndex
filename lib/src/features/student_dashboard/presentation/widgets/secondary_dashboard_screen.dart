@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -1208,8 +1209,10 @@ class _BackgroundImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Lokale Datei (file://-Pfad)
+    // Lokale Datei (file://-Pfad). Im Browser gibt es keine Dateien – ein in
+    // der App gewähltes Bild wird dort nicht angezeigt.
     if (url.startsWith('file://')) {
+      if (kIsWeb) return Container(color: fallbackColor);
       final path = url.replaceFirst('file://', '');
       final file = File(path);
       return Image.file(

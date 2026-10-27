@@ -1,9 +1,10 @@
-import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:lerndex/src/features/generated_tasks/presentation/widgets/info_row.dart';
+import 'package:lerndex/src/shared/widgets/picked_image.dart';
 import '../../auth/domain/child_model.dart';
 import '../../auth/data/auth_repository.dart';
 import '../../generated_tasks/data/generated_task_models.dart';
@@ -30,7 +31,7 @@ class TaskGeneratorScreen extends ConsumerStatefulWidget {
 class _TaskGeneratorScreenState extends ConsumerState<TaskGeneratorScreen> {
   Subject? _selectedSubject;
 
-  File? _selectedImage;
+  XFile? _selectedImage;
   bool _isGenerating = false;
   String? _errorMessage;
   int _numberOfTasks = 5;
@@ -436,8 +437,8 @@ class _TaskGeneratorScreenState extends ConsumerState<TaskGeneratorScreen> {
           children: [
             ClipRRect(
               borderRadius: BorderRadius.circular(16),
-              child: Image.file(
-                _selectedImage!,
+              child: pickedImage(
+                _selectedImage!.path,
                 width: double.infinity,
                 fit: BoxFit.cover,
               ),
@@ -608,7 +609,8 @@ class _TaskGeneratorScreenState extends ConsumerState<TaskGeneratorScreen> {
     // Nur die Kamera braucht eine Runtime-Permission. Die Galerie läuft über
     // den System-Photo-Picker, der ganz ohne Medien-Berechtigung auskommt
     // (Play-Policy: READ_MEDIA_IMAGES ist bei gelegentlichem Zugriff verboten).
-    if (source == ImageSource.camera) {
+    // Im Browser fragt der Browser selbst nach der Kamera.
+    if (source == ImageSource.camera && !kIsWeb) {
       final status = await Permission.camera.request();
 
       if (status.isDenied || status.isPermanentlyDenied) {
@@ -642,7 +644,7 @@ class _TaskGeneratorScreenState extends ConsumerState<TaskGeneratorScreen> {
       );
       if (image != null) {
         setState(() {
-          _selectedImage = File(image.path);
+          _selectedImage = image;
           _errorMessage = null;
         });
       }

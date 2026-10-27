@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
+import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'firebase_options.dart';
@@ -21,7 +22,8 @@ final accountDeletionInProgressProvider = StateProvider<bool>((ref) => false);
 
 void main() async {
   final binding = WidgetsFlutterBinding.ensureInitialized();
-  FlutterNativeSplash.preserve(widgetsBinding: binding);
+  // Im Browser zeigt web/index.html einen eigenen Ladebildschirm.
+  if (!kIsWeb) FlutterNativeSplash.preserve(widgetsBinding: binding);
 
   // debugPrint läuft sonst auch im Release-Build und würde UIDs, Kindernamen
   // und Abo-Status ins System-Log schreiben (DSGVO). Im Release stummschalten.
@@ -29,11 +31,14 @@ void main() async {
     debugPrint = (String? message, {int? wrapWidth}) {};
   }
 
-  // App auf Portrait-Modus beschränken
-  await SystemChrome.setPreferredOrientations([
-    DeviceOrientation.portraitUp,
-    DeviceOrientation.portraitDown,
-  ]);
+  // App auf Portrait-Modus beschränken (im Browser nicht – dort arbeiten
+  // Lehrkräfte auch am PC im Querformat)
+  if (!kIsWeb) {
+    await SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+    ]);
+  }
 
   // Android: System-Photo-Picker statt eigener Galerie-Permission.
   // Pflicht laut Play-Policy (READ_MEDIA_IMAGES wurde abgelehnt) – der
@@ -47,21 +52,34 @@ void main() async {
 
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
+  // App Check im Browser: Dort steht der Firebase-Key offen im Quelltext,
+  // ohne App Check könnte jeder über unser Konto Vertex AI aufrufen.
+  // firebase_ai hängt das Token automatisch an. Ohne Site-Key bleibt es aus.
+  const recaptchaSiteKey = String.fromEnvironment('RECAPTCHA_SITE_KEY');
+  if (kIsWeb && recaptchaSiteKey.isNotEmpty) {
+    await FirebaseAppCheck.instance.activate(
+      providerWeb: ReCaptchaEnterpriseProvider(recaptchaSiteKey),
+    );
+  }
+
   // NEU: RevenueCat initialisieren (vor runApp!)
   await SubscriptionService.initialize();
 
-  // Alle Flutter-Framework-Fehler an Crashlytics weiterleiten
-  FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
+  // Crashlytics gibt es nur in den nativen Apps, nicht im Browser.
+  if (!kIsWeb) {
+    // Alle Flutter-Framework-Fehler an Crashlytics weiterleiten
+    FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
 
-  // Async-Fehler die Flutter nicht selbst fängt (z.B. in Futures/Isolates)
-  PlatformDispatcher.instance.onError = (error, stack) {
-    FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
-    return true;
-  };
+    // Async-Fehler die Flutter nicht selbst fängt (z.B. in Futures/Isolates)
+    PlatformDispatcher.instance.onError = (error, stack) {
+      FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+      return true;
+    };
+  }
 
   runApp(const ProviderScope(child: MyApp()));
 
-  FlutterNativeSplash.remove();
+  if (!kIsWeb) FlutterNativeSplash.remove();
 }
 
 class MyApp extends ConsumerWidget {
