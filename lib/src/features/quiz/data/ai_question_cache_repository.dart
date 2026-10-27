@@ -162,14 +162,17 @@ class AiQuestionCacheRepository {
       await _writeToCache(userId, childId, child, subject, quickQuestions);
     }
 
-    // Rest im Hintergrund nachladen
-    _generateInBackground(
-      userId: userId,
-      childId: childId,
-      child: child,
-      subject: subject,
-      count: _fullBatchSize,
-    );
+    // Rest im Hintergrund nachladen – außer der Start-Prefetch füllt dieses
+    // Fach gerade ohnehin (sonst würden doppelt Fragen generiert).
+    if (!_inflightSubjects.contains('$childId|$subject')) {
+      _generateInBackground(
+        userId: userId,
+        childId: childId,
+        child: child,
+        subject: subject,
+        count: _fullBatchSize,
+      );
+    }
 
     final allAvailable = await _loadUnplayed(userId, childId, subject);
     if (allAvailable.isEmpty) return [];

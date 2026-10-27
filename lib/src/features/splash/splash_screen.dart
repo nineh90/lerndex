@@ -141,6 +141,14 @@ class _LerndexSplashScreenState extends ConsumerState<LerndexSplashScreen>
     if (_isNavigating) return;
 
     const minSplashDuration = Duration(milliseconds: 1800);
+
+    // Länger wartet der Startbildschirm nicht auf den Quiz-Prefetch. Ein
+    // leerer Fragen-Vorrat (neues Kind, viel gespielt) braucht mit
+    // gemini-3.5-flash 15–30 s pro Fach – das sollen Kinder nicht beim
+    // Start absitzen. Der Prefetch läuft danach im Hintergrund weiter; wer
+    // vorher ein Quiz startet, bekommt den Schnell-Batch (2 KI-Fragen,
+    // Rest aus den festen Fragen), siehe AiQuestionCacheRepository.
+    const maxPrefetchWait = Duration(seconds: 5);
     final startTime = DateTime.now();
 
     String destination = 'login';
@@ -171,7 +179,10 @@ class _LerndexSplashScreenState extends ConsumerState<LerndexSplashScreen>
           _setProgress(1.0, 'Los geht\'s! ✨');
         } else {
           destination = 'dashboard';
-          await _prefetchAllChildren(user.uid);
+          await _prefetchAllChildren(user.uid).timeout(
+            maxPrefetchWait,
+            onTimeout: () => _setProgress(1.0, 'Los geht\'s! ✨'),
+          );
         }
       }
     } catch (e) {
