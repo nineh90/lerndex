@@ -98,9 +98,44 @@ class MyApp extends ConsumerWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF6B21A8)),
         useMaterial3: true,
       ),
+      // Im Browser am PC/Tablet: Die Oberfläche ist fürs Handy gebaut und
+      // würde sonst über die ganze Breite gezogen.
+      builder: kIsWeb ? (context, child) => _WebFrame(child: child!) : null,
       home: isDeletingAccount
           ? const AccountDeletedScreen()
           : const LerndexSplashScreen(),
+    );
+  }
+}
+
+/// Zentriert die App im Browser auf Handy-Breite. MediaQuery bekommt die
+/// schmale Breite mit, damit Layouts, die sich an der Bildschirmbreite
+/// orientieren, und auch Dialoge in den Rahmen passen.
+class _WebFrame extends StatelessWidget {
+  const _WebFrame({required this.child});
+
+  final Widget child;
+
+  static const double _maxWidth = 560;
+
+  @override
+  Widget build(BuildContext context) {
+    final mediaQuery = MediaQuery.of(context);
+    if (mediaQuery.size.width <= _maxWidth) return child;
+
+    return ColoredBox(
+      color: const Color(0xFF6B21A8),
+      child: Center(
+        child: SizedBox(
+          width: _maxWidth,
+          child: MediaQuery(
+            data: mediaQuery.copyWith(
+              size: Size(_maxWidth, mediaQuery.size.height),
+            ),
+            child: ClipRect(child: child),
+          ),
+        ),
+      ),
     );
   }
 }
