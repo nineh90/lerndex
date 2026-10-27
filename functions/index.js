@@ -1,0 +1,319 @@
+// Cloud Functions für Lerndex (Region Frankfurt).
+//
+// 1. Kindergeräte koppeln: Eltern erzeugen einen kurzlebigen Code (als QR oder
+//    Link app.lerndex.de/k/CODE), das Kindergerät löst ihn ein und bekommt ein
+//    eigenes Konto "kid:<parentUid>:<childId>" mit den Claims
+//    { role: "student", parentUid, childId }. Die Firestore-/Storage-Rules
+//    erlauben diesem Konto nur das eigene Kind.
+// 2. Eltern-PIN serverseitig: Hash und Fehlversuche liegen in
+//    users/{uid}/private/pin, das kein Client lesen kann. Vorher lag der Hash
+//    im users-Dokument – ein Kindergerät, das dieses Dokument lesen darf
+//    (Abo-Status), hätte den PIN offline durchprobieren können.
+
+const { onCall, HttpsError } = require("firebase-functions/v2/https");
+const { setGlobalOptions } = require("firebase-functions/v2");
+const { initializeApp } = require("firebase-admin/app");
+const { getAuth } = require("firebase-admin/auth");
+const { getFirestore, FieldValue, Timestamp } = require("firebase-admin/firestore");
+const crypto = require("node:crypto");
+
+initializeApp();
+setGlobalOptions({ region: "europe-west3", maxInstances: 10 });
+
+const db = getFirestore();
+const auth = getAuth();
+
+const {
+  kidUid,
+  normalizeCode,
+  newPairingCode,
+  hashPin,
+  legacyHashPin,
+  newSalt,
+} = require("./lib/helpers");
+
+// ── Hilfen ───────────────────────────────────────────────────────────────────
+
+/** Nur Eltern-Konten (kein Kindergerät, später auch keine Schul-Rollen). */
+function requireParent(request) {
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "Bitte zuerst anmelden.");
+  }
+  if (request.auth.token.role) {
+    throw new HttpsError("permission-denied", "Nur für Eltern.");
+  }
+  return request.auth.uid;
+}
+
+function requireString(value, name, maxLength = 128) {
+  if (typeof value !== "string" || value.length === 0 || value.length > maxLength) {
+    throw new HttpsError("invalid-argument", `${name} fehlt oder ist ungültig.`);
+  }
+  return value;
+}
+
+async function requireChild(parentUid, childId) {
+  const child = await db.doc(`users/${parentUid}/children/${childId}`).get();
+  if (!child.exists) {
+    throw new HttpsError("not-found", "Kind nicht gefunden.");
+  }
+  return child;
+}
+
+// ── 1. Kindergeräte koppeln ──────────────────────────────────────────────────
+
+const CODE_TTL_MS = 15 * 60 * 1000;
+
+/**
+ * Eltern: Kopplungscode für ein Kind erzeugen (15 Minuten gültig, einmalig).
+ * Ältere, noch offene Codes für dasselbe Kind werden ungültig.
+ */
+exports.createPairingCode = onCall(async (request) => {
+  const parentUid = requireParent(request);
+  const childId = requireString(request.data?.childId, "childId");
+  await requireChild(parentUid, childId);
+
+  const old = await db
+    .collection("pairingCodes")
+    .where("parentUid", "==", parentUid)
+    .where("childId", "==", childId)
+    .get();
+  const batch = db.batch();
+  old.docs.forEach((doc) => batch.delete(doc.ref));
+
+  const code = newPairingCode();
+  const expiresAt = Timestamp.fromMillis(Date.now() + CODE_TTL_MS);
+  batch.set(db.doc(`pairingCodes/${code}`), {
+    parentUid,
+    childId,
+    createdAt: FieldValue.serverTimestamp(),
+    expiresAt,
+  });
+  await batch.commit();
+
+  return { code, expiresAt: expiresAt.toDate().toISOString() };
+});
+
+/**
+ * Kindergerät: Code einlösen. Ohne Anmeldung aufrufbar. Liefert ein Custom
+ * Token, mit dem sich das Gerät als Kind anmeldet.
+ */
+exports.redeemPairingCode = onCall(async (request) => {
+  const code = normalizeCode(request.data?.code);
+  const invalid = new HttpsError(
+    "not-found",
+    "Der Code stimmt nicht oder ist abgelaufen. Bitte einen neuen Code erzeugen.",
+  );
+  if (!code) throw invalid;
+
+  const codeRef = db.doc(`pairingCodes/${code}`);
+  // Einmalig: Lesen und Löschen in einer Transaktion, damit zwei Geräte
+  // denselben Code nicht gleichzeitig einlösen.
+  const pairing = await db.runTransaction(async (tx) => {
+    const snap = await tx.get(codeRef);
+    if (!snap.exists) return null;
+    tx.delete(codeRef);
+    const data = snap.data();
+    if (data.expiresAt.toMillis() < Date.now()) return null;
+    return data;
+  });
+  if (!pairing) throw invalid;
+
+  const { parentUid, childId } = pairing;
+  const child = await db.doc(`users/${parentUid}/children/${childId}`).get();
+  if (!child.exists) throw invalid;
+  const childName = child.get("name") || "";
+
+  const uid = kidUid(parentUid, childId);
+  const claims = { role: "student", parentUid, childId };
+  try {
+    const user = await auth.getUser(uid);
+    if (user.disabled) await auth.updateUser(uid, { disabled: false });
+  } catch (e) {
+    if (e.code !== "auth/user-not-found") throw e;
+    await auth.createUser({ uid, displayName: childName });
+  }
+  // Claims am Konto speichern, damit sie auch nach dem Token-Refresh gelten
+  await auth.setCustomUserClaims(uid, claims);
+
+  // Für die Elternansicht („Verbundene Geräte“). Bewusst nur der Zeitpunkt.
+  await db
+    .collection(`users/${parentUid}/children/${childId}/devices`)
+    .add({ pairedAt: FieldValue.serverTimestamp() });
+
+  const token = await auth.createCustomToken(uid, claims);
+  return { token, childName };
+});
+
+/**
+ * Eltern: alle gekoppelten Geräte eines Kindes abmelden. Das Konto wird
+ * gesperrt; bereits ausgestellte Tokens laufen spätestens nach einer Stunde
+ * ab. Neu koppeln geht jederzeit mit einem neuen Code.
+ */
+exports.unpairChildDevices = onCall(async (request) => {
+  const parentUid = requireParent(request);
+  const childId = requireString(request.data?.childId, "childId");
+
+  const uid = kidUid(parentUid, childId);
+  try {
+    await auth.updateUser(uid, { disabled: true });
+    await auth.revokeRefreshTokens(uid);
+  } catch (e) {
+    if (e.code !== "auth/user-not-found") throw e;
+  }
+
+  const devices = await db
+    .collection(`users/${parentUid}/children/${childId}/devices`)
+    .get();
+  const batch = db.batch();
+  devices.docs.forEach((doc) => batch.delete(doc.ref));
+  await batch.commit();
+
+  return { unpaired: devices.size };
+});
+
+// ── 2. Eltern-PIN ────────────────────────────────────────────────────────────
+
+const PIN_PATTERN = /^\d{4,6}$/;
+const MAX_FAILED_ATTEMPTS = 5;
+const LOCKOUT_MS = 5 * 60 * 1000;
+// Wer sich gerade neu angemeldet hat, darf den PIN ohne alten PIN neu setzen
+// (Grundlage für „PIN vergessen“).
+const RECENT_LOGIN_S = 5 * 60;
+
+const LEGACY_PIN_FIELDS = [
+  "hashedPin",
+  "pinSalt",
+  "pinCreatedAt",
+  "pinLastUsed",
+  "pinFailedAttempts",
+  "pinLockedUntil",
+];
+
+/**
+ * Liest den gespeicherten PIN – aus private/pin oder noch aus den alten
+ * Feldern im users-Dokument (vor der Migration).
+ */
+async function loadPin(uid) {
+  const privateSnap = await db.doc(`users/${uid}/private/pin`).get();
+  if (privateSnap.exists) return { ...privateSnap.data(), legacy: false };
+
+  const userSnap = await db.doc(`users/${uid}`).get();
+  const data = userSnap.data() || {};
+  if (!data.hashedPin) return null;
+  return {
+    hash: data.hashedPin,
+    salt: data.pinSalt || null,
+    failedAttempts: data.pinFailedAttempts || 0,
+    lockedUntil: data.pinLockedUntil || null,
+    legacy: true,
+  };
+}
+
+function pinMatches(stored, pin) {
+  const expected = stored.salt ? hashPin(pin, stored.salt) : legacyHashPin(pin);
+  const a = Buffer.from(expected);
+  const b = Buffer.from(stored.hash);
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+
+/** Speichert einen neuen PIN in private/pin und räumt die alten Felder weg. */
+async function storePin(uid, pin) {
+  const salt = newSalt();
+  const batch = db.batch();
+  batch.set(db.doc(`users/${uid}/private/pin`), {
+    hash: hashPin(pin, salt),
+    salt,
+    failedAttempts: 0,
+    lockedUntil: null,
+    createdAt: FieldValue.serverTimestamp(),
+  });
+  const cleanup = { pinSet: true };
+  for (const f of LEGACY_PIN_FIELDS) cleanup[f] = FieldValue.delete();
+  batch.set(db.doc(`users/${uid}`), cleanup, { merge: true });
+  await batch.commit();
+}
+
+/**
+ * Prüft den PIN mit Sperre nach zu vielen Fehlversuchen. Wirft
+ * resource-exhausted (details.retryAfterSeconds), solange gesperrt.
+ */
+async function checkPin(uid, pin) {
+  const stored = await loadPin(uid);
+  if (!stored) return { ok: false, pinSet: false };
+
+  const lockedUntil = stored.lockedUntil?.toMillis?.() ?? 0;
+  if (lockedUntil > Date.now()) {
+    throw new HttpsError("resource-exhausted", "PIN gesperrt.", {
+      retryAfterSeconds: Math.ceil((lockedUntil - Date.now()) / 1000),
+    });
+  }
+
+  if (pinMatches(stored, pin)) {
+    if (stored.legacy) {
+      // Beim ersten Erfolg in private/pin umziehen (mit neuem Salt)
+      await storePin(uid, pin);
+    } else {
+      await db.doc(`users/${uid}/private/pin`).update({
+        failedAttempts: 0,
+        lockedUntil: null,
+        lastUsed: FieldValue.serverTimestamp(),
+      });
+    }
+    return { ok: true, pinSet: true };
+  }
+
+  const failed = (stored.failedAttempts || 0) + 1;
+  const locked = failed >= MAX_FAILED_ATTEMPTS;
+  const update = {
+    failedAttempts: locked ? 0 : failed,
+    lockedUntil: locked ? Timestamp.fromMillis(Date.now() + LOCKOUT_MS) : null,
+  };
+  if (stored.legacy) {
+    await db.doc(`users/${uid}`).set(
+      { pinFailedAttempts: update.failedAttempts, pinLockedUntil: update.lockedUntil },
+      { merge: true },
+    );
+  } else {
+    await db.doc(`users/${uid}/private/pin`).update(update);
+  }
+  return { ok: false, pinSet: true };
+}
+
+/** Eltern: PIN prüfen. Antwort { ok }. */
+exports.verifyParentPin = onCall(async (request) => {
+  const uid = requireParent(request);
+  const pin = request.data?.pin;
+  if (typeof pin !== "string" || !PIN_PATTERN.test(pin)) return { ok: false };
+  const { ok } = await checkPin(uid, pin);
+  return { ok };
+});
+
+/**
+ * Eltern: PIN setzen oder ändern. Ist schon ein PIN gesetzt, braucht es den
+ * alten PIN – oder eine Anmeldung, die höchstens 5 Minuten her ist.
+ */
+exports.setParentPin = onCall(async (request) => {
+  const uid = requireParent(request);
+  const pin = request.data?.pin;
+  if (typeof pin !== "string" || !PIN_PATTERN.test(pin)) {
+    throw new HttpsError("invalid-argument", "PIN muss 4-6 Ziffern enthalten!");
+  }
+
+  const stored = await loadPin(uid);
+  if (stored) {
+    const oldPin = request.data?.oldPin;
+    const recentLogin =
+      Date.now() / 1000 - (request.auth.token.auth_time || 0) < RECENT_LOGIN_S;
+    if (typeof oldPin === "string") {
+      const { ok } = await checkPin(uid, oldPin);
+      if (!ok) throw new HttpsError("permission-denied", "Alter PIN ist falsch.");
+    } else if (!recentLogin) {
+      throw new HttpsError("permission-denied", "Alter PIN fehlt.");
+    }
+  }
+
+  await storePin(uid, pin);
+  return { ok: true };
+});
+

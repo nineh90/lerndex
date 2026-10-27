@@ -13,8 +13,19 @@ rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
 
+    // Eltern (Konto ohne role-Claim)
     function isOwner(userId) {
-      return request.auth != null && request.auth.uid == userId;
+      return request.auth != null
+        && !('role' in request.auth.token)
+        && request.auth.uid == userId;
+    }
+
+    // Gekoppeltes Kindergerät genau dieses Kindes (siehe firestore.rules)
+    function isStudentFor(userId, childId) {
+      return request.auth != null
+        && request.auth.token.role == 'student'
+        && request.auth.token.parentUid == userId
+        && request.auth.token.childId == childId;
     }
 
     // Nur Bilder, max. 10 MB (App komprimiert vor Upload auf 1920px/85 %,
@@ -36,6 +47,12 @@ service firebase.storage {
       allow read: if isOwner(userId);
       allow create, update: if isOwner(userId) && isValidImage();
       allow delete: if isOwner(userId);
+    }
+
+    // Aufgabenblatt-Fotos vom Kindergerät: nur im Ordner des eigenen Kindes
+    match /tutor_worksheets/{userId}/{childId}/{allPaths=**} {
+      allow read: if isStudentFor(userId, childId);
+      allow create: if isStudentFor(userId, childId) && isValidImage();
     }
 
     match /feedback/{userId}/{allPaths=**} {

@@ -2,16 +2,23 @@ rules_version = '2';
 
 // Firestore Security Rules für Lerndex.
 //
-// Deployment: Inhalt in die Firebase Console kopieren (Firestore → Regeln)
-// oder per CLI: firebase deploy --only firestore:rules
+// Deployment: firebase deploy --only firestore:rules
+// (erst NACH den Cloud Functions, siehe docs/PLAN-schule-web.md)
 //
-// Grundprinzip: Jeder Nutzer (Eltern-Account) darf ausschließlich seine
-// eigenen Daten unter users/{uid} lesen und schreiben. Kinder-Profile laufen
-// unter der UID des Eltern-Accounts — es gibt daher KEINE Trennung zwischen
-// Kind- und Eltern-Session auf Rules-Ebene. Sicherheitskritische Felder
-// (hashedPin, premiumUntil, betaTester) sind damit für eine manipulierte
-// Kind-Session les-/schreibbar. Echte Absicherung dafür braucht Cloud
-// Functions (PIN-Verify serverseitig, Entitlements via RevenueCat-Webhook).
+// Rollen:
+// - Eltern: normales Konto ohne role-Claim. Darf alles unter users/{uid}.
+// - Kindergerät: eigenes Konto "kid:<parentUid>:<childId>", angelegt von der
+//   Cloud Function redeemPairingCode, mit den Claims
+//   { role: "student", parentUid, childId }. Darf nur sein eigenes Kind,
+//   das Eltern-Dokument lesen (Abo-Status) und die freigegebenen Aufgaben
+//   seines Kindes.
+//
+// Der Eltern-PIN liegt in users/{uid}/private/pin und ist für keinen Client
+// lesbar (Prüfung über die Cloud Function verifyParentPin). Alte PIN-Hashes
+// im users-Dokument zieht die Function beim ersten Prüfen dorthin um.
+//
+// Grenze: Auf einem gemeinsamen Gerät im Kindermodus ist weiter das Eltern-
+// konto angemeldet. Echte Trennung gibt es nur mit einem gekoppelten Gerät.
 service cloud.firestore {
   match /databases/{database}/documents {
 
@@ -19,47 +26,98 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    function isOwner(userId) {
-      return isAuthenticated() && request.auth.uid == userId;
+    function isParent() {
+      return isAuthenticated() && !('role' in request.auth.token);
     }
 
-    // `testAccess` schaltet als Review-Testaccount die Paywall frei und darf
-    // deshalb NIE vom Client gesetzt oder geändert werden – nur manuell über
-    // die Firebase Console (Admin-Zugriff umgeht diese Rules).
-    function testAccessUnchanged() {
+    function isOwner(userId) {
+      return isParent() && request.auth.uid == userId;
+    }
+
+    function isStudent() {
+      return isAuthenticated() && request.auth.token.role == 'student';
+    }
+
+    // Kindergerät der Familie userId
+    function isStudentOf(userId) {
+      return isStudent() && request.auth.token.parentUid == userId;
+    }
+
+    // Kindergerät genau dieses Kindes
+    function isStudentFor(userId, childId) {
+      return isStudentOf(userId) && request.auth.token.childId == childId;
+    }
+
+    // Felder am users-Dokument, die nur der Server setzt: testAccess
+    // (Review-Testaccount, nur über die Console) und pinSet (Cloud Functions).
+    //
+    // ÜBERGANG: Ältere App-Versionen schreiben hashedPin/pinSalt noch selbst
+    // ins users-Dokument. Das bleibt erlaubt, bis alle Nutzer auf der Version
+    // mit Server-PIN sind – dann hier hashedPin/pinSalt wie pinSet sperren.
+    function serverFieldsUnchanged() {
       return request.resource.data.get('testAccess', false)
-          == resource.data.get('testAccess', false);
+          == resource.data.get('testAccess', false)
+        && request.resource.data.get('pinSet', null)
+          == resource.data.get('pinSet', null);
     }
 
     match /users/{userId} {
-      allow read, delete: if isOwner(userId);
+      allow read: if isOwner(userId) || isStudentOf(userId);
+      allow delete: if isOwner(userId);
       allow create: if isOwner(userId)
-        && !('testAccess' in request.resource.data);
-      allow update: if isOwner(userId) && testAccessUnchanged();
+        && !('testAccess' in request.resource.data)
+        && !('pinSet' in request.resource.data);
+      allow update: if isOwner(userId) && serverFieldsUnchanged();
+
+      // Eltern-PIN: nur Cloud Functions (Admin-SDK umgeht die Rules)
+      match /private/{docId} {
+        allow read, write: if false;
+      }
 
       // Kinder-Profile inkl. aller Subcollections:
       // tutor_sessions/{sid}/messages/{mid}, active_tutor_chat, rewards,
-      // learning_stats, ai_quiz_cache/{fach}/questions/{qid}
+      // learning_stats, ai_quiz_cache/{fach}/questions/{qid}, devices
       match /children/{childId} {
         allow read, write: if isOwner(userId);
+        // Kindergerät: eigenes Profil lesen und Fortschritt speichern,
+        // aber nicht anlegen oder löschen.
+        allow read, update: if isStudentFor(userId, childId);
+
+        // Gekoppelte Geräte: schreibt nur die Cloud Function
+        match /devices/{deviceId} {
+          allow read, delete: if isOwner(userId);
+        }
 
         match /{subcollection}/{docId} {
-          allow read, write: if isOwner(userId);
+          allow read, write: if isOwner(userId)
+            || (isStudentFor(userId, childId) && subcollection != 'devices');
 
           match /{nested}/{nestedDocId} {
-            allow read, write: if isOwner(userId);
+            allow read, write: if isOwner(userId) || isStudentFor(userId, childId);
           }
         }
       }
 
-      // Von Eltern generierte Aufgaben-Batches (Foto → KI-Aufgaben)
+      // Von Eltern generierte Aufgaben-Batches (Foto → KI-Aufgaben).
+      // Das Kindergerät liest die Batches seines Kindes und markiert
+      // freigegebene Aufgaben als gelöst.
       match /generated_batches/{batchId} {
         allow read, write: if isOwner(userId);
+        allow read: if isStudentOf(userId)
+          && resource.data.childId == request.auth.token.childId;
 
         match /{subcollection}/{subDocId} {
           allow read, write: if isOwner(userId);
+          allow read, update: if isStudentOf(userId)
+            && get(/databases/$(database)/documents/users/$(userId)/generated_batches/$(batchId)).data.childId
+              == request.auth.token.childId;
         }
       }
+    }
+
+    // Kopplungscodes: nur Cloud Functions
+    match /pairingCodes/{code} {
+      allow read, write: if false;
     }
 
     // Warteliste: nur serverseitig (Admin-SDK) zugreifbar.
@@ -70,11 +128,11 @@ service cloud.firestore {
     // Feedback-Mails aus der App (Trigger-Email-Extension).
     // Read/Update/Delete bleiben verboten – die Extension liest serverseitig
     // via Admin-SDK und umgeht diese Rules ohnehin.
-    // Create nur für eingeloggte Nutzer, nur an support@lerndex.de und nur
+    // Create nur für eingeloggte Eltern, nur an support@lerndex.de und nur
     // mit plausiblen Feldern (verhindert Spam-/Relay-Missbrauch).
     match /mail/{docId} {
       allow read, update, delete: if false;
-      allow create: if isAuthenticated()
+      allow create: if isParent()
         && request.resource.data.to is list
         && request.resource.data.to.size() == 1
         && request.resource.data.to[0] == 'support@lerndex.de'
