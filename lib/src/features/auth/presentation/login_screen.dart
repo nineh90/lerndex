@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../data/auth_repository.dart';
+import 'child_pairing_screen.dart';
 import 'register_screen.dart';
 import 'setup_dialog.dart';
 import 'family_dashboard_screen.dart';
@@ -514,6 +515,24 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 ),
                               ),
                             ],
+                          ),
+
+                          // Kindergerät mit Code der Eltern verbinden
+                          const Divider(height: 24),
+                          TextButton.icon(
+                            onPressed: () => Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => const ChildPairingScreen(),
+                              ),
+                            ),
+                            icon: const Text('🧒', style: TextStyle(fontSize: 18)),
+                            label: const Text(
+                              'Ich bin ein Kind – Code eingeben',
+                              style: TextStyle(
+                                color: Color(0xFF6B21A8),
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                           ),
                         ],
                       ),

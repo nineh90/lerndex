@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../auth/domain/child_model.dart';
 import '../../auth/data/profile_repository.dart';
 import '../../student_dashboard/presentation/subject_config.dart';
+import 'widgets/child_device_section.dart';
 
 /// Screen zum Bearbeiten eines Kindes
 class EditChildScreen extends ConsumerStatefulWidget {
@@ -254,6 +255,14 @@ class _EditChildScreenState extends ConsumerState<EditChildScreen> {
               ),
               const SizedBox(height: 12),
               _buildSubjectsToggle(),
+              const SizedBox(height: 28),
+
+              const _SectionHeader(
+                icon: Icons.devices_other,
+                title: 'Eigenes Gerät',
+              ),
+              const SizedBox(height: 12),
+              ChildDeviceSection(child: widget.child),
               const SizedBox(height: 40),
 
               SizedBox(

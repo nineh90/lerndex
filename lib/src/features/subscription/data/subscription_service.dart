@@ -84,7 +84,15 @@ class SubscriptionService {
     }
   }
 
+  /// Ohne RevenueCat (Browser ohne Web-Key) und auf gekoppelten Kinder-
+  /// geräten zählt der Abo-Status, den das kaufende Gerät in Firestore
+  /// gespeichert hat. Sonst meldete RevenueCat dort „kein Abo“, und zahlende
+  /// Familien verlören im Browser bzw. auf dem Kinderhandy den Zugang.
+  bool get _useStoredStatus =>
+      !isConfigured || (_auth.currentUser?.isChildDevice ?? false);
+
   Future<SubscriptionStatus> getSubscriptionStatus() async {
+    if (_useStoredStatus) return getStatusFromFirestore();
     try {
       if (_devBypass) {
         return SubscriptionStatus(
@@ -105,11 +113,13 @@ class SubscriptionService {
   Stream<SubscriptionStatus> get customerInfoStream {
     final controller = StreamController<SubscriptionStatus>.broadcast();
     if (!isConfigured) {
-      // Ohne RevenueCat-Konfiguration: leerer Status, kein Listener.
-      controller.add(SubscriptionStatus.empty);
+      // Ohne RevenueCat-Konfiguration kein Listener – es gilt der Status aus
+      // Firestore (siehe _useStoredStatus).
       return controller.stream;
     }
     Purchases.addCustomerInfoUpdateListener((customerInfo) {
+      // Kindergerät: RevenueCat kennt dort nur einen anonymen Nutzer ohne Abo
+      if (_auth.currentUser?.isChildDevice ?? false) return;
       final status = _parseCustomerInfo(customerInfo);
       // Immer in Firestore syncen – auch bei Kündigung (leerer Status),
       // damit der App-Start-Cache nie einen abgelaufenen Zugriff zurückgibt.

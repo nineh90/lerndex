@@ -142,15 +142,17 @@ test("Koppeln: nur Eltern, nur eigene Kinder", async () => {
   await expectError(kid.call("unpairChildDevices", { childId: "jan" }), "permission-denied");
 });
 
-test("Abmelden: Konto gesperrt, Geräte weg, neu koppeln geht", async () => {
+test("Abmelden: Kinderkonto gelöscht, Geräte weg, neu koppeln geht", async () => {
   const parent = await parentWithChildren();
   const { code } = await parent.call("createPairingCode", { childId: "jan" });
   await device().call("redeemPairingCode", { code });
 
   const { unpaired } = await parent.call("unpairChildDevices", { childId: "jan" });
   assert.equal(unpaired, 1);
-  const kidUser = await adminAuth().getUser(`kid:${parent.uid}:jan`);
-  assert.equal(kidUser.disabled, true);
+  await assert.rejects(adminAuth().getUser(`kid:${parent.uid}:jan`), (e) => {
+    assert.equal(e.code, "auth/user-not-found");
+    return true;
+  });
   assert.equal((await adb.collection(`users/${parent.uid}/children/jan/devices`).get()).size, 0);
 
   // Ohne gekoppeltes Gerät: kein Fehler
@@ -158,7 +160,8 @@ test("Abmelden: Konto gesperrt, Geräte weg, neu koppeln geht", async () => {
 
   const again = await parent.call("createPairingCode", { childId: "jan" });
   await device().call("redeemPairingCode", { code: again.code });
-  assert.equal((await adminAuth().getUser(`kid:${parent.uid}:jan`)).disabled, false);
+  const kidUser = await adminAuth().getUser(`kid:${parent.uid}:jan`);
+  assert.equal(kidUser.displayName, undefined); // kein Kindername im Konto
 });
 
 // ── Eltern-PIN ───────────────────────────────────────────────────────────────
@@ -234,4 +237,25 @@ test("PIN: Kindergerät hat keinen Zugriff", async () => {
   await expectError(kid.call("verifyParentPin", { pin: "4711" }), "permission-denied");
   await expectError(kid.call("setParentPin", { pin: "1111" }), "permission-denied");
   await signOut(kid.auth);
+});
+
+// ── Aufräumen ────────────────────────────────────────────────────────────────
+
+test("Elternkonto gelöscht: PIN und offene Codes weg", async () => {
+  const parent = await parentWithChildren();
+  await parent.call("setParentPin", { pin: "4711" });
+  await parent.call("createPairingCode", { childId: "jan" });
+
+  await adminAuth().deleteUser(parent.uid);
+
+  // Der Trigger läuft asynchron
+  let pinExists = true;
+  let openCodes = 1;
+  for (let i = 0; i < 40 && (pinExists || openCodes > 0); i++) {
+    await new Promise((r) => setTimeout(r, 250));
+    pinExists = (await adb.doc(`users/${parent.uid}/private/pin`).get()).exists;
+    openCodes = (await adb.collection("pairingCodes").where("parentUid", "==", parent.uid).get()).size;
+  }
+  assert.equal(pinExists, false);
+  assert.equal(openCodes, 0);
 });

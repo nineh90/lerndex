@@ -14,6 +14,7 @@ import '../../auth/data/profile_repository.dart';
 import 'edit_child_screen.dart';
 import 'widgets/claimed_rewards_banner.dart';
 import 'widgets/stat_chip.dart';
+import 'widgets/child_device_section.dart';
 import 'widgets/pulsing_dot.dart';
 import '../../subscription/presentation/paywall_screen.dart';
 import 'package:lerndex/src/features/auth/domain/account.dart';
@@ -322,6 +323,12 @@ class LiveChildStatCard extends ConsumerWidget {
                                         EditChildScreen(child: child),
                                   ),
                                 );
+                              case 'device':
+                                showDialog<void>(
+                                  context: context,
+                                  builder: (_) =>
+                                      PairingCodeDialog(child: child),
+                                );
                               case 'rewards':
                                 Navigator.push(
                                   context,
@@ -378,6 +385,20 @@ class LiveChildStatCard extends ConsumerWidget {
                                   ),
                                   SizedBox(width: 8),
                                   Text('Bearbeiten'),
+                                ],
+                              ),
+                            ),
+                            const PopupMenuItem(
+                              value: 'device',
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.qr_code_2,
+                                    size: 18,
+                                    color: Colors.deepPurple,
+                                  ),
+                                  SizedBox(width: 8),
+                                  Text('Gerät verbinden'),
                                 ],
                               ),
                             ),

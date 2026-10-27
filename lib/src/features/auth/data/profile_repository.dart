@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:lerndex/src/features/subscription/data/subscription_model.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../domain/child_model.dart';
+import 'child_device_repository.dart';
 import '../../rewards/data/system_rewards_initializer.dart';
 import '../../rewards/data/xp_service.dart';
 import '../../quiz/data/quiz_prefetch_service.dart';
@@ -310,6 +311,20 @@ class ProfileRepository {
         );
   }
 
+  /// Gekoppelte Kindergeräte abmelden, bevor das Kind gelöscht wird – sonst
+  /// bliebe das Kinderkonto aktiv (und die Geräteliste als Rest stehen).
+  /// Darf das Löschen nicht verhindern, z.B. wenn die Function nicht
+  /// erreichbar ist.
+  Future<void> _unpairDevices(String childId) async {
+    try {
+      await lerndexFunctions().httpsCallable('unpairChildDevices').call({
+        'childId': childId,
+      });
+    } catch (e) {
+      debugPrint('⚠️ Geräte von $childId nicht abgemeldet: $e');
+    }
+  }
+
   /// Löscht ein Kind INKLUSIVE aller Subcollections.
   ///
   /// ✅ FIX (DSGVO): Vorher wurde nur das Kind-Dokument gelöscht – sämtliche
@@ -319,6 +334,7 @@ class ProfileRepository {
     final uid = _uid;
     if (uid.isEmpty) throw Exception('Kein Benutzer angemeldet.');
 
+    await _unpairDevices(childId);
     await _deleteChildData(uid, childId);
 
     await _firestore
@@ -348,6 +364,7 @@ class ProfileRepository {
     // ── 1. Alle Kinder inkl. Subcollections ───────────────────────────────
     final childrenSnapshot = await userRef.collection('children').get();
     for (final childDoc in childrenSnapshot.docs) {
+      await _unpairDevices(childDoc.id);
       await _deleteChildData(uid, childDoc.id);
       await childDoc.reference.delete();
     }

@@ -144,7 +144,11 @@ class _SecondaryDashboardScreenState
             : Brightness.dark,
         statusBarColor: theme.primary,
       ),
-      leading: IconButton(
+      automaticallyImplyLeading: false,
+      // Kindergerät: das Dashboard ist die Startseite, dahinter gibt es nichts
+      leading: _currentTab == 0 && ref.watch(isChildDeviceProvider)
+          ? null
+          : IconButton(
         icon: Icon(
           Icons.arrow_back_ios_rounded,
           color: theme.onPrimary.withValues(alpha: 0.9),

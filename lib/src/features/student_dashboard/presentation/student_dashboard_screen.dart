@@ -222,7 +222,8 @@ class _PrimaryDashboardScreenState
     });
 
     return PopScope(
-      canPop: _currentTab == 0,
+      // Kindergerät: das Dashboard ist die Startseite, dahinter gibt es nichts
+      canPop: _currentTab == 0 && !ref.watch(isChildDeviceProvider),
       onPopInvokedWithResult: (didPop, _) {
         if (!didPop && _currentTab != 0) {
           setState(() => _currentTab = 0);
@@ -235,7 +236,10 @@ class _PrimaryDashboardScreenState
           backgroundColor: Colors.deepPurple,
           foregroundColor: Colors.white,
           elevation: 0,
-          leading: IconButton(
+          automaticallyImplyLeading: false,
+          leading: _currentTab == 0 && ref.watch(isChildDeviceProvider)
+              ? null
+              : IconButton(
             icon: const Icon(Icons.arrow_back),
             onPressed: () {
               if (_currentTab != 0) {

@@ -1,10 +1,17 @@
 import 'dart:math' as math;
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../auth/data/auth_repository.dart';
 import '../auth/domain/child_model.dart';
+import '../auth/data/child_device_repository.dart';
+import '../auth/presentation/active_child_provider.dart';
+import '../auth/presentation/child_pairing_screen.dart';
 import '../auth/presentation/login_screen.dart';
+import '../student_dashboard/presentation/student_dashboard_screen.dart';
+import '../../shared/web/browser_url.dart';
 import '../auth/presentation/setup_dialog.dart';
 import '../auth/presentation/family_dashboard_screen.dart';
 import '../quiz/data/ai_question_cache_repository.dart';
@@ -48,6 +55,9 @@ class _LerndexSplashScreenState extends ConsumerState<LerndexSplashScreen>
   final _random = math.Random();
 
   String _statusText = 'Starte Lerndex...';
+
+  /// Fehler beim Einlösen eines Koppel-Links → Code-Eingabe zeigt ihn an.
+  String? _pairingError;
   bool _isNavigating = false;
 
   // Echter Fortschritt: wird pro fertigem Fach erhöht (0.0 – 1.0).
@@ -153,16 +163,43 @@ class _LerndexSplashScreenState extends ConsumerState<LerndexSplashScreen>
     final startTime = DateTime.now();
 
     String destination = 'login';
+    final authRepo = ref.read(authRepositoryProvider);
 
     try {
-      final authRepo = ref.read(authRepositoryProvider);
-      final user = authRepo.currentUser;
+      // Im Browser stellt Firebase die gespeicherte Anmeldung asynchron wieder
+      // her – currentUser wäre direkt nach dem Start noch null. Das erste
+      // Ereignis von authStateChanges kommt erst danach.
+      var user = await authRepo.authStateChanges().first.timeout(
+        const Duration(seconds: 5),
+        onTimeout: () => authRepo.currentUser,
+      );
 
       _setProgress(_bootstrapShare * 0.5, 'Anmeldung prüfen...');
 
+      // Koppel-Link aus dem QR-Code (…/k/CODE): Gerät als Kind anmelden.
+      // Ist schon jemand angemeldet (z.B. ein Elternteil), bleibt es dabei.
+      final linkCode = kIsWeb ? pairingCodeFromPath(Uri.base.path) : null;
+      if (linkCode != null) {
+        replaceBrowserPath('/');
+        if (user == null) {
+          _setProgress(_bootstrapShare * 0.5, 'Gerät wird verbunden...');
+          try {
+            await ref
+                .read(childDeviceRepositoryProvider)
+                .redeemPairingCode(linkCode);
+            user = authRepo.currentUser;
+          } on PairingException catch (e) {
+            _pairingError = e.message;
+          }
+        }
+      }
+
       if (user == null) {
-        destination = 'login';
+        destination = _pairingError != null ? 'pairing' : 'login';
         _setProgress(1.0, 'Los geht\'s! ✨');
+      } else if (user.isChildDevice) {
+        await _prepareChildDevice(user, maxPrefetchWait);
+        destination = 'child';
       } else {
         // NEU: RevenueCat User identifizieren
         final subscriptionService = ref.read(subscriptionServiceProvider);
@@ -188,6 +225,11 @@ class _LerndexSplashScreenState extends ConsumerState<LerndexSplashScreen>
       }
     } catch (e) {
       debugPrint('⚠️ Splash init error: $e');
+      // Kindergerät, das nicht mehr darf (abgemeldet, Kind gelöscht):
+      // abmelden, damit es nicht bei jedem Start wieder scheitert.
+      if (authRepo.currentUser?.isChildDevice ?? false) {
+        await authRepo.signOut();
+      }
       destination = 'login';
       _setProgress(1.0, 'Weiter...');
     }
@@ -204,6 +246,30 @@ class _LerndexSplashScreenState extends ConsumerState<LerndexSplashScreen>
     _navigate(destination);
   }
 
+  /// Gekoppeltes Kindergerät: das eine Kind laden, auswählen und nur dessen
+  /// Fächer vorladen. Kein RevenueCat (Abo-Status kommt aus Firestore), keine
+  /// Kinderauswahl, kein Elternbereich.
+  Future<void> _prepareChildDevice(User user, Duration maxPrefetchWait) async {
+    _setProgress(_bootstrapShare * 0.7, 'Abo prüfen...');
+    await ref.read(subscriptionStatusProvider.notifier).refresh();
+
+    final snap = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.ownerUid)
+        .collection('children')
+        .doc(user.pairedChildId)
+        .get();
+    if (!snap.exists) throw StateError('Kind nicht mehr vorhanden');
+    final child = ChildModel.fromMap(snap.data()!, snap.id);
+    ref.read(activeChildProvider.notifier).select(child);
+
+    _setProgress(_bootstrapShare, 'Hallo ${child.name}!');
+    await _prefetchChildren(user.ownerUid, [child]).timeout(
+      maxPrefetchWait,
+      onTimeout: () => _setProgress(1.0, 'Los geht\'s! ✨'),
+    );
+  }
+
   /// Lädt alle Kinder des Users aus Firestore und startet
   /// den parallelen Quiz-Prefetch für alle Kinder + Fächer.
   Future<void> _prefetchAllChildren(String userId) async {
@@ -218,6 +284,19 @@ class _LerndexSplashScreenState extends ConsumerState<LerndexSplashScreen>
           .map((doc) => ChildModel.fromMap(doc.data(), doc.id))
           .toList();
 
+      await _prefetchChildren(userId, children);
+    } catch (e) {
+      debugPrint('⚠️ Prefetch-Fehler im Splash: $e');
+      _setProgress(1.0, 'Weiter...');
+    }
+  }
+
+  /// Quiz-Prefetch für die übergebenen Kinder (alle Fächer, parallel).
+  Future<void> _prefetchChildren(
+    String userId,
+    List<ChildModel> children,
+  ) async {
+    try {
       if (children.isEmpty) {
         _setProgress(1.0, 'Alles bereit! ✨');
         return;
@@ -284,6 +363,12 @@ class _LerndexSplashScreenState extends ConsumerState<LerndexSplashScreen>
         // await nötig damit State gesetzt ist bevor FamilyDashboard baut.
         await ref.read(tutorialProvider.notifier).startTutorial();
         target = const FamilyDashboardScreen();
+        break;
+      case 'child':
+        target = const StudentDashboardScreen();
+        break;
+      case 'pairing':
+        target = ChildPairingScreen(initialError: _pairingError);
         break;
       default:
         target = const LoginScreen();

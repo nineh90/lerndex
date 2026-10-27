@@ -7,12 +7,16 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:firebase_app_check/firebase_app_check.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'firebase_options.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:image_picker_android/image_picker_android.dart';
 import 'package:image_picker_platform_interface/image_picker_platform_interface.dart';
+import 'src/features/auth/data/child_device_repository.dart';
 import 'src/features/auth/presentation/account_deleted_screen.dart';
 import 'src/features/splash/splash_screen.dart';
 // NEU: RevenueCat
@@ -51,6 +55,21 @@ void main() async {
   }
 
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
+  // Lokale Emulatoren statt echter Daten (Ports wie in firebase.json):
+  // flutter run --dart-define=USE_FIREBASE_EMULATOR=true
+  // Start: firebase emulators:start --only auth,firestore,functions,storage
+  const useEmulator = bool.fromEnvironment('USE_FIREBASE_EMULATOR');
+  if (useEmulator) {
+    // Android-Emulator erreicht den Rechner unter 10.0.2.2
+    final host = !kIsWeb && defaultTargetPlatform == TargetPlatform.android
+        ? '10.0.2.2'
+        : 'localhost';
+    await FirebaseAuth.instance.useAuthEmulator(host, 19099);
+    FirebaseFirestore.instance.useFirestoreEmulator(host, 18080);
+    lerndexFunctions().useFunctionsEmulator(host, 15001);
+    await FirebaseStorage.instance.useStorageEmulator(host, 19199);
+  }
 
   // App Check im Browser: Dort steht der Firebase-Key offen im Quelltext,
   // ohne App Check könnte jeder über unser Konto Vertex AI aufrufen.

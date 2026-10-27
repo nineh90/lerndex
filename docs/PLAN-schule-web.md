@@ -98,20 +98,85 @@ Noch offen, beides Google und Teil von Firebase:
 Später möglich: Quizfragen im Standard-Modus (ab Klasse 3) vorlesen. Eine bessere Stimme
 (Cloud-TTS in der EU) statt der Gerätestimme.
 
-## Phase 3: Rollen und Sicherheit
+## Phase 3: Rollen und Sicherheit ✅ (Branch `rollen`)
 
-Heute hängt alles am Eltern-Account (`users/{uid}/children/{childId}`). Ein Kind hat keinen
-eigenen Login. 113 Stellen in 31 Dateien greifen fest auf `collection('users')` zu.
+Erledigt:
 
-1. Cloud Functions einführen. Rollen als Custom Claims am Token: `parent`, `teacher`,
-   `student`, `schoolAdmin` plus `schoolId`.
-2. Firestore- und Storage-Rules pro Rolle neu schreiben. Das erledigt die offenen Punkte
-   PIN-Prüfung und Abo-Status serverseitig.
-3. Datenzugriff hinter einen Provider legen („wo liegt das aktuelle Lernprofil?“), statt fester
-   Pfade. **Wichtig für Phase 6:** Dann lässt sich das Backend später tauschen.
-4. **QR-Kopplung fürs Kindergerät:** Eltern zeigen einen QR-Code mit einem Link
-   (`app.lerndex.de/k/…`), das Kind scannt ihn mit der Handykamera und ist als Schüler
-   angemeldet. Kein Eltern-Passwort auf dem Kinderhandy, kein Zugang zum Elternbereich.
+- **Konto-Abstraktion** (`lib/src/features/auth/domain/account.dart`): Alle Datenpfade nutzen
+  `user.ownerUid` statt `user.uid`. Für Eltern ist das dieselbe ID. Ein gekoppeltes Kindergerät
+  hat ein eigenes Konto `kid:<parentUid>:<childId>`, seine Daten liegen weiter bei den Eltern.
+  Bei der Schul-Struktur (Phase 4) bzw. dem Laravel-Backend (Phase 6) ist das die eine Stelle,
+  an der festgelegt wird, wem die Daten gehören.
+- **Cloud Functions** (`functions/index.js`, Region europe-west3):
+  - `createPairingCode`, `redeemPairingCode`, `unpairChildDevices`: Kindergerät koppeln.
+    Code mit 8 Zeichen, 15 Minuten gültig, nur einmal nutzbar. Das Kinderkonto bekommt die
+    Claims `{ role: "student", parentUid, childId }`. Abmelden löscht das Kinderkonto.
+  - `setParentPin`, `verifyParentPin`: PIN auf dem Server. Hash in `users/{uid}/private/pin`,
+    das kein Client lesen kann. Sperre nach 5 Fehlversuchen. Alte Hashes im users-Dokument
+    werden beim ersten Prüfen dorthin umgezogen (gleiches Hash-Verfahren, getestet).
+  - `cleanupDeletedParent` (Auth-Trigger): Beim Löschen eines Elternkontos PIN und offene
+    Codes entfernen.
+- **Rules:** Ein Kindergerät darf nur sein eigenes Kind lesen und speichern, das Eltern-
+  Dokument lesen (Abo-Status) und die freigegebenen Aufgaben seines Kindes. Kein Geschwister-
+  kind, kein PIN, keine Geräteliste, kein Kind anlegen oder löschen.
+- **App:**
+  - Elternbereich: Kind-Menü → „Gerät verbinden“ zeigt QR-Code und Code. Unter „Kind
+    bearbeiten → Eigenes Gerät“ stehen die verbundenen Geräte und „Alle abmelden“.
+  - Anmeldeseite: „Ich bin ein Kind – Code eingeben“.
+  - Link `…/k/CODE` aus dem QR-Code löst den Code im Browser sofort ein.
+  - Ein Kindergerät startet direkt im Kinder-Dashboard, ohne Zurück-Knopf und ohne
+    Elternbereich.
+- **Abo-Status:** Ohne RevenueCat (Browser ohne Web-Key) und auf Kindergeräten gilt der Status
+  aus Firestore. Vorher hätten zahlende Familien im Browser ihr Abo „verloren“.
+- **Tests:** 30 Tests im Emulator (`functions/`, siehe unten) und 272 Flutter-Tests.
+
+### Deploy-Reihenfolge (wichtig)
+
+Vorher: `firebase login --reauth`, die gespeicherte Anmeldung ist abgelaufen.
+
+1. **Functions:** `firebase deploy --only functions`. Braucht den Blaze-Tarif (ist aktiv).
+2. **IAM:** Das Dienstkonto der Functions muss Custom Tokens signieren dürfen. In der Google
+   Cloud Console unter IAM dem Konto `<Projektnummer>-compute@developer.gserviceaccount.com`
+   die Rolle **„Service Account Token Creator“** geben und die API „IAM Service Account
+   Credentials“ aktivieren. Ohne das scheitert `redeemPairingCode`.
+3. **Rules:** `firebase deploy --only firestore:rules,storage`. Laut Notizen sind die Rules aus
+   dem Repo noch nie deployt worden. Die neuen Rules sind mit der aktuellen Play-Store-Version
+   verträglich (Übergangsregel für den alten Client-PIN in `firestore.rules`).
+4. **App:** Erst danach Web und Android mit dieser Version ausrollen. Die neue App prüft den PIN
+   nur noch über die Function. Ohne deployte Functions kommt niemand mehr in den Elternbereich.
+5. **Später:** Wenn alle auf der neuen Version sind, die Übergangsregel für `hashedPin`/`pinSalt`
+   in `firestore.rules` entfernen.
+
+### Testen
+
+```bash
+cd functions
+npm install
+JAVA_HOME=~/jdks/current npm run test:emulator   # Rules + Functions im Emulator
+```
+
+Die App gegen die Emulatoren (ohne echte Daten):
+
+```bash
+firebase emulators:start --project lerndex-3775f --only auth,firestore,functions,storage
+flutter run -d chrome --dart-define-from-file=dart-defines.json --dart-define=USE_FIREBASE_EMULATOR=true
+```
+
+Im Browser geht die Anmeldung mit dem Emulator beim Neuladen verloren: Firebase prüft das
+gespeicherte Konto dann gegen den echten Server. Mit echten Konten passiert das nicht.
+
+### Offen
+
+- **Abo serverseitig:** Den Abo-Status schreibt weiterhin die App (`_syncToFirestore`), ein
+  manipulierter Client könnte sich Premium eintragen. Lösung: RevenueCat-Webhook → Cloud
+  Function schreibt `subscription`, Rules verbieten Clients das Feld. Braucht die Webhook-
+  Einrichtung im RevenueCat-Dashboard.
+- **Gemeinsames Gerät:** Im Kindermodus auf dem Elterngerät ist weiter das Elternkonto
+  angemeldet, der PIN schützt dort nur die Oberfläche. Echte Trennung gibt es nur mit einem
+  gekoppelten Gerät.
+- **App Check für die Functions** (`enforceAppCheck`), sobald App Check überall aktiv ist.
+- **Android-App-Link:** Auf Android öffnet der QR-Code die Web-App im Browser, nicht die
+  installierte App. In der App geht der Code über „Ich bin ein Kind“.
 
 ## Phase 4: Schule
 

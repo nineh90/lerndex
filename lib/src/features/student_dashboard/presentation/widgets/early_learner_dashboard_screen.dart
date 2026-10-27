@@ -15,6 +15,7 @@ import 'math_quiz_screen.dart';
 import 'letter_quiz_screen.dart';
 import 'color_shape_quiz_screen.dart';
 import 'package:lerndex/src/features/auth/domain/account.dart';
+import 'package:lerndex/src/features/auth/presentation/active_child_provider.dart';
 
 // ============================================================================
 // EARLY LEARNER DASHBOARD – Klasse 1–2 (v2: Carousel-Layout)
@@ -478,7 +479,9 @@ class _CompactHeader extends ConsumerWidget {
         children: [
           Row(
             children: [
-              // ── Zurück-Button ──────────────────────────────────────
+              // ── Zurück-Button (nicht auf dem Kindergerät, dort ist das
+              // Dashboard die Startseite) ───────────────────────────────
+              if (!ref.watch(isChildDeviceProvider))
               GestureDetector(
                 onTap: () => Navigator.of(context).pop(),
                 child: Container(

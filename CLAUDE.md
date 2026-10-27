@@ -84,9 +84,29 @@ Der Großteil der Provider nutzt noch die Legacy-APIs (`StateNotifierProvider`, 
 
 ### Datenmodell (Firestore)
 
-- `users/{uid}` — Eltern-Account (Subscription-Status, Kinder-Limit)
+- `users/{uid}` — Eltern-Account (Subscription-Status, Kinder-Limit, `pinSet`)
+- `users/{uid}/private/pin` — Eltern-PIN (Hash, Fehlversuche), nur für Cloud Functions
 - `users/{uid}/children/{childId}` — Kinder-Profile (`ChildModel`)
+- `users/{uid}/children/{childId}/devices` — gekoppelte Kindergeräte (schreibt nur die Function)
+- `pairingCodes/{code}` — offene Kopplungscodes, nur für Cloud Functions
 - Kinder-Limit hängt vom Abo-Plan ab (Starter: 1, Single: 1, Family: 3 + käufliche Slots)
+
+### Konten und Rollen
+
+- **Eltern:** E-Mail/Google/Apple, kein `role`-Claim.
+- **Kindergerät:** eigenes Konto `kid:<parentUid>:<childId>` mit Claims
+  `{ role: "student", parentUid, childId }`, angelegt von der Cloud Function
+  `redeemPairingCode` (QR-Code/Code aus dem Elternbereich).
+- **Datenpfade immer über `user.ownerUid`** (`lib/src/features/auth/domain/account.dart`), nie
+  über `user.uid`. Für Eltern ist das dieselbe ID, für ein Kindergerät die der Eltern.
+- Was wer darf, steht in `firestore.rules`/`storage.rules`. Tests dafür und für die Functions:
+  `cd functions && JAVA_HOME=~/jdks/current npm run test:emulator`.
+
+### Cloud Functions
+
+`functions/index.js` (Node 22, Region europe-west3): Kindergeräte koppeln/abmelden, Eltern-PIN
+setzen/prüfen, Aufräumen beim Löschen eines Elternkontos. Deploy-Reihenfolge (Functions → IAM →
+Rules → App) steht in `docs/PLAN-schule-web.md`, Phase 3.
 
 ### Tutor-Sicherheit
 

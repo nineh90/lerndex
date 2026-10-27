@@ -1,6 +1,9 @@
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
+import '../data/auth_repository.dart';
+import '../domain/account.dart';
 import '../domain/child_model.dart';
 
 /// Verwaltet das aktuell ausgewählte Kind
@@ -68,3 +71,10 @@ final activeChildProvider =
     StateNotifierProvider<ActiveChildNotifier, ChildModel?>((ref) {
       return ActiveChildNotifier();
     });
+
+/// Läuft die App auf einem gekoppelten Kindergerät? Dann ist das Kinder-
+/// Dashboard die Startseite: kein Zurück zur Kinderauswahl, kein Eltern-
+/// bereich.
+final isChildDeviceProvider = Provider<bool>((ref) {
+  return ref.watch(authStateChangesProvider).value?.isChildDevice ?? false;
+});

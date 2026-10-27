@@ -11,6 +11,7 @@
 //    (Abo-Status), hätte den PIN offline durchprobieren können.
 
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
+const functionsV1 = require("firebase-functions/v1");
 const { setGlobalOptions } = require("firebase-functions/v2");
 const { initializeApp } = require("firebase-admin/app");
 const { getAuth } = require("firebase-admin/auth");
@@ -127,11 +128,11 @@ exports.redeemPairingCode = onCall(async (request) => {
   const uid = kidUid(parentUid, childId);
   const claims = { role: "student", parentUid, childId };
   try {
-    const user = await auth.getUser(uid);
-    if (user.disabled) await auth.updateUser(uid, { disabled: false });
+    await auth.getUser(uid);
   } catch (e) {
     if (e.code !== "auth/user-not-found") throw e;
-    await auth.createUser({ uid, displayName: childName });
+    // Bewusst ohne Namen: das Konto trägt nur die (pseudonymen) IDs
+    await auth.createUser({ uid });
   }
   // Claims am Konto speichern, damit sie auch nach dem Token-Refresh gelten
   await auth.setCustomUserClaims(uid, claims);
@@ -146,9 +147,9 @@ exports.redeemPairingCode = onCall(async (request) => {
 });
 
 /**
- * Eltern: alle gekoppelten Geräte eines Kindes abmelden. Das Konto wird
- * gesperrt; bereits ausgestellte Tokens laufen spätestens nach einer Stunde
- * ab. Neu koppeln geht jederzeit mit einem neuen Code.
+ * Eltern: alle gekoppelten Geräte eines Kindes abmelden. Das Kinderkonto wird
+ * gelöscht; bereits ausgestellte Tokens laufen spätestens nach einer Stunde
+ * ab. Neu koppeln geht jederzeit mit einem neuen Code (legt das Konto neu an).
  */
 exports.unpairChildDevices = onCall(async (request) => {
   const parentUid = requireParent(request);
@@ -156,8 +157,8 @@ exports.unpairChildDevices = onCall(async (request) => {
 
   const uid = kidUid(parentUid, childId);
   try {
-    await auth.updateUser(uid, { disabled: true });
     await auth.revokeRefreshTokens(uid);
+    await auth.deleteUser(uid);
   } catch (e) {
     if (e.code !== "auth/user-not-found") throw e;
   }
@@ -317,3 +318,24 @@ exports.setParentPin = onCall(async (request) => {
   return { ok: true };
 });
 
+// ── 3. Aufräumen beim Löschen eines Elternkontos ─────────────────────────────
+
+/**
+ * Die App löscht beim Kontolöschen alle Daten, an die sie herankommt. Den PIN
+ * (private/pin) und offene Kopplungscodes darf sie nicht anfassen – das
+ * erledigt dieser Trigger. (Auth-Trigger gibt es nur als 1. Generation.)
+ */
+exports.cleanupDeletedParent = functionsV1
+  .region("europe-west3")
+  .auth.user()
+  .onDelete(async (user) => {
+    if (user.uid.startsWith("kid:")) return;
+    await db.recursiveDelete(db.collection(`users/${user.uid}/private`));
+    const codes = await db
+      .collection("pairingCodes")
+      .where("parentUid", "==", user.uid)
+      .get();
+    const batch = db.batch();
+    codes.docs.forEach((doc) => batch.delete(doc.ref));
+    await batch.commit();
+  });

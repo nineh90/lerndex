@@ -193,6 +193,30 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "5.7.1"
+  cloud_functions:
+    dependency: "direct main"
+    description:
+      name: cloud_functions
+      sha256: "25d7e53f309b0b799d237d5350793bcef69306f0096f2a5fd06226a4de747404"
+      url: "https://pub.dev"
+    source: hosted
+    version: "6.3.5"
+  cloud_functions_platform_interface:
+    dependency: transitive
+    description:
+      name: cloud_functions_platform_interface
+      sha256: "0fa886ea6189a9e3c1e58dfcb09a9549f788ce9950d2b01a2aae0f6d7429bfa5"
+      url: "https://pub.dev"
+    source: hosted
+    version: "6.0.5"
+  cloud_functions_web:
+    dependency: transitive
+    description:
+      name: cloud_functions_web
+      sha256: e97ea992822c404412ef21539d9b2d5b51922dfe8350922b2255ee7c4a7f54fd
+      url: "https://pub.dev"
+    source: hosted
+    version: "5.1.11"
   code_assets:
     dependency: transitive
     description:
@@ -1149,6 +1173,22 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "9.16.1"
+  qr:
+    dependency: transitive
+    description:
+      name: qr
+      sha256: "5a1d2586170e172b8a8c8470bbbffd5eb0cd38a66c0d77155ea138d3af3a4445"
+      url: "https://pub.dev"
+    source: hosted
+    version: "3.0.2"
+  qr_flutter:
+    dependency: "direct main"
+    description:
+      name: qr_flutter
+      sha256: "5095f0fc6e3f71d08adef8feccc8cea4f12eec18a2e31c2e8d82cb6019f4b097"
+      url: "https://pub.dev"
+    source: hosted
+    version: "4.1.0"
   record_use:
     dependency: transitive
     description:
@@ -1595,7 +1635,7 @@ packages:
     source: hosted
     version: "1.2.1"
   web:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: web
       sha256: "868d88a33d8a87b18ffc05f9f030ba328ffefba92d6c127917a2ba740f9cfe4a"
