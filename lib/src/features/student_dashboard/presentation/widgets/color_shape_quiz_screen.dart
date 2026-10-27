@@ -18,6 +18,7 @@ import 'package:lerndex/src/features/student_dashboard/presentation/widgets/trea
 import 'package:lerndex/src/features/quiz/presentation/quiz_finish_service.dart';
 import 'color_shape_task_engine.dart';
 import 'package:lerndex/src/ai/vertex_ai_service.dart';
+import 'package:lerndex/src/features/auth/domain/account.dart';
 
 // ============================================================================
 // COLOR SHAPE QUIZ SCREEN – Klasse 1 & 2 (Farben & Formen)
@@ -100,7 +101,7 @@ class _ColorShapeQuizScreenState extends ConsumerState<ColorShapeQuizScreen>
 
     if (child != null && user != null) {
       _timeTracker = LearningTimeTracker(
-        userId: user.uid,
+        userId: user.ownerUid,
         childId: child.id,
         subject: 'Farben & Formen',
       );
@@ -261,7 +262,7 @@ class _ColorShapeQuizScreenState extends ConsumerState<ColorShapeQuizScreen>
         try {
           await ref
               .read(xpServiceProvider)
-              .addXP(userId: user.uid, childId: child.id, xpToAdd: 3);
+              .addXP(userId: user.ownerUid, childId: child.id, xpToAdd: 3);
         } catch (_) {}
       }
     } else {
@@ -346,7 +347,7 @@ class _ColorShapeQuizScreenState extends ConsumerState<ColorShapeQuizScreen>
     await QuizFinishService.finish(
       ref: ref,
       context: context,
-      userId: user.uid,
+      userId: user.ownerUid,
       childId: child.id,
       isPerfect: _correctAnswers == _tasks.length,
       timeTracker: _timeTracker,

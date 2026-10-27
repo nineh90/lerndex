@@ -5,6 +5,7 @@ import '../../../auth/data/auth_repository.dart';
 import 'streak_roadmap_content.dart';
 import 'time_block.dart';
 import 'time_sep.dart';
+import 'package:lerndex/src/features/auth/domain/account.dart';
 
 // ============================================================================
 // LIVE LERNZEIT CARD (Home Tab) – kompaktes Layout mit Streak + Info-Icon
@@ -31,7 +32,7 @@ class _LiveLearningTimeCardState extends ConsumerState<LiveLearningTimeCard> {
     return StreamBuilder<DocumentSnapshot>(
       stream: FirebaseFirestore.instance
           .collection('users')
-          .doc(user.uid)
+          .doc(user.ownerUid)
           .collection('children')
           .doc(widget.childId)
           .snapshots(),

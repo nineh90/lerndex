@@ -16,6 +16,7 @@ import 'widgets/claimed_rewards_banner.dart';
 import 'widgets/stat_chip.dart';
 import 'widgets/pulsing_dot.dart';
 import '../../subscription/presentation/paywall_screen.dart';
+import 'package:lerndex/src/features/auth/domain/account.dart';
 
 /// Provider für Live-Child-Daten (Stream für Echtzeit-Updates)
 final liveChildProvider = StreamProvider.family<ChildModel?, String>((
@@ -27,7 +28,7 @@ final liveChildProvider = StreamProvider.family<ChildModel?, String>((
 
   return FirebaseFirestore.instance
       .collection('users')
-      .doc(user.uid)
+      .doc(user.ownerUid)
       .collection('children')
       .doc(childId)
       .snapshots()
@@ -47,7 +48,7 @@ final claimedRewardsCountProvider = StreamProvider.family<int, String>((
 
   return FirebaseFirestore.instance
       .collection('users')
-      .doc(user.uid)
+      .doc(user.ownerUid)
       .collection('children')
       .doc(childId)
       .collection('rewards')
@@ -71,7 +72,7 @@ final childOnlineStatusProvider = StreamProvider.family<bool, String>((
 
   return FirebaseFirestore.instance
       .collection('users')
-      .doc(user.uid)
+      .doc(user.ownerUid)
       .collection('children')
       .doc(childId)
       .snapshots()
@@ -216,7 +217,7 @@ class LiveChildStatCard extends ConsumerWidget {
             ? ref
                       .watch(
                         pendingTaskCountForChildProvider((
-                          userId: user.uid,
+                          userId: user.ownerUid,
                           childId: childId,
                         )),
                       )

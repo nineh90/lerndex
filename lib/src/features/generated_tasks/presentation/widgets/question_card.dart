@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/generated_task_models.dart';
 import '../../data/generated_task_repository.dart';
 import '../../../auth/data/auth_repository.dart';
+import 'package:lerndex/src/features/auth/domain/account.dart';
 
 /// Aufklappbare Multiple-Choice-Karte mit zwei Modi:
 ///
@@ -424,7 +425,7 @@ class _QuestionCardState extends ConsumerState<QuestionCard> {
   Future<void> _approve() async {
     setState(() => _isProcessing = true);
     try {
-      final userId = ref.read(authRepositoryProvider).currentUser?.uid;
+      final userId = ref.read(authRepositoryProvider).currentUser?.ownerUid;
       if (userId == null) return;
       await ref
           .read(generatedTaskRepositoryProvider)
@@ -443,7 +444,7 @@ class _QuestionCardState extends ConsumerState<QuestionCard> {
   Future<void> _reject() async {
     setState(() => _isProcessing = true);
     try {
-      final userId = ref.read(authRepositoryProvider).currentUser?.uid;
+      final userId = ref.read(authRepositoryProvider).currentUser?.ownerUid;
       if (userId == null) return;
       await ref
           .read(generatedTaskRepositoryProvider)

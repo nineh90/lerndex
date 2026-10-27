@@ -21,6 +21,7 @@ import '../subject_config.dart';
 import 'dashboard_theme.dart';
 import 'dashboard_theme_provider.dart';
 import 'theme_picker_sheet.dart';
+import 'package:lerndex/src/features/auth/domain/account.dart';
 
 // ============================================================================
 // SECONDARY DASHBOARD – Klasse 5–13
@@ -68,7 +69,7 @@ class _SecondaryDashboardScreenState
       final user = ref.read(authStateChangesProvider).value;
       if (user != null) {
         SystemRewardsInitializer().addMissingSystemRewards(
-          userId: user.uid,
+          userId: user.ownerUid,
           childId: widget.child.id,
         );
       }
@@ -92,7 +93,7 @@ class _SecondaryDashboardScreenState
     final activeChild = ref.watch(activeChildProvider);
     final child = activeChild ?? widget.child;
 
-    final themeIds = (userId: user.uid, childId: widget.child.id);
+    final themeIds = (userId: user.ownerUid, childId: widget.child.id);
     final themeState = ref.watch(dashboardThemeProvider(themeIds));
     final theme = themeState.theme;
     final rewardsCount =
@@ -116,10 +117,10 @@ class _SecondaryDashboardScreenState
         data: _buildThemeData(theme),
         child: Scaffold(
           backgroundColor: theme.background,
-          appBar: _buildAppBar(theme, user.uid),
+          appBar: _buildAppBar(theme, user.ownerUid),
           body: FadeTransition(
             opacity: _fadeAnim,
-            child: _buildBody(theme, user.uid),
+            child: _buildBody(theme, user.ownerUid),
           ),
           floatingActionButton: _buildTutorFab(theme, child),
           floatingActionButtonLocation:
@@ -439,7 +440,7 @@ class _SecondaryDashboardScreenState
     final theme = ref
         .read(
           dashboardThemeProvider((
-            userId: ref.read(authStateChangesProvider).value?.uid ?? '',
+            userId: ref.read(authStateChangesProvider).value?.ownerUid ?? '',
             childId: widget.child.id,
           )),
         )
@@ -558,7 +559,7 @@ class _SecondaryHomeTab extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // ── Hero Header ───────────────────────────────────────────────
-          _SecondaryHeroHeader(child: child, theme: theme, userId: user?.uid),
+          _SecondaryHeroHeader(child: child, theme: theme, userId: user?.ownerUid),
           const SizedBox(height: 24),
 
           // ── Schnellstats ──────────────────────────────────────────────
@@ -567,7 +568,7 @@ class _SecondaryHomeTab extends ConsumerWidget {
             child: _QuickStatsRow(
               child: child,
               theme: theme,
-              userId: user?.uid,
+              userId: user?.ownerUid,
             ),
           ),
           const SizedBox(height: 14),

@@ -7,6 +7,7 @@ import 'stat_card.dart';
 import 'section_header.dart';
 import 'info_tile.dart';
 import 'dashboard_theme_provider.dart';
+import 'package:lerndex/src/features/auth/domain/account.dart';
 
 // ============================================================================
 // TAB 3: STATISTIK – eigene Seite, vollständig erhalten
@@ -41,7 +42,7 @@ class StatisticsTab extends ConsumerWidget {
       // Theme laden – Slate (isDark=false) behält dunkle Farben, alle anderen
       // dunklen Themes bekommen helle Textfarben.
       final themeState = ref.watch(
-        dashboardThemeProvider((userId: user.uid, childId: child.id)),
+        dashboardThemeProvider((userId: user.ownerUid, childId: child.id)),
       );
       final theme = themeState.theme;
       textColor = theme.onSurface;
@@ -55,7 +56,7 @@ class StatisticsTab extends ConsumerWidget {
     return StreamBuilder<DocumentSnapshot>(
       stream: FirebaseFirestore.instance
           .collection('users')
-          .doc(user.uid)
+          .doc(user.ownerUid)
           .collection('children')
           .doc(child.id)
           .snapshots(),

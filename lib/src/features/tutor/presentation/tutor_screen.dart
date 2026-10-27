@@ -18,6 +18,7 @@ import 'package:lerndex/src/features/stt/stt_provider.dart';
 import 'package:lerndex/src/features/tts/tts_provider.dart';
 import 'widgets/xp_gain_overlay.dart';
 import 'widgets/tutor_xp_banner.dart';
+import 'package:lerndex/src/features/auth/domain/account.dart';
 
 /// Chat-Screen mit dem KI-Tutor
 class TutorScreen extends ConsumerStatefulWidget {
@@ -59,7 +60,7 @@ class _TutorScreenState extends ConsumerState<TutorScreen> {
 
     if (child != null && user != null) {
       _child = child;
-      _userId = user.uid;
+      _userId = user.ownerUid;
       _xpService = ref.read(xpServiceProvider);
       _rewardService = ref.read(rewardServiceProvider);
       _activeChildNotifier = ref.read(activeChildProvider.notifier);
@@ -71,7 +72,7 @@ class _TutorScreenState extends ConsumerState<TutorScreen> {
       }
 
       _timeTracker = LearningTimeTracker(
-        userId: user.uid,
+        userId: user.ownerUid,
         childId: child.id,
         subject: 'KI-Tutor',
       );
@@ -127,7 +128,7 @@ class _TutorScreenState extends ConsumerState<TutorScreen> {
       }
 
       ChildModel? updatedChild = await xpService.getChild(
-        userId: user.uid,
+        userId: user.ownerUid,
         childId: child.id,
       );
       if (updatedChild == null || !mounted) {
@@ -140,7 +141,7 @@ class _TutorScreenState extends ConsumerState<TutorScreen> {
       ref.read(activeChildProvider.notifier).update(updatedChild);
 
       final unlockedRewards = await rewardService.checkAndApproveRewards(
-        userId: user.uid,
+        userId: user.ownerUid,
         child: updatedChild,
       );
 

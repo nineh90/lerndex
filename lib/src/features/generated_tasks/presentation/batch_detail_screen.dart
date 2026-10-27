@@ -4,6 +4,7 @@ import '../data/generated_task_models.dart';
 import '../data/generated_task_repository.dart';
 import '../../auth/data/auth_repository.dart';
 import 'widgets/question_card.dart';
+import 'package:lerndex/src/features/auth/domain/account.dart';
 
 /// 📋 BATCH DETAIL SCREEN - Zeigt alle Aufgaben eines Batches
 ///
@@ -25,7 +26,7 @@ class _BatchDetailScreenState extends ConsumerState<BatchDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final authRepo = ref.watch(authRepositoryProvider);
-    final userId = authRepo.currentUser?.uid;
+    final userId = authRepo.currentUser?.ownerUid;
 
     final questionsAsync = userId != null
         ? ref.watch(
@@ -345,7 +346,7 @@ class _BatchDetailScreenState extends ConsumerState<BatchDetailScreen> {
     setState(() => _isProcessing = true);
     try {
       final repository = ref.read(generatedTaskRepositoryProvider);
-      final userId = ref.read(authRepositoryProvider).currentUser?.uid;
+      final userId = ref.read(authRepositoryProvider).currentUser?.ownerUid;
       if (userId == null) throw Exception('Nicht angemeldet');
 
       await repository.approveAllPendingInBatch(
@@ -402,7 +403,7 @@ class _BatchDetailScreenState extends ConsumerState<BatchDetailScreen> {
     setState(() => _isProcessing = true);
     try {
       final repository = ref.read(generatedTaskRepositoryProvider);
-      final userId = ref.read(authRepositoryProvider).currentUser?.uid;
+      final userId = ref.read(authRepositoryProvider).currentUser?.ownerUid;
       if (userId == null) throw Exception('Nicht angemeldet');
 
       await repository.deleteBatch(userId: userId, batchId: widget.batch.id);

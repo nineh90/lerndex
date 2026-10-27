@@ -18,6 +18,7 @@ import 'package:lerndex/src/features/student_dashboard/presentation/widgets/trea
 import 'package:lerndex/src/features/quiz/presentation/quiz_finish_service.dart';
 import 'letter_task_engine.dart';
 import 'package:lerndex/src/ai/vertex_ai_service.dart';
+import 'package:lerndex/src/features/auth/domain/account.dart';
 
 // ============================================================================
 // LETTER QUIZ SCREEN – Klasse 1 & 2 (Buchstaben)
@@ -96,7 +97,7 @@ class _LetterQuizScreenState extends ConsumerState<LetterQuizScreen>
 
     if (child != null && user != null) {
       _timeTracker = LearningTimeTracker(
-        userId: user.uid,
+        userId: user.ownerUid,
         childId: child.id,
         subject: 'Buchstaben',
       );
@@ -259,7 +260,7 @@ class _LetterQuizScreenState extends ConsumerState<LetterQuizScreen>
         try {
           await ref
               .read(xpServiceProvider)
-              .addXP(userId: user.uid, childId: child.id, xpToAdd: 3);
+              .addXP(userId: user.ownerUid, childId: child.id, xpToAdd: 3);
         } catch (_) {}
       }
     } else {
@@ -344,7 +345,7 @@ class _LetterQuizScreenState extends ConsumerState<LetterQuizScreen>
     await QuizFinishService.finish(
       ref: ref,
       context: context,
-      userId: user.uid,
+      userId: user.ownerUid,
       childId: child.id,
       isPerfect: _correctAnswers == _tasks.length,
       timeTracker: _timeTracker,

@@ -8,6 +8,7 @@ import 'package:lerndex/src/features/rewards/domain/reward_enums.dart';
 import 'package:lerndex/src/features/rewards/domain/reward_model.dart';
 import 'package:lerndex/src/features/student_dashboard/domain/avatar_config.dart';
 import 'package:lerndex/src/features/student_dashboard/presentation/widgets/dashboard_theme.dart';
+import 'package:lerndex/src/features/auth/domain/account.dart';
 
 /// 🏆 ACHIEVEMENTS SCREEN
 /// Zeigt dem Schüler alle Systembelohnungen (freigeschaltet + noch nicht erreicht)
@@ -29,7 +30,7 @@ class AchievementsScreen extends ConsumerWidget {
 
     final rewardsStream = ref
         .watch(rewardServiceProvider)
-        .getRewardsStream(userId: user.uid, childId: activeChild.id);
+        .getRewardsStream(userId: user.ownerUid, childId: activeChild.id);
 
     return StreamBuilder<List<RewardModel>>(
       stream: rewardsStream,

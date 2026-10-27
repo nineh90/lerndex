@@ -13,6 +13,7 @@ import '../data/pin_repository.dart';
 import '../../subscription/data/subscription_provider.dart';
 import '../../subscription/presentation/paywall_screen.dart';
 import 'feedback_dialog.dart';
+import 'package:lerndex/src/features/auth/domain/account.dart';
 
 /// Einstellungsbereich im Elterndashboard
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -392,7 +393,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
                         final changed = await ref
                             .read(pinRepositoryProvider)
-                            .changePin(user.uid, old, newPin);
+                            .changePin(user.ownerUid, old, newPin);
 
                         if (!changed) {
                           setDialogState(() {

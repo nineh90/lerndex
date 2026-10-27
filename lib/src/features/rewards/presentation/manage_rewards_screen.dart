@@ -10,6 +10,7 @@ import '../domain/reward_enums.dart';
 import 'widgets/reward_manage_card.dart';
 import 'widgets/create_reward_dialog.dart';
 import 'widgets/edit_reward_dialog.dart';
+import 'package:lerndex/src/features/auth/domain/account.dart';
 
 /// MANAGE REWARDS SCREEN FÜR ELTERN
 /// Zeigt und verwaltet ausschließlich eltern-erstellte Belohnungen (RewardType.parent).
@@ -70,7 +71,7 @@ class _ManageRewardsScreenState extends ConsumerState<ManageRewardsScreen>
       body: StreamBuilder<List<RewardModel>>(
         stream: ref
             .watch(rewardServiceProvider)
-            .getRewardsStream(userId: user.uid, childId: widget.child.id),
+            .getRewardsStream(userId: user.ownerUid, childId: widget.child.id),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(
@@ -111,17 +112,17 @@ class _ManageRewardsScreenState extends ConsumerState<ManageRewardsScreen>
             children: [
               _buildRewardsList(
                 allRelevant,
-                user.uid,
+                user.ownerUid,
                 'Noch keine Belohnungen erstellt',
               ),
               _buildRewardsList(
                 activeRewards,
-                user.uid,
+                user.ownerUid,
                 'Keine aktiven Belohnungen',
               ),
               _buildRewardsList(
                 claimedRewards,
-                user.uid,
+                user.ownerUid,
                 'Noch keine Belohnungen eingelöst',
               ),
             ],
@@ -131,7 +132,7 @@ class _ManageRewardsScreenState extends ConsumerState<ManageRewardsScreen>
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showCreateRewardDialog(
           context,
-          ref.watch(authStateChangesProvider).value!.uid,
+          ref.watch(authStateChangesProvider).value!.ownerUid,
         ),
         backgroundColor: Colors.deepPurple,
         foregroundColor: Colors.white,

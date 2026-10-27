@@ -12,6 +12,7 @@ import '../quiz/data/quiz_prefetch_service.dart';
 import '../../tutorial_provider.dart';
 // NEU: Subscription
 import '../subscription/data/subscription_provider.dart';
+import 'package:lerndex/src/features/auth/domain/account.dart';
 
 // ============================================================================
 // LERNDEX SPLASH SCREEN
@@ -165,7 +166,7 @@ class _LerndexSplashScreenState extends ConsumerState<LerndexSplashScreen>
       } else {
         // NEU: RevenueCat User identifizieren
         final subscriptionService = ref.read(subscriptionServiceProvider);
-        await subscriptionService.identifyUser(user.uid);
+        await subscriptionService.identifyUser(user.ownerUid);
 
         // NEU: Abo-Status laden & in Provider speichern
         _setProgress(_bootstrapShare * 0.7, 'Abo prüfen...');
@@ -179,7 +180,7 @@ class _LerndexSplashScreenState extends ConsumerState<LerndexSplashScreen>
           _setProgress(1.0, 'Los geht\'s! ✨');
         } else {
           destination = 'dashboard';
-          await _prefetchAllChildren(user.uid).timeout(
+          await _prefetchAllChildren(user.ownerUid).timeout(
             maxPrefetchWait,
             onTimeout: () => _setProgress(1.0, 'Los geht\'s! ✨'),
           );

@@ -10,6 +10,7 @@ import '../domain/reward_enums.dart';
 import 'widgets/reward_card.dart';
 import '../../student_dashboard/presentation/widgets/dashboard_theme.dart';
 import 'student_notification_popup.dart';
+import 'package:lerndex/src/features/auth/domain/account.dart';
 
 /// 🎁 REWARDS SCREEN (Schüler-Sicht)
 ///
@@ -45,7 +46,7 @@ class RewardsScreen extends ConsumerWidget {
 
     final rewardsStream = ref
         .watch(rewardServiceProvider)
-        .getRewardsStream(userId: user.uid, childId: activeChild.id);
+        .getRewardsStream(userId: user.ownerUid, childId: activeChild.id);
 
     final primary = _primary(context);
     final background = _background(context);
@@ -183,7 +184,7 @@ class RewardsScreen extends ConsumerWidget {
                         context,
                         ref,
                         availableRewards,
-                        user.uid,
+                        user.ownerUid,
                         activeChild.id,
                         isAvailable: true,
                         onSurface: onSurface,
@@ -194,7 +195,7 @@ class RewardsScreen extends ConsumerWidget {
                         context,
                         ref,
                         claimedRewards,
-                        user.uid,
+                        user.ownerUid,
                         activeChild.id,
                         isAvailable: false,
                         onSurface: onSurface,

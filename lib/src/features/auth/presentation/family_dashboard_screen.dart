@@ -19,6 +19,7 @@ import '../../../tutorial_overlay.dart';
 import '../../subscription/data/subscription_provider.dart';
 import '../../subscription/presentation/paywall_screen.dart';
 import '../../../shared/widgets/parental_gate.dart';
+import 'package:lerndex/src/features/auth/domain/account.dart';
 
 class FamilyDashboardScreen extends ConsumerStatefulWidget {
   const FamilyDashboardScreen({super.key});
@@ -446,7 +447,7 @@ class _FamilyDashboardScreenState extends ConsumerState<FamilyDashboardScreen> {
       tutNotifier.setStep(TutorialStep.enterPin);
     }
 
-    final hasPin = await ref.read(pinRepositoryProvider).hasPinSet(user.uid);
+    final hasPin = await ref.read(pinRepositoryProvider).hasPinSet(user.ownerUid);
     if (!context.mounted) return;
 
     if (!hasPin) {

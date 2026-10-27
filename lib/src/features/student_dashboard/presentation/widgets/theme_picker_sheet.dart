@@ -9,6 +9,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 import 'dashboard_theme.dart';
 import 'dashboard_theme_provider.dart';
+import 'package:lerndex/src/features/auth/domain/account.dart';
 
 // ============================================================================
 // THEME PICKER SHEET
@@ -36,7 +37,7 @@ class _ThemePickerSheetState extends ConsumerState<ThemePickerSheet> {
     final child = ref.watch(activeChildProvider);
     if (user == null || child == null) return const SizedBox.shrink();
 
-    final themeIds = (userId: user.uid, childId: child.id);
+    final themeIds = (userId: user.ownerUid, childId: child.id);
     final themeState = ref.watch(dashboardThemeProvider(themeIds));
     final themeNotifier = ref.read(dashboardThemeProvider(themeIds).notifier);
 
@@ -147,7 +148,7 @@ class _ThemePickerSheetState extends ConsumerState<ThemePickerSheet> {
             _UploadButton(
               theme: themeState.theme,
               hasBackground: themeState.backgroundImageUrl != null,
-              onTap: () => _pickAndUpload(themeNotifier, user.uid, child.id),
+              onTap: () => _pickAndUpload(themeNotifier, user.ownerUid, child.id),
             ),
           ],
         ],

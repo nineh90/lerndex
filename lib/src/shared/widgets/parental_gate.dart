@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../features/auth/data/auth_repository.dart';
 import '../../features/parent_dashboard/data/pin_repository.dart';
 import '../../features/parent_dashboard/presentation/pin_input_dialog.dart';
+import 'package:lerndex/src/features/auth/domain/account.dart';
 
 /// Parental Gate für Kids-Apps (Apple Guideline 1.3 / Play Families Policy):
 /// Vor Käufen, externen Links und der PIN-Ersteinrichtung muss eine
@@ -20,7 +21,7 @@ Future<bool> showParentalGate(BuildContext context, WidgetRef ref) async {
   bool hasPin = false;
   if (user != null) {
     try {
-      hasPin = await ref.read(pinRepositoryProvider).hasPinSet(user.uid);
+      hasPin = await ref.read(pinRepositoryProvider).hasPinSet(user.ownerUid);
     } catch (_) {
       // Offline o.ä. → auf die Rechenaufgabe zurückfallen statt durchwinken
     }

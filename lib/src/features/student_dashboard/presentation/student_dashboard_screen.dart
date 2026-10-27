@@ -22,6 +22,7 @@ import 'widgets/tutor_history_tab.dart';
 import 'widgets/statistics_tab.dart';
 import 'widgets/avatar_settings_sheet.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:lerndex/src/features/auth/domain/account.dart';
 
 // ============================================================================
 // Dashboard-Varianten – werden je nach Klassenstufe angezeigt.
@@ -69,7 +70,7 @@ class _StudentDashboardScreenState
     try {
       final xpService = ref.read(xpServiceProvider);
       final validStreak = await xpService.checkAndResetStreakIfExpired(
-        userId: user.uid,
+        userId: user.ownerUid,
         childId: child.id,
       );
 
@@ -92,7 +93,7 @@ class _StudentDashboardScreenState
     final user = ref.read(authStateChangesProvider).value;
     if (child != null && user != null) {
       QuizPrefetchService.prefetchAllSubjects(
-        userId: user.uid,
+        userId: user.ownerUid,
         child: child,
         cache: ref.read(aiQuestionCacheRepositoryProvider),
       );
@@ -199,7 +200,7 @@ class _PrimaryDashboardScreenState
       final user = ref.read(authStateChangesProvider).value;
       if (user != null) {
         SystemRewardsInitializer().addMissingSystemRewards(
-          userId: user.uid,
+          userId: user.ownerUid,
           childId: widget.child.id,
         );
       }

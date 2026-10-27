@@ -5,6 +5,7 @@ import '../../../auth/presentation/active_child_provider.dart';
 import '../../../auth/data/auth_repository.dart';
 import '../../../auth/domain/child_model.dart';
 import '../../domain/avatar_config.dart';
+import 'package:lerndex/src/features/auth/domain/account.dart';
 
 // ============================================================================
 // AVATAR SETTINGS BOTTOM SHEET
@@ -35,7 +36,7 @@ class _AvatarSettingsSheetState extends ConsumerState<AvatarSettingsSheet> {
     try {
       await FirebaseFirestore.instance
           .collection('users')
-          .doc(user.uid)
+          .doc(user.ownerUid)
           .collection('children')
           .doc(widget.child.id)
           .update({'selectedAvatar': newValue});

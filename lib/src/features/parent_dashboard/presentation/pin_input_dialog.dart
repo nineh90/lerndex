@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/pin_repository.dart';
 import '../../auth/data/auth_repository.dart';
+import 'package:lerndex/src/features/auth/domain/account.dart';
 
 /// Dialog zum Eingeben des PINs
 class PinInputDialog extends ConsumerStatefulWidget {
@@ -41,7 +42,7 @@ class _PinInputDialogState extends ConsumerState<PinInputDialog> {
       final user = ref.read(authStateChangesProvider).value;
       if (user == null) throw Exception('Nicht eingeloggt');
 
-      final isValid = await ref.read(pinRepositoryProvider).verifyPin(user.uid, pin);
+      final isValid = await ref.read(pinRepositoryProvider).verifyPin(user.ownerUid, pin);
 
       if (mounted) {
         if (isValid) {

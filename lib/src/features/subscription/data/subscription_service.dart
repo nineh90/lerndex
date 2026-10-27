@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 import '../../../shared/platform_info.dart';
 import 'subscription_model.dart';
+import 'package:lerndex/src/features/auth/domain/account.dart';
 
 class SubscriptionService {
   SubscriptionService(this._firestore, this._auth);
@@ -286,7 +287,7 @@ class SubscriptionService {
 
   /// Erhöht `extraChildSlots` im Firestore-Userdokument atomar um 1.
   Future<void> _incrementExtraChildSlot() async {
-    final uid = _auth.currentUser?.uid;
+    final uid = _auth.currentUser?.ownerUid;
     if (uid == null) return;
 
     await _firestore.collection('users').doc(uid).update({
@@ -296,7 +297,7 @@ class SubscriptionService {
   }
 
   Future<void> _syncToFirestore(SubscriptionStatus status) async {
-    final uid = _auth.currentUser?.uid;
+    final uid = _auth.currentUser?.ownerUid;
     if (uid == null) return;
 
     try {
@@ -313,7 +314,7 @@ class SubscriptionService {
   }
 
   Future<SubscriptionStatus> getStatusFromFirestore() async {
-    final uid = _auth.currentUser?.uid;
+    final uid = _auth.currentUser?.ownerUid;
     if (uid == null) return SubscriptionStatus.empty;
 
     try {
@@ -338,7 +339,7 @@ class SubscriptionService {
   /// manuell in der Firebase Console gesetzt und ist per Security Rules
   /// gegen Selbst-Freischaltung durch Clients geschützt.
   Future<bool> hasTestAccess() async {
-    final uid = _auth.currentUser?.uid;
+    final uid = _auth.currentUser?.ownerUid;
     if (uid == null) return false;
 
     try {

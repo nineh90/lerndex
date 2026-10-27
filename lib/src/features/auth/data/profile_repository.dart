@@ -11,6 +11,7 @@ import '../../quiz/data/quiz_prefetch_service.dart';
 import 'auth_repository.dart';
 // NEU: Subscription
 import '../../subscription/data/subscription_service.dart';
+import 'package:lerndex/src/features/auth/domain/account.dart';
 
 part 'profile_repository.g.dart';
 
@@ -22,12 +23,12 @@ class ProfileRepository {
   final FirebaseAuth _auth;
 
   /// Aktuell eingeloggter User (Eltern-Account)
-  String get _uid => _auth.currentUser?.uid ?? '';
+  String get _uid => _auth.currentUser?.ownerUid ?? '';
 
   /// Stream aller Kinder des eingeloggten Eltern-Accounts
   /// Aktualisiert sich automatisch bei Änderungen in Firestore
   Stream<List<ChildModel>> watchChildren() {
-    debugPrint('🔍 currentUser: ${_auth.currentUser?.uid}');
+    debugPrint('🔍 currentUser: ${_auth.currentUser?.ownerUid}');
     debugPrint('🔍 _uid getter: $_uid');
 
     return _firestore
@@ -59,7 +60,7 @@ class ProfileRepository {
 
     final existingSnapshot = await _firestore
         .collection('users')
-        .doc(user.uid)
+        .doc(user.ownerUid)
         .collection('children')
         .count()
         .get();
@@ -91,7 +92,7 @@ class ProfileRepository {
 
     final docRef = await _firestore
         .collection('users')
-        .doc(user.uid)
+        .doc(user.ownerUid)
         .collection('children')
         .add(childData);
 
@@ -99,12 +100,12 @@ class ProfileRepository {
     try {
       final rewardsInitializer = SystemRewardsInitializer();
       await rewardsInitializer.initializeSystemRewards(
-        userId: user.uid,
+        userId: user.ownerUid,
         childId: docRef.id,
       );
 
       final count = await rewardsInitializer.countSystemRewards(
-        userId: user.uid,
+        userId: user.ownerUid,
         childId: docRef.id,
       );
 
@@ -116,7 +117,7 @@ class ProfileRepository {
     // Quiz-Fragen im Hintergrund vorgenerieren (fire-and-forget)
     // Das Kind hat beim ersten Login sofort Fragen bereit!
     _prefetchQuestionsForNewChild(
-      userId: user.uid,
+      userId: user.ownerUid,
       childId: docRef.id,
       name: name,
       age: age,
@@ -172,7 +173,7 @@ class ProfileRepository {
 
     final children = await _firestore
         .collection('users')
-        .doc(user.uid)
+        .doc(user.ownerUid)
         .collection('children')
         .get();
 
@@ -184,20 +185,20 @@ class ProfileRepository {
 
       try {
         final hasRewards = await rewardsInitializer.hasSystemRewards(
-          userId: user.uid,
+          userId: user.ownerUid,
           childId: childId,
         );
 
         if (!hasRewards) {
           debugPrint('  → Erstelle alle System-Belohnungen');
           await rewardsInitializer.initializeSystemRewards(
-            userId: user.uid,
+            userId: user.ownerUid,
             childId: childId,
           );
         } else {
           debugPrint('  → Füge fehlende Belohnungen hinzu');
           await rewardsInitializer.addMissingSystemRewards(
-            userId: user.uid,
+            userId: user.ownerUid,
             childId: childId,
           );
         }
@@ -341,7 +342,7 @@ class ProfileRepository {
     final user = _auth.currentUser;
     if (user == null) throw Exception('Kein Benutzer angemeldet.');
 
-    final uid = user.uid;
+    final uid = user.ownerUid;
     final userRef = _firestore.collection('users').doc(uid);
 
     // ── 1. Alle Kinder inkl. Subcollections ───────────────────────────────

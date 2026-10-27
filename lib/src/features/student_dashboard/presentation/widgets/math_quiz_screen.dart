@@ -18,6 +18,7 @@ import 'package:firebase_ai/firebase_ai.dart';
 import 'package:lerndex/src/features/quiz/presentation/quiz_finish_service.dart';
 import 'math_task_engine.dart';
 import 'package:lerndex/src/ai/vertex_ai_service.dart';
+import 'package:lerndex/src/features/auth/domain/account.dart';
 
 // ============================================================================
 // MATH QUIZ SCREEN – Klasse 1 & 2
@@ -106,7 +107,7 @@ class _MathQuizScreenState extends ConsumerState<MathQuizScreen>
 
     if (child != null && user != null) {
       _timeTracker = LearningTimeTracker(
-        userId: user.uid,
+        userId: user.ownerUid,
         childId: child.id,
         subject: 'Zahlen',
       );
@@ -286,7 +287,7 @@ class _MathQuizScreenState extends ConsumerState<MathQuizScreen>
         try {
           await ref
               .read(xpServiceProvider)
-              .addXP(userId: user.uid, childId: child.id, xpToAdd: 3);
+              .addXP(userId: user.ownerUid, childId: child.id, xpToAdd: 3);
         } catch (_) {}
       }
     } else {
@@ -374,7 +375,7 @@ class _MathQuizScreenState extends ConsumerState<MathQuizScreen>
     await QuizFinishService.finish(
       ref: ref,
       context: context,
-      userId: user.uid,
+      userId: user.ownerUid,
       childId: child.id,
       isPerfect: _correctAnswers == _tasks.length,
       timeTracker: _timeTracker,

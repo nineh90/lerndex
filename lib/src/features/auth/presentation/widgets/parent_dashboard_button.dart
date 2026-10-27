@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../data/auth_repository.dart';
 import '../../data/profile_repository.dart';
+import 'package:lerndex/src/features/auth/domain/account.dart';
 
 /// Anzahl eingelöster aber noch nicht ausgehändigter Belohnungen für ein Kind.
 final _pendingRewardsForChildProvider = StreamProvider.family<int, String>((
@@ -14,7 +15,7 @@ final _pendingRewardsForChildProvider = StreamProvider.family<int, String>((
 
   return FirebaseFirestore.instance
       .collection('users')
-      .doc(user.uid)
+      .doc(user.ownerUid)
       .collection('children')
       .doc(childId)
       .collection('rewards')

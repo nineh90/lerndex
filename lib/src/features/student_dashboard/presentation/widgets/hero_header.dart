@@ -5,6 +5,7 @@ import '../../../auth/data/auth_repository.dart';
 import '../../../auth/domain/child_model.dart';
 import '../../../rewards/data/xp_service.dart';
 import 'header_badge.dart';
+import 'package:lerndex/src/features/auth/domain/account.dart';
 
 // ============================================================================
 // HERO HEADER – nahtlos an AppBar, enthält Level/Sterne/XP
@@ -44,7 +45,7 @@ class HeroHeader extends ConsumerWidget {
           : StreamBuilder<DocumentSnapshot>(
               stream: FirebaseFirestore.instance
                   .collection('users')
-                  .doc(user.uid)
+                  .doc(user.ownerUid)
                   .collection('children')
                   .doc(child.id)
                   .snapshots(),

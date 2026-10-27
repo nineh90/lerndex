@@ -8,6 +8,7 @@ import 'package:lerndex/src/features/rewards/data/reward_service.dart';
 import 'package:lerndex/src/features/rewards/domain/reward_model.dart';
 import 'package:lerndex/src/features/rewards/domain/reward_enums.dart';
 import 'package:lerndex/src/features/tts/tts_provider.dart';
+import 'package:lerndex/src/features/auth/domain/account.dart';
 
 // ============================================================================
 // EARLY LEARNER REWARDS SCREEN – Klasse 1–2 (6–8 Jahre)
@@ -35,7 +36,7 @@ class EarlyLearnerRewardsScreen extends ConsumerWidget {
 
     final rewardsStream = ref
         .watch(rewardServiceProvider)
-        .getRewardsStream(userId: user.uid, childId: activeChild.id);
+        .getRewardsStream(userId: user.ownerUid, childId: activeChild.id);
 
     return StreamBuilder<List<RewardModel>>(
       stream: rewardsStream,
@@ -118,7 +119,7 @@ class EarlyLearnerRewardsScreen extends ConsumerWidget {
               if (approvedRewards.isNotEmpty || pendingButMet.isNotEmpty) ...[
                 _ParentRewardGrid(
                   rewards: [...approvedRewards, ...pendingButMet],
-                  userId: user.uid,
+                  userId: user.ownerUid,
                   childId: activeChild.id,
                   child: activeChild,
                   mode: _TileMode.available,
@@ -130,7 +131,7 @@ class EarlyLearnerRewardsScreen extends ConsumerWidget {
               if (pendingParentRewards.isNotEmpty) ...[
                 _ParentRewardGrid(
                   rewards: pendingParentRewards,
-                  userId: user.uid,
+                  userId: user.ownerUid,
                   childId: activeChild.id,
                   child: activeChild,
                   mode: _TileMode.locked,
@@ -151,7 +152,7 @@ class EarlyLearnerRewardsScreen extends ConsumerWidget {
                 ...claimedRewards.map(
                   (r) => _ParentRewardTile(
                     reward: r,
-                    userId: user.uid,
+                    userId: user.ownerUid,
                     childId: activeChild.id,
                     child: activeChild,
                     mode: _TileMode.claimed,

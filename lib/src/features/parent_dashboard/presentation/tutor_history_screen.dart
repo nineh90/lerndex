@@ -6,6 +6,7 @@ import '../../auth/data/auth_repository.dart';
 import '../../../services/tutor_chat_cleanup_service.dart';
 import 'widgets/flag_filter_chip.dart';
 import 'widgets/session_card.dart';
+import 'package:lerndex/src/features/auth/domain/account.dart';
 
 /// 💬 CHAT-HISTORIE FÜR ELTERN
 /// - Dynamische Topic-Filter (nur tatsächlich vorhandene Topics)
@@ -48,7 +49,7 @@ class _TutorHistoryScreenState extends ConsumerState<TutorHistoryScreen> {
     try {
       final snapshot = await FirebaseFirestore.instance
           .collection('users')
-          .doc(user.uid)
+          .doc(user.ownerUid)
           .collection('children')
           .doc(widget.child.id)
           .get();
@@ -85,14 +86,14 @@ class _TutorHistoryScreenState extends ConsumerState<TutorHistoryScreen> {
           IconButton(
             icon: const Icon(Icons.delete_sweep),
             tooltip: 'Alle Gespräche löschen',
-            onPressed: () => _confirmDeleteAll(context, user.uid),
+            onPressed: () => _confirmDeleteAll(context, user.ownerUid),
           ),
         ],
       ),
       body: Column(
         children: [
           _buildFilterBar(),
-          Expanded(child: _buildSessionList(user.uid)),
+          Expanded(child: _buildSessionList(user.ownerUid)),
         ],
       ),
     );

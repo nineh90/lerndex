@@ -12,6 +12,7 @@ import 'package:lerndex/src/features/tts/tts_provider.dart';
 import 'package:lerndex/src/features/auth/presentation/active_child_provider.dart';
 import 'package:lerndex/src/features/rewards/data/xp_service.dart';
 import 'package:lerndex/src/ai/vertex_ai_service.dart';
+import 'package:lerndex/src/features/auth/domain/account.dart';
 
 // ============================================================================
 // TRACING GAME SCREEN – Klasse 1–2
@@ -443,7 +444,7 @@ class _TracingGameScreenState extends ConsumerState<TracingGameScreen>
         unawaited(
           ref
               .read(xpServiceProvider)
-              .addXP(userId: user.uid, childId: child.id, xpToAdd: 10)
+              .addXP(userId: user.ownerUid, childId: child.id, xpToAdd: 10)
               .then((_) {})
               .catchError((Object e) {
                 debugPrint('TracingGame: addXP fehlgeschlagen: $e');

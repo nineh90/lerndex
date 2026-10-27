@@ -14,6 +14,7 @@ import 'rewards_count_provider.dart';
 import 'math_quiz_screen.dart';
 import 'letter_quiz_screen.dart';
 import 'color_shape_quiz_screen.dart';
+import 'package:lerndex/src/features/auth/domain/account.dart';
 
 // ============================================================================
 // EARLY LEARNER DASHBOARD – Klasse 1–2 (v2: Carousel-Layout)
@@ -129,7 +130,7 @@ class _EarlyLearnerDashboardScreenState
       final user = ref.read(authStateChangesProvider).value;
       if (user != null) {
         SystemRewardsInitializer().addMissingSystemRewards(
-          userId: user.uid,
+          userId: user.ownerUid,
           childId: widget.child.id,
         );
       }
@@ -425,7 +426,7 @@ class _CompactHeader extends ConsumerWidget {
         : StreamBuilder<DocumentSnapshot>(
             stream: FirebaseFirestore.instance
                 .collection('users')
-                .doc(user.uid)
+                .doc(user.ownerUid)
                 .collection('children')
                 .doc(child.id)
                 .snapshots(),
@@ -1067,7 +1068,7 @@ class _StarsContent extends ConsumerWidget {
     return StreamBuilder<DocumentSnapshot>(
       stream: FirebaseFirestore.instance
           .collection('users')
-          .doc(user.uid)
+          .doc(user.ownerUid)
           .collection('children')
           .doc(child.id)
           .snapshots(),

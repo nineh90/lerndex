@@ -15,6 +15,7 @@ import '../../rewards/presentation/student_notification_popup.dart';
 import 'widgets/answer_button.dart';
 import '../data/quiz_prefetch_service.dart';
 import '../../../ai/vertex_ai_service.dart';
+import 'package:lerndex/src/features/auth/domain/account.dart';
 
 // ============================================================================
 // QUIZ SCREEN – Klasse 3+ (v2)
@@ -77,7 +78,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
     engine.onRewardsUnlocked = (rewards) => _handleRewards(rewards);
     engine.onStreakUpdated = (streak) => _handleStreak(streak);
 
-    await engine.start(userId: user.uid, child: child, subject: widget.subject);
+    await engine.start(userId: user.ownerUid, child: child, subject: widget.subject);
   }
 
   // ── Engine-Callbacks ───────────────────────────────────────────────────────
@@ -104,7 +105,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
     // im Dashboard das neue Level anzeigt, ohne App-Neustart.
     final xpService = ref.read(xpServiceProvider);
     final updatedChild = await xpService.getChild(
-      userId: user.uid,
+      userId: user.ownerUid,
       childId: child.id,
     );
     if (updatedChild != null && mounted) {
@@ -117,7 +118,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
       // Belohnung erstellen
       final rewardService = ref.read(rewardServiceProvider);
       final reward = await rewardService.createLevelUpReward(
-        userId: user.uid,
+        userId: user.ownerUid,
         childId: child.id,
         level: newLevel,
       );
@@ -252,7 +253,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
     // Klasse 5+: Theme-Farbe verwenden wenn vorhanden
     if (child != null && user != null && child.grade >= 5) {
       final themeState = ref.read(
-        dashboardThemeProvider((userId: user.uid, childId: child.id)),
+        dashboardThemeProvider((userId: user.ownerUid, childId: child.id)),
       );
       return themeState.theme.primary;
     }

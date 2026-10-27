@@ -13,6 +13,7 @@ import '../../auth/domain/child_model.dart';
 import '../../rewards/data/xp_service.dart';
 import '../../quiz/data/ai_question_cache_repository.dart';
 import '../../generated_tasks/data/generated_task_models.dart' show Subject, SubjectExtension;
+import 'package:lerndex/src/features/auth/domain/account.dart';
 
 class TutorNotifier extends StateNotifier<List<ChatMessage>> {
   TutorNotifier(this._aiService, this._ref, this._childId, this._userId)
@@ -2293,7 +2294,7 @@ final tutorProviderFamily =
         throw Exception('User nicht eingeloggt');
       }
 
-      return TutorNotifier(service, ref, childId, user.uid);
+      return TutorNotifier(service, ref, childId, user.ownerUid);
     });
 
 /// 🎯 CONVENIENCE PROVIDER - Automatisch für aktives Kind

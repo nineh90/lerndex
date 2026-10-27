@@ -13,6 +13,7 @@ import '../../generated_tasks/presentation/task_approval_screen.dart';
 import '../../../ai/vertex_ai_service.dart';
 import '../../student_dashboard/presentation/subject_config.dart'
     show getSubjectsForChild;
+import 'package:lerndex/src/features/auth/domain/account.dart';
 
 /// 📸 KI-AUFGABENGENERATOR FÜR ELTERN
 ///
@@ -669,7 +670,7 @@ class _TaskGeneratorScreenState extends ConsumerState<TaskGeneratorScreen> {
     });
 
     try {
-      final userId = ref.read(authRepositoryProvider).currentUser?.uid;
+      final userId = ref.read(authRepositoryProvider).currentUser?.ownerUid;
       if (userId == null) throw Exception('Nicht angemeldet');
 
       final aiService = ref.read(vertexAIServiceProvider);

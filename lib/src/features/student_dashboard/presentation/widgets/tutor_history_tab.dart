@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../auth/data/auth_repository.dart';
 import '../../../auth/domain/child_model.dart';
 import 'session_detail_screen.dart';
+import 'package:lerndex/src/features/auth/domain/account.dart';
 
 // ============================================================================
 // TAB 2: TUTOR-VERLAUF (Schüler-Sicht)
@@ -23,7 +24,7 @@ class TutorHistoryTab extends ConsumerWidget {
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
           .collection('users')
-          .doc(user.uid)
+          .doc(user.ownerUid)
           .collection('children')
           .doc(child.id)
           .collection('tutor_sessions')
@@ -89,7 +90,7 @@ class TutorHistoryTab extends ConsumerWidget {
                   context,
                   MaterialPageRoute(
                     builder: (_) => SessionDetailScreen(
-                      userId: user.uid,
+                      userId: user.ownerUid,
                       childId: child.id,
                       sessionId: doc.id,
                       topic: topic,

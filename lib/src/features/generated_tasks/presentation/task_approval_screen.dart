@@ -5,6 +5,7 @@ import '../data/generated_task_repository.dart';
 import '../data/generated_task_models.dart';
 import 'widgets/batch_card.dart';
 import 'batch_detail_screen.dart';
+import 'package:lerndex/src/features/auth/domain/account.dart';
 
 /// 🔍 FREIGABE-SCREEN FÜR GENERIERTE AUFGABEN
 ///
@@ -33,7 +34,7 @@ class _TaskApprovalScreenState extends ConsumerState<TaskApprovalScreen> {
   @override
   Widget build(BuildContext context) {
     final authRepo = ref.watch(authRepositoryProvider);
-    final userId = authRepo.currentUser?.uid;
+    final userId = authRepo.currentUser?.ownerUid;
 
     if (userId == null) {
       return const Scaffold(body: Center(child: Text('Nicht angemeldet')));

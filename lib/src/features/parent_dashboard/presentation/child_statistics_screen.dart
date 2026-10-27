@@ -7,6 +7,7 @@ import '../../rewards/data/xp_service.dart';
 import 'tutor_history_screen.dart';
 import 'widgets/widgets_info_tile.dart';
 import 'widgets/widgets_stat_card.dart';
+import 'package:lerndex/src/features/auth/domain/account.dart';
 
 // ─── Lerndex Brand-Theme für Eltern-Screens ──────────────────────────────────
 // Brand-Lila aus main.dart (ColorScheme.fromSeed seed). Wird hier konsistent
@@ -593,7 +594,7 @@ class ChildStatisticsScreen extends ConsumerWidget {
             StreamBuilder<QuerySnapshot>(
               stream: FirebaseFirestore.instance
                   .collection('users')
-                  .doc(user.uid)
+                  .doc(user.ownerUid)
                   .collection('children')
                   .doc(child.id)
                   .collection('rewards')
@@ -816,7 +817,7 @@ class _AverageRow extends ConsumerWidget {
     if (user == null) return const SizedBox.shrink();
 
     return FutureBuilder<int>(
-      future: _countLearningDays(user.uid, child.id),
+      future: _countLearningDays(user.ownerUid, child.id),
       builder: (context, snapshot) {
         final learningDays = snapshot.data ?? 0;
         final avgSeconds = learningDays > 0
@@ -888,7 +889,7 @@ class _SubjectsBreakdownCard extends ConsumerWidget {
     if (user == null) return const SizedBox.shrink();
 
     return FutureBuilder<Map<String, int>>(
-      future: _aggregateSubjectSeconds(user.uid, child.id),
+      future: _aggregateSubjectSeconds(user.ownerUid, child.id),
       builder: (context, snapshot) {
         final data = snapshot.data ?? <String, int>{};
         final totalSeconds = data.values.fold<int>(0, (a, b) => a + b);
