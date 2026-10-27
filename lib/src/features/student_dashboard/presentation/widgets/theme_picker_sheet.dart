@@ -75,7 +75,9 @@ class _ThemePickerSheetState extends ConsumerState<ThemePickerSheet> {
           ),
           const SizedBox(height: 4),
           Text(
-            'Wähle deine Farben und dein Hintergrundbild',
+            kIsWeb
+                ? 'Wähle deine Farben'
+                : 'Wähle deine Farben und dein Hintergrundbild',
             style: TextStyle(
               fontSize: 13,
               color: themeState.theme.onSurface.withValues(alpha: 0.55),

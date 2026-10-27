@@ -76,6 +76,34 @@ class TtsController extends StateNotifier<TtsState> {
   /// Kennung für die nächste Ausgabe, siehe [speakTutor].
   String? _pendingUtteranceId;
 
+  // Im Browser nimmt das Plugin ein neues speak() erst an, wenn es das Ende
+  // der vorigen Ausgabe gemeldet bekommen hat. Nach stop() kommt diese Meldung
+  // aber verzögert – ohne Warten würde der neue Text still verworfen (z.B.
+  // beim Tipp auf eine andere Nachricht, während Lexi noch spricht).
+  bool _webSpeaking = false;
+  Completer<void>? _webStopped;
+
+  void _markWebStopped() {
+    _webSpeaking = false;
+    final stopped = _webStopped;
+    _webStopped = null;
+    if (stopped != null && !stopped.isCompleted) stopped.complete();
+  }
+
+  /// Laufende Ausgabe beenden, bevor etwas Neues gesprochen wird.
+  Future<void> _stopBeforeSpeak() async {
+    if (!kIsWeb || !_webSpeaking) {
+      await _tts.stop();
+      return;
+    }
+    final stopped = _webStopped ??= Completer<void>();
+    await _tts.stop();
+    await stopped.future.timeout(
+      const Duration(milliseconds: 500),
+      onTimeout: () {},
+    );
+  }
+
   /// Zustand erst nach dem nächsten Frame ändern (verhindert setState auf
   /// defunct Elementen) und diesen Frame auch anstoßen – sonst bliebe z.B. der
   /// Stopp-Knopf stehen, bis das Kind den Bildschirm berührt.
@@ -127,6 +155,7 @@ class TtsController extends StateNotifier<TtsState> {
         // Handler) hat sie davor schon wieder gelöscht.
         final id = _pendingUtteranceId;
         _pendingUtteranceId = null;
+        _webSpeaking = true;
         // Scheduling über SchedulerBinding verhindert setState auf defunct Elementen
         _afterFrame(() {
           if (mounted) {
@@ -140,6 +169,7 @@ class TtsController extends StateNotifier<TtsState> {
       });
 
       _tts.setCompletionHandler(() {
+        _markWebStopped();
         _afterFrame(() {
           if (mounted) {
             state = state.copyWith(isSpeaking: false, clearUtterance: true);
@@ -148,6 +178,7 @@ class TtsController extends StateNotifier<TtsState> {
       });
 
       _tts.setCancelHandler(() {
+        _markWebStopped();
         _afterFrame(() {
           if (mounted) {
             state = state.copyWith(isSpeaking: false, clearUtterance: true);
@@ -156,6 +187,7 @@ class TtsController extends StateNotifier<TtsState> {
       });
 
       _tts.setErrorHandler((msg) {
+        _markWebStopped();
         _afterFrame(() {
           if (mounted) {
             state = state.copyWith(isSpeaking: false, clearUtterance: true);
@@ -176,7 +208,7 @@ class TtsController extends StateNotifier<TtsState> {
   Future<void> speak(String text) async {
     if (!state.isInitialized || text.isEmpty) return;
 
-    await _tts.stop();
+    await _stopBeforeSpeak();
     await _tts.setSpeechRate(_speechRate);
     await _tts.setPitch(_pitch);
     await _tts.speak(text);
@@ -190,7 +222,7 @@ class TtsController extends StateNotifier<TtsState> {
     if (clean.isEmpty) return;
 
     _pendingUtteranceId = id;
-    await _tts.stop();
+    await _stopBeforeSpeak();
     await _tts.setSpeechRate(_speechRate);
     await _tts.setPitch(_pitch);
     await _tts.speak(clean);
@@ -201,7 +233,10 @@ class TtsController extends StateNotifier<TtsState> {
   /// Deshalb beim Tippen auf „Senden“ einmal leer sprechen.
   bool _webAudioUnlocked = false;
   Future<void> unlockWebAudio() async {
-    if (!kIsWeb || _webAudioUnlocked || !state.isInitialized) return;
+    // Läuft gerade eine Ausgabe, ist der Ton ohnehin schon freigeschaltet.
+    if (!kIsWeb || _webAudioUnlocked || _webSpeaking || !state.isInitialized) {
+      return;
+    }
     _webAudioUnlocked = true;
     await _tts.speak(' ');
   }
@@ -212,7 +247,7 @@ class TtsController extends StateNotifier<TtsState> {
     if (!state.isInitialized || questionText.isEmpty) return;
 
     final cleanText = stripEmojis(questionText);
-    await _tts.stop();
+    await _stopBeforeSpeak();
     await _tts.setSpeechRate(_speechRate);
     await _tts.setPitch(_pitch);
     await _tts.speak(cleanText);
@@ -223,7 +258,7 @@ class TtsController extends StateNotifier<TtsState> {
     if (!state.isInitialized || feedbackText.isEmpty) return;
 
     final cleanText = stripEmojis(feedbackText);
-    await _tts.stop();
+    await _stopBeforeSpeak();
     await _tts.setSpeechRate(_feedbackRate);
     await _tts.setPitch(_feedbackPitch);
     await _tts.speak(cleanText);
@@ -233,7 +268,7 @@ class TtsController extends StateNotifier<TtsState> {
   Future<void> speakGreeting(String childName) async {
     if (!state.isInitialized) return;
 
-    await _tts.stop();
+    await _stopBeforeSpeak();
     await _tts.setSpeechRate(_speechRate);
     await _tts.setPitch(_pitch);
     await _tts.speak('Hallo $childName! Was wollen wir heute lernen?');
@@ -243,7 +278,7 @@ class TtsController extends StateNotifier<TtsState> {
   Future<void> speakSubject(String subjectLabel) async {
     if (!state.isInitialized) return;
 
-    await _tts.stop();
+    await _stopBeforeSpeak();
     await _tts.setSpeechRate(0.5); // Kurze Wörter etwas schneller
     await _tts.setPitch(_pitch);
     await _tts.speak(subjectLabel);
@@ -268,7 +303,7 @@ class TtsController extends StateNotifier<TtsState> {
           'Beim nächsten Mal schaffst du noch mehr!';
     }
 
-    await _tts.stop();
+    await _stopBeforeSpeak();
     await _tts.setSpeechRate(_feedbackRate);
     await _tts.setPitch(_feedbackPitch);
     await _tts.speak(text);
