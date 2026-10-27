@@ -70,6 +70,8 @@ dependencies:
   confetti: ^0.8.0
   # Gepflegter Fork des discontinued flutter_markdown (gleiche API)
   flutter_markdown_plus: ^1.0.12
+  # Eigene Inline-Syntax für Formeln ($...$) in Lexis Antworten
+  markdown: ^7.3.0
 
   flutter_tts: ^4.2.5
   speech_to_text: ^7.0.0

@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:flutter_math_fork/flutter_math.dart';
+import 'package:markdown/markdown.dart' as md;
 import '../../features/tutor/domain/chat_message.dart';
 import 'picked_image.dart';
 
@@ -246,6 +247,9 @@ class MessageBubble extends StatelessWidget {
     } else if (url != null && url.isNotEmpty) {
       img = Image.network(
         url,
+        // Firebase Storage erlaubt keinen Abruf per Script (CORS) – im
+        // Browser dann als <img>-Element anzeigen.
+        webHtmlElementStrategy: WebHtmlElementStrategy.fallback,
         fit: BoxFit.cover,
         loadingBuilder: (c, child, progress) => progress == null
             ? child
@@ -365,9 +369,10 @@ class MessageBubble extends StatelessWidget {
 
 // ============================================================================
 // MATH-AWARE CONTENT WIDGET
-// Teilt den Text in normale Markdown-Blöcke und LaTeX-Blöcke auf.
-// Inline-Formeln: $...$
-// Block-Formeln:  $$...$$
+// Block-Formeln ($$...$$) stehen zentriert auf eigener Zeile. Der Text
+// dazwischen geht als Markdown raus; Inline-Formeln ($...$) baut eine eigene
+// Markdown-Syntax direkt in den Textfluss ein – sonst stünde jede kleine
+// Formel wie „3/4“ auf einer eigenen Zeile.
 // ============================================================================
 
 class _MathAwareContent extends StatelessWidget {
@@ -396,41 +401,40 @@ class _MathAwareContent extends StatelessWidget {
               child: _safeMath(seg.content, fontSize: fontSize + 3),
             ),
           );
-        } else if (seg.isInlineMath) {
-          return Padding(
-            padding: const EdgeInsets.symmetric(vertical: 2),
-            child: _safeMath(seg.content, fontSize: fontSize),
-          );
-        } else {
-          if (seg.content.trim().isEmpty) return const SizedBox.shrink();
-          return MarkdownBody(
-            data: seg.content,
-            styleSheet: MarkdownStyleSheet(
-              p: TextStyle(fontSize: fontSize, color: textColor),
-              strong: const TextStyle(fontWeight: FontWeight.bold),
-              em: const TextStyle(fontStyle: FontStyle.italic),
-              code: TextStyle(
-                fontSize: fontSize - 2,
-                fontFamily: 'monospace',
-                backgroundColor: Colors.grey.shade200,
-              ),
-            ),
-          );
         }
+        if (seg.content.trim().isEmpty) return const SizedBox.shrink();
+        return MarkdownBody(
+          data: seg.content,
+          inlineSyntaxes: [_InlineMathSyntax()],
+          builders: {
+            'math': _InlineMathBuilder(
+              (latex) => _safeMath(latex, fontSize: fontSize),
+            ),
+          },
+          styleSheet: MarkdownStyleSheet(
+            p: TextStyle(fontSize: fontSize, color: textColor),
+            strong: const TextStyle(fontWeight: FontWeight.bold),
+            em: const TextStyle(fontStyle: FontStyle.italic),
+            code: TextStyle(
+              fontSize: fontSize - 2,
+              fontFamily: 'monospace',
+              backgroundColor: Colors.grey.shade200,
+            ),
+          ),
+        );
       }).toList(),
     );
   }
 
-  Widget _safeMath(String latex, {double? fontSize}) {
-    final size = fontSize ?? this.fontSize;
+  Widget _safeMath(String latex, {required double fontSize}) {
     try {
       return Math.tex(
         latex,
-        textStyle: TextStyle(fontSize: size, color: Colors.black87),
+        textStyle: TextStyle(fontSize: fontSize, color: textColor),
         onErrorFallback: (err) => Text(
           latex,
           style: TextStyle(
-            fontSize: size,
+            fontSize: fontSize,
             color: Colors.red.shade700,
             fontFamily: 'monospace',
           ),
@@ -439,82 +443,73 @@ class _MathAwareContent extends StatelessWidget {
     } catch (_) {
       return Text(
         latex,
-        style: TextStyle(fontSize: size, fontFamily: 'monospace'),
+        style: TextStyle(fontSize: fontSize, fontFamily: 'monospace'),
       );
     }
   }
 
+  /// Trennt nur Block-Formeln ab, Inline-Formeln bleiben im Text.
   List<_TextSegment> _parseSegments(String input) {
     final segments = <_TextSegment>[];
     int pos = 0;
 
     while (pos < input.length) {
       final blockStart = input.indexOf(r'$$', pos);
-      final inlineStart = _findInlineDollar(input, pos);
-
-      final nextBlock = blockStart == -1 ? input.length + 1 : blockStart;
-      final nextInline = inlineStart == -1 ? input.length + 1 : inlineStart;
-
-      if (nextBlock == input.length + 1 && nextInline == input.length + 1) {
-        if (pos < input.length) {
-          segments.add(_TextSegment.text(input.substring(pos)));
-        }
+      if (blockStart == -1) {
+        segments.add(_TextSegment.text(input.substring(pos)));
         break;
       }
-
-      if (nextBlock <= nextInline) {
-        if (pos < nextBlock) {
-          segments.add(_TextSegment.text(input.substring(pos, nextBlock)));
-        }
-        final endBlock = input.indexOf(r'$$', nextBlock + 2);
-        if (endBlock == -1) {
-          segments.add(_TextSegment.text(input.substring(nextBlock)));
-          break;
-        }
-        final mathContent = input.substring(nextBlock + 2, endBlock).trim();
-        segments.add(_TextSegment.blockMath(mathContent));
-        pos = endBlock + 2;
-      } else {
-        if (pos < nextInline) {
-          segments.add(_TextSegment.text(input.substring(pos, nextInline)));
-        }
-        final endInline = _findClosingDollar(input, nextInline + 1);
-        if (endInline == -1) {
-          segments.add(_TextSegment.text(input.substring(nextInline)));
-          break;
-        }
-        final mathContent = input.substring(nextInline + 1, endInline).trim();
-        segments.add(_TextSegment.inlineMath(mathContent));
-        pos = endInline + 1;
+      final blockEnd = input.indexOf(r'$$', blockStart + 2);
+      if (blockEnd == -1) {
+        segments.add(_TextSegment.text(input.substring(pos)));
+        break;
       }
+      if (pos < blockStart) {
+        segments.add(_TextSegment.text(input.substring(pos, blockStart)));
+      }
+      segments.add(
+        _TextSegment.blockMath(
+          input.substring(blockStart + 2, blockEnd).trim(),
+        ),
+      );
+      pos = blockEnd + 2;
     }
 
     return segments;
   }
+}
 
-  int _findInlineDollar(String text, int start) {
-    for (int i = start; i < text.length; i++) {
-      if (text[i] == r'$') {
-        if (i + 1 < text.length && text[i + 1] == r'$') {
-          i++;
-          continue;
-        }
-        return i;
-      }
-    }
-    return -1;
+/// Markdown-Syntax für Inline-Formeln: `$3 + 4$` → Element `math`.
+class _InlineMathSyntax extends md.InlineSyntax {
+  _InlineMathSyntax() : super(r'\$([^$\n]+?)\$', startCharacter: 0x24);
+
+  @override
+  bool onMatch(md.InlineParser parser, Match match) {
+    parser.addNode(md.Element.text('math', match[1]!.trim()));
+    return true;
   }
+}
 
-  int _findClosingDollar(String text, int start) {
-    for (int i = start; i < text.length; i++) {
-      if (text[i] == r'$') {
-        if (i + 1 < text.length && text[i + 1] == r'$') {
-          return -1;
-        }
-        return i;
-      }
-    }
-    return -1;
+/// Rendert `math` als WidgetSpan. Als Text.rich verschmilzt flutter_markdown
+/// es mit dem umgebenden Text zu einer Zeile.
+class _InlineMathBuilder extends MarkdownElementBuilder {
+  _InlineMathBuilder(this._buildMath);
+
+  final Widget Function(String latex) _buildMath;
+
+  @override
+  Widget? visitElementAfterWithContext(
+    BuildContext context,
+    md.Element element,
+    TextStyle? preferredStyle,
+    TextStyle? parentStyle,
+  ) {
+    return Text.rich(
+      WidgetSpan(
+        alignment: PlaceholderAlignment.middle,
+        child: _buildMath(element.textContent),
+      ),
+    );
   }
 }
 
@@ -530,13 +525,10 @@ class _TextSegment {
 
   factory _TextSegment.text(String content) =>
       _TextSegment._(content, _SegmentType.text);
-  factory _TextSegment.inlineMath(String content) =>
-      _TextSegment._(content, _SegmentType.inlineMath);
   factory _TextSegment.blockMath(String content) =>
       _TextSegment._(content, _SegmentType.blockMath);
 
-  bool get isInlineMath => type == _SegmentType.inlineMath;
   bool get isBlockMath => type == _SegmentType.blockMath;
 }
 
-enum _SegmentType { text, inlineMath, blockMath }
+enum _SegmentType { text, blockMath }

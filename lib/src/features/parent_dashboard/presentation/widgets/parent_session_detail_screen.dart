@@ -104,6 +104,7 @@ class ParentSessionDetailScreen extends StatelessWidget {
                         text: text,
                         isUser: isUser,
                         timestamp: timestamp,
+                        imageUrl: msg['imageUrl'] as String?,
                       ),
                       childName: childName,
                       topicColor: Colors.deepPurple,

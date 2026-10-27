@@ -8,7 +8,18 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 /// Eltern über eigene Belohnungen (RewardType.parent) vergeben.
 
 class SystemRewardsInitializer {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  SystemRewardsInitializer([FirebaseFirestore? firestore])
+    : _firestore = firestore ?? FirebaseFirestore.instance;
+
+  final FirebaseFirestore _firestore;
+
+  /// Umbenannte System-Belohnungen: alter Titel → neuer Titel.
+  /// Bestehende Belohnungen werden am Titel erkannt. Ohne diese Liste bekäme
+  /// jedes Kind nach einer Umbenennung eine zweite Belohnung (doppelte XP).
+  static const Map<String, String> _renamedTitles = {
+    '💪 Fleißige Lernerin!': '💪 Fleißig gelernt!',
+    '🔥 Super Lernerin!': '🔥 Super gelernt!',
+  };
 
   /// Vordefinierte System-Belohnungen (rein digital, kein Eltern-OK nötig)
   static final List<Map<String, dynamic>> _defaultSystemRewards = [
@@ -81,7 +92,7 @@ class SystemRewardsInitializer {
 
     // ========== XP-BASIERTE BELOHNUNGEN ==========
     {
-      'title': '💪 Fleißige Lernerin!',
+      'title': '💪 Fleißig gelernt!',
       'description': 'Meilenstein: 100 XP gesammelt – weiter so!',
       'reward': '+20 Bonus-XP & Badge „Fleißig"',
       'trigger': 'xp',
@@ -90,7 +101,7 @@ class SystemRewardsInitializer {
       'badgeId': 'badge-xp-100',
     },
     {
-      'title': '🔥 Super Lernerin!',
+      'title': '🔥 Super gelernt!',
       'description':
           'Meilenstein: 500 XP gesammelt! Du bist auf dem richtigen Weg!',
       'reward': '+75 Bonus-XP & Titel „XP-Sammler"',
@@ -337,9 +348,24 @@ class SystemRewardsInitializer {
           .where('type', isEqualTo: 'system')
           .get();
 
-      final existingTitles = existingSnapshot.docs
-          .map((doc) => doc.data()['title'] as String)
-          .toSet();
+      // Alte Titel auf die neuen umstellen (z.B. „Fleißige Lernerin“ →
+      // „Fleißig gelernt“), bevor nach fehlenden gesucht wird.
+      final renameBatch = _firestore.batch();
+      var renamed = 0;
+      final existingTitles = <String>{};
+      for (final doc in existingSnapshot.docs) {
+        final title = doc.data()['title'] as String;
+        final newTitle = _renamedTitles[title];
+        if (newTitle != null) {
+          renameBatch.update(doc.reference, {'title': newTitle});
+          renamed++;
+        }
+        existingTitles.add(newTitle ?? title);
+      }
+      if (renamed > 0) {
+        await renameBatch.commit();
+        debugPrint('✏️ $renamed System-Belohnungen umbenannt');
+      }
 
       final missingRewards = _defaultSystemRewards
           .where((reward) => !existingTitles.contains(reward['title']))

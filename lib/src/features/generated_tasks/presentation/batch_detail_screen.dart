@@ -295,6 +295,9 @@ class _BatchDetailScreenState extends ConsumerState<BatchDetailScreen> {
 
     return Image.network(
       url,
+      // Firebase Storage erlaubt keinen Abruf per Script (CORS) – im
+      // Browser dann als <img>-Element anzeigen.
+      webHtmlElementStrategy: WebHtmlElementStrategy.fallback,
       width: size,
       height: size,
       fit: BoxFit.cover,
