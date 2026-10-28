@@ -134,13 +134,18 @@ Erledigt:
 
 Vorher: `firebase login --reauth`, die gespeicherte Anmeldung ist abgelaufen.
 
-1. **Functions:** `firebase deploy --only functions`. Braucht den Blaze-Tarif (ist aktiv).
+1. **Functions:** `cd functions && npm run deploy`. Deployt **nur unsere Functions mit Namen**.
+   Im Projekt laufen schon `waitlist` (europe-west10, Website-Warteliste, nicht in diesem Repo)
+   und die E-Mail-Erweiterung. Ein nacktes `firebase deploy --only functions` würde anbieten,
+   `waitlist` zu löschen. Neue Function? Dann `npm run deploy` in package.json ergänzen.
+   Blaze-Tarif ist aktiv.
 2. **IAM:** Das Dienstkonto der Functions muss Custom Tokens signieren dürfen. In der Google
    Cloud Console unter IAM dem Konto `<Projektnummer>-compute@developer.gserviceaccount.com`
    die Rolle **„Service Account Token Creator“** geben und die API „IAM Service Account
    Credentials“ aktivieren. Ohne das scheitert `redeemPairingCode`.
-3. **Rules:** `firebase deploy --only firestore:rules,storage`. Laut Notizen sind die Rules aus
-   dem Repo noch nie deployt worden. Die neuen Rules sind mit der aktuellen Play-Store-Version
+3. **Rules:** `firebase deploy --only firestore:rules,storage`. Live ist (geprüft 28.10.2026 in
+   der Console) exakt der Stand von `release-1.1.5` vom 16.07.2026, Sicherung in
+   `docs/rules-backup/`. Zurück geht es in der Console über den Regel-Verlauf. Die neuen Rules sind mit der aktuellen Play-Store-Version
    verträglich (Übergangsregel für den alten Client-PIN in `firestore.rules`).
 4. **App:** Erst danach Web und Android mit dieser Version ausrollen. Die neue App prüft den PIN
    nur noch über die Function. Ohne deployte Functions kommt niemand mehr in den Elternbereich.
