@@ -117,7 +117,8 @@ test("PIN: setzen, prüfen, nicht im users-Dokument", async () => {
 
   const user = (await adb.doc(`users/${parent.uid}`).get()).data();
   assert.equal(user.pinSet, true);
-  assert.equal(user.hashedPin, undefined);
+  // Übergang: alte Play-Store-App findet den PIN weiter (LEGACY_PIN_MIRROR)
+  assert.equal(user.hashedPin, hashPin("4711", user.pinSalt));
   assert.ok((await adb.doc(`users/${parent.uid}/private/pin`).get()).exists);
 
   assert.deepEqual(await parent.call("verifyParentPin", { pin: "4711" }), { ok: true });
@@ -157,9 +158,8 @@ test("PIN: alter Hash aus dem users-Dokument wird umgezogen", async () => {
   assert.deepEqual(await parent.call("verifyParentPin", { pin: "2468" }), { ok: true });
 
   const user = (await adb.doc(`users/${parent.uid}`).get()).data();
-  assert.equal(user.hashedPin, undefined);
-  assert.equal(user.pinSalt, undefined);
   assert.equal(user.pinSet, true);
+  assert.ok((await adb.doc(`users/${parent.uid}/private/pin`).get()).exists);
   assert.deepEqual(await parent.call("verifyParentPin", { pin: "2468" }), { ok: true });
 });
 
@@ -203,4 +203,18 @@ test("Elternkonto gelöscht: PIN und offene Codes weg", async () => {
   }
   assert.equal(pinExists, false);
   assert.equal(openCodes, 0);
+});
+
+test("PIN: alte App ändert den PIN – der neue gilt auch in der neuen App", async () => {
+  const parent = await parentWithChildren();
+  await parent.call("setParentPin", { pin: "4711" });
+  // So schreibt die Play-Store-App bis 1.1.5 einen geänderten PIN
+  const salt = "AbC-_dEf12345678ghIJkg==";
+  await adb.doc(`users/${parent.uid}`).set(
+    { hashedPin: hashPin("8642", salt), pinSalt: salt }, { merge: true },
+  );
+  assert.deepEqual(await parent.call("verifyParentPin", { pin: "4711" }), { ok: false });
+  assert.deepEqual(await parent.call("verifyParentPin", { pin: "8642" }), { ok: true });
+  // und ist danach in private/pin übernommen
+  assert.deepEqual(await parent.call("verifyParentPin", { pin: "8642" }), { ok: true });
 });

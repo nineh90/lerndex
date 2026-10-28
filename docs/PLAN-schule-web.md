@@ -144,8 +144,11 @@ Vorher: `firebase login --reauth`, die gespeicherte Anmeldung ist abgelaufen.
    verträglich (Übergangsregel für den alten Client-PIN in `firestore.rules`).
 4. **App:** Erst danach Web und Android mit dieser Version ausrollen. Die neue App prüft den PIN
    nur noch über die Function. Ohne deployte Functions kommt niemand mehr in den Elternbereich.
-5. **Später:** Wenn alle auf der neuen Version sind, die Übergangsregel für `hashedPin`/`pinSalt`
-   in `firestore.rules` entfernen.
+5. **Später:** Wenn alle Android-Nutzer auf der neuen Version sind, in `functions/index.js`
+   `LEGACY_PIN_MIRROR = false` setzen und die Übergangsregel für `hashedPin`/`pinSalt` in
+   `firestore.rules` entfernen. Bis dahin schreibt der Server den PIN zusätzlich im alten Format,
+   sonst böte die alte Play-Store-App „PIN einrichten“ an und ein Kind könnte einen eigenen PIN
+   setzen.
 
 ### Testen
 

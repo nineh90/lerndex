@@ -179,6 +179,16 @@ const LOCKOUT_MS = 5 * 60 * 1000;
 // (Grundlage für „PIN vergessen“).
 const RECENT_LOGIN_S = 5 * 60;
 
+// ÜBERGANG: Die Play-Store-App bis 1.1.5 kennt den PIN nur über
+// users/{uid}.hashedPin. Fehlt das Feld, bietet sie „PIN einrichten“ an – ein
+// Kind könnte dort einen eigenen PIN setzen. Deshalb schreiben wir den PIN
+// zusätzlich im alten Format (gleiches Verfahren, gleicher Salt), bis alle
+// Android-Nutzer auf der neuen Version sind. Preis: Das users-Dokument ist
+// für gekoppelte Kindergeräte lesbar, der Hash wäre offline durchprobierbar.
+// Danach auf false setzen (und die Übergangsregel in firestore.rules
+// entfernen) – der nächste PIN-Vorgang räumt die alten Felder dann weg.
+const LEGACY_PIN_MIRROR = true;
+
 const LEGACY_PIN_FIELDS = [
   "hashedPin",
   "pinSalt",
@@ -193,11 +203,17 @@ const LEGACY_PIN_FIELDS = [
  * Feldern im users-Dokument (vor der Migration).
  */
 async function loadPin(uid) {
-  const privateSnap = await db.doc(`users/${uid}/private/pin`).get();
-  if (privateSnap.exists) return { ...privateSnap.data(), legacy: false };
-
-  const userSnap = await db.doc(`users/${uid}`).get();
+  const [privateSnap, userSnap] = await Promise.all([
+    db.doc(`users/${uid}/private/pin`).get(),
+    db.doc(`users/${uid}`).get(),
+  ]);
   const data = userSnap.data() || {};
+  // Hat die alte App den PIN inzwischen geändert, steht im users-Dokument
+  // ein anderer Hash als in private/pin – dann gilt der neuere aus der alten App.
+  const changedByOldApp = data.hashedPin && data.hashedPin !== privateSnap.get("hash");
+  if (privateSnap.exists && !changedByOldApp) {
+    return { ...privateSnap.data(), legacy: false };
+  }
   if (!data.hashedPin) return null;
   return {
     hash: data.hashedPin,
@@ -215,20 +231,28 @@ function pinMatches(stored, pin) {
   return a.length === b.length && crypto.timingSafeEqual(a, b);
 }
 
-/** Speichert einen neuen PIN in private/pin und räumt die alten Felder weg. */
+/** Speichert einen neuen PIN in private/pin (und während des Übergangs im alten Format). */
 async function storePin(uid, pin) {
   const salt = newSalt();
+  const hash = hashPin(pin, salt);
   const batch = db.batch();
   batch.set(db.doc(`users/${uid}/private/pin`), {
-    hash: hashPin(pin, salt),
+    hash,
     salt,
     failedAttempts: 0,
     lockedUntil: null,
     createdAt: FieldValue.serverTimestamp(),
   });
-  const cleanup = { pinSet: true };
-  for (const f of LEGACY_PIN_FIELDS) cleanup[f] = FieldValue.delete();
-  batch.set(db.doc(`users/${uid}`), cleanup, { merge: true });
+  const userFields = { pinSet: true };
+  if (LEGACY_PIN_MIRROR) {
+    userFields.hashedPin = hash;
+    userFields.pinSalt = salt;
+    userFields.pinFailedAttempts = 0;
+    userFields.pinLockedUntil = FieldValue.delete();
+  } else {
+    for (const f of LEGACY_PIN_FIELDS) userFields[f] = FieldValue.delete();
+  }
+  batch.set(db.doc(`users/${uid}`), userFields, { merge: true });
   await batch.commit();
 }
 
