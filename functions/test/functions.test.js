@@ -218,3 +218,30 @@ test("PIN: alte App ändert den PIN – der neue gilt auch in der neuen App", as
   // und ist danach in private/pin übernommen
   assert.deepEqual(await parent.call("verifyParentPin", { pin: "8642" }), { ok: true });
 });
+
+test("Koppeln: reservierter Code (anderes Gerät gerade dabei) und Freigabe danach", async () => {
+  const parent = await parentWithChildren();
+  const { code } = await parent.call("createPairingCode", { childId: "jan" });
+  // Ein anderes Gerät hat ihn eben reserviert
+  await adb.doc(`pairingCodes/${code}`).update({ claimedAt: Timestamp.now() });
+  await expectError(device().call("redeemPairingCode", { code }), "not-found");
+  // Reservierung von vor 2 Minuten (Versuch gescheitert) zählt nicht mehr
+  await adb.doc(`pairingCodes/${code}`).update({
+    claimedAt: Timestamp.fromMillis(Date.now() - 120000),
+  });
+  const { childName } = await device().call("redeemPairingCode", { code });
+  assert.equal(childName, "Jan");
+  assert.equal((await adb.doc(`pairingCodes/${code}`).get()).exists, false);
+});
+
+test("Koppeln: scheitert das Einlösen, bleibt der Code gültig", async () => {
+  const parent = await parentWithChildren();
+  const { code } = await parent.call("createPairingCode", { childId: "jan" });
+  // Ein Kind, das es nicht (mehr) gibt, lässt das Einlösen scheitern …
+  await adb.doc(`pairingCodes/${code}`).update({ childId: "weg" });
+  await expectError(device().call("redeemPairingCode", { code }), "not-found");
+  // … der Code wurde nicht verbraucht, nur die Reservierung zurückgenommen
+  const snap = await adb.doc(`pairingCodes/${code}`).get();
+  assert.ok(snap.exists);
+  assert.equal(snap.get("claimedAt"), undefined);
+});

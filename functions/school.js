@@ -20,6 +20,7 @@ const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { FieldValue, Timestamp } = require("firebase-admin/firestore");
 const { getStorage } = require("firebase-admin/storage");
 const { db, auth } = require("./lib/firebase");
+const { redeemOnce } = require("./lib/claim");
 const {
   kidUid,
   normalizeCode,
@@ -143,29 +144,21 @@ exports.joinSchool = onCall(async (request) => {
   if (!code) throw invalid;
   const user = await requireNoSchool(uid);
 
-  const inviteRef = db.doc(`schoolInvites/${code}`);
-  const invite = await db.runTransaction(async (tx) => {
-    const snap = await tx.get(inviteRef);
-    if (!snap.exists) return null;
-    tx.delete(inviteRef);
-    const data = snap.data();
-    if (data.expiresAt.toMillis() < Date.now()) return null;
-    return data;
+  const result = await redeemOnce(db.doc(`schoolInvites/${code}`), async (invite) => {
+    const { schoolId } = invite;
+    const school = await db.doc(`schools/${schoolId}`).get();
+    if (!school.exists) return null;
+    await setSchoolClaims(uid, schoolId, "teacher");
+    await db.doc(`schools/${schoolId}/members/${uid}`).set({
+      role: "teacher",
+      name: user.displayName || "",
+      email: user.email || "",
+      joinedAt: FieldValue.serverTimestamp(),
+    });
+    return { schoolId, schoolName: school.get("name") };
   });
-  if (!invite) throw invalid;
-
-  const { schoolId } = invite;
-  const school = await db.doc(`schools/${schoolId}`).get();
-  if (!school.exists) throw invalid;
-
-  await db.doc(`schools/${schoolId}/members/${uid}`).set({
-    role: "teacher",
-    name: user.displayName || "",
-    email: user.email || "",
-    joinedAt: FieldValue.serverTimestamp(),
-  });
-  await setSchoolClaims(uid, schoolId, "teacher");
-  return { schoolId, schoolName: school.get("name") };
+  if (!result) throw invalid;
+  return result;
 });
 
 /** Schul-Admin: Lehrkraft aus der Schule entfernen. */

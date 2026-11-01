@@ -16,6 +16,7 @@ const functionsV1 = require("firebase-functions/v1");
 const { FieldValue, Timestamp } = require("firebase-admin/firestore");
 const crypto = require("node:crypto");
 const { db, auth } = require("./lib/firebase");
+const { redeemOnce } = require("./lib/claim");
 
 const {
   kidUid,
@@ -104,43 +105,33 @@ exports.redeemPairingCode = onCall(async (request) => {
   );
   if (!code) throw invalid;
 
-  const codeRef = db.doc(`pairingCodes/${code}`);
-  // Einmalig: Lesen und Löschen in einer Transaktion, damit zwei Geräte
-  // denselben Code nicht gleichzeitig einlösen.
-  const pairing = await db.runTransaction(async (tx) => {
-    const snap = await tx.get(codeRef);
-    if (!snap.exists) return null;
-    tx.delete(codeRef);
-    const data = snap.data();
-    if (data.expiresAt.toMillis() < Date.now()) return null;
-    return data;
+  const result = await redeemOnce(db.doc(`pairingCodes/${code}`), async (pairing) => {
+    const { parentUid, childId } = pairing;
+    const child = await db.doc(`users/${parentUid}/children/${childId}`).get();
+    if (!child.exists) return null;
+    const childName = child.get("name") || "";
+
+    const uid = kidUid(parentUid, childId);
+    const claims = { role: "student", parentUid, childId };
+    try {
+      await auth.getUser(uid);
+    } catch (e) {
+      if (e.code !== "auth/user-not-found") throw e;
+      // Bewusst ohne Namen: das Konto trägt nur die (pseudonymen) IDs
+      await auth.createUser({ uid });
+    }
+    // Claims am Konto speichern, damit sie auch nach dem Token-Refresh gelten
+    await auth.setCustomUserClaims(uid, claims);
+    const token = await auth.createCustomToken(uid, claims);
+
+    // Für die Elternansicht („Verbundene Geräte“). Bewusst nur der Zeitpunkt.
+    await db
+      .collection(`users/${parentUid}/children/${childId}/devices`)
+      .add({ pairedAt: FieldValue.serverTimestamp() });
+    return { token, childName };
   });
-  if (!pairing) throw invalid;
-
-  const { parentUid, childId } = pairing;
-  const child = await db.doc(`users/${parentUid}/children/${childId}`).get();
-  if (!child.exists) throw invalid;
-  const childName = child.get("name") || "";
-
-  const uid = kidUid(parentUid, childId);
-  const claims = { role: "student", parentUid, childId };
-  try {
-    await auth.getUser(uid);
-  } catch (e) {
-    if (e.code !== "auth/user-not-found") throw e;
-    // Bewusst ohne Namen: das Konto trägt nur die (pseudonymen) IDs
-    await auth.createUser({ uid });
-  }
-  // Claims am Konto speichern, damit sie auch nach dem Token-Refresh gelten
-  await auth.setCustomUserClaims(uid, claims);
-
-  // Für die Elternansicht („Verbundene Geräte“). Bewusst nur der Zeitpunkt.
-  await db
-    .collection(`users/${parentUid}/children/${childId}/devices`)
-    .add({ pairedAt: FieldValue.serverTimestamp() });
-
-  const token = await auth.createCustomToken(uid, claims);
-  return { token, childName };
+  if (!result) throw invalid;
+  return result;
 });
 
 /**
