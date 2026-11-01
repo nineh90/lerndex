@@ -30,6 +30,9 @@ flutter build ipa --dart-define-from-file=dart-defines.json
 flutter build web --no-web-resources-cdn --dart-define-from-file=dart-defines.json
 ```
 
+Web vor jedem Deploy: `rm -rf .dart_tool/flutter_build build/web` – sonst kann der Build einen
+veralteten Zwischenstand verwenden (am 01.11.2026 passiert: Koppel-Links taten live nichts).
+
 Web: `--no-web-resources-cdn` ist Pflicht, sonst lädt der Browser die Grafik-Engine von Google
 (Kinderdaten, Schulen). Warum und was sonst noch lokal liegt: `docs/PLAN-schule-web.md`,
 Abschnitt „Fremde Server im Browser“. Hosting über Firebase (`firebase deploy --only hosting`).

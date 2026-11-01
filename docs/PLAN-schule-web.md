@@ -51,7 +51,7 @@ Offen, nur Kevin kann das machen (Konsolen und Zugänge):
    Dann zusätzlich die Import-Map in `web/index.html` entfernen (sonst bleibt RevenueCat im
    Browser abgeschaltet) und vorher klären, ob dafür ein Cookie-/Einwilligungsbanner nötig
    ist: Stripe.js lädt Telemetrie von Stripe-Servern.
-4. **Deploy:**
+4. **Deploy:** `rm -rf .dart_tool/flutter_build build/web`, dann
    `flutter build web --no-web-resources-cdn --dart-define-from-file=dart-defines.json`
    und dann `firebase deploy --only hosting`. Ohne `--no-web-resources-cdn` lädt der Browser
    die Grafik-Engine von www.gstatic.com.
@@ -98,7 +98,16 @@ Noch offen, beides Google und Teil von Firebase:
 Später möglich: Quizfragen im Standard-Modus (ab Klasse 3) vorlesen. Eine bessere Stimme
 (Cloud-TTS in der EU) statt der Gerätestimme.
 
-## Phase 3: Rollen und Sicherheit ✅ (Branch `rollen`)
+## Stand Deploy (01.11.2026)
+
+- Functions (14) deployt, öffentlich aufrufbar über „ohne IAM-Prüfung“ (Firmenrichtlinie verbietet
+  `allUsers`). Beim nächsten `npm run deploy` meldet die CLI, sie könne den Invoker nicht setzen –
+  danach prüfen, ob die Functions noch antworten.
+- Firestore- und Storage-Regeln live (über die Rules-API; die CLI scheitert an fehlendem
+  `serviceusage`-Recht von Kevins Konto). Vorherige Fassung: `docs/rules-backup/`.
+- Web-App live: https://lerndex-3775f.web.app
+
+## Phase 3: Rollen und Sicherheit ✅
 
 Erledigt:
 
