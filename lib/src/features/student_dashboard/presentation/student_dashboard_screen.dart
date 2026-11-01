@@ -7,6 +7,7 @@ import 'package:lerndex/src/features/student_dashboard/presentation/widgets/rewa
 import 'package:lerndex/src/features/student_dashboard/presentation/widgets/secondary_dashboard_screen.dart';
 import 'package:lerndex/src/features/student_dashboard/presentation/widgets/secondary_onboarding_screen.dart';
 import '../../auth/presentation/active_child_provider.dart';
+import '../../subscription/data/subscription_provider.dart';
 import '../../auth/data/auth_repository.dart';
 import '../../auth/domain/child_model.dart';
 import '../../rewards/presentation/rewards_screen.dart';
@@ -139,6 +140,23 @@ class _StudentDashboardScreenState
   Widget build(BuildContext context) {
     final activeChild = ref.watch(activeChildProvider);
     if (activeChild == null) return const SizedBox.shrink();
+
+    // Kindergerät/Schülerkarte: Zugang nur mit Abo der Eltern bzw. Lizenz
+    // der Schule. Zu Hause am Elterngerät prüft das schon das Familien-
+    // Dashboard vorher.
+    if (ref.watch(isChildDeviceProvider)) {
+      final hasAccess = ref
+          .watch(subscriptionStatusProvider)
+          .when(
+            data: (s) => s.hasAccess,
+            loading: () => true,
+            error: (_, _) => true,
+          );
+      if (!hasAccess) {
+        return _NoAccessScreen(isSchool: ref.watch(isSchoolDeviceProvider));
+      }
+    }
+
     if (!_onboardingChecked) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
@@ -500,6 +518,64 @@ class _PrimaryDashboardScreenState
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                 ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+
+/// Kindergerät ohne gültiges Abo der Eltern bzw. ohne Schullizenz.
+class _NoAccessScreen extends ConsumerWidget {
+  const _NoAccessScreen({required this.isSchool});
+
+  final bool isSchool;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF5F3FF),
+      appBar: AppBar(
+        automaticallyImplyLeading: false,
+        backgroundColor: Colors.deepPurple,
+        foregroundColor: Colors.white,
+        leading: isSchool ? const SchoolDeviceLogoutButton() : null,
+        title: const Text('Lerndex'),
+      ),
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('🔒', style: TextStyle(fontSize: 56)),
+              const SizedBox(height: 16),
+              Text(
+                isSchool
+                    ? 'Lerndex ist für deine Schule gerade nicht freigeschaltet.'
+                    : 'Lerndex ist gerade nicht freigeschaltet.',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                isSchool
+                    ? 'Sag bitte deiner Lehrerin oder deinem Lehrer Bescheid.'
+                    : 'Sag bitte deinen Eltern Bescheid.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.grey[700]),
+              ),
+              const SizedBox(height: 24),
+              OutlinedButton(
+                onPressed: () =>
+                    ref.read(subscriptionStatusProvider.notifier).refresh(),
+                child: const Text('Nochmal prüfen'),
               ),
             ],
           ),

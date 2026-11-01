@@ -7,6 +7,7 @@ import '../../features/auth/data/auth_repository.dart';
 import '../../features/parent_dashboard/data/pin_repository.dart';
 import '../../features/parent_dashboard/presentation/pin_input_dialog.dart';
 import 'package:lerndex/src/features/auth/domain/account.dart';
+import '../../features/auth/presentation/sign_out.dart';
 
 /// Parental Gate für Kids-Apps (Apple Guideline 1.3 / Play Families Policy):
 /// Vor Käufen, externen Links und der PIN-Ersteinrichtung muss eine
@@ -197,6 +198,12 @@ class _ParentalGateScreenState extends ConsumerState<ParentalGateScreen> {
                   },
                   icon: const Icon(Icons.lock_open_rounded),
                   label: const Text('Ich bin ein Elternteil'),
+                ),
+                const SizedBox(height: 16),
+                // Sonst gäbe es ohne Abo keinen Weg aus diesem Screen
+                TextButton(
+                  onPressed: () => confirmSignOut(context, ref),
+                  child: const Text('Abmelden'),
                 ),
               ],
             ),

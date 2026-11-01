@@ -1,4 +1,3 @@
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -8,6 +7,9 @@ import 'package:purchases_flutter/models/offering_wrapper.dart';
 import 'package:purchases_flutter/models/package_wrapper.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../shared/platform_info.dart';
+import '../../auth/presentation/sign_out.dart';
+import '../../school/presentation/school_section.dart';
+import '../data/subscription_service.dart';
 
 /// Sucht das RevenueCat-Package zu einem Plan im aktuellen Offering.
 Package? _packageForPlan(Offering offering, SubscriptionPlan plan) {
@@ -76,24 +78,82 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
             IconButton(
               icon: const Icon(Icons.close, color: Colors.white),
               onPressed: () => Navigator.of(context).pop(),
+            )
+          else
+            // Ohne Abo führt kein anderer Weg aus diesem Screen heraus
+            TextButton.icon(
+              onPressed: () => confirmSignOut(context, ref),
+              icon: const Icon(Icons.logout, color: Colors.white, size: 18),
+              label: const Text(
+                'Abmelden',
+                style: TextStyle(color: Colors.white),
+              ),
             ),
         ],
       ),
       body: SafeArea(
         bottom: true,
-        child: offeringsAsync.when(
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (e, _) => _buildError(e.toString()),
-          data: (offerings) {
-            if (offerings == null || offerings.current == null) {
-              return _buildError(
-                'Produkte konnten nicht geladen werden.\nBitte prüfe deine Internetverbindung.',
-              );
-            }
-            return _buildContent(offerings.current!, activePlan);
-          },
-        ),
+        // Im Browser gibt es (noch) keine Käufe – statt einer leeren
+        // Kaufseite erklären, wie man an ein Abo kommt, plus Schulzugang.
+        child: kIsWeb && !SubscriptionService.isConfigured
+            ? _buildWebNoPurchase(hasActivePlan)
+            : offeringsAsync.when(
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (e, _) => _buildError(e.toString()),
+                data: (offerings) {
+                  if (offerings == null || offerings.current == null) {
+                    return _buildError(
+                      'Produkte konnten nicht geladen werden.\nBitte prüfe deine Internetverbindung.',
+                    );
+                  }
+                  return _buildContent(offerings.current!, activePlan);
+                },
+              ),
       ),
+    );
+  }
+
+  Widget _buildWebNoPurchase(bool hasActivePlan) {
+    return ListView(
+      padding: const EdgeInsets.all(24),
+      children: [
+        const Icon(Icons.phone_android, size: 48, color: _purple),
+        const SizedBox(height: 16),
+        Text(
+          hasActivePlan
+              ? 'Dein Abo verwaltest du in der Lerndex-App aus dem Play Store.'
+              : 'Ein Abo kannst du im Moment nur in der Lerndex-App aus dem '
+                    'Play Store abschließen.',
+          textAlign: TextAlign.center,
+          style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Danach meldest du dich hier im Browser mit demselben Konto an – '
+          'das Abo gilt auch hier.',
+          textAlign: TextAlign.center,
+          style: TextStyle(color: Colors.grey[700]),
+        ),
+        const SizedBox(height: 16),
+        OutlinedButton.icon(
+          onPressed: () => launchUrl(
+            Uri.parse(
+              'https://play.google.com/store/apps/details?id=de.nilsdigital.lerndex',
+            ),
+            mode: LaunchMode.externalApplication,
+          ),
+          icon: const Icon(Icons.open_in_new),
+          label: const Text('Lerndex im Play Store'),
+        ),
+        const SizedBox(height: 8),
+        TextButton(
+          onPressed: () =>
+              ref.read(subscriptionStatusProvider.notifier).refresh(),
+          child: const Text('Abo schon abgeschlossen? Neu laden'),
+        ),
+        const SizedBox(height: 24),
+        const _SchoolBox(),
+      ],
     );
   }
 
@@ -271,6 +331,10 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
               _LegalLink(label: 'AGB', url: 'https://lerndex.de/agb.php'),
             ],
           ),
+          if (!widget.canDismiss) ...[
+            const SizedBox(height: 24),
+            const _SchoolBox(),
+          ],
         ],
       ),
     );
@@ -453,7 +517,12 @@ class _PlanCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(14),
           border: Border.all(color: borderColor, width: borderWidth),
           boxShadow: isSelected
-              ? [BoxShadow(color: _purple.withValues(alpha: 0.15), blurRadius: 8)]
+              ? [
+                  BoxShadow(
+                    color: _purple.withValues(alpha: 0.15),
+                    blurRadius: 8,
+                  ),
+                ]
               : isActive
               ? [
                   BoxShadow(
@@ -592,10 +661,8 @@ class _LegalLink extends StatelessWidget {
         minimumSize: const Size(0, 32),
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
       ),
-      onPressed: () => launchUrl(
-        Uri.parse(url),
-        mode: LaunchMode.externalApplication,
-      ),
+      onPressed: () =>
+          launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication),
       child: Text(
         label,
         style: const TextStyle(
@@ -627,6 +694,37 @@ class _FeatureRow extends StatelessWidget {
           Icon(icon, size: 20, color: const Color(0xFF6B21A8)),
           const SizedBox(width: 10),
           Text(text, style: const TextStyle(fontSize: 14)),
+        ],
+      ),
+    );
+  }
+}
+
+/// Schulen zahlen per Rechnung: Lehrkräfte kommen über den Einladungscode
+/// in den Lehrerbereich, auch ohne eigenes Familien-Abo. Die eigenen Kinder
+/// brauchen weiter ein Abo.
+class _SchoolBox extends StatelessWidget {
+  const _SchoolBox();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade300),
+      ),
+      child: const Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: EdgeInsets.fromLTRB(16, 14, 16, 0),
+            child: Text(
+              'Für Lehrkräfte und Schulen',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+            ),
+          ),
+          SchoolSection(),
         ],
       ),
     );
