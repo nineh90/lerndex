@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:qr_flutter/qr_flutter.dart';
@@ -9,7 +10,7 @@ import '../domain/school_models.dart';
 import 'school_section.dart';
 import 'student_cards_print.dart';
 
-/// Eine Klasse: Schüler anlegen, QR-Karten drucken, Schüler löschen.
+/// Eine Klasse: Schüler anlegen, Anmeldekarten (QR) drucken, Schüler löschen.
 class SchoolClassScreen extends ConsumerWidget {
   const SchoolClassScreen({
     super.key,
@@ -43,7 +44,7 @@ class SchoolClassScreen extends ConsumerWidget {
         actions: [
           if (students.isNotEmpty)
             IconButton(
-              tooltip: 'QR-Karten für alle drucken',
+              tooltip: 'Anmeldekarten für alle drucken',
               icon: const Icon(Icons.print),
               onPressed: () => _printCards(context, ref, students),
             ),
@@ -106,7 +107,10 @@ class SchoolClassScreen extends ConsumerWidget {
                       }
                     },
                     itemBuilder: (_) => const [
-                      PopupMenuItem(value: 'card', child: Text('Neue Karte')),
+                      PopupMenuItem(
+                        value: 'card',
+                        child: Text('Anmelde-Code (QR)'),
+                      ),
                       PopupMenuItem(value: 'rename', child: Text('Umbenennen')),
                       PopupMenuItem(
                         value: 'delete',
@@ -181,40 +185,48 @@ class SchoolClassScreen extends ConsumerWidget {
     }
   }
 
-  /// Karten erzeugen: im Browser als Druckseite in einem neuen Tab, in den
-  /// Apps zum Abscannen direkt vom Bildschirm.
+  /// Anmeldekarten: Für ein einzelnes Kind wird der QR-Code groß angezeigt
+  /// (zum Abscannen vom Bildschirm, im Browser mit „Drucken“). Für die ganze
+  /// Klasse öffnet sich im Browser eine Druckseite in einem neuen Tab, in den
+  /// Apps kommen die Codes nacheinander auf den Bildschirm.
   Future<void> _printCards(
     BuildContext context,
     WidgetRef ref,
     List<ChildModel> students,
   ) async {
+    final single = students.length == 1;
     Object? tab;
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text(
-          students.length == 1
-              ? 'Neue Karte für ${students.first.name}?'
-              : 'Karten für ${students.length} Schüler?',
+          single
+              ? 'Anmelde-Code für ${students.first.name}'
+              : 'Anmeldekarten für ${students.length} Schüler',
         ),
-        content: const Text(
-          'Mit der Karte meldet sich das Kind auf einem Tablet oder Handy an: '
-          'QR-Code mit der Kamera scannen. Bisherige Karten gelten danach '
-          'nicht mehr.',
+        content: Text(
+          single
+              ? 'Mit diesem QR-Code meldet sich ${students.first.name} auf '
+                    'einem Tablet oder Handy an: einfach mit der Kamera '
+                    'scannen. Ein älterer Code von ${students.first.name} '
+                    'gilt danach nicht mehr.'
+              : 'Für jedes Kind entsteht eine Karte mit QR-Code zum '
+                    'Ausdrucken und Ausschneiden. Damit meldet es sich auf '
+                    'einem Tablet oder Handy an. Bisherige Karten der Klasse '
+                    'gelten danach nicht mehr.',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
             child: const Text('Abbrechen'),
           ),
-          FilledButton.icon(
+          FilledButton(
             onPressed: () {
               // Tab sofort im Tipp öffnen, sonst blockiert der Browser ihn
-              tab = openBlankTab();
+              if (!single) tab = openBlankTab();
               Navigator.pop(ctx, true);
             },
-            icon: const Icon(Icons.print),
-            label: const Text('Karten erzeugen'),
+            child: Text(single ? 'Code anzeigen' : 'Karten erstellen'),
           ),
         ],
       ),
@@ -230,7 +242,8 @@ class SchoolClassScreen extends ConsumerWidget {
       } else if (context.mounted) {
         await showDialog<void>(
           context: context,
-          builder: (_) => _CardsOnScreenDialog(cards: cards),
+          builder: (_) =>
+              _CardsOnScreenDialog(cards: cards, schoolName: schoolName),
         );
       }
     } catch (e) {
@@ -316,10 +329,12 @@ List<String> parseStudentNames(String text) => text
     .map((l) => l.length > 40 ? l.substring(0, 40) : l)
     .toList();
 
-/// In den Apps (kein Browser-Druck): Karten nacheinander zum Abscannen.
+/// QR-Codes zum Abscannen direkt vom Bildschirm, bei mehreren nacheinander.
+/// Im Browser zusätzlich „Drucken“ (öffnet die Druckseite in einem neuen Tab).
 class _CardsOnScreenDialog extends StatefulWidget {
-  const _CardsOnScreenDialog({required this.cards});
+  const _CardsOnScreenDialog({required this.cards, required this.schoolName});
   final List<StudentCard> cards;
+  final String schoolName;
 
   @override
   State<_CardsOnScreenDialog> createState() => _CardsOnScreenDialogState();
@@ -331,28 +346,50 @@ class _CardsOnScreenDialogState extends State<_CardsOnScreenDialog> {
   @override
   Widget build(BuildContext context) {
     final card = widget.cards[_index];
+    final qrSize = (MediaQuery.sizeOf(context).width - 140).clamp(160.0, 280.0);
     return AlertDialog(
-      title: Text(card.name),
+      title: Column(
+        children: [
+          Text(card.name, textAlign: TextAlign.center),
+          Text(
+            'Klasse ${card.className}',
+            style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+          ),
+        ],
+      ),
       content: SizedBox(
-        width: 260,
+        width: qrSize,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             QrImageView(
               data: card.link.toString(),
-              size: 220,
+              size: qrSize,
               backgroundColor: Colors.white,
             ),
             const SizedBox(height: 8),
             Text(
-              'Zum Drucken die Klasse im Browser öffnen.',
-              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+              'Mit der Kamera des Tablets oder Handys scannen.',
+              style: TextStyle(fontSize: 13, color: Colors.grey[700]),
               textAlign: TextAlign.center,
             ),
           ],
         ),
       ),
+      actionsAlignment: MainAxisAlignment.spaceBetween,
       actions: [
+        if (kIsWeb)
+          TextButton.icon(
+            onPressed: () {
+              final tab = openBlankTab();
+              writeHtmlToTab(
+                tab,
+                studentCardsHtml(widget.cards, schoolName: widget.schoolName),
+              );
+            },
+            icon: const Icon(Icons.print_outlined),
+            label: const Text('Drucken'),
+          ),
         if (_index > 0)
           TextButton(
             onPressed: () => setState(() => _index--),

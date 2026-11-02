@@ -121,7 +121,7 @@ Erledigt:
     Code mit 8 Zeichen, 15 Minuten gültig, nur einmal nutzbar. Das Kinderkonto bekommt die
     Claims `{ role: "student", parentUid, childId }`. Abmelden löscht das Kinderkonto.
   - `leaveChildDevice` (seit 02.11.2026): Ein Kindergerät meldet sich mit dem Eltern-PIN
-    selbst ab (Schloss oben links im Kinder-Dashboard). Prüft den PIN auf dem Server (gleiche
+    selbst ab (Abmelde-Knopf oben links im Kinder-Dashboard). Prüft den PIN auf dem Server (gleiche
     Sperre wie im Elternbereich) und trägt nur dieses Gerät aus der Geräteliste aus. Andere
     Geräte des Kindes bleiben gekoppelt. Ohne festgelegten PIN geht es nicht, dann bleibt
     „Alle abmelden“ im Elternbereich.

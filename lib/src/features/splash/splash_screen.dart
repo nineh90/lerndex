@@ -9,6 +9,7 @@ import '../auth/domain/child_model.dart';
 import '../auth/data/child_device_repository.dart';
 import '../auth/presentation/active_child_provider.dart';
 import '../auth/presentation/child_pairing_screen.dart';
+import '../auth/presentation/link_conflict_screen.dart';
 import '../auth/presentation/login_screen.dart';
 import '../student_dashboard/presentation/student_dashboard_screen.dart';
 import '../../shared/web/browser_url.dart';
@@ -58,6 +59,11 @@ class _LerndexSplashScreenState extends ConsumerState<LerndexSplashScreen>
 
   /// Fehler beim Einlösen eines Koppel-Links → Code-Eingabe zeigt ihn an.
   String? _pairingError;
+
+  /// Kinder-Link gescannt, während ein Eltern-/Lehrerkonto angemeldet ist
+  String? _conflictPairingCode;
+  String? _conflictCardToken;
+  String? _conflictAccount;
   bool _isNavigating = false;
 
   // Echter Fortschritt: wird pro fertigem Fach erhöht (0.0 – 1.0).
@@ -177,11 +183,14 @@ class _LerndexSplashScreenState extends ConsumerState<LerndexSplashScreen>
       _setProgress(_bootstrapShare * 0.5, 'Anmeldung prüfen...');
 
       // Koppel-Link aus dem QR-Code (…/k/CODE): Gerät als Kind anmelden.
-      // Ist schon jemand angemeldet (z.B. ein Elternteil), bleibt es dabei.
+      // Ist ein Eltern- oder Lehrerkonto angemeldet, wird nachgefragt
+      // (LinkConflictScreen); ein Kindergerät bleibt, wie es ist.
       final linkCode = kIsWeb ? pairingCodeFromPath(Uri.base.path) : null;
       if (linkCode != null) {
         replaceBrowserPath('/');
-        if (user == null) {
+        if (user != null && !user.isChildDevice) {
+          _conflictPairingCode = linkCode;
+        } else if (user == null) {
           _setProgress(_bootstrapShare * 0.5, 'Gerät wird verbunden...');
           try {
             await ref
@@ -199,7 +208,9 @@ class _LerndexSplashScreenState extends ConsumerState<LerndexSplashScreen>
       final cardToken = kIsWeb ? studentCardFromPath(Uri.base.path) : null;
       if (cardToken != null) {
         replaceBrowserPath('/');
-        if (user == null || user.isSchoolDevice) {
+        if (user != null && !user.isChildDevice) {
+          _conflictCardToken = cardToken;
+        } else if (user == null || user.isSchoolDevice) {
           _setProgress(_bootstrapShare * 0.5, 'Anmelden...');
           try {
             if (user != null) await authRepo.signOut();
@@ -213,7 +224,12 @@ class _LerndexSplashScreenState extends ConsumerState<LerndexSplashScreen>
         }
       }
 
-      if (user == null) {
+      if (_conflictPairingCode != null || _conflictCardToken != null) {
+        // Eltern-/Lehrerkonto angemeldet und ein Kinder-Link gescannt
+        _conflictAccount = user?.email ?? 'ein anderes Konto';
+        destination = 'conflict';
+        _setProgress(1.0, 'Weiter...');
+      } else if (user == null) {
         destination = _pairingError != null ? 'pairing' : 'login';
         _setProgress(1.0, 'Los geht\'s! ✨');
       } else if (user.isChildDevice) {
@@ -388,6 +404,13 @@ class _LerndexSplashScreenState extends ConsumerState<LerndexSplashScreen>
         break;
       case 'pairing':
         target = ChildPairingScreen(initialError: _pairingError);
+        break;
+      case 'conflict':
+        target = LinkConflictScreen(
+          accountLabel: _conflictAccount ?? 'ein anderes Konto',
+          pairingCode: _conflictPairingCode,
+          cardToken: _conflictCardToken,
+        );
         break;
       default:
         target = const LoginScreen();

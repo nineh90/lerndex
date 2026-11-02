@@ -23,10 +23,7 @@ class DeviceLogoutButton extends ConsumerWidget {
     final isSchool = ref.watch(isSchoolDeviceProvider);
     return IconButton(
       tooltip: isSchool ? 'Abmelden' : 'Eltern: Gerät abmelden',
-      icon: Icon(
-        isSchool ? Icons.logout_rounded : Icons.lock_outline_rounded,
-        color: color,
-      ),
+      icon: Icon(Icons.logout_rounded, color: color),
       onPressed: () async {
         final ok = await showDialog<bool>(
           context: context,

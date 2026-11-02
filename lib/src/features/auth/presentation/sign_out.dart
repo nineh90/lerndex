@@ -32,13 +32,18 @@ Future<void> confirmSignOut(BuildContext context, WidgetRef ref) async {
   );
   if (ok != true || !context.mounted) return;
   final navigator = Navigator.of(context);
+  await signOutAccount(ref);
+  navigator.pushAndRemoveUntil(
+    MaterialPageRoute(builder: (_) => const LoginScreen()),
+    (_) => false,
+  );
+}
+
+/// Abmelden ohne Rückfrage, auch bei RevenueCat.
+Future<void> signOutAccount(WidgetRef ref) async {
   await SubscriptionService(
     FirebaseFirestore.instance,
     FirebaseAuth.instance,
   ).logOut();
   await ref.read(authRepositoryProvider).signOut();
-  navigator.pushAndRemoveUntil(
-    MaterialPageRoute(builder: (_) => const LoginScreen()),
-    (_) => false,
-  );
 }
