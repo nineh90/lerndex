@@ -3,6 +3,9 @@ import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import '../../parent_dashboard/data/pin_repository.dart' show PinLockedException;
 
 // ============================================================================
 // KINDERGERÄTE KOPPELN
@@ -59,6 +62,9 @@ class ChildDeviceRepository {
 
   final FirebaseFunctions _functions;
   final FirebaseAuth _auth;
+
+  /// Geräte-ID aus redeemPairingCode (Eintrag in der Geräteliste der Eltern)
+  static const _deviceIdKey = 'paired_device_id';
   final FirebaseFirestore _firestore;
 
   /// Eltern: neuen Code für ein Kind (15 Minuten gültig, einmalig).
@@ -82,6 +88,11 @@ class ChildDeviceRepository {
       });
       final data = Map<String, dynamic>.from(result.data as Map);
       await _auth.signInWithCustomToken(data['token'] as String);
+      final deviceId = data['deviceId'] as String?;
+      if (deviceId != null) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString(_deviceIdKey, deviceId);
+      }
       return data['childName'] as String? ?? '';
     } on FirebaseFunctionsException catch (e) {
       if (e.code == 'not-found') {
@@ -115,6 +126,38 @@ class ChildDeviceRepository {
       throw const PairingException(
         'Das hat gerade nicht geklappt. Bitte versuch es gleich nochmal.',
       );
+    }
+  }
+
+  /// Kindergerät zu Hause: dieses Gerät mit dem Eltern-PIN abmelden. Gibt
+  /// false bei falschem PIN zurück. Bei true ist das Gerät aus der Liste der
+  /// Eltern ausgetragen; abmelden (signOut) muss danach der Aufrufer.
+  ///
+  /// Wirft [PinLockedException] nach zu vielen Fehlversuchen und
+  /// [PairingException], wenn noch kein Eltern-PIN festgelegt ist.
+  Future<bool> leaveDevice(String pin) async {
+    final prefs = await SharedPreferences.getInstance();
+    try {
+      final result = await _functions.httpsCallable('leaveChildDevice').call({
+        'pin': pin,
+        'deviceId': prefs.getString(_deviceIdKey),
+      });
+      final ok = (result.data as Map)['ok'] == true;
+      if (ok) await prefs.remove(_deviceIdKey);
+      return ok;
+    } on FirebaseFunctionsException catch (e) {
+      if (e.code == 'resource-exhausted') {
+        final seconds =
+            (e.details as Map?)?['retryAfterSeconds'] as int? ?? 300;
+        throw PinLockedException(Duration(seconds: seconds));
+      }
+      if (e.code == 'failed-precondition') {
+        throw const PairingException(
+          'Es gibt noch keinen Eltern-PIN. Lege ihn im Elternbereich fest '
+          'oder melde das Gerät dort unter „Kind bearbeiten“ ab.',
+        );
+      }
+      rethrow;
     }
   }
 

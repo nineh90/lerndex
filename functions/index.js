@@ -125,10 +125,12 @@ exports.redeemPairingCode = onCall(async (request) => {
     const token = await auth.createCustomToken(uid, claims);
 
     // Für die Elternansicht („Verbundene Geräte“). Bewusst nur der Zeitpunkt.
-    await db
+    const device = await db
       .collection(`users/${parentUid}/children/${childId}/devices`)
       .add({ pairedAt: FieldValue.serverTimestamp() });
-    return { token, childName };
+    // Die Geräte-ID merkt sich das Gerät, damit es sich später (mit Eltern-PIN)
+    // selbst wieder austragen kann (leaveChildDevice).
+    return { token, childName, deviceId: device.id };
   });
   if (!result) throw invalid;
   return result;
@@ -159,6 +161,41 @@ exports.unpairChildDevices = onCall(async (request) => {
   await batch.commit();
 
   return { unpaired: devices.size };
+});
+
+/**
+ * Kindergerät zu Hause: mit dem Eltern-PIN dieses eine Gerät abmelden (z.B.
+ * wenn Eltern am Kinderhandy stehen). Antwort { ok }. Bei ok meldet sich das
+ * Gerät selbst ab; das Kinderkonto bleibt, andere Geräte des Kindes bleiben
+ * gekoppelt. Schulgeräte brauchen das nicht, dort gibt es Abmelden ohne PIN.
+ */
+exports.leaveChildDevice = onCall(async (request) => {
+  const token = request.auth?.token;
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "Bitte zuerst anmelden.");
+  }
+  if (token.role !== "student" || !token.parentUid || !token.childId ||
+      token.parentUid.startsWith("school_")) {
+    throw new HttpsError("permission-denied", "Nur für Kindergeräte.");
+  }
+  const { parentUid, childId } = token;
+
+  const pin = request.data?.pin;
+  if (typeof pin !== "string" || !PIN_PATTERN.test(pin)) return { ok: false };
+  const { ok, pinSet } = await checkPin(parentUid, pin);
+  if (!pinSet) {
+    throw new HttpsError(
+      "failed-precondition",
+      "Es ist noch kein Eltern-PIN festgelegt.",
+    );
+  }
+  if (!ok) return { ok: false };
+
+  const deviceId = request.data?.deviceId;
+  if (typeof deviceId === "string" && /^[A-Za-z0-9]{1,64}$/.test(deviceId)) {
+    await db.doc(`users/${parentUid}/children/${childId}/devices/${deviceId}`).delete();
+  }
+  return { ok: true };
 });
 
 // ── 2. Eltern-PIN ────────────────────────────────────────────────────────────

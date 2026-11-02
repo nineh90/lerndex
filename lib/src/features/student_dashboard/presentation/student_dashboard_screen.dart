@@ -24,7 +24,7 @@ import 'widgets/statistics_tab.dart';
 import 'widgets/avatar_settings_sheet.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:lerndex/src/features/auth/domain/account.dart';
-import 'package:lerndex/src/features/auth/presentation/widgets/school_device_logout_button.dart';
+import 'package:lerndex/src/features/auth/presentation/widgets/device_logout_button.dart';
 
 // ============================================================================
 // Dashboard-Varianten – werden je nach Klassenstufe angezeigt.
@@ -257,9 +257,7 @@ class _PrimaryDashboardScreenState
           elevation: 0,
           automaticallyImplyLeading: false,
           leading: _currentTab == 0 && ref.watch(isChildDeviceProvider)
-              ? (ref.watch(isSchoolDeviceProvider)
-                    ? const SchoolDeviceLogoutButton()
-                    : null)
+              ? const DeviceLogoutButton()
               : IconButton(
             icon: const Icon(Icons.arrow_back),
             onPressed: () {
@@ -542,7 +540,7 @@ class _NoAccessScreen extends ConsumerWidget {
         automaticallyImplyLeading: false,
         backgroundColor: Colors.deepPurple,
         foregroundColor: Colors.white,
-        leading: isSchool ? const SchoolDeviceLogoutButton() : null,
+        leading: const DeviceLogoutButton(),
         title: const Text('Lerndex'),
       ),
       body: Center(

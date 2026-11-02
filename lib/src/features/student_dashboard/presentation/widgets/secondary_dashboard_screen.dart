@@ -22,7 +22,7 @@ import 'dashboard_theme.dart';
 import 'dashboard_theme_provider.dart';
 import 'theme_picker_sheet.dart';
 import 'package:lerndex/src/features/auth/domain/account.dart';
-import 'package:lerndex/src/features/auth/presentation/widgets/school_device_logout_button.dart';
+import 'package:lerndex/src/features/auth/presentation/widgets/device_logout_button.dart';
 
 // ============================================================================
 // SECONDARY DASHBOARD – Klasse 5–13
@@ -148,11 +148,9 @@ class _SecondaryDashboardScreenState
       automaticallyImplyLeading: false,
       // Kindergerät: das Dashboard ist die Startseite, dahinter gibt es nichts
       leading: _currentTab == 0 && ref.watch(isChildDeviceProvider)
-          ? (ref.watch(isSchoolDeviceProvider)
-                ? SchoolDeviceLogoutButton(
-                    color: theme.onPrimary.withValues(alpha: 0.9),
-                  )
-                : null)
+          ? DeviceLogoutButton(
+              color: theme.onPrimary.withValues(alpha: 0.9),
+            )
           : IconButton(
         icon: Icon(
           Icons.arrow_back_ios_rounded,

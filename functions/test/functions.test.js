@@ -184,6 +184,51 @@ test("PIN: Kindergerät hat keinen Zugriff", async () => {
   await signOut(kid.auth);
 });
 
+test("Kindergerät abmelden mit Eltern-PIN: nur dieses Gerät", async () => {
+  const parent = await parentWithChildren();
+  const first = await parent.call("createPairingCode", { childId: "jan" });
+  const kid = device();
+  const { token, deviceId } = await kid.call("redeemPairingCode", { code: first.code });
+  assert.match(deviceId, /^[A-Za-z0-9]+$/);
+  const second = await parent.call("createPairingCode", { childId: "jan" });
+  await device().call("redeemPairingCode", { code: second.code });
+  await signInWithCustomToken(kid.auth, token);
+
+  // Noch kein PIN: Gerät bleibt gekoppelt
+  await expectError(kid.call("leaveChildDevice", { pin: "4711", deviceId }), "failed-precondition");
+
+  await parent.call("setParentPin", { pin: "4711" });
+  assert.deepEqual(await kid.call("leaveChildDevice", { pin: "1234", deviceId }), { ok: false });
+  assert.deepEqual(await kid.call("leaveChildDevice", { pin: "abc", deviceId }), { ok: false });
+  const devicesPath = `users/${parent.uid}/children/jan/devices`;
+  assert.equal((await adb.collection(devicesPath).get()).size, 2);
+
+  assert.deepEqual(await kid.call("leaveChildDevice", { pin: "4711", deviceId }), { ok: true });
+  const left = await adb.collection(devicesPath).get();
+  assert.equal(left.size, 1);
+  assert.notEqual(left.docs[0].id, deviceId);
+  // Das Kinderkonto bleibt für das andere Gerät
+  await adminAuth().getUser(`kid:${parent.uid}:jan`);
+  await signOut(kid.auth);
+});
+
+test("Kindergerät abmelden: Sperre nach Fehlversuchen, nur Kindergeräte", async () => {
+  const parent = await parentWithChildren();
+  await parent.call("setParentPin", { pin: "4711" });
+  const { code } = await parent.call("createPairingCode", { childId: "jan" });
+  const kid = device();
+  const { token } = await kid.call("redeemPairingCode", { code });
+  await signInWithCustomToken(kid.auth, token);
+  for (let i = 0; i < 5; i++) {
+    assert.deepEqual(await kid.call("leaveChildDevice", { pin: "0000" }), { ok: false });
+  }
+  await expectError(kid.call("leaveChildDevice", { pin: "4711" }), "resource-exhausted");
+  await signOut(kid.auth);
+
+  await expectError(parent.call("leaveChildDevice", { pin: "4711" }), "permission-denied");
+  await expectError(device().call("leaveChildDevice", { pin: "4711" }), "unauthenticated");
+});
+
 // ── Aufräumen ────────────────────────────────────────────────────────────────
 
 test("Elternkonto gelöscht: PIN und offene Codes weg", async () => {
