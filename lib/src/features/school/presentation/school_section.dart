@@ -6,7 +6,8 @@ import '../data/school_repository.dart';
 import 'school_home_screen.dart';
 
 /// Abschnitt „Schule“ in den Einstellungen (hinter dem Eltern-PIN):
-/// Lehrerbereich öffnen – oder Schule anlegen bzw. mit Code beitreten.
+/// Lehrerbereich öffnen oder mit Code beitreten. Schulen selbst legt nur
+/// Lerndex an (Einladungslink, siehe tool/admin/schule.py).
 class SchoolSection extends ConsumerWidget {
   const SchoolSection({super.key});
 
@@ -45,36 +46,16 @@ class SchoolSection extends ConsumerWidget {
           trailing: const Icon(Icons.chevron_right),
           onTap: () => _joinSchool(context, ref),
         ),
-        ListTile(
-          leading: const Icon(Icons.add_business, color: Colors.deepPurple),
-          title: const Text('Schule anlegen'),
-          subtitle: const Text(
-            'Klassen und Schüler für Lernzeiten verwalten',
+        const ListTile(
+          leading: Icon(Icons.add_business, color: Colors.deepPurple),
+          title: Text('Lerndex für Ihre Schule'),
+          subtitle: Text(
+            'Schulen bekommen ihren Zugang direkt von uns: support@lerndex.de',
             style: TextStyle(fontSize: 12),
           ),
-          trailing: const Icon(Icons.chevron_right),
-          onTap: () => _createSchool(context, ref),
         ),
       ],
     );
-  }
-
-  Future<void> _createSchool(BuildContext context, WidgetRef ref) async {
-    final name = await _askText(
-      context,
-      title: 'Schule anlegen',
-      label: 'Name der Schule',
-      hint: 'z.B. Grundschule am Wald',
-      info:
-          'Du wirst Schulleitung in Lerndex: Du lädst Lehrkräfte ein, alle '
-          'Lehrkräfte sehen alle Klassen. Deine eigenen Kinder bleiben davon '
-          'getrennt.',
-    );
-    if (name == null || !context.mounted) return;
-    await _run(context, ref, () async {
-      await ref.read(schoolRepositoryProvider).createSchool(name);
-      return 'Schule angelegt';
-    });
   }
 
   Future<void> _joinSchool(BuildContext context, WidgetRef ref) async {

@@ -1,11 +1,24 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lerndex/src/features/auth/data/child_device_repository.dart';
 import 'package:lerndex/src/features/auth/domain/account.dart';
+import 'package:lerndex/src/features/school/data/school_repository.dart';
 import 'package:lerndex/src/features/school/domain/school_models.dart';
 import 'package:lerndex/src/features/school/presentation/school_class_screen.dart';
 import 'package:lerndex/src/features/school/presentation/student_cards_print.dart';
 
 void main() {
+  test('Einladungslinks für Schule und Lehrkraft', () {
+    expect(schoolSignupFromPath('/schule/K7MXQ2PA'), 'K7MXQ2PA');
+    expect(schoolSignupFromPath('/schule/K7MX-Q2PA/'), 'K7MX-Q2PA');
+    expect(schoolSignupFromPath('/lehrer/K7MXQ2PA'), isNull);
+    expect(schoolSignupFromPath('/schule/'), isNull);
+    expect(teacherInviteFromPath('/lehrer/K7MXQ2PA'), 'K7MXQ2PA');
+    expect(teacherInviteFromPath('/k/K7MXQ2PA'), isNull);
+    // Andere Links sind davon nicht betroffen
+    expect(pairingCodeFromPath('/schule/K7MXQ2PA'), isNull);
+    expect(studentCardFromPath('/lehrer/K7MXQ2PA'), isNull);
+  });
+
   test('Namensliste: eine Zeile pro Kind, aufgeräumt', () {
     expect(parseStudentNames('Mia K.\r\n\n  Ben   S. \nLeonie W.\n'), [
       'Mia K.',

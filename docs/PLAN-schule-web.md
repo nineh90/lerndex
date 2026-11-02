@@ -216,6 +216,8 @@ users/school_{sid}                     „Besitzer-Konto“ der Schüler, Lizenz
 users/school_{sid}/children/{id}       Schüler, wie ChildModel + classId
 studentCards/{sha256(token)}           QR-Karten (nur Hash, nur Functions)
 schoolInvites/{code}                   Einladungen für Lehrkräfte (nur Functions)
+schoolSignups/{code}                   Einladungen für neue Schulen, von Lerndex (nur Functions)
+users/{uid}.accountType = "school"     reines Schulkonto (nur Schulbereich)
 ```
 
 Die Schüler liegen bewusst wie Kinder einer Familie unter `users/school_<id>/children`. Damit
@@ -224,11 +226,20 @@ Claims wie ein gekoppeltes Kindergerät.
 
 Erledigt:
 
-- **Schule anlegen:** Einstellungen → Schule → „Schule anlegen“. Wer anlegt, ist Schulleitung.
-- **Lehrkräfte:** Die Schulleitung erzeugt einen Einladungscode (7 Tage, einmalig), die Lehrkraft
-  gibt ihn unter Einstellungen → „Einer Schule beitreten“ ein. Alle Lehrkräfte sehen alle Klassen.
-  Eine Lehrkraft bleibt für ihre eigene Familie ganz normal Elternteil. Die Schulleitung kann
-  Lehrkräfte entfernen.
+- **Schule anlegen (seit 02.11.2026 nur mit Einladung von Lerndex):**
+  `python3 tool/admin/schule.py einladen [--name "…"] [--bis 2027-07-31]` erzeugt einen
+  Einmal-Link `…/schule/CODE` (30 Tage gültig). Die Schulleitung registriert darüber Schule und
+  Konto, die Lizenz kommt aus der Einladung. `schule.py liste` zeigt Schulen und offene
+  Einladungen, `schule.py lizenz SCHUL_ID DATUM` verlängert.
+- **Reine Schulkonten:** Konten, die über einen Schul- oder Lehrerlink neu entstehen, haben
+  `accountType: "school"`. Nach dem Anmelden sehen sie nur den Schulbereich (Klassen,
+  Lehrkräfte, Abmelden), keinen Elternbereich, keine PIN, kein Abo.
+- **Lehrkräfte:** Die Schulleitung schickt einen Link `…/lehrer/CODE` (7 Tage, einmalig). Die
+  Lehrkraft legt darüber ein Schulkonto an oder tritt mit ihrem Elternkonto bei (dann behält sie
+  ihren Elternbereich und erreicht die Schule über das Schul-Symbol). Alle Lehrkräfte sehen alle
+  Klassen. Die Schulleitung kann Lehrkräfte entfernen.
+- **Offen:** Konto löschen für reine Schulkonten (bisher nur über uns), Passwort ändern im
+  Schulbereich.
 - **Klassen und Schüler:** Klasse mit Klassenstufe und Schulform anlegen, Schüler als Namensliste
   (ein Name pro Zeile) eintragen. Empfehlung in der App: Vorname + Anfangsbuchstabe.
 - **QR-Karten:** Im Browser öffnet „Drucken“ eine A4-Seite mit 8 Karten pro Blatt. Das Kind scannt

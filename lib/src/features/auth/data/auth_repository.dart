@@ -232,6 +232,15 @@ class AuthRepository {
   // =========================================================================
 
   /// Prüft ob der Onboarding-Flow abgeschlossen wurde
+  /// Reines Schulkonto (Schulleitung oder Lehrkraft ohne eigene Kinder,
+  /// angelegt über einen Einladungslink). Sieht nur den Schulbereich.
+  Future<bool> isSchoolAccount() async {
+    final user = _auth.currentUser;
+    if (user == null) return false;
+    final doc = await _firestore.collection('users').doc(user.uid).get();
+    return doc.data()?['accountType'] == 'school';
+  }
+
   Future<bool> isOnboardingComplete() async {
     final user = _auth.currentUser;
     if (user == null) return false;

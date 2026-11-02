@@ -7,3 +7,6 @@ Object? openBlankTab() => null;
 
 /// Schreibt HTML in einen mit [openBlankTab] geöffneten Tab.
 void writeHtmlToTab(Object? tab, String html) {}
+
+/// Nur im Browser: gespeicherte Firebase-Anmeldung löschen (Emulator-Modus).
+Future<void> clearStoredFirebaseLogin() async {}

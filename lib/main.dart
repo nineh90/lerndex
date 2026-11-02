@@ -19,6 +19,7 @@ import 'package:image_picker_platform_interface/image_picker_platform_interface.
 import 'src/features/auth/data/child_device_repository.dart';
 import 'src/features/auth/presentation/account_deleted_screen.dart';
 import 'src/features/splash/splash_screen.dart';
+import 'src/shared/web/browser_url.dart';
 // NEU: RevenueCat
 import 'src/features/subscription/data/subscription_service.dart';
 
@@ -54,12 +55,17 @@ void main() async {
     imagePicker.useAndroidPhotoPicker = true;
   }
 
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-
   // Lokale Emulatoren statt echter Daten (Ports wie in firebase.json):
   // flutter run --dart-define=USE_FIREBASE_EMULATOR=true
   // Start: firebase emulators:start --only auth,firestore,functions,storage
   const useEmulator = bool.fromEnvironment('USE_FIREBASE_EMULATOR');
+
+  // Im Browser greift der Auth-Emulator nicht, wenn noch eine Anmeldung
+  // gespeichert ist – die Test-App spräche dann mit dem echten Firebase.
+  if (useEmulator && kIsWeb) await clearStoredFirebaseLogin();
+
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
   if (useEmulator) {
     // Android-Emulator erreicht den Rechner unter 10.0.2.2
     final host = !kIsWeb && defaultTargetPlatform == TargetPlatform.android

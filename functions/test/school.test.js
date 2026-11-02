@@ -9,16 +9,37 @@ if (!process.env.FIRESTORE_EMULATOR_HOST) {
 
 const {
   adb, device, parentWithChildren, expectError, closeDevices,
-  signInWithCustomToken, doc, getDoc, setDoc, adminAuth,
+  signInWithCustomToken, doc, getDoc, setDoc, adminAuth, Timestamp,
+  createUserWithEmailAndPassword,
 } = require("./_client");
 const { collection, getDocs } = require("firebase/firestore");
+const { newPairingCode } = require("../lib/helpers");
 
 test.after(closeDevices);
 
+/** Einladungscode für eine Schule, wie ihn tool/admin/schule.py anlegt. */
+async function schoolSignup(fields = {}) {
+  const code = newPairingCode();
+  await adb.doc(`schoolSignups/${code}`).set({
+    expiresAt: Timestamp.fromMillis(Date.now() + 3600e3),
+    ...fields,
+  });
+  return code;
+}
+
+/** Neues Konto ohne Kinder (wie über den Schul-Link registriert). */
+async function freshAccount() {
+  const d = device();
+  const email = `s${Date.now()}${Math.random().toString(36).slice(2, 6)}@schule.de`;
+  const { user } = await createUserWithEmailAndPassword(d.auth, email, "geheim123");
+  return { ...d, uid: user.uid };
+}
+
 /** Konto anlegen, Schule gründen, Token mit den neuen Claims holen. */
-async function schoolAdmin(name = "Grundschule am Wald") {
-  const admin = await parentWithChildren();
-  const { schoolId } = await admin.call("createSchool", { name });
+async function schoolAdmin(name = "Grundschule am Wald", account = null) {
+  const admin = account || (await parentWithChildren());
+  const code = await schoolSignup();
+  const { schoolId } = await admin.call("createSchool", { code, name });
   await admin.auth.currentUser.getIdToken(true);
   return { ...admin, schoolId, owner: `school_${schoolId}` };
 }
@@ -49,8 +70,55 @@ test("Schule anlegen: Admin-Claims, Schul-Konto, nur einmal", async () => {
   const owner = await getDoc(doc(admin.db, `users/${admin.owner}`));
   assert.equal(owner.get("isSchool"), true);
 
-  await expectError(admin.call("createSchool", { name: "Zweite Schule" }), "already-exists");
-  await expectError(device().call("createSchool", { name: "Ohne Konto" }), "unauthenticated");
+  const second = await schoolSignup();
+  await expectError(admin.call("createSchool", { code: second, name: "Zweite Schule" }), "already-exists");
+  await expectError(device().call("createSchool", { code: second, name: "Ohne Konto" }), "unauthenticated");
+  // Elternkonto mit Kindern bleibt Elternkonto (kein reines Schulkonto)
+  assert.equal((await adb.doc(`users/${admin.uid}`).get()).get("accountType"), undefined);
+});
+
+test("Schule anlegen nur mit Einladungscode von Lerndex", async () => {
+  const account = await freshAccount();
+  await expectError(account.call("createSchool", { name: "Ohne Code" }), "not-found");
+  await expectError(account.call("createSchool", { code: "ABCDEFGH", name: "Falscher Code" }), "not-found");
+  const expired = await schoolSignup({ expiresAt: Timestamp.fromMillis(Date.now() - 1000) });
+  await expectError(account.call("createSchool", { code: expired, name: "Abgelaufen" }), "not-found");
+
+  // Ohne Namen (und ohne Namen im Code) geht es nicht – der Code bleibt gültig
+  const code = await schoolSignup({ licenseUntil: Timestamp.fromMillis(Date.UTC(2027, 6, 31)) });
+  await expectError(account.call("createSchool", { code }), "invalid-argument");
+  const result = await account.call("createSchool", { code: code.toLowerCase(), name: " Schule am See " });
+  assert.equal(result.schoolName, "Schule am See");
+  assert.equal(result.schoolAccount, true);
+
+  // Lizenz aus dem Code, Code verbraucht, Konto ist reines Schulkonto
+  const owner = await adb.doc(`users/school_${result.schoolId}`).get();
+  assert.equal(owner.get("schoolLicenseUntil").toMillis(), Date.UTC(2027, 6, 31));
+  assert.equal((await adb.doc(`schoolSignups/${code}`).get()).exists, false);
+  const user = (await adb.doc(`users/${account.uid}`).get()).data();
+  assert.equal(user.accountType, "school");
+  assert.equal(user.schoolId, result.schoolId);
+  assert.equal(user.onboardingCompleted, true);
+
+  // Name aus dem Code, wenn die Schule keinen angibt
+  const named = await schoolSignup({ schoolName: "Realschule Nord" });
+  const other = await freshAccount();
+  assert.equal((await other.call("createSchool", { code: named })).schoolName, "Realschule Nord");
+});
+
+test("Lehrkraft über den Einladungslink: neues Konto wird Schulkonto", async () => {
+  const admin = await schoolAdmin("Schule mit Link", await freshAccount());
+  const { code } = await admin.call("createTeacherInvite", {});
+  const teacher = await freshAccount();
+  const joined = await teacher.call("joinSchool", { code, schoolAccount: true });
+  assert.equal(joined.schoolAccount, true);
+  assert.equal((await adb.doc(`users/${teacher.uid}`).get()).get("accountType"), "school");
+
+  // Elternkonto mit Kindern bleibt Elternkonto, auch wenn es darum bittet
+  const { code: code2 } = await admin.call("createTeacherInvite", {});
+  const parent = await parentWithChildren();
+  assert.equal((await parent.call("joinSchool", { code: code2, schoolAccount: true })).schoolAccount, false);
+  assert.equal((await adb.doc(`users/${parent.uid}`).get()).get("accountType"), undefined);
 });
 
 test("Lehrkraft: eigene Kinder weiter erreichbar, Schul-Konto nicht änderbar", async () => {

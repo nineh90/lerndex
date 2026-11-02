@@ -73,7 +73,7 @@ class SchoolClassScreen extends ConsumerWidget {
               child: Padding(
                 padding: EdgeInsets.all(24),
                 child: Text(
-                  'Noch keine Schüler. Mit „Schüler hinzufügen“ kannst du die '
+                  'Noch keine Schüler. Mit „Schüler hinzufügen“ können Sie die '
                   'ganze Klasse auf einmal eintragen.',
                   textAlign: TextAlign.center,
                 ),

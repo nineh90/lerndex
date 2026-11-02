@@ -151,6 +151,9 @@ service cloud.firestore {
     match /schoolInvites/{code} {
       allow read, write: if false;
     }
+    match /schoolSignups/{code} {
+      allow read, write: if false;
+    }
     match /studentCards/{tokenHash} {
       allow read, write: if false;
     }

@@ -93,6 +93,7 @@ Der Großteil der Provider nutzt noch die Legacy-APIs (`StateNotifierProvider`, 
 - `users/{uid}/children/{childId}/devices` — gekoppelte Kindergeräte (schreibt nur die Function)
 - `pairingCodes/{code}` — offene Kopplungscodes, nur für Cloud Functions
 - `schools/{sid}` mit `members` (Lehrkräfte, nur Functions) und `classes` — Schule
+- `schoolSignups/{code}` — Einladungen für neue Schulen (von Lerndex), nur Functions
 - `users/school_{sid}` und `users/school_{sid}/children/{id}` — Schul-Konto (Lizenz
   `schoolLicenseUntil`) und Schüler, aufgebaut wie Eltern-Konto und Kinder
 - `studentCards/{sha256}`, `schoolInvites/{code}` — QR-Karten und Einladungen, nur Functions
@@ -101,9 +102,14 @@ Der Großteil der Provider nutzt noch die Legacy-APIs (`StateNotifierProvider`, 
 ### Konten und Rollen
 
 - **Eltern:** E-Mail/Google/Apple, kein `role`-Claim.
-- **Lehrkraft:** normales (Eltern-)Konto mit zusätzlichen Claims `{ schoolId, schoolRole }`
-  (`admin` oder `teacher`), gesetzt von `functions/school.js`. Sieht alle Klassen der Schule,
-  aber keine Lexi-Chats der Schüler.
+- **Schule/Lehrkraft:** Konto mit Claims `{ schoolId, schoolRole }` (`admin` oder `teacher`),
+  gesetzt von `functions/school.js`. Sieht alle Klassen der Schule, aber keine Lexi-Chats der
+  Schüler. Schulen legt nur Lerndex an: `python3 tool/admin/schule.py einladen` erzeugt einen
+  Link `…/schule/CODE`, darüber registriert sich die Schulleitung; Lehrkräfte kommen über
+  `…/lehrer/CODE`. Neue Konten über diese Links sind **reine Schulkonten**
+  (`users/{uid}.accountType = "school"`): Die App zeigt nur den Schulbereich
+  (`SchoolRootScreen`), keinen Elternbereich und kein Abo. Wer mit einem Elternkonto beitritt,
+  behält beides. Lizenz: `python3 tool/admin/schule.py lizenz SCHUL_ID JJJJ-MM-TT`.
 - **Kindergerät:** eigenes Konto `kid:<parentUid>:<childId>` mit Claims
   `{ role: "student", parentUid, childId }`, angelegt von der Cloud Function
   `redeemPairingCode` (QR-Code/Code aus dem Elternbereich). Schülergeräte genauso

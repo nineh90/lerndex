@@ -20,6 +20,14 @@ import '../domain/school_models.dart';
 // Schüler liegen unter users/school_<id>/children – wie Kinder einer Familie.
 // ============================================================================
 
+/// Einladungslink einer Schule von Lerndex: …/schule/CODE
+String? schoolSignupFromPath(String path) =>
+    RegExp(r'^/schule/([A-Za-z0-9-]{8,9})/?$').firstMatch(path)?.group(1);
+
+/// Einladungslink für eine Lehrkraft: …/lehrer/CODE
+String? teacherInviteFromPath(String path) =>
+    RegExp(r'^/lehrer/([A-Za-z0-9-]{8,9})/?$').firstMatch(path)?.group(1);
+
 class SchoolRepository {
   SchoolRepository(this._functions, this._firestore, this._auth);
 
@@ -45,9 +53,15 @@ class SchoolRepository {
 
   // ── Schule, Lehrkräfte ────────────────────────────────────────────────────
 
-  Future<void> createSchool(String name) async {
-    await _call('createSchool', {'name': name});
+  /// Schule mit dem Einladungscode von Lerndex anlegen (…/schule/CODE).
+  /// Gibt den Namen der Schule zurück.
+  Future<String> createSchool({required String code, String? name}) async {
+    final data = await _call('createSchool', {
+      'code': code,
+      if (name != null && name.trim().isNotEmpty) 'name': name.trim(),
+    });
     await _auth.currentUser?.getIdToken(true);
+    return data['schoolName'] as String? ?? '';
   }
 
   Future<({String code, DateTime expiresAt})> createTeacherInvite() async {
@@ -58,9 +72,13 @@ class SchoolRepository {
     );
   }
 
-  /// Gibt den Namen der Schule zurück.
-  Future<String> joinSchool(String code) async {
-    final data = await _call('joinSchool', {'code': code});
+  /// Gibt den Namen der Schule zurück. [schoolAccount]: neues Konto über
+  /// den Einladungslink – wird reines Schulkonto (nur ohne eigene Kinder).
+  Future<String> joinSchool(String code, {bool schoolAccount = false}) async {
+    final data = await _call('joinSchool', {
+      'code': code,
+      if (schoolAccount) 'schoolAccount': true,
+    });
     await _auth.currentUser?.getIdToken(true);
     return data['schoolName'] as String? ?? '';
   }

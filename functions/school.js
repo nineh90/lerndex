@@ -13,8 +13,13 @@
 //   Karten sind wiederverwendbar (geteilte Schul-Tablets), bis die Lehrkraft
 //   neue druckt. Gespeichert wird nur der Hash des Tokens
 //   (studentCards/{sha256}), nur Functions haben Zugriff.
-// - Die Lizenz (schoolLicenseUntil am Dokument users/school_<id>) setzt nur
-//   Lerndex selbst, z.B. in der Firebase Console.
+// - Schulen legt niemand selbst an: Lerndex erzeugt einen Einladungscode
+//   (schoolSignups/{code}, tool/admin/schule.py), die Schule registriert sich
+//   über den Link …/schule/CODE. Die Lizenz (schoolLicenseUntil am Dokument
+//   users/school_<id>) kommt aus dem Code oder wird von Lerndex gesetzt.
+// - Konten ohne eigene Kinder, die über einen Schul- oder Lehrerlink kommen,
+//   sind reine Schulkonten (users/{uid}.accountType = "school"): Die App
+//   zeigt ihnen nur den Schulbereich.
 
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { FieldValue, Timestamp } = require("firebase-admin/firestore");
@@ -80,43 +85,82 @@ async function requireNoSchool(uid) {
 // ── Schule anlegen, Lehrkräfte einladen ──────────────────────────────────────
 
 /**
- * Schule anlegen. Wer sie anlegt, wird Schul-Admin. Ohne Lizenz können die
- * Schüler nur das Gratis-Angebot nutzen.
+ * Reines Schulkonto? Nur wenn das Konto keine eigenen Kinder hat – eine
+ * Lehrerin, die mit ihrem Elternkonto beitritt, behält ihren Elternbereich.
+ * Schulkonten sehen in der App nur den Schulbereich (accountType "school").
+ */
+async function markSchoolAccount(uid, user, schoolId) {
+  const kids = await db.collection(`users/${uid}/children`).limit(1).get();
+  if (!kids.empty) return false;
+  await db.doc(`users/${uid}`).set(
+    {
+      accountType: "school",
+      schoolId,
+      email: user.email || "",
+      displayName: user.displayName || "",
+      onboardingCompleted: true,
+    },
+    { merge: true },
+  );
+  return true;
+}
+
+/**
+ * Schule anlegen – nur mit einem Einladungscode von Lerndex
+ * (schoolSignups/{code}, angelegt mit tool/admin/schule.py). Wer sie anlegt,
+ * wird Schul-Admin. Die Lizenz kommt aus dem Code (licenseUntil).
  */
 exports.createSchool = onCall(async (request) => {
   const uid = requireSignedIn(request);
-  const name = request.data?.name;
-  if (typeof name !== "string" || name.trim().length < 3 || name.length > 100) {
-    throw new HttpsError("invalid-argument", "Bitte den Namen der Schule angeben.");
+  const code = normalizeCode(request.data?.code);
+  const invalid = new HttpsError(
+    "not-found",
+    "Der Einladungslink stimmt nicht oder ist abgelaufen. Bitte melden Sie sich bei Lerndex.",
+  );
+  if (!code) throw invalid;
+  const rawName = request.data?.name;
+  const name = typeof rawName === "string" ? rawName.trim() : "";
+  if (name.length > 100) {
+    throw new HttpsError("invalid-argument", "Der Name der Schule ist zu lang.");
   }
   const user = await requireNoSchool(uid);
 
-  const schoolRef = db.collection("schools").doc();
-  const schoolId = schoolRef.id;
-  const batch = db.batch();
-  batch.set(schoolRef, {
-    name: name.trim(),
-    createdAt: FieldValue.serverTimestamp(),
-    createdBy: uid,
+  const result = await redeemOnce(db.doc(`schoolSignups/${code}`), async (signup) => {
+    const schoolName = name || (signup.schoolName || "").trim();
+    if (schoolName.length < 3) {
+      throw new HttpsError("invalid-argument", "Bitte den Namen der Schule angeben.");
+    }
+    const schoolRef = db.collection("schools").doc();
+    const schoolId = schoolRef.id;
+    const batch = db.batch();
+    batch.set(schoolRef, {
+      name: schoolName,
+      createdAt: FieldValue.serverTimestamp(),
+      createdBy: uid,
+      signupCode: code,
+    });
+    batch.set(schoolRef.collection("members").doc(uid), {
+      role: "admin",
+      name: user.displayName || "",
+      email: user.email || "",
+      joinedAt: FieldValue.serverTimestamp(),
+    });
+    // „Besitzer-Konto“ der Schüler (wie users/{uid} bei Eltern)
+    batch.set(db.doc(`users/${schoolOwnerUid(schoolId)}`), {
+      isSchool: true,
+      schoolId,
+      displayName: schoolName,
+      onboardingCompleted: true,
+      createdAt: FieldValue.serverTimestamp(),
+      ...(signup.licenseUntil ? { schoolLicenseUntil: signup.licenseUntil } : {}),
+    });
+    await batch.commit();
+    await setSchoolClaims(uid, schoolId, "admin");
+    const schoolAccount = await markSchoolAccount(uid, user, schoolId);
+    return { schoolId, schoolName, schoolAccount };
   });
-  batch.set(schoolRef.collection("members").doc(uid), {
-    role: "admin",
-    name: user.displayName || "",
-    email: user.email || "",
-    joinedAt: FieldValue.serverTimestamp(),
-  });
-  // „Besitzer-Konto“ der Schüler (wie users/{uid} bei Eltern)
-  batch.set(db.doc(`users/${schoolOwnerUid(schoolId)}`), {
-    isSchool: true,
-    schoolId,
-    displayName: name.trim(),
-    onboardingCompleted: true,
-    createdAt: FieldValue.serverTimestamp(),
-  });
-  await batch.commit();
-  await setSchoolClaims(uid, schoolId, "admin");
-
-  return { schoolId };
+  if (!result) throw invalid;
+  return result;
 });
 
 /** Schul-Admin: Einladungscode für eine Lehrkraft (7 Tage, einmalig). */
@@ -155,7 +199,10 @@ exports.joinSchool = onCall(async (request) => {
       email: user.email || "",
       joinedAt: FieldValue.serverTimestamp(),
     });
-    return { schoolId, schoolName: school.get("name") };
+    // Neues Konto über den Einladungslink: reines Schulkonto
+    const schoolAccount = request.data?.schoolAccount === true &&
+      (await markSchoolAccount(uid, user, schoolId));
+    return { schoolId, schoolName: school.get("name"), schoolAccount };
   });
   if (!result) throw invalid;
   return result;

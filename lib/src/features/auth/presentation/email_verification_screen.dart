@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/auth_repository.dart';
+import '../../school/presentation/school_home_screen.dart';
 import 'setup_dialog.dart';
 
 /// E-Mail Verifizierungs-Screen
@@ -10,7 +11,15 @@ import 'setup_dialog.dart';
 class EmailVerificationScreen extends ConsumerStatefulWidget {
   final String displayName;
 
-  const EmailVerificationScreen({super.key, required this.displayName});
+  /// Schulkonto (über einen Einladungslink): danach in den Schulbereich
+  /// statt ins Eltern-Onboarding.
+  final bool schoolAccount;
+
+  const EmailVerificationScreen({
+    super.key,
+    required this.displayName,
+    this.schoolAccount = false,
+  });
 
   @override
   ConsumerState<EmailVerificationScreen> createState() =>
@@ -45,9 +54,13 @@ class _EmailVerificationScreenState
       final verified = await ref.read(authRepositoryProvider).isEmailVerified();
       if (verified && mounted) {
         _checkTimer?.cancel();
-        // Weiter zum Onboarding
+        // Weiter zum Onboarding bzw. in den Schulbereich
         Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const SetupDialog()),
+          MaterialPageRoute(
+            builder: (_) => widget.schoolAccount
+                ? const SchoolRootScreen()
+                : const SetupDialog(),
+          ),
         );
       }
     });
@@ -143,7 +156,11 @@ class _EmailVerificationScreenState
                 const SizedBox(height: 16),
 
                 Text(
-                  'Hallo ${widget.displayName.split(' ').first}! 👋\n\nWir haben eine Bestätigungs-Mail an dich gesendet. Bitte klicke auf den Link in der E-Mail um fortzufahren.',
+                  widget.schoolAccount
+                      ? 'Fast geschafft!\n\nWir haben Ihnen eine Bestätigungs-Mail '
+                            'geschickt. Bitte klicken Sie auf den Link darin, dann '
+                            'geht es hier automatisch weiter.'
+                      : 'Hallo ${widget.displayName.split(' ').first}! 👋\n\nWir haben eine Bestätigungs-Mail an dich gesendet. Bitte klicke auf den Link in der E-Mail um fortzufahren.',
                   textAlign: TextAlign.center,
                   style: const TextStyle(fontSize: 16, color: Colors.white70),
                 ),

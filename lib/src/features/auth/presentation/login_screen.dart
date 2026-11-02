@@ -1,6 +1,7 @@
 import '../../../shared/platform_info.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import '../../school/presentation/school_home_screen.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -53,6 +54,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           .signInWithEmailAndPassword(email, password);
 
       if (!mounted) return;
+
+      // Reines Schulkonto: direkt in den Schulbereich
+      if (await ref.read(authRepositoryProvider).isSchoolAccount()) {
+        if (!mounted) return;
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const SchoolRootScreen()),
+        );
+        return;
+      }
 
       // NEU: RevenueCat identifizieren + Abo-Status laden
       final uid = credential.user?.uid;
@@ -154,6 +164,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (_) => const SetupDialog()),
+      );
+      return;
+    }
+
+    // Reines Schulkonto: direkt in den Schulbereich
+    if (await ref.read(authRepositoryProvider).isSchoolAccount()) {
+      if (!mounted) return;
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const SchoolRootScreen()),
       );
       return;
     }
