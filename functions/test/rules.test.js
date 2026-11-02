@@ -183,3 +183,36 @@ test("Storage: Eltern wie bisher", async () => {
   const other = env.authenticatedContext(OTHER).storage();
   await assertFails(uploadBytes(ref(other, `tutor_worksheets/${PARENT}/${CHILD}/3.jpg`), jpg, meta));
 });
+
+// ── Lehrergerät: Aufgaben für Schüler ───────────────────────────────────────
+
+const teacherCtx = (schoolId = "sA") =>
+  env.authenticatedContext(`teacher:${schoolId}:t1`, {
+    role: "teacher", schoolId, schoolRole: "teacher", teacherId: "t1",
+  });
+
+test("Lehrergerät: Aufgaben an Schüler, Fotos hochladen, nur eigene Schule", async () => {
+  const db = teacherCtx().firestore();
+  const owner = "school_sA";
+  await assertSucceeds(setDoc(doc(db, `users/${owner}/generated_batches/b9`), {
+    childId: "s1", classId: "4a", assignmentId: "a1",
+  }));
+  await assertSucceeds(setDoc(doc(db, `users/${owner}/generated_batches/b9/questions/q1`), {
+    status: "approved",
+  }));
+  await assertSucceeds(getDocs(query(collection(db, `users/${owner}/generated_batches`),
+    where("classId", "==", "4a"))));
+  await assertFails(setDoc(doc(db, `users/school_sB/generated_batches/b1`), { childId: "x" }));
+  await assertFails(getDoc(doc(db, `users/${PARENT}/generated_batches/b1`)));
+
+  // Schüler sieht nur den eigenen Batch
+  const kid = student("s1", owner).firestore();
+  await assertSucceeds(getDoc(doc(kid, `users/${owner}/generated_batches/b9/questions/q1`)));
+  const other = student("s2", owner).firestore();
+  await assertFails(getDoc(doc(other, `users/${owner}/generated_batches/b9`)));
+
+  const st = teacherCtx().storage();
+  await assertSucceeds(uploadBytes(ref(st, `task_images/${owner}/4a/m/1.jpg`), jpg, meta));
+  await assertFails(uploadBytes(ref(st, `task_images/school_sB/4a/m/1.jpg`), jpg, meta));
+  await assertFails(uploadBytes(ref(st, `task_images/${PARENT}/${CHILD}/1.jpg`), jpg, meta));
+});

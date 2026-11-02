@@ -28,6 +28,14 @@ service firebase.storage {
         && request.auth.token.childId == childId;
     }
 
+    // Lehrkraft der Schule, der dieses „Besitzer-Konto“ (school_<id>) gehört
+    // (Lehrergerät mit Karte + PIN, siehe firestore.rules)
+    function isTeacherOf(userId) {
+      return request.auth != null
+        && request.auth.token.get('schoolRole', '') == 'teacher'
+        && userId == 'school_' + request.auth.token.get('schoolId', '');
+    }
+
     // Nur Bilder, max. 10 MB (App komprimiert vor Upload auf 1920px/85 %,
     // liegt also deutlich darunter — das Limit fängt manipulierte Clients ab).
     function isValidImage() {
@@ -41,6 +49,12 @@ service firebase.storage {
       allow read: if isOwner(userId);
       allow create, update: if isOwner(userId) && isValidImage();
       allow delete: if isOwner(userId);
+    }
+
+    // Fotos für Klassenaufgaben (Arbeitsblatt, Tafelbild)
+    match /task_images/{userId}/{allPaths=**} {
+      allow read: if isTeacherOf(userId);
+      allow create, update: if isTeacherOf(userId) && isValidImage();
     }
 
     match /tutor_worksheets/{userId}/{allPaths=**} {

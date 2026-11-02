@@ -64,6 +64,124 @@ class GeneratedTaskRepository {
     }
   }
 
+  /// Lehrkraft: dieselben (schon geprüften) Aufgaben an mehrere Schüler
+  /// geben. Pro Kind entsteht ein eigener, bereits freigegebener Batch – so
+  /// läuft auf der Kinderseite alles wie bei Eltern-Aufgaben. Die Batches
+  /// eines Auftrags teilen sich die assignmentId (Übersicht für die Klasse).
+  Future<String> assignToStudents({
+    required String ownerUid,
+    required String classId,
+    required List<({String id, String name})> students,
+    required Subject subject,
+    required String title,
+    required List<GeneratedQuestion> questions,
+    required String assignedBy,
+    String imageUrl = '',
+  }) async {
+    final assignmentId = _firestore.collection('_').doc().id;
+    final batches = _firestore
+        .collection('users')
+        .doc(ownerUid)
+        .collection('generated_batches');
+    // Firestore schreibt höchstens 500 Dokumente pro Batch-Write
+    var writes = _firestore.batch();
+    var count = 0;
+    Future<void> add(DocumentReference ref, Map<String, dynamic> data) async {
+      writes.set(ref, data);
+      if (++count >= 450) {
+        await writes.commit();
+        writes = _firestore.batch();
+        count = 0;
+      }
+    }
+
+    for (final student in students) {
+      final batchDoc = batches.doc();
+      await add(batchDoc, {
+        'childId': student.id,
+        'childName': student.name,
+        'subject': subject.value,
+        'imageUrl': imageUrl,
+        'createdAt': FieldValue.serverTimestamp(),
+        'totalTasks': questions.length,
+        'pendingTasks': 0,
+        'approvedTasks': questions.length,
+        'rejectedTasks': 0,
+        'classId': classId,
+        'assignmentId': assignmentId,
+        'title': title,
+        'assignedBy': assignedBy,
+      });
+      for (final q in questions) {
+        await add(batchDoc.collection('questions').doc(), {
+          ...q.toFirestore(),
+          'status': TaskApprovalStatus.approved.value,
+          'approvedAt': FieldValue.serverTimestamp(),
+          'approvedBy': assignedBy,
+        });
+      }
+    }
+    if (count > 0) await writes.commit();
+    return assignmentId;
+  }
+
+  /// Lehrkraft: Aufträge einer Klasse (ein Eintrag pro assignmentId).
+  Stream<List<ClassAssignment>> watchClassAssignments(
+    String ownerUid,
+    String classId,
+  ) {
+    return _firestore
+        .collection('users')
+        .doc(ownerUid)
+        .collection('generated_batches')
+        .where('classId', isEqualTo: classId)
+        .snapshots()
+        .map((snap) {
+          final byId = <String, ClassAssignment>{};
+          for (final doc in snap.docs) {
+            final d = doc.data();
+            final id = d['assignmentId'] as String? ?? doc.id;
+            final existing = byId[id];
+            byId[id] = ClassAssignment(
+              id: id,
+              title: d['title'] as String? ?? '',
+              subject: SubjectExtension.fromString(
+                d['subject'] as String? ?? 'mathe',
+              ),
+              createdAt: (d['createdAt'] as Timestamp?)?.toDate(),
+              tasks: d['totalTasks'] as int? ?? 0,
+              students: (existing?.students ?? 0) + 1,
+            );
+          }
+          final list = byId.values.toList()
+            ..sort(
+              (a, b) => (b.createdAt ?? DateTime(2100)).compareTo(
+                a.createdAt ?? DateTime(2100),
+              ),
+            );
+          return list;
+        });
+  }
+
+  /// Lehrkraft: Auftrag zurückziehen (alle Batches samt Aufgaben).
+  Future<void> deleteAssignment(String ownerUid, String assignmentId) async {
+    final batches = await _firestore
+        .collection('users')
+        .doc(ownerUid)
+        .collection('generated_batches')
+        .where('assignmentId', isEqualTo: assignmentId)
+        .get();
+    for (final batchDoc in batches.docs) {
+      final questions = await batchDoc.reference.collection('questions').get();
+      final writes = _firestore.batch();
+      for (final q in questions.docs) {
+        writes.delete(q.reference);
+      }
+      writes.delete(batchDoc.reference);
+      await writes.commit();
+    }
+  }
+
   // ========================================================================
   // AUFGABEN LADEN
   // ========================================================================
@@ -637,3 +755,22 @@ final approvedQuestionsProvider =
         subject: params.subject,
       );
     });
+
+/// Ein Klassenauftrag der Lehrkraft (dieselben Aufgaben für mehrere Kinder).
+class ClassAssignment {
+  const ClassAssignment({
+    required this.id,
+    required this.title,
+    required this.subject,
+    required this.createdAt,
+    required this.tasks,
+    required this.students,
+  });
+
+  final String id;
+  final String title;
+  final Subject subject;
+  final DateTime? createdAt;
+  final int tasks;
+  final int students;
+}

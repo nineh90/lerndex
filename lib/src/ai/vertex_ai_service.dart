@@ -476,6 +476,7 @@ class VertexAIService {
     List<String> recentTopics = const [],
     List<String> recentQuestions = const [],
     String? focusHint,
+    String? teacherTopic,
   }) async {
     await _ensureQuizInitialized();
 
@@ -487,6 +488,7 @@ class VertexAIService {
         recentTopics: recentTopics,
         recentQuestions: recentQuestions,
         focusHint: focusHint,
+        teacherTopic: teacherTopic,
       );
 
       debugPrint(
@@ -847,8 +849,16 @@ WICHTIG: Antworte NUR mit diesem JSON-Array, ohne Markdown oder Text davor/danac
     required List<String> recentTopics,
     List<String> recentQuestions = const [],
     String? focusHint,
+    String? teacherTopic,
   }) {
     final subjectDisplay = _subjectDisplayName(subject);
+    // Thema einer Lehrkraft (Klassenaufgaben): verbindlich für alle Fragen
+    final teacher = teacherTopic == null || teacherTopic.trim().isEmpty
+        ? null
+        : (teacherTopic.trim().length > 120
+              ? teacherTopic.trim().substring(0, 120)
+              : teacherTopic.trim())
+            .replaceAll('"', "'");
     // Ab Klasse 3 strenge Vielfalt erzwingen; Klasse 1–2 darf bewusst
     // wiederholungsfreundlicher sein (Übungseffekt für Erstleser).
     final strictVariety = child.grade >= 3;
@@ -860,7 +870,9 @@ WICHTIG: Antworte NUR mit diesem JSON-Array, ohne Markdown oder Text davor/danac
       level: child.level,
     );
 
-    final topicFocus = _pickTopicFocus(
+    final topicFocus = teacher != null
+        ? ''
+        : _pickTopicFocus(
       schoolType: child.schoolType,
       grade: child.grade,
       subject: subject,
@@ -870,7 +882,16 @@ WICHTIG: Antworte NUR mit diesem JSON-Array, ohne Markdown oder Text davor/danac
     // Optionaler Themen-Fokus aus dem Tutor-Gespräch: lenkt die Generierung
     // gezielt auf das, womit sich das Kind gerade beschäftigt hat – ohne den
     // Originaltext 1:1 zu übernehmen (neue, eigenständige Aufgaben).
-    final focusBlock = (focusHint != null && focusHint.trim().isNotEmpty)
+    final focusBlock = teacher != null
+        ? '''
+
+🎯 THEMA DER LEHRKRAFT (VERBINDLICH, HÖCHSTE PRIORITÄT):
+Die Lehrkraft hat das Thema "$teacher" vorgegeben. ALLE $count Fragen MÜSSEN genau dieses Thema üben.
+- KEINE Fragen zu anderen Themen, auch nicht zu verwandten Themen desselben Fachs.
+- Passe Zahlenraum und Schwierigkeit an Klasse ${child.grade} an.
+- Das Feld "topic" ist bei allen Fragen "$teacher".
+'''
+        : (focusHint != null && focusHint.trim().isNotEmpty)
         ? '''
 
 🎯 AKTUELLER FOKUS AUS DEM LERN-GESPRÄCH (HOHE PRIORITÄT):
@@ -912,7 +933,14 @@ die zum Lehrplan und Niveau passen.
     }
     final topicAvoidance = avoidance.toString();
 
-    final varietyRules = strictVariety
+    final varietyRules = teacher != null
+        ? '''
+VIELFALT INNERHALB DES THEMAS:
+- Alle Fragen bleiben beim Thema der Lehrkraft, aber keine zwei Fragen sind gleich.
+- Variiere Zahlen, Kontexte und Format: reine Aufgabe, Sachaufgabe, Fehler finden, Ergebnis überprüfen.
+- Steigere die Schwierigkeit leicht von der ersten zur letzten Frage.
+'''
+        : strictVariety
         ? '''
 VIELFALT (KRITISCH — höchste Priorität neben der Fach-Bindung):
 - Jede der $count Fragen MUSS eine ANDERE Kompetenz bzw. ein anderes Unterthema prüfen.

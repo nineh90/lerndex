@@ -8,8 +8,11 @@ import '../../auth/domain/account.dart';
 import '../../auth/domain/child_model.dart';
 import '../../parent_dashboard/presentation/child_statistics_screen.dart';
 import '../data/school_repository.dart';
+import '../../generated_tasks/data/generated_task_models.dart';
+import '../../generated_tasks/data/generated_task_repository.dart';
 import '../domain/class_stats.dart';
 import '../domain/school_models.dart';
+import 'class_task_screen.dart';
 import 'school_section.dart';
 import 'student_cards_print.dart';
 
@@ -45,6 +48,21 @@ class SchoolClassScreen extends ConsumerWidget {
         backgroundColor: Colors.deepPurple,
         foregroundColor: Colors.white,
         actions: [
+          if (students.isNotEmpty)
+            IconButton(
+              tooltip: 'Aufgaben für die Klasse',
+              icon: const Icon(Icons.assignment_add),
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => ClassTaskScreen(
+                    schoolId: schoolId,
+                    schoolClass: schoolClass,
+                    students: students,
+                  ),
+                ),
+              ),
+            ),
           if (students.isNotEmpty)
             IconButton(
               tooltip: 'Anmeldekarten für alle drucken',
@@ -88,6 +106,7 @@ class SchoolClassScreen extends ConsumerWidget {
                 _ClassOverview(
                   summary: ClassSummary.of(students, DateTime.now()),
                 ),
+                _AssignmentList(schoolId: schoolId, classId: schoolClass.id),
                 for (final s in students) ...[
                   _studentTile(context, ref, s),
                   const Divider(height: 1),
@@ -505,4 +524,90 @@ class _ClassOverview extends StatelessWidget {
       ],
     ),
   );
+}
+
+/// Aufträge der Klasse: Aufgaben, die eine Lehrkraft an Kinder gegeben hat.
+final classAssignmentsProvider =
+    StreamProvider.family<List<ClassAssignment>, ({String owner, String classId})>(
+      (ref, key) => ref
+          .watch(generatedTaskRepositoryProvider)
+          .watchClassAssignments(key.owner, key.classId),
+    );
+
+class _AssignmentList extends ConsumerWidget {
+  const _AssignmentList({required this.schoolId, required this.classId});
+
+  final String schoolId;
+  final String classId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final owner = schoolOwnerUid(schoolId);
+    final list =
+        ref.watch(classAssignmentsProvider((owner: owner, classId: classId))).value ??
+        const <ClassAssignment>[];
+    if (list.isEmpty) return const SizedBox.shrink();
+    return Card(
+      margin: const EdgeInsets.fromLTRB(4, 0, 4, 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Padding(
+            padding: EdgeInsets.fromLTRB(16, 12, 16, 4),
+            child: Text(
+              'Aufgaben',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Colors.deepPurple,
+              ),
+            ),
+          ),
+          for (final a in list)
+            ListTile(
+              dense: true,
+              leading: const Icon(Icons.assignment_outlined),
+              title: Text(a.title.isEmpty ? a.subject.displayName : a.title),
+              subtitle: Text(
+                '${a.subject.displayName} · ${a.tasks} Aufgaben · '
+                '${a.students} ${a.students == 1 ? 'Kind' : 'Kinder'}'
+                '${a.createdAt == null ? '' : ' · ${_date(a.createdAt!)}'}',
+              ),
+              trailing: IconButton(
+                tooltip: 'Zurückziehen',
+                icon: const Icon(Icons.delete_outline),
+                onPressed: () async {
+                  final ok = await showDialog<bool>(
+                    context: context,
+                    builder: (ctx) => AlertDialog(
+                      title: const Text('Aufgaben zurückziehen?'),
+                      content: const Text(
+                        'Die Kinder sehen diese Aufgaben danach nicht mehr.',
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(ctx, false),
+                          child: const Text('Abbrechen'),
+                        ),
+                        FilledButton(
+                          onPressed: () => Navigator.pop(ctx, true),
+                          child: const Text('Zurückziehen'),
+                        ),
+                      ],
+                    ),
+                  );
+                  if (ok == true) {
+                    await ref
+                        .read(generatedTaskRepositoryProvider)
+                        .deleteAssignment(owner, a.id);
+                  }
+                },
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  static String _date(DateTime d) =>
+      '${d.day.toString().padLeft(2, '0')}.${d.month.toString().padLeft(2, '0')}.';
 }
