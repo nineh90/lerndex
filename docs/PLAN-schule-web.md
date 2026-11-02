@@ -98,11 +98,15 @@ Noch offen, beides Google und Teil von Firebase:
 Später möglich: Quizfragen im Standard-Modus (ab Klasse 3) vorlesen. Eine bessere Stimme
 (Cloud-TTS in der EU) statt der Gerätestimme.
 
-## Stand Deploy (01.11.2026)
+## Stand Deploy (02.11.2026)
 
-- Functions (14) deployt, öffentlich aufrufbar über „ohne IAM-Prüfung“ (Firmenrichtlinie verbietet
-  `allUsers`). Beim nächsten `npm run deploy` meldet die CLI, sie könne den Invoker nicht setzen –
-  danach prüfen, ob die Functions noch antworten.
+- Functions (15, neu: `leaveChildDevice`) deployt, öffentlich aufrufbar über „ohne IAM-Prüfung“
+  (`invokerIamDisabled`, die Firmenrichtlinie verbietet `allUsers`). Bestehende Functions behalten
+  die Einstellung beim Deploy. Bei einer **neuen** Function meldet `npm run deploy`, es könne den
+  Invoker nicht setzen. Dann den Cloud-Run-Dienst selbst umstellen (Kevins Konto darf das):
+  Dienst über die Cloud-Run-API v2 holen, `template.revision` entfernen,
+  `invokerIamDisabled: true` setzen und per PATCH zurückschicken. Danach muss ein Aufruf ohne
+  Anmeldung mit „Bitte zuerst anmelden.“ (401) antworten, nicht mit einem 403 von Google.
 - Firestore- und Storage-Regeln live (über die Rules-API; die CLI scheitert an fehlendem
   `serviceusage`-Recht von Kevins Konto). Vorherige Fassung: `docs/rules-backup/`.
 - Web-App live: https://lerndex-3775f.web.app
