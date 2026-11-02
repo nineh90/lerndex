@@ -13,6 +13,7 @@ import '../auth/presentation/link_conflict_screen.dart';
 import '../school/data/school_repository.dart';
 import '../school/presentation/school_home_screen.dart';
 import '../school/presentation/school_signup_screen.dart';
+import '../school/presentation/teacher_card_screen.dart';
 import '../auth/presentation/login_screen.dart';
 import '../student_dashboard/presentation/student_dashboard_screen.dart';
 import '../../shared/web/browser_url.dart';
@@ -65,7 +66,9 @@ class _LerndexSplashScreenState extends ConsumerState<LerndexSplashScreen>
 
   /// Einladungslink für eine Schule oder Lehrkraft
   String? _signupCode;
-  bool _signupIsTeacher = false;
+
+  /// QR-Karte einer Lehrkraft
+  String? _teacherCardToken;
 
   /// Kinder-Link gescannt, während ein Eltern-/Lehrerkonto angemeldet ist
   String? _conflictPairingCode;
@@ -189,17 +192,20 @@ class _LerndexSplashScreenState extends ConsumerState<LerndexSplashScreen>
 
       _setProgress(_bootstrapShare * 0.5, 'Anmeldung prüfen...');
 
-      // Einladungslink für eine Schule (…/schule/CODE, von Lerndex) oder eine
-      // Lehrkraft (…/lehrer/CODE, von der Schulleitung): Registrierung.
+      // Einladungslink für eine Schule (…/schule/CODE, von Lerndex):
+      // Registrierung der Schulleitung.
       final schoolCode = kIsWeb ? schoolSignupFromPath(Uri.base.path) : null;
-      final teacherCode = kIsWeb ? teacherInviteFromPath(Uri.base.path) : null;
-      if (schoolCode != null || teacherCode != null) {
+      if (schoolCode != null) {
         replaceBrowserPath('/');
         // Ein Kindergerät meldet sich dafür nicht ab (das dürfen nur Eltern)
-        if (user == null || !user.isChildDevice) {
-          _signupCode = schoolCode ?? teacherCode;
-          _signupIsTeacher = teacherCode != null;
-        }
+        if (user == null || !user.isChildDevice) _signupCode = schoolCode;
+      }
+
+      // QR-Karte einer Lehrkraft (…/l/TOKEN): Anmeldung mit PIN.
+      final teacherToken = kIsWeb ? teacherCardFromPath(Uri.base.path) : null;
+      if (teacherToken != null) {
+        replaceBrowserPath('/');
+        if (user == null || !user.isChildDevice) _teacherCardToken = teacherToken;
       }
 
       // Koppel-Link aus dem QR-Code (…/k/CODE): Gerät als Kind anmelden.
@@ -244,7 +250,10 @@ class _LerndexSplashScreenState extends ConsumerState<LerndexSplashScreen>
         }
       }
 
-      if (_signupCode != null) {
+      if (_teacherCardToken != null && !(user?.isTeacherDevice ?? false)) {
+        destination = 'teacherCard';
+        _setProgress(1.0, 'Weiter...');
+      } else if (_signupCode != null) {
         destination = 'schoolSignup';
         _setProgress(1.0, 'Weiter...');
       } else if (_conflictPairingCode != null || _conflictCardToken != null) {
@@ -258,7 +267,7 @@ class _LerndexSplashScreenState extends ConsumerState<LerndexSplashScreen>
       } else if (user.isChildDevice) {
         await _prepareChildDevice(user, maxPrefetchWait);
         destination = 'child';
-      } else if (await authRepo.isSchoolAccount()) {
+      } else if (user.isTeacherDevice || await authRepo.isSchoolAccount()) {
         // Reines Schulkonto: nur der Schulbereich, kein Abo, kein Elternbereich
         destination = 'school';
         _setProgress(1.0, 'Los geht\'s! ✨');
@@ -436,10 +445,10 @@ class _LerndexSplashScreenState extends ConsumerState<LerndexSplashScreen>
         target = const SchoolRootScreen();
         break;
       case 'schoolSignup':
-        target = SchoolSignupScreen(
-          code: _signupCode!,
-          isTeacher: _signupIsTeacher,
-        );
+        target = SchoolSignupScreen(code: _signupCode!);
+        break;
+      case 'teacherCard':
+        target = TeacherCardScreen(token: _teacherCardToken!);
         break;
       case 'conflict':
         target = LinkConflictScreen(

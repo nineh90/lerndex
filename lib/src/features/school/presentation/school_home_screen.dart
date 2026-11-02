@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../auth/data/child_device_repository.dart' show webAppOrigin;
 import '../../auth/presentation/sign_out.dart';
 import '../data/school_repository.dart';
 import '../domain/school_models.dart';
 import 'school_class_screen.dart';
-import 'school_section.dart';
+import 'school_admin_screen.dart';
 
 /// Startseite eines reinen Schulkontos: lädt die Schul-Rolle aus dem
 /// (frischen) Token und zeigt den Schulbereich – ohne Elternbereich.
@@ -26,7 +24,7 @@ class SchoolRootScreen extends ConsumerWidget {
         }
         final membership = snap.data;
         if (membership != null) {
-          return SchoolHomeScreen(membership: membership, isRoot: true);
+          return schoolScreenFor(membership, isRoot: true);
         }
         return Scaffold(
           appBar: AppBar(
@@ -34,7 +32,7 @@ class SchoolRootScreen extends ConsumerWidget {
             title: const Text('Lerndex für Schulen'),
             backgroundColor: Colors.deepPurple,
             foregroundColor: Colors.white,
-            actions: const [_LogoutAction()],
+            actions: const [SchoolLogoutAction()],
           ),
           body: const Center(
             child: Padding(
@@ -52,8 +50,14 @@ class SchoolRootScreen extends ConsumerWidget {
   }
 }
 
-class _LogoutAction extends ConsumerWidget {
-  const _LogoutAction();
+/// Schulleitung → Verwaltung der Lehrkräfte, Lehrkraft → Klassen.
+Widget schoolScreenFor(SchoolMembership membership, {bool isRoot = false}) =>
+    membership.isAdmin
+    ? SchoolAdminScreen(membership: membership, isRoot: isRoot)
+    : SchoolHomeScreen(membership: membership, isRoot: isRoot);
+
+class SchoolLogoutAction extends ConsumerWidget {
+  const SchoolLogoutAction({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) => IconButton(
@@ -63,8 +67,8 @@ class _LogoutAction extends ConsumerWidget {
   );
 }
 
-/// Lehrerbereich: Klassen und Lehrkräfte einer Schule. [isRoot]: Startseite
-/// eines reinen Schulkontos (kein Zurück, dafür Abmelden).
+/// Lehrerbereich: alle Klassen der Schule. [isRoot]: Startseite eines
+/// Lehrergeräts bzw. Schulkontos (kein Zurück, dafür Abmelden).
 class SchoolHomeScreen extends ConsumerWidget {
   const SchoolHomeScreen({
     super.key,
@@ -88,7 +92,6 @@ class SchoolHomeScreen extends ConsumerWidget {
     final schoolId = membership.schoolId;
     final name = ref.watch(schoolNameProvider(schoolId)).value ?? '';
     final classes = ref.watch(schoolClassesProvider(schoolId));
-    final members = ref.watch(schoolMembersProvider(schoolId)).value ?? [];
 
     return Scaffold(
       appBar: AppBar(
@@ -96,7 +99,7 @@ class SchoolHomeScreen extends ConsumerWidget {
         title: Text(name.isEmpty ? 'Schule' : name),
         backgroundColor: Colors.deepPurple,
         foregroundColor: Colors.white,
-        actions: [if (isRoot) const _LogoutAction()],
+        actions: [if (isRoot) const SchoolLogoutAction()],
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _addClass(context, ref),
@@ -153,35 +156,6 @@ class SchoolHomeScreen extends ConsumerWidget {
                       )
                       .toList(),
           ),
-          const SizedBox(height: 24),
-          const _Header('Lehrkräfte'),
-          ...members.map(
-            (m) => ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: Icon(
-                m.isAdmin ? Icons.admin_panel_settings : Icons.person,
-                color: Colors.deepPurple,
-              ),
-              title: Text(m.name.isEmpty ? m.email : m.name),
-              subtitle: Text(m.isAdmin ? 'Schulleitung' : 'Lehrkraft'),
-              trailing: membership.isAdmin && !m.isAdmin
-                  ? IconButton(
-                      tooltip: 'Aus der Schule entfernen',
-                      icon: const Icon(Icons.person_remove_outlined),
-                      onPressed: () => _removeTeacher(context, ref, m),
-                    )
-                  : null,
-            ),
-          ),
-          if (membership.isAdmin)
-            Align(
-              alignment: Alignment.centerLeft,
-              child: OutlinedButton.icon(
-                onPressed: () => _invite(context, ref),
-                icon: const Icon(Icons.person_add_alt),
-                label: const Text('Lehrkraft einladen'),
-              ),
-            ),
         ],
       ),
     );
@@ -257,95 +231,6 @@ class SchoolHomeScreen extends ConsumerWidget {
         );
   }
 
-  Future<void> _invite(BuildContext context, WidgetRef ref) async {
-    try {
-      final invite = await ref
-          .read(schoolRepositoryProvider)
-          .createTeacherInvite();
-      if (!context.mounted) return;
-      final display =
-          '${invite.code.substring(0, 4)}-${invite.code.substring(4)}';
-      final link = '${webAppOrigin()}/lehrer/${invite.code}';
-      await showDialog<void>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: const Text('Lehrkraft einladen'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Schicken Sie der Lehrkraft diesen Link, z.B. per E-Mail. '
-                'Darüber legt sie ihr Lerndex-Konto für die Schule an. '
-                'Gültig 7 Tage, nur einmal.',
-              ),
-              const SizedBox(height: 16),
-              SelectableText(
-                link,
-                style: const TextStyle(fontSize: 14, fontFamily: 'monospace'),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                'In der Lerndex-App geht auch der Code $display '
-                '(Einstellungen → „Einer Schule beitreten“).',
-                style: TextStyle(fontSize: 12, color: Colors.grey[700]),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Clipboard.setData(ClipboardData(text: link));
-                ScaffoldMessenger.of(ctx).showSnackBar(
-                  const SnackBar(content: Text('Link kopiert')),
-                );
-              },
-              child: const Text('Link kopieren'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Fertig'),
-            ),
-          ],
-        ),
-      );
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(schoolErrorText(e))));
-      }
-    }
-  }
-
-  Future<void> _removeTeacher(
-    BuildContext context,
-    WidgetRef ref,
-    SchoolMember member,
-  ) async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Lehrkraft entfernen?'),
-        content: Text(
-          '${member.name.isEmpty ? member.email : member.name} hat danach '
-          'keinen Zugriff mehr auf die Klassen. Das Konto selbst bleibt.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Abbrechen'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Entfernen'),
-          ),
-        ],
-      ),
-    );
-    if (ok != true) return;
-    await ref.read(schoolRepositoryProvider).removeTeacher(member.uid);
-  }
 }
 
 class _Header extends StatelessWidget {

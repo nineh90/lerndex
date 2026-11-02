@@ -55,4 +55,8 @@ extension AccountUser on User {
   /// Schülergerät einer Schule (QR-Karte). Anders als zu Hause darf man sich
   /// hier abmelden – Schul-Tablets werden geteilt.
   bool get isSchoolDevice => isChildDevice && ownerUid.startsWith('school_');
+
+  /// Lehrergerät (QR-Karte + PIN, Konto `teacher:<schoolId>:<teacherId>`).
+  /// Sieht nur die Klassen seiner Schule, keinen Elternbereich.
+  bool get isTeacherDevice => uid.startsWith('teacher:');
 }

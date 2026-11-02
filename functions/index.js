@@ -38,7 +38,8 @@ function requireParent(request) {
   if (!request.auth) {
     throw new HttpsError("unauthenticated", "Bitte zuerst anmelden.");
   }
-  if (request.auth.token.role === "student") {
+  // Kinder-, Schüler- und Lehrergeräte (role-Claim) sind keine Eltern
+  if (request.auth.token.role) {
     throw new HttpsError("permission-denied", "Nur für Eltern.");
   }
   return request.auth.uid;
@@ -378,7 +379,7 @@ exports.cleanupDeletedParent = functionsV1
   .region("europe-west3")
   .auth.user()
   .onDelete(async (user) => {
-    if (user.uid.startsWith("kid:")) return;
+    if (user.uid.startsWith("kid:") || user.uid.startsWith("teacher:")) return;
     await db.recursiveDelete(db.collection(`users/${user.uid}/private`));
     const codes = await db
       .collection("pairingCodes")

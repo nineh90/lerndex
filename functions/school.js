@@ -4,9 +4,12 @@
 // users/school_<schoolId>/children/{studentId}. So funktioniert der ganze
 // App-Code (Quiz, Lexi, XP, Belohnungen) für Schüler ohne Umbau.
 //
-// - Lehrkräfte sind normale Konten (oft auch Eltern) mit den zusätzlichen
-//   Claims { schoolId, schoolRole: "admin" | "teacher" }. Alle Lehrkräfte
-//   sehen alle Klassen ihrer Schule.
+// - Die Schulleitung (schoolRole "admin", Konto mit E-Mail) verwaltet nur
+//   die Lehrkräfte. Schülerdaten sieht sie nicht.
+// - Lehrkräfte melden sich mit QR-Karte + PIN an (Konto
+//   "teacher:<schoolId>:<teacherId>", role "teacher", schoolRole "teacher").
+//   Alle Lehrkräfte sehen alle Klassen ihrer Schule, legen Klassen und
+//   Schüler an und drucken Schülerkarten.
 // - Schülergeräte melden sich mit einer QR-Karte an (Link …/s/TOKEN) und
 //   bekommen dieselben Claims wie ein gekoppeltes Kindergerät:
 //   { role: "student", parentUid: "school_<id>", childId, schoolId }.
@@ -29,13 +32,13 @@ const { redeemOnce } = require("./lib/claim");
 const {
   kidUid,
   normalizeCode,
-  newPairingCode,
   newCardToken,
   sha256Hex,
   schoolOwnerUid,
+  hashPin,
+  newSalt,
 } = require("./lib/helpers");
 
-const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const MAX_STUDENTS_PER_CALL = 60;
 
 function requireSignedIn(request) {
@@ -48,8 +51,13 @@ function requireSignedIn(request) {
   return request.auth.uid;
 }
 
-/** Lehrkraft oder Schul-Admin; gibt die schoolId aus dem Token zurück. */
-function requireTeacher(request, { admin = false } = {}) {
+/**
+ * Schul-Konto; gibt die schoolId aus dem Token zurück.
+ * admin: nur Schulleitung (verwaltet Lehrkräfte),
+ * teacher: nur Lehrkräfte (Klassen, Schüler, Karten). Die Schulleitung sieht
+ * bewusst keine Schülerdaten.
+ */
+function requireTeacher(request, { admin = false, teacher = false } = {}) {
   requireSignedIn(request);
   const { schoolId, schoolRole } = request.auth.token;
   if (!schoolId || !["admin", "teacher"].includes(schoolRole)) {
@@ -57,6 +65,9 @@ function requireTeacher(request, { admin = false } = {}) {
   }
   if (admin && schoolRole !== "admin") {
     throw new HttpsError("permission-denied", "Nur für die Schulleitung.");
+  }
+  if (teacher && schoolRole !== "teacher") {
+    throw new HttpsError("permission-denied", "Nur für Lehrkräfte.");
   }
   return schoolId;
 }
@@ -163,66 +174,206 @@ exports.createSchool = onCall(async (request) => {
   return result;
 });
 
-/** Schul-Admin: Einladungscode für eine Lehrkraft (7 Tage, einmalig). */
-exports.createTeacherInvite = onCall(async (request) => {
-  const schoolId = requireTeacher(request, { admin: true });
-  const code = newPairingCode();
-  const expiresAt = Timestamp.fromMillis(Date.now() + INVITE_TTL_MS);
-  await db.doc(`schoolInvites/${code}`).set({
+// ── Lehrkräfte: QR-Karte + PIN ──────────────────────────────────────────────
+//
+// Die Schulleitung legt Lehrkräfte mit Namen an und gibt ihnen eine QR-Karte
+// (Link …/l/TOKEN). Beim ersten Scannen legt die Lehrkraft ihre PIN fest,
+// danach braucht jede Anmeldung Karte + PIN. Die Karte allein reicht nicht:
+// Sie öffnet die Daten aller Schüler der Schule.
+// Konto: "teacher:<schoolId>:<teacherId>" mit den Claims
+// { role: "teacher", schoolId, schoolRole: "teacher", teacherId }.
+
+const TEACHER_PIN = /^\d{4,6}$/;
+const TEACHER_MAX_FAILED = 5;
+const TEACHER_LOCK_MS = 15 * 60 * 1000;
+
+function teacherUid(schoolId, teacherId) {
+  return `teacher:${schoolId}:${teacherId}`;
+}
+
+function teacherPinRef(schoolId, teacherId) {
+  return db.doc(`schools/${schoolId}/members/${teacherId}/private/pin`);
+}
+
+/** Neue Karte für eine Lehrkraft, alte Karten werden ungültig. */
+async function issueTeacherCard(schoolId, teacherId, createdBy) {
+  const old = await db
+    .collection("teacherCards")
+    .where("schoolId", "==", schoolId)
+    .where("teacherId", "==", teacherId)
+    .get();
+  const batch = db.batch();
+  old.docs.forEach((doc) => batch.delete(doc.ref));
+  const token = newCardToken();
+  batch.set(db.doc(`teacherCards/${sha256Hex(token)}`), {
     schoolId,
-    createdBy: request.auth.uid,
+    teacherId,
+    createdBy,
     createdAt: FieldValue.serverTimestamp(),
-    expiresAt,
   });
-  return { code, expiresAt: expiresAt.toDate().toISOString() };
+  await batch.commit();
+  return token;
+}
+
+/** Schulleitung: Lehrkraft anlegen. Antwort { teacherId, token }. */
+exports.createTeacher = onCall(async (request) => {
+  const schoolId = requireTeacher(request, { admin: true });
+  const name = typeof request.data?.name === "string" ? request.data.name.trim() : "";
+  if (name.length < 2 || name.length > 60) {
+    throw new HttpsError("invalid-argument", "Bitte den Namen der Lehrkraft angeben.");
+  }
+  const member = db.collection(`schools/${schoolId}/members`).doc();
+  await member.set({
+    role: "teacher",
+    login: "card",
+    name,
+    email: "",
+    pinSet: false,
+    createdAt: FieldValue.serverTimestamp(),
+  });
+  const token = await issueTeacherCard(schoolId, member.id, request.auth.uid);
+  return { teacherId: member.id, token };
 });
 
-/** Lehrkraft: mit dem Einladungscode der Schule beitreten. */
-exports.joinSchool = onCall(async (request) => {
-  const uid = requireSignedIn(request);
-  const code = normalizeCode(request.data?.code);
+/**
+ * Schulleitung: neue Karte für eine Lehrkraft (verloren o.ä.). Die alte gilt
+ * nicht mehr, angemeldete Geräte werden abgemeldet. resetPin: PIN vergessen –
+ * beim nächsten Scannen legt die Lehrkraft eine neue fest.
+ */
+exports.reissueTeacherCard = onCall(async (request) => {
+  const schoolId = requireTeacher(request, { admin: true });
+  const teacherId = request.data?.teacherId;
+  if (typeof teacherId !== "string" || teacherId.length === 0 || teacherId.length > 64) {
+    throw new HttpsError("invalid-argument", "Lehrkraft fehlt.");
+  }
+  const member = await db.doc(`schools/${schoolId}/members/${teacherId}`).get();
+  if (!member.exists || member.get("login") !== "card") {
+    throw new HttpsError("not-found", "Lehrkraft nicht gefunden.");
+  }
+  if (request.data?.resetPin === true) {
+    await teacherPinRef(schoolId, teacherId).delete();
+    await member.ref.update({ pinSet: false });
+  }
+  const token = await issueTeacherCard(schoolId, teacherId, request.auth.uid);
+  await auth.revokeRefreshTokens(teacherUid(schoolId, teacherId)).catch((e) => {
+    if (e.code !== "auth/user-not-found") throw e;
+  });
+  return { token };
+});
+
+/**
+ * Lehrergerät: mit Karte und PIN anmelden. Ohne Anmeldung aufrufbar.
+ * - nur { token }: Antwort { pinSet } (ob die PIN schon festgelegt ist)
+ * - { token, newPin }: erste Anmeldung, PIN festlegen → { token: customToken }
+ * - { token, pin }: Anmeldung → { token: customToken } oder { ok: false }
+ * Nach 5 falschen PINs ist die Karte 15 Minuten gesperrt (resource-exhausted).
+ */
+exports.redeemTeacherCard = onCall(async (request) => {
+  const cardToken = request.data?.token;
   const invalid = new HttpsError(
     "not-found",
-    "Der Einladungscode stimmt nicht oder ist abgelaufen.",
+    "Diese Karte gilt nicht mehr. Bitte wenden Sie sich an Ihre Schulleitung.",
   );
-  if (!code) throw invalid;
-  const user = await requireNoSchool(uid);
+  if (typeof cardToken !== "string" || cardToken.length < 16 || cardToken.length > 64) {
+    throw invalid;
+  }
+  const card = await db.doc(`teacherCards/${sha256Hex(cardToken)}`).get();
+  if (!card.exists) throw invalid;
+  const { schoolId, teacherId } = card.data();
+  const member = await db.doc(`schools/${schoolId}/members/${teacherId}`).get();
+  if (!member.exists) throw invalid;
 
-  const result = await redeemOnce(db.doc(`schoolInvites/${code}`), async (invite) => {
-    const { schoolId } = invite;
-    const school = await db.doc(`schools/${schoolId}`).get();
-    if (!school.exists) return null;
-    await setSchoolClaims(uid, schoolId, "teacher");
-    await db.doc(`schools/${schoolId}/members/${uid}`).set({
-      role: "teacher",
-      name: user.displayName || "",
-      email: user.email || "",
-      joinedAt: FieldValue.serverTimestamp(),
-    });
-    // Neues Konto über den Einladungslink: reines Schulkonto
-    const schoolAccount = request.data?.schoolAccount === true &&
-      (await markSchoolAccount(uid, user, schoolId));
-    return { schoolId, schoolName: school.get("name"), schoolAccount };
-  });
-  if (!result) throw invalid;
-  return result;
+  const pinRef = teacherPinRef(schoolId, teacherId);
+  const stored = await pinRef.get();
+  const { pin, newPin } = request.data || {};
+
+  if (!stored.exists) {
+    if (newPin === undefined) return { pinSet: false, name: member.get("name") || "" };
+    if (typeof newPin !== "string" || !TEACHER_PIN.test(newPin)) {
+      throw new HttpsError("invalid-argument", "Die PIN braucht 4 bis 6 Ziffern.");
+    }
+    const salt = newSalt();
+    // create() statt set(): legen zwei Geräte gleichzeitig eine PIN fest,
+    // gewinnt das erste
+    await pinRef.create({ hash: hashPin(newPin, salt), salt, failedAttempts: 0, lockedUntil: null })
+      .catch(() => {
+        throw new HttpsError("already-exists", "Die PIN wurde gerade schon festgelegt.");
+      });
+    await member.ref.update({ pinSet: true });
+  } else {
+    if (pin === undefined) return { pinSet: true, name: member.get("name") || "" };
+    const data = stored.data();
+    const lockedUntil = data.lockedUntil?.toMillis?.() ?? 0;
+    if (lockedUntil > Date.now()) {
+      throw new HttpsError("resource-exhausted", "Karte gesperrt.", {
+        retryAfterSeconds: Math.ceil((lockedUntil - Date.now()) / 1000),
+      });
+    }
+    const ok = typeof pin === "string" && TEACHER_PIN.test(pin) &&
+      hashPin(pin, data.salt) === data.hash;
+    if (!ok) {
+      const failed = (data.failedAttempts || 0) + 1;
+      const locked = failed >= TEACHER_MAX_FAILED;
+      await pinRef.update({
+        failedAttempts: locked ? 0 : failed,
+        lockedUntil: locked ? Timestamp.fromMillis(Date.now() + TEACHER_LOCK_MS) : null,
+      });
+      return { ok: false };
+    }
+    await pinRef.update({ failedAttempts: 0, lockedUntil: null, lastUsed: FieldValue.serverTimestamp() });
+  }
+
+  const uid = teacherUid(schoolId, teacherId);
+  const claims = { role: "teacher", schoolId, schoolRole: "teacher", teacherId };
+  try {
+    await auth.getUser(uid);
+  } catch (e) {
+    if (e.code !== "auth/user-not-found") throw e;
+    await auth.createUser({ uid });
+  }
+  await auth.setCustomUserClaims(uid, claims);
+  const customToken = await auth.createCustomToken(uid, claims);
+  return { ok: true, token: customToken, name: member.get("name") || "" };
 });
 
-/** Schul-Admin: Lehrkraft aus der Schule entfernen. */
+/**
+ * Schulleitung: Lehrkraft entfernen. Kartenlehrkräfte: Konto, Karten und PIN
+ * werden gelöscht. Lehrkräfte mit eigenem Konto (E-Mail): nur die Schul-
+ * Claims fallen weg, das Konto bleibt.
+ */
 exports.removeTeacher = onCall(async (request) => {
   const schoolId = requireTeacher(request, { admin: true });
-  const uid = request.data?.uid;
-  if (typeof uid !== "string" || uid === request.auth.uid) {
+  const memberId = request.data?.uid;
+  if (typeof memberId !== "string" || memberId.length === 0 || memberId === request.auth.uid) {
     throw new HttpsError("invalid-argument", "Diese Lehrkraft geht nicht.");
   }
-  const member = await db.doc(`schools/${schoolId}/members/${uid}`).get();
+  const member = await db.doc(`schools/${schoolId}/members/${memberId}`).get();
   if (!member.exists) throw new HttpsError("not-found", "Lehrkraft nicht gefunden.");
 
-  await member.ref.delete();
-  const user = await auth.getUser(uid);
-  const { schoolId: _s, schoolRole: _r, ...rest } = user.customClaims || {};
-  await auth.setCustomUserClaims(uid, rest);
-  await auth.revokeRefreshTokens(uid);
+  if (member.get("login") === "card") {
+    const uid = teacherUid(schoolId, memberId);
+    try {
+      await auth.revokeRefreshTokens(uid);
+      await auth.deleteUser(uid);
+    } catch (e) {
+      if (e.code !== "auth/user-not-found") throw e;
+    }
+    const cards = await db
+      .collection("teacherCards")
+      .where("schoolId", "==", schoolId)
+      .where("teacherId", "==", memberId)
+      .get();
+    const batch = db.batch();
+    cards.docs.forEach((doc) => batch.delete(doc.ref));
+    await batch.commit();
+    await db.recursiveDelete(member.ref);
+  } else {
+    await member.ref.delete();
+    const user = await auth.getUser(memberId);
+    const { schoolId: _s, schoolRole: _r, ...rest } = user.customClaims || {};
+    await auth.setCustomUserClaims(memberId, rest);
+    await auth.revokeRefreshTokens(memberId);
+  }
   return { removed: true };
 });
 
@@ -234,7 +385,7 @@ exports.removeTeacher = onCall(async (request) => {
  * wird nur ihr Hash.
  */
 exports.createStudentCards = onCall(async (request) => {
-  const schoolId = requireTeacher(request);
+  const schoolId = requireTeacher(request, { teacher: true });
   const studentIds = request.data?.studentIds;
   if (
     !Array.isArray(studentIds) ||
@@ -338,7 +489,7 @@ async function revokeCardsAndAccount(schoolId, studentId) {
  * löschen – vor dem Löschen des Schülers oder wenn eine Karte verloren ging.
  */
 exports.revokeStudent = onCall(async (request) => {
-  const schoolId = requireTeacher(request);
+  const schoolId = requireTeacher(request, { teacher: true });
   const studentId = request.data?.studentId;
   if (typeof studentId !== "string" || !studentId) {
     throw new HttpsError("invalid-argument", "studentId fehlt.");
@@ -353,7 +504,7 @@ exports.revokeStudent = onCall(async (request) => {
  * hochgeladene Aufgabenblätter.
  */
 exports.deleteStudent = onCall(async (request) => {
-  const schoolId = requireTeacher(request);
+  const schoolId = requireTeacher(request, { teacher: true });
   const studentId = request.data?.studentId;
   if (typeof studentId !== "string" || !studentId || studentId.includes("/")) {
     throw new HttpsError("invalid-argument", "studentId fehlt.");

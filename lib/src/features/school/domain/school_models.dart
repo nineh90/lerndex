@@ -47,12 +47,21 @@ class SchoolMember {
     required this.name,
     required this.email,
     required this.role,
+    this.cardLogin = false,
+    this.pinSet = false,
   });
 
+  /// Bei Kartenlehrkräften die teacherId, sonst die UID des Kontos
   final String uid;
   final String name;
   final String email;
   final String role;
+
+  /// Meldet sich mit QR-Karte + PIN an (statt E-Mail)
+  final bool cardLogin;
+
+  /// Hat beim ersten Scannen schon eine PIN festgelegt
+  final bool pinSet;
 
   bool get isAdmin => role == 'admin';
 
@@ -63,8 +72,24 @@ class SchoolMember {
       name: data['name'] as String? ?? '',
       email: data['email'] as String? ?? '',
       role: data['role'] as String? ?? 'teacher',
+      cardLogin: data['login'] == 'card',
+      pinSet: data['pinSet'] == true,
     );
   }
+}
+
+/// QR-Karte einer Lehrkraft (Link …/l/TOKEN). Den Token gibt es nur direkt
+/// nach dem Erzeugen.
+class TeacherCard {
+  const TeacherCard({
+    required this.name,
+    required this.schoolName,
+    required this.link,
+  });
+
+  final String name;
+  final String schoolName;
+  final Uri link;
 }
 
 /// QR-Karte für ein Schülergerät. Den Token gibt es nur direkt nach dem

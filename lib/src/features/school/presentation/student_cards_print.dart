@@ -128,3 +128,62 @@ $items
 </body>
 </html>''';
 }
+
+/// Druckseite für die QR-Karte einer Lehrkraft: Karte zum Ausschneiden und
+/// darunter die Anleitung (PIN beim ersten Scannen).
+String teacherCardHtml(TeacherCard card) => '''<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lerndex – Lehrer-Karte ${_escape(card.name)}</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+         color: #222; background: #F5F3FF; }
+  main { max-width: 520px; margin: 0 auto; padding: 24px 16px; }
+  .card { display: flex; align-items: center; justify-content: space-between; gap: 16px;
+          background: #fff; padding: 20px; border: 2px dashed #C4B5FD; border-radius: 14px; }
+  .school { font-size: 12px; color: #6B21A8; font-weight: 600; }
+  .title { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: #666; margin-top: 8px; }
+  .name { font-size: 22px; font-weight: 700; margin: 2px 0; }
+  .qr svg { width: 150px; height: 150px; display: block; }
+  .steps { background: #fff; border-radius: 14px; padding: 16px 20px; margin-top: 16px;
+           font-size: 14px; line-height: 1.5; }
+  .steps ol { margin: 8px 0 0; padding-left: 20px; }
+  button { margin-top: 16px; width: 100%; background: #6B21A8; color: #fff; border: 0;
+           border-radius: 10px; padding: 12px; font-size: 16px; font-weight: 600; cursor: pointer; }
+  @media print {
+    @page { size: A4; margin: 15mm; }
+    body { background: #fff; }
+    main { padding: 0; max-width: 120mm; }
+    .card { padding: 5mm; border: 0.4mm dashed #999; border-radius: 3mm; }
+    .qr svg { width: 34mm; height: 34mm; }
+    .steps { padding: 4mm 0; font-size: 10pt; }
+    button { display: none; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <div class="card">
+    <div>
+      <div class="school">${_escape(card.schoolName)}</div>
+      <div class="title">Lehrer-Karte</div>
+      <div class="name">${_escape(card.name)}</div>
+    </div>
+    <div class="qr">${qrSvg(card.link.toString())}</div>
+  </div>
+  <div class="steps">
+    <strong>So melden Sie sich bei Lerndex an</strong>
+    <ol>
+      <li>QR-Code mit der Kamera des Handys, Tablets oder Laptops scannen.</li>
+      <li>Beim ersten Mal eine eigene PIN festlegen (4 bis 6 Ziffern).</li>
+      <li>Danach immer: Karte scannen und PIN eingeben.</li>
+    </ol>
+    <p>Die Karte bitte nicht weitergeben. Verloren oder PIN vergessen? Die Schulleitung stellt eine neue Karte aus, die alte gilt dann nicht mehr.</p>
+  </div>
+  <button onclick="window.print()">Drucken</button>
+</main>
+</body>
+</html>''';

@@ -24,9 +24,9 @@ import '../domain/school_models.dart';
 String? schoolSignupFromPath(String path) =>
     RegExp(r'^/schule/([A-Za-z0-9-]{8,9})/?$').firstMatch(path)?.group(1);
 
-/// Einladungslink für eine Lehrkraft: …/lehrer/CODE
-String? teacherInviteFromPath(String path) =>
-    RegExp(r'^/lehrer/([A-Za-z0-9-]{8,9})/?$').firstMatch(path)?.group(1);
+/// QR-Karte einer Lehrkraft: …/l/TOKEN
+String? teacherCardFromPath(String path) =>
+    RegExp(r'^/l/([A-Za-z0-9]{16,64})/?$').firstMatch(path)?.group(1);
 
 class SchoolRepository {
   SchoolRepository(this._functions, this._firestore, this._auth);
@@ -64,26 +64,68 @@ class SchoolRepository {
     return data['schoolName'] as String? ?? '';
   }
 
-  Future<({String code, DateTime expiresAt})> createTeacherInvite() async {
-    final data = await _call('createTeacherInvite');
-    return (
-      code: data['code'] as String,
-      expiresAt: DateTime.parse(data['expiresAt'] as String),
+  /// Schulleitung: Lehrkraft anlegen. Gibt die Karte zum Ausdrucken zurück.
+  Future<TeacherCard> createTeacher(String name, String schoolName) async {
+    final data = await _call('createTeacher', {'name': name});
+    return TeacherCard(
+      name: name.trim(),
+      schoolName: schoolName,
+      link: Uri.parse('${webAppOrigin()}/l/${data['token']}'),
     );
   }
 
-  /// Gibt den Namen der Schule zurück. [schoolAccount]: neues Konto über
-  /// den Einladungslink – wird reines Schulkonto (nur ohne eigene Kinder).
-  Future<String> joinSchool(String code, {bool schoolAccount = false}) async {
-    final data = await _call('joinSchool', {
-      'code': code,
-      if (schoolAccount) 'schoolAccount': true,
+  /// Schulleitung: neue Karte (alte wird ungültig). [resetPin]: PIN vergessen.
+  Future<TeacherCard> reissueTeacherCard(
+    SchoolMember teacher,
+    String schoolName, {
+    bool resetPin = false,
+  }) async {
+    final data = await _call('reissueTeacherCard', {
+      'teacherId': teacher.uid,
+      'resetPin': resetPin,
     });
-    await _auth.currentUser?.getIdToken(true);
-    return data['schoolName'] as String? ?? '';
+    return TeacherCard(
+      name: teacher.name,
+      schoolName: schoolName,
+      link: Uri.parse('${webAppOrigin()}/l/${data['token']}'),
+    );
+  }
+
+  /// Lehrergerät: Karte prüfen. Gibt zurück, ob schon eine PIN festgelegt
+  /// ist, und den Namen der Lehrkraft.
+  Future<({bool pinSet, String name})> teacherCardInfo(String token) async {
+    final data = await _call('redeemTeacherCard', {'token': token});
+    return (
+      pinSet: data['pinSet'] == true,
+      name: data['name'] as String? ?? '',
+    );
+  }
+
+  /// Lehrergerät: mit Karte und PIN anmelden ([firstPin]: PIN festlegen).
+  /// Gibt false bei falscher PIN zurück.
+  Future<bool> signInWithTeacherCard(
+    String token,
+    String pin, {
+    bool firstPin = false,
+  }) async {
+    final data = await _call('redeemTeacherCard', {
+      'token': token,
+      if (firstPin) 'newPin': pin else 'pin': pin,
+    });
+    final custom = data['token'] as String?;
+    if (custom == null) return false;
+    await _auth.signInWithCustomToken(custom);
+    return true;
   }
 
   Future<void> removeTeacher(String uid) => _call('removeTeacher', {'uid': uid});
+
+  /// Lizenz der Schule (null = keine). Liest das Schulkonto `users/school_<id>`.
+  Stream<DateTime?> watchLicense(String schoolId) => _firestore
+      .collection('users')
+      .doc(schoolOwnerUid(schoolId))
+      .snapshots()
+      .map((s) => (s.data()?['schoolLicenseUntil'] as Timestamp?)?.toDate());
 
   Stream<String> watchSchoolName(String schoolId) => _firestore
       .collection('schools')
@@ -222,6 +264,13 @@ final schoolRepositoryProvider = Provider<SchoolRepository>((ref) {
 final schoolMembershipProvider = FutureProvider<SchoolMembership?>((ref) {
   ref.watch(authStateChangesProvider);
   return ref.watch(schoolRepositoryProvider).membership();
+});
+
+final schoolLicenseProvider = StreamProvider.family<DateTime?, String>((
+  ref,
+  id,
+) {
+  return ref.watch(schoolRepositoryProvider).watchLicense(id);
 });
 
 final schoolNameProvider = StreamProvider.family<String, String>((ref, id) {

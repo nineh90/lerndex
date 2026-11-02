@@ -48,22 +48,33 @@ service cloud.firestore {
       return isStudentOf(userId) && request.auth.token.childId == childId;
     }
 
-    // Lehrkraft (Claims schoolId + schoolRole, gesetzt von den Functions in
-    // functions/school.js). Lehrkräfte sind normale Konten, für die eigene
-    // Familie also weiter „Eltern“. Die Schüler einer Schule liegen unter
-    // users/school_<schoolId>/children – wie Kinder unter users/{uid}.
+    // Lehrergerät (QR-Karte + PIN, Konto "teacher:<schoolId>:<teacherId>",
+    // angelegt von redeemTeacherCard in functions/school.js)
+    function isTeacherDevice() {
+      return isAuthenticated() && request.auth.token.role == 'teacher';
+    }
+
+    // Schulkonto: Schulleitung (E-Mail-Konto, schoolRole "admin") oder
+    // Lehrkraft (Lehrergerät, früher auch E-Mail-Konto mit schoolRole
+    // "teacher"). Schüler liegen unter users/school_<schoolId>/children.
     function isSchoolMember(schoolId) {
-      return isParent()
+      return (isParent() || isTeacherDevice())
         && request.auth.token.get('schoolId', '') == schoolId
         && request.auth.token.get('schoolRole', '') in ['admin', 'teacher'];
     }
 
-    // Lehrkraft der Schule, der dieses „Besitzer-Konto“ gehört.
-    // Alle Lehrkräfte sehen alle Klassen ihrer Schule.
+    // Lehrkraft der Schule, der dieses „Besitzer-Konto“ gehört. Alle
+    // Lehrkräfte sehen alle Klassen ihrer Schule. Die Schulleitung verwaltet
+    // nur Lehrkräfte und sieht keine Schülerdaten.
     function isTeacherOf(userId) {
-      return isParent()
-        && request.auth.token.get('schoolRole', '') in ['admin', 'teacher']
+      return (isParent() || isTeacherDevice())
+        && request.auth.token.get('schoolRole', '') == 'teacher'
         && userId == 'school_' + request.auth.token.get('schoolId', '');
+    }
+
+    function isTeacherAt(schoolId) {
+      return isSchoolMember(schoolId)
+        && request.auth.token.get('schoolRole', '') == 'teacher';
     }
 
     // Lexi-Chats bleiben privat: Lehrkräfte sehen sie nicht (offene Frage
@@ -87,7 +98,10 @@ service cloud.firestore {
 
     match /users/{userId} {
       // Schul-Konto (users/school_<id>): Lizenz und Name setzt nur der Server
-      allow read: if isOwner(userId) || isStudentOf(userId) || isTeacherOf(userId);
+      // Schulleitung: nur das Schulkonto selbst (Lizenz), keine Schüler
+      allow read: if isOwner(userId) || isStudentOf(userId) || isTeacherOf(userId)
+        || (userId == 'school_' + request.auth.token.get('schoolId', '')
+            && isSchoolMember(request.auth.token.get('schoolId', '')));
       allow delete: if isOwner(userId);
       allow create: if isOwner(userId)
         && !('testAccess' in request.resource.data)
@@ -154,6 +168,9 @@ service cloud.firestore {
     match /schoolSignups/{code} {
       allow read, write: if false;
     }
+    match /teacherCards/{tokenHash} {
+      allow read, write: if false;
+    }
     match /studentCards/{tokenHash} {
       allow read, write: if false;
     }
@@ -168,7 +185,7 @@ service cloud.firestore {
       }
 
       match /classes/{classId} {
-        allow read, write: if isSchoolMember(schoolId);
+        allow read, write: if isTeacherAt(schoolId);
       }
     }
 
