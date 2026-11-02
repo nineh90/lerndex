@@ -27,11 +27,22 @@ const Color _kBrandSoft = Color(0xFFA855F7);
 const Color _kBrandAccent = Color(0xFFC026D3);
 final Color _kBrandTint = const Color(0xFF6B21A8).withValues(alpha: 0.10);
 
-/// Detail-Statistiken für ein Kind
+/// Detail-Statistiken für ein Kind.
+///
+/// [ownerUid]: Konto, unter dem das Kind liegt (Standard: das eigene). Für
+/// Schüler `school_<id>`. [forTeacher]: Ansicht für Lehrkräfte – ohne
+/// Lexi-Gespräche und ohne die Belohnungen der Familie.
 class ChildStatisticsScreen extends ConsumerWidget {
   final ChildModel child;
+  final String? ownerUid;
+  final bool forTeacher;
 
-  const ChildStatisticsScreen({super.key, required this.child});
+  const ChildStatisticsScreen({
+    super.key,
+    required this.child,
+    this.ownerUid,
+    this.forTeacher = false,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -75,12 +86,14 @@ class ChildStatisticsScreen extends ConsumerWidget {
               _buildActivitySection(),
               const SizedBox(height: 24),
 
-              // Belohnungen
-              _buildRewardsSection(ref),
-              const SizedBox(height: 24),
+              if (!forTeacher) ...[
+                // Belohnungen
+                _buildRewardsSection(ref),
+                const SizedBox(height: 24),
 
-              // Tutor-Gespräche
-              _buildTutorSection(context),
+                // Tutor-Gespräche
+                _buildTutorSection(context),
+              ],
             ],
           ),
         ),
@@ -336,11 +349,11 @@ class ChildStatisticsScreen extends ConsumerWidget {
   }
 
   Widget _buildLearningTimeSection() {
-    return _LearningTimeStatsCard(child: child);
+    return _LearningTimeStatsCard(child: child, ownerUid: ownerUid);
   }
 
   Widget _buildSubjectsBreakdownSection() {
-    return _SubjectsBreakdownCard(child: child);
+    return _SubjectsBreakdownCard(child: child, ownerUid: ownerUid);
   }
 
   Widget _buildQuizStatsSection() {
@@ -594,7 +607,7 @@ class ChildStatisticsScreen extends ConsumerWidget {
             StreamBuilder<QuerySnapshot>(
               stream: FirebaseFirestore.instance
                   .collection('users')
-                  .doc(user.ownerUid)
+                  .doc(ownerUid ?? user.ownerUid)
                   .collection('children')
                   .doc(child.id)
                   .collection('rewards')
@@ -700,7 +713,8 @@ class ChildStatisticsScreen extends ConsumerWidget {
 
 class _LearningTimeStatsCard extends StatelessWidget {
   final ChildModel child;
-  const _LearningTimeStatsCard({required this.child});
+  final String? ownerUid;
+  const _LearningTimeStatsCard({required this.child, this.ownerUid});
 
   @override
   Widget build(BuildContext context) {
@@ -799,7 +813,7 @@ class _LearningTimeStatsCard extends StatelessWidget {
             const SizedBox(height: 20),
 
             // Durchschnitt: lädt async aus learning_stats
-            _AverageRow(child: child),
+            _AverageRow(child: child, ownerUid: ownerUid),
           ],
         ),
       ),
@@ -809,7 +823,8 @@ class _LearningTimeStatsCard extends StatelessWidget {
 
 class _AverageRow extends ConsumerWidget {
   final ChildModel child;
-  const _AverageRow({required this.child});
+  final String? ownerUid;
+  const _AverageRow({required this.child, this.ownerUid});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -817,7 +832,7 @@ class _AverageRow extends ConsumerWidget {
     if (user == null) return const SizedBox.shrink();
 
     return FutureBuilder<int>(
-      future: _countLearningDays(user.ownerUid, child.id),
+      future: _countLearningDays(ownerUid ?? user.ownerUid, child.id),
       builder: (context, snapshot) {
         final learningDays = snapshot.data ?? 0;
         final avgSeconds = learningDays > 0
@@ -881,7 +896,8 @@ class _AverageRow extends ConsumerWidget {
 
 class _SubjectsBreakdownCard extends ConsumerWidget {
   final ChildModel child;
-  const _SubjectsBreakdownCard({required this.child});
+  final String? ownerUid;
+  const _SubjectsBreakdownCard({required this.child, this.ownerUid});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -889,7 +905,7 @@ class _SubjectsBreakdownCard extends ConsumerWidget {
     if (user == null) return const SizedBox.shrink();
 
     return FutureBuilder<Map<String, int>>(
-      future: _aggregateSubjectSeconds(user.ownerUid, child.id),
+      future: _aggregateSubjectSeconds(ownerUid ?? user.ownerUid, child.id),
       builder: (context, snapshot) {
         final data = snapshot.data ?? <String, int>{};
         final totalSeconds = data.values.fold<int>(0, (a, b) => a + b);

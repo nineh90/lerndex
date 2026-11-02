@@ -4,8 +4,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../../shared/web/browser_url.dart';
+import '../../auth/domain/account.dart';
 import '../../auth/domain/child_model.dart';
+import '../../parent_dashboard/presentation/child_statistics_screen.dart';
 import '../data/school_repository.dart';
+import '../domain/class_stats.dart';
 import '../domain/school_models.dart';
 import 'school_section.dart';
 import 'student_cards_print.dart';
@@ -79,51 +82,93 @@ class SchoolClassScreen extends ConsumerWidget {
                 ),
               ),
             )
-          : ListView.separated(
+          : ListView(
               padding: const EdgeInsets.fromLTRB(8, 8, 8, 96),
-              itemCount: students.length,
-              separatorBuilder: (_, _) => const Divider(height: 1),
-              itemBuilder: (context, i) {
-                final s = students[i];
-                return ListTile(
-                  leading: CircleAvatar(
-                    backgroundColor: Colors.deepPurple.shade50,
-                    child: Text(
-                      s.name.isEmpty ? '?' : s.name[0].toUpperCase(),
-                      style: const TextStyle(color: Colors.deepPurple),
-                    ),
-                  ),
-                  title: Text(s.name),
-                  subtitle: Text('Level ${s.level} · ${s.xp} XP'),
-                  trailing: PopupMenuButton<String>(
-                    onSelected: (value) {
-                      switch (value) {
-                        case 'card':
-                          _printCards(context, ref, [s]);
-                        case 'rename':
-                          _rename(context, ref, s);
-                        case 'delete':
-                          _delete(context, ref, s);
-                      }
-                    },
-                    itemBuilder: (_) => const [
-                      PopupMenuItem(
-                        value: 'card',
-                        child: Text('Anmelde-Code (QR)'),
-                      ),
-                      PopupMenuItem(value: 'rename', child: Text('Umbenennen')),
-                      PopupMenuItem(
-                        value: 'delete',
-                        child: Text(
-                          'Löschen',
-                          style: TextStyle(color: Colors.red),
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              },
+              children: [
+                _ClassOverview(
+                  summary: ClassSummary.of(students, DateTime.now()),
+                ),
+                for (final s in students) ...[
+                  _studentTile(context, ref, s),
+                  const Divider(height: 1),
+                ],
+              ],
             ),
+    );
+  }
+
+  Widget _studentTile(BuildContext context, WidgetRef ref, ChildModel s) {
+    final now = DateTime.now();
+    final active = isActiveThisWeek(s, now);
+    return ListTile(
+      leading: Stack(
+        children: [
+          CircleAvatar(
+            backgroundColor: Colors.deepPurple.shade50,
+            child: Text(
+              s.name.isEmpty ? '?' : s.name[0].toUpperCase(),
+              style: const TextStyle(color: Colors.deepPurple),
+            ),
+          ),
+          Positioned(
+            right: 0,
+            bottom: 0,
+            child: Container(
+              width: 11,
+              height: 11,
+              decoration: BoxDecoration(
+                color: active ? Colors.green : Colors.orange,
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white, width: 2),
+              ),
+            ),
+          ),
+        ],
+      ),
+      title: Text(s.name),
+      subtitle: Text(
+        '${durationLabel(s.totalLearningSeconds)} gelernt · '
+        '${s.totalQuizzes ?? 0} Quizze · zuletzt '
+        '${lastActiveLabel(lastActivity(s), now)}',
+        style: const TextStyle(fontSize: 12),
+      ),
+      onTap: () => _openStats(context, s),
+      trailing: PopupMenuButton<String>(
+        onSelected: (value) {
+          switch (value) {
+            case 'stats':
+              _openStats(context, s);
+            case 'card':
+              _printCards(context, ref, [s]);
+            case 'rename':
+              _rename(context, ref, s);
+            case 'delete':
+              _delete(context, ref, s);
+          }
+        },
+        itemBuilder: (_) => const [
+          PopupMenuItem(value: 'stats', child: Text('Statistik')),
+          PopupMenuItem(value: 'card', child: Text('Anmelde-Code (QR)')),
+          PopupMenuItem(value: 'rename', child: Text('Umbenennen')),
+          PopupMenuItem(
+            value: 'delete',
+            child: Text('Löschen', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _openStats(BuildContext context, ChildModel s) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ChildStatisticsScreen(
+          child: s,
+          ownerUid: schoolOwnerUid(schoolId),
+          forTeacher: true,
+        ),
+      ),
     );
   }
 
@@ -408,4 +453,56 @@ class _CardsOnScreenDialogState extends State<_CardsOnScreenDialog> {
       ],
     );
   }
+}
+
+/// Klassenübersicht über der Schülerliste.
+class _ClassOverview extends StatelessWidget {
+  const _ClassOverview({required this.summary});
+
+  final ClassSummary summary;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      color: const Color(0xFFF5F3FF),
+      margin: const EdgeInsets.fromLTRB(4, 4, 4, 12),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            _value(
+              '${summary.activeThisWeek}/${summary.students}',
+              'diese Woche aktiv',
+            ),
+            _value(
+              durationLabel(summary.averageLearningSeconds),
+              'Lernzeit pro Kind',
+            ),
+            _value('${summary.totalQuizzes}', 'Quizze gesamt'),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _value(String value, String label) => Expanded(
+    child: Column(
+      children: [
+        Text(
+          value,
+          style: const TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: Colors.deepPurple,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          label,
+          textAlign: TextAlign.center,
+          style: TextStyle(fontSize: 12, color: Colors.grey[700]),
+        ),
+      ],
+    ),
+  );
 }
