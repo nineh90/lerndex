@@ -32,6 +32,7 @@ const { redeemOnce } = require("./lib/claim");
 const {
   kidUid,
   normalizeCode,
+  newPairingCode,
   newCardToken,
   sha256Hex,
   schoolOwnerUid,
@@ -411,7 +412,10 @@ exports.createStudentCards = onCall(async (request) => {
     ),
   );
   const batch = db.batch();
-  old.forEach((snap) => snap.docs.forEach((doc) => batch.delete(doc.ref)));
+  // Heimkarten aus dem Elternbrief bleiben gültig
+  old.forEach((snap) =>
+    snap.docs.filter((doc) => doc.get("kind") !== "home").forEach((doc) => batch.delete(doc.ref)),
+  );
 
   const cards = studentIds.map((studentId) => {
     const token = newCardToken();
@@ -503,6 +507,153 @@ exports.revokeStudent = onCall(async (request) => {
  * inklusive Lexi-Chats (die Lehrkräfte selbst nicht lesen dürfen) und
  * hochgeladene Aufgabenblätter.
  */
+// ── Eltern verbinden (Elternbrief) ───────────────────────────────────────────
+//
+// Die Lehrkraft druckt pro Kind einen Elternbrief mit zwei QR-Codes:
+// - „Eltern verbinden“ (…/e/CODE, parentLinks/{code}): Eltern verbinden ihr
+//   Konto mit dem Schulkind. Ihre UID kommt in parentUids am Schülerdokument,
+//   die Rules geben ihnen damit Lesezugriff (auch Lexi-Gespräche) und
+//   Schreibzugriff auf die Belohnungen. Kostet die Eltern kein Abo.
+// - „Zu Hause lernen“: eigene Schülerkarte (kind "home"), die beim Neudruck
+//   der Schulkarten gültig bleibt.
+
+const MAX_PARENTS_PER_CHILD = 4;
+
+/** Lehrkraft: Elternbriefe für Schüler (alte Codes/Heimkarten werden ungültig). */
+exports.createParentLetters = onCall(async (request) => {
+  const schoolId = requireTeacher(request, { teacher: true });
+  const studentIds = request.data?.studentIds;
+  if (
+    !Array.isArray(studentIds) ||
+    studentIds.length === 0 ||
+    studentIds.length > MAX_STUDENTS_PER_CALL ||
+    !studentIds.every((id) => typeof id === "string" && id.length > 0 && id.length < 128)
+  ) {
+    throw new HttpsError("invalid-argument", "Schülerliste fehlt oder ist zu lang.");
+  }
+  const owner = schoolOwnerUid(schoolId);
+  const students = await Promise.all(
+    studentIds.map((id) => db.doc(`users/${owner}/children/${id}`).get()),
+  );
+  if (students.some((st) => !st.exists)) {
+    throw new HttpsError("not-found", "Schüler nicht gefunden.");
+  }
+
+  const letters = [];
+  for (const studentId of studentIds) {
+    const [oldLinks, oldHome] = await Promise.all([
+      db.collection("parentLinks").where("schoolId", "==", schoolId)
+        .where("studentId", "==", studentId).get(),
+      db.collection("studentCards").where("schoolId", "==", schoolId)
+        .where("studentId", "==", studentId).where("kind", "==", "home").get(),
+    ]);
+    const batch = db.batch();
+    oldLinks.docs.forEach((doc) => batch.delete(doc.ref));
+    oldHome.docs.forEach((doc) => batch.delete(doc.ref));
+    const code = newPairingCode();
+    batch.set(db.doc(`parentLinks/${code}`), {
+      schoolId,
+      studentId,
+      createdBy: request.auth.uid,
+      createdAt: FieldValue.serverTimestamp(),
+    });
+    const homeToken = newCardToken();
+    batch.set(db.doc(`studentCards/${sha256Hex(homeToken)}`), {
+      schoolId,
+      studentId,
+      kind: "home",
+      createdBy: request.auth.uid,
+      createdAt: FieldValue.serverTimestamp(),
+    });
+    await batch.commit();
+    letters.push({ studentId, parentCode: code, homeToken });
+  }
+  return { letters };
+});
+
+/** Eltern: Konto mit einem Schulkind verbinden (Code aus dem Elternbrief). */
+exports.linkSchoolChild = onCall(async (request) => {
+  if (!request.auth) throw new HttpsError("unauthenticated", "Bitte zuerst anmelden.");
+  const token = request.auth.token;
+  if (token.role || token.schoolRole === "admin") {
+    throw new HttpsError("permission-denied", "Bitte mit einem Elternkonto anmelden.");
+  }
+  const uid = request.auth.uid;
+  const code = normalizeCode(request.data?.code);
+  const invalid = new HttpsError(
+    "not-found",
+    "Der Code stimmt nicht. Bitte prüfen Sie den Elternbrief oder fragen Sie die Lehrkraft.",
+  );
+  if (!code) throw invalid;
+  const link = await db.doc(`parentLinks/${code}`).get();
+  if (!link.exists) throw invalid;
+  const { schoolId, studentId } = link.data();
+  const owner = schoolOwnerUid(schoolId);
+  const studentRef = db.doc(`users/${owner}/children/${studentId}`);
+
+  const result = await db.runTransaction(async (tx) => {
+    const student = await tx.get(studentRef);
+    if (!student.exists) return null;
+    const parents = student.get("parentUids") || [];
+    if (!parents.includes(uid) && parents.length >= MAX_PARENTS_PER_CHILD) {
+      throw new HttpsError("resource-exhausted", "Mit diesem Kind sind schon 4 Konten verbunden.");
+    }
+    tx.update(studentRef, { parentUids: FieldValue.arrayUnion(uid) });
+    return student;
+  });
+  if (!result) throw invalid;
+
+  const [school, schoolClass] = await Promise.all([
+    db.doc(`schools/${schoolId}`).get(),
+    db.doc(`schools/${schoolId}/classes/${result.get("classId") || "-"}`).get(),
+  ]);
+  const info = {
+    schoolId,
+    studentId,
+    ownerUid: owner,
+    name: result.get("name") || "",
+    schoolName: school.get("name") || "",
+    className: schoolClass.exists ? schoolClass.get("name") || "" : "",
+  };
+  await db.doc(`users/${uid}/linkedChildren/${schoolId}_${studentId}`).set({
+    ...info,
+    linkedAt: FieldValue.serverTimestamp(),
+  });
+  return info;
+});
+
+/** Eltern: Verbindung zu einem Schulkind trennen. */
+exports.unlinkSchoolChild = onCall(async (request) => {
+  if (!request.auth || request.auth.token.role) {
+    throw new HttpsError("permission-denied", "Nur für Eltern.");
+  }
+  const uid = request.auth.uid;
+  const { schoolId, studentId } = request.data || {};
+  if (typeof schoolId !== "string" || typeof studentId !== "string" ||
+      !schoolId || !studentId || schoolId.includes("/") || studentId.includes("/")) {
+    throw new HttpsError("invalid-argument", "Kind fehlt.");
+  }
+  await db.doc(`users/${schoolOwnerUid(schoolId)}/children/${studentId}`)
+    .update({ parentUids: FieldValue.arrayRemove(uid) })
+    .catch(() => {});
+  await db.doc(`users/${uid}/linkedChildren/${schoolId}_${studentId}`).delete();
+  return { unlinked: true };
+});
+
+/** Verbundene Eltern eines Schülers austragen (beim Löschen des Schülers). */
+async function unlinkAllParents(schoolId, studentId) {
+  const student = await db.doc(`users/${schoolOwnerUid(schoolId)}/children/${studentId}`).get();
+  const parents = student.exists ? student.get("parentUids") || [] : [];
+  const links = await db.collection("parentLinks").where("schoolId", "==", schoolId)
+    .where("studentId", "==", studentId).get();
+  const batch = db.batch();
+  parents.forEach((uid) =>
+    batch.delete(db.doc(`users/${uid}/linkedChildren/${schoolId}_${studentId}`)),
+  );
+  links.docs.forEach((doc) => batch.delete(doc.ref));
+  await batch.commit();
+}
+
 exports.deleteStudent = onCall(async (request) => {
   const schoolId = requireTeacher(request, { teacher: true });
   const studentId = request.data?.studentId;
@@ -510,6 +661,7 @@ exports.deleteStudent = onCall(async (request) => {
     throw new HttpsError("invalid-argument", "studentId fehlt.");
   }
   await revokeCardsAndAccount(schoolId, studentId);
+  await unlinkAllParents(schoolId, studentId);
 
   const owner = schoolOwnerUid(schoolId);
   await db.recursiveDelete(db.doc(`users/${owner}/children/${studentId}`));

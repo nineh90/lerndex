@@ -391,6 +391,17 @@ exports.cleanupDeletedParent = functionsV1
     const schoolId = user.customClaims?.schoolId;
     if (schoolId) batch.delete(db.doc(`schools/${schoolId}/members/${user.uid}`));
     await batch.commit();
+    // Verbundene Schulkinder: Eltern-UID am Schülerdokument austragen
+    const linked = await db.collection(`users/${user.uid}/linkedChildren`).get();
+    for (const doc of linked.docs) {
+      const { ownerUid, studentId } = doc.data();
+      if (ownerUid && studentId) {
+        await db.doc(`users/${ownerUid}/children/${studentId}`)
+          .update({ parentUids: FieldValue.arrayRemove(user.uid) })
+          .catch(() => {});
+      }
+    }
+    await db.recursiveDelete(db.collection(`users/${user.uid}/linkedChildren`));
   });
 
 // ── 4. Schule ────────────────────────────────────────────────────────────────

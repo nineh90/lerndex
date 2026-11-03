@@ -315,3 +315,74 @@ test("Schüler löschen: Daten inkl. Lexi-Chats, Karten und Konto weg", async ()
   await assert.rejects(adminAuth().getUser(`kid:${admin.owner}:s1`));
   await expectError((await parentWithChildren()).call("deleteStudent", { studentId: "s1" }), "permission-denied");
 });
+
+// ── Eltern verbinden (Elternbrief) ──────────────────────────────────────────
+
+test("Elternbrief: Eltern verbinden sich, sehen ihr Schulkind, nur das eigene", async () => {
+  const teacher = await schoolTeacher();
+  await addStudent(teacher, teacher.owner, "s1", "Mia");
+  await addStudent(teacher, teacher.owner, "s2", "Ben");
+  await setDoc(doc(teacher.db, `users/${teacher.owner}/children/s1/tutor_sessions/t1`), { a: 1 }).catch(() => {});
+  await adb.doc(`users/${teacher.owner}/children/s1/tutor_sessions/t1`).set({ topic: "Brüche" });
+  await adb.doc(`users/${teacher.owner}/children/s1/tutor_sessions/t1/messages/m1`).set({ text: "hi" });
+
+  const { letters } = await teacher.call("createParentLetters", { studentIds: ["s1"] });
+  assert.equal(letters.length, 1);
+  assert.match(letters[0].parentCode, /^[A-HJ-NP-Z2-9]{8}$/);
+
+  const parent = await parentWithChildren();
+  const linked = await parent.call("linkSchoolChild", { code: letters[0].parentCode.toLowerCase() });
+  assert.equal(linked.name, "Mia");
+  assert.equal(linked.ownerUid, teacher.owner);
+  const link = await getDoc(doc(parent.db, `users/${parent.uid}/linkedChildren/${teacher.schoolId}_s1`));
+  assert.equal(link.get("studentId"), "s1");
+
+  // Lesen: Kind, Lexi-Gespräche; Belohnungen schreiben; nicht das Geschwisterkind
+  assert.equal((await getDoc(doc(parent.db, `users/${teacher.owner}/children/s1`))).get("name"), "Mia");
+  assert.equal((await getDoc(doc(parent.db,
+    `users/${teacher.owner}/children/s1/tutor_sessions/t1/messages/m1`))).get("text"), "hi");
+  await setDoc(doc(parent.db, `users/${teacher.owner}/children/s1/rewards/r1`), { title: "Eis" });
+  await assert.rejects(getDoc(doc(parent.db, `users/${teacher.owner}/children/s2`)));
+  await assert.rejects(setDoc(doc(parent.db, `users/${teacher.owner}/children/s1`), { name: "X" }, { merge: true }));
+  await assert.rejects(setDoc(doc(parent.db, `users/${teacher.owner}/children/s1/learning_stats/d`), { a: 1 }));
+  await assert.rejects(getDoc(doc(parent.db, `schools/${teacher.schoolId}`)));
+
+  // parentUids kann niemand selbst setzen
+  const other = await parentWithChildren();
+  await assert.rejects(getDoc(doc(other.db, `users/${teacher.owner}/children/s1`)));
+  await assert.rejects(setDoc(doc(teacher.db, `users/${teacher.owner}/children/s1`),
+    { parentUids: [other.uid] }, { merge: true }));
+  await assert.rejects(setDoc(doc(teacher.db, `users/${teacher.owner}/children/s9`),
+    { name: "Neu", parentUids: [other.uid] }));
+
+  // Heimkarte aus dem Brief meldet das Kind an und überlebt neue Schulkarten
+  await teacher.call("createStudentCards", { studentIds: ["s1"] });
+  const home = await studentDevice(letters[0].homeToken);
+  assert.equal(home.childName, "Mia");
+  // Kindergerät darf parentUids nicht ändern
+  await assert.rejects(setDoc(doc(home.db, `users/${teacher.owner}/children/s1`),
+    { parentUids: [] }, { merge: true }));
+
+  // Trennen
+  await parent.call("unlinkSchoolChild", { schoolId: teacher.schoolId, studentId: "s1" });
+  await assert.rejects(getDoc(doc(parent.db, `users/${teacher.owner}/children/s1`)));
+
+  // Lehrergerät und Kindergerät können keine Kinder verbinden
+  await expectError(teacher.call("linkSchoolChild", { code: letters[0].parentCode }), "permission-denied");
+  await expectError(parent.call("linkSchoolChild", { code: "ABCDEFGH" }), "not-found");
+});
+
+test("Elternbrief: neuer Brief macht alten Code ungültig, Schüler löschen trennt Eltern", async () => {
+  const teacher = await schoolTeacher();
+  await addStudent(teacher, teacher.owner, "s1", "Mia");
+  const first = (await teacher.call("createParentLetters", { studentIds: ["s1"] })).letters[0];
+  const second = (await teacher.call("createParentLetters", { studentIds: ["s1"] })).letters[0];
+  const parent = await parentWithChildren();
+  await expectError(parent.call("linkSchoolChild", { code: first.parentCode }), "not-found");
+  await expectError(device().call("redeemStudentCard", { token: first.homeToken }), "not-found");
+  await parent.call("linkSchoolChild", { code: second.parentCode });
+
+  await teacher.call("deleteStudent", { studentId: "s1" });
+  assert.equal((await adb.doc(`users/${parent.uid}/linkedChildren/${teacher.schoolId}_s1`).get()).exists, false);
+  await expectError(parent.call("linkSchoolChild", { code: second.parentCode }), "not-found");
+});

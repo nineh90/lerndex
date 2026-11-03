@@ -77,6 +77,20 @@ service cloud.firestore {
         && request.auth.token.get('schoolRole', '') == 'teacher';
     }
 
+    // Eltern, die ihr Konto über den Elternbrief mit diesem Schulkind
+    // verbunden haben (parentUids am Schülerdokument, setzt nur die Function
+    // linkSchoolChild).
+    function isLinkedParent(userId, childId) {
+      return isParent()
+        && userId.matches('school_.*')
+        && request.auth.uid in get(/databases/$(database)/documents/users/$(userId)/children/$(childId)).data.get('parentUids', []);
+    }
+
+    // parentUids ändern nur die Cloud Functions
+    function parentUidsUnchanged() {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(['parentUids']);
+    }
+
     // Lexi-Chats bleiben privat: Lehrkräfte sehen sie nicht (offene Frage
     // an die Schule, siehe docs/PLAN-schule-web.md).
     function isPrivateForTeachers(subcollection) {
@@ -113,6 +127,11 @@ service cloud.firestore {
         allow read, write: if false;
       }
 
+      // Verbundene Schulkinder (schreibt nur linkSchoolChild/unlinkSchoolChild)
+      match /linkedChildren/{linkId} {
+        allow read: if isOwner(userId);
+      }
+
       // Kinder-Profile inkl. aller Subcollections:
       // tutor_sessions/{sid}/messages/{mid}, active_tutor_chat, rewards,
       // learning_stats, ai_quiz_cache/{fach}/questions/{qid}, devices
@@ -120,9 +139,15 @@ service cloud.firestore {
         allow read, write: if isOwner(userId);
         // Kindergerät: eigenes Profil lesen und Fortschritt speichern,
         // aber nicht anlegen oder löschen.
-        allow read, update: if isStudentFor(userId, childId);
+        allow read: if isStudentFor(userId, childId);
+        allow update: if isStudentFor(userId, childId) && parentUidsUnchanged();
         // Lehrkraft: Schüler anlegen, bearbeiten, löschen
-        allow read, write: if isTeacherOf(userId);
+        allow read, delete: if isTeacherOf(userId);
+        allow create: if isTeacherOf(userId)
+          && !('parentUids' in request.resource.data);
+        allow update: if isTeacherOf(userId) && parentUidsUnchanged();
+        // Verbundene Eltern: lesen
+        allow read: if isLinkedParent(userId, childId);
 
         // Gekoppelte Geräte: schreibt nur die Cloud Function
         match /devices/{deviceId} {
@@ -133,10 +158,17 @@ service cloud.firestore {
           allow read, write: if isOwner(userId)
             || (isStudentFor(userId, childId) && subcollection != 'devices')
             || (isTeacherOf(userId) && !isPrivateForTeachers(subcollection));
+          // Verbundene Eltern: alles lesen (auch Lexi), Belohnungen pflegen,
+          // Lexi-Gespräche löschen
+          allow read: if isLinkedParent(userId, childId) && subcollection != 'devices';
+          allow write: if isLinkedParent(userId, childId) && subcollection == 'rewards';
+          allow delete: if isLinkedParent(userId, childId) && subcollection == 'tutor_sessions';
 
           match /{nested}/{nestedDocId} {
             allow read, write: if isOwner(userId) || isStudentFor(userId, childId)
               || (isTeacherOf(userId) && !isPrivateForTeachers(subcollection));
+            allow read: if isLinkedParent(userId, childId) && subcollection != 'devices';
+            allow delete: if isLinkedParent(userId, childId) && subcollection == 'tutor_sessions';
           }
         }
       }
@@ -169,6 +201,9 @@ service cloud.firestore {
       allow read, write: if false;
     }
     match /teacherCards/{tokenHash} {
+      allow read, write: if false;
+    }
+    match /parentLinks/{code} {
       allow read, write: if false;
     }
     match /studentCards/{tokenHash} {
