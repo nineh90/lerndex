@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>Lerndex für Schulen: Stand, Anleitung, offene Punkte</title>
+<style>
+  @page { size: A4; margin: 20mm 18mm 22mm 18mm;
+    @bottom-center { content: "Lerndex für Schulen · Seite " counter(page) " von " counter(pages);
+                     font: 8.5pt system-ui, sans-serif; color: #8a8199; } }
+  @page :first { margin: 0; @bottom-center { content: none; } }
+  * { box-sizing: border-box; }
+  body { font-family: "Inter", "Segoe UI", Roboto, system-ui, sans-serif; font-size: 10.3pt;
+         line-height: 1.5; color: #24202b; margin: 0; }
+  h1 { font-size: 21pt; color: #4C1D95; margin: 0 0 4mm; letter-spacing: -0.01em; }
+  h2 { font-size: 13pt; color: #6B21A8; margin: 7mm 0 2.5mm; }
+  h3 { font-size: 11pt; color: #24202b; margin: 5mm 0 1.5mm; }
+  p { margin: 0 0 2.5mm; }
+  ul, ol { margin: 0 0 3mm; padding-left: 5mm; }
+  li { margin-bottom: 1.2mm; }
+  .chapter { break-before: page; }
+  .keep { break-inside: avoid; }
+  h2, h3 { break-after: avoid; }
+  .kicker { font-size: 9pt; font-weight: 700; color: #9333EA; text-transform: uppercase;
+            letter-spacing: .12em; margin-bottom: 2mm; }
+  .lead { font-size: 11.2pt; color: #3d3550; margin-bottom: 5mm; }
+  .box { background: #F5F3FF; border-left: 3px solid #9333EA; border-radius: 2mm;
+         padding: 3.5mm 4.5mm; margin: 3mm 0 4mm; break-inside: avoid; }
+  .box.warn { background: #FFF7ED; border-left-color: #EA580C; }
+  .box p:last-child, .box ul:last-child { margin-bottom: 0; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 4mm; }
+  .card { border: 1px solid #E9E3F5; border-radius: 3mm; padding: 3.5mm 4mm; break-inside: avoid; }
+  .card h3 { margin-top: 0; color: #6B21A8; }
+  table { width: 100%; border-collapse: collapse; margin: 2mm 0 4mm; font-size: 9.4pt; break-inside: avoid; }
+  th { background: #6B21A8; color: #fff; text-align: left; padding: 2mm 2.5mm; font-weight: 600; }
+  td { padding: 2mm 2.5mm; border-bottom: 1px solid #ECE7F5; vertical-align: top; }
+  tr:nth-child(even) td { background: #FAF8FE; }
+  .yes { color: #15803D; font-weight: 600; }
+  .no { color: #B91C1C; font-weight: 600; }
+  code { font-family: "JetBrains Mono", "DejaVu Sans Mono", monospace; font-size: 8.8pt;
+         background: #F3F0FA; padding: .3mm 1.2mm; border-radius: 1mm; }
+  pre { font-family: "JetBrains Mono", "DejaVu Sans Mono", monospace; font-size: 8.6pt;
+        background: #1F1A2E; color: #EDE9FE; padding: 3mm 4mm; border-radius: 2mm;
+        white-space: pre-wrap; margin: 2mm 0 4mm; break-inside: avoid; }
+  .steps { counter-reset: s; list-style: none; padding-left: 0; }
+  .steps > li { counter-increment: s; position: relative; padding-left: 9mm; margin-bottom: 2.2mm; }
+  .steps > li::before { content: counter(s); position: absolute; left: 0; top: .2mm;
+         width: 6mm; height: 6mm; border-radius: 50%; background: #6B21A8; color: #fff;
+         font-size: 8.5pt; font-weight: 700; text-align: center; line-height: 6mm; }
+  .tag { display: inline-block; font-size: 8pt; font-weight: 700; padding: .4mm 2mm;
+         border-radius: 10mm; background: #EDE9FE; color: #5B21B6; margin-right: 1mm; }
+  .tag.prio { background: #FEE2E2; color: #991B1B; }
+  .tag.mid { background: #FEF3C7; color: #92400E; }
+  .check li { list-style: none; position: relative; padding-left: 6mm; }
+  .check { padding-left: 0; }
+  .check li::before { content: ""; position: absolute; left: 0; top: 1.2mm; width: 3.2mm; height: 3.2mm;
+         border: 1.3px solid #6B21A8; border-radius: .8mm; }
+
+  /* Titelseite */
+  .cover { height: 297mm; padding: 34mm 22mm 20mm; color: #fff; position: relative;
+    background: radial-gradient(circle at 85% 12%, #A855F7 0, transparent 45%),
+                linear-gradient(160deg, #4C1D95 0%, #6B21A8 55%, #7E22CE 100%); }
+  .cover .brand { font-size: 13pt; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; opacity: .85; }
+  .cover h1 { color: #fff; font-size: 34pt; line-height: 1.12; margin: 26mm 0 6mm; }
+  .cover .sub { font-size: 13pt; opacity: .92; max-width: 140mm; }
+  .cover .toc { position: absolute; left: 22mm; right: 22mm; bottom: 26mm;
+    background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.25);
+    border-radius: 4mm; padding: 6mm 7mm; }
+  .cover .toc div { display: flex; gap: 5mm; padding: 1.4mm 0; font-size: 11pt; }
+  .cover .toc b { width: 8mm; opacity: .7; }
+  .cover .date { position: absolute; left: 22mm; bottom: 12mm; font-size: 9.5pt; opacity: .75; }
+</style>
+</head>
+<body>
+
+<section class="cover">
+  <div class="brand">Lerndex</div>
+  <h1>Lerndex für Schulen</h1>
+  <div class="sub">Was Lerndex vorher konnte, was dazugekommen ist, was geplant ist.
+  Mit einer Anleitung für alle Rollen und den Punkten, die mit der Schule zu klären sind.</div>
+  <div class="toc">
+    <div><b>1</b>Auf einen Blick</div>
+    <div><b>2</b>Lerndex vorher</div>
+    <div><b>3</b>Was neu dazugekommen ist</div>
+    <div><b>4</b>Was geplant ist</div>
+    <div><b>5</b>Anleitung: So funktioniert das Neue</div>
+    <div><b>6</b>Offene Punkte mit der Schule</div>
+  </div>
+  <div class="date">Stand: 3. November 2026</div>
+</section>
+
+<section class="chapter">
+  <div class="kicker">Teil 1</div>
+  <h1>Auf einen Blick</h1>
+  <p class="lead">Eine Schule testet Lerndex und hatte konkrete Wünsche. Daraus ist in den letzten
+  Tagen eine Web-Version mit einem vollständigen Schulbereich entstanden. Sie ist live, die
+  Play-Store-App läuft unverändert weiter.</p>
+
+  <div class="grid2">
+    <div class="card"><h3>Web-App</h3><p>Lerndex läuft jetzt im Browser auf iPhone, Tablet und PC,
+    ohne App Store: <b>lerndex-3775f.web.app</b>.</p></div>
+    <div class="card"><h3>Lexi liest vor</h3><p>Jede Antwort von Lexi lässt sich vorlesen, auf Wunsch
+    automatisch. Wichtig für Kinder mit Förderbedarf.</p></div>
+    <div class="card"><h3>Schulbereich</h3><p>Schulleitung, Lehrkräfte mit QR-Karte und PIN, Klassen,
+    Schülerkarten, Statistiken und Aufgaben für die Klasse.</p></div>
+    <div class="card"><h3>Eltern mit an Bord</h3><p>Ein Elternbrief verbindet Eltern mit ihrem Schulkind.
+    Belohnungen und Statistik ohne Abo, Lernen zu Hause mit eigener Karte.</p></div>
+    <div class="card"><h3>Sicherheit</h3><p>Rechte und Eltern-PIN werden auf dem Server geprüft,
+    nicht mehr im Gerät. Alles läuft in Frankfurt.</p></div>
+    <div class="card"><h3>Kinderhandy</h3><p>Eltern verbinden das Handy des Kindes per QR-Code.
+    Abmelden geht nur mit dem Eltern-PIN.</p></div>
+  </div>
+
+  <div class="box">
+    <p><b>Wichtig:</b> Alles Neue liegt auf einem eigenen Entwicklungszweig und ist nur in der
+    Web-App aktiv. Die Android-App im Play Store ist unverändert. Sie arbeitet mit dem neuen Server
+    zusammen, das wurde am 1. November mit einem echten Gerät geprüft.</p>
+  </div>
+</section>
+
+<section class="chapter">
+  <div class="kicker">Teil 2</div>
+  <h1>Lerndex vorher</h1>
+  <p class="lead">Lerndex war eine Android-App für Familien: Eltern legen ein Konto an, Kinder lernen
+  auf dem Gerät der Eltern, Lexi hilft beim Verstehen statt fertige Lösungen zu geben.</p>
+
+  <h2>Funktionen</h2>
+  <table>
+    <tr><th style="width:30%">Bereich</th><th>Was es gab</th></tr>
+    <tr><td>Konto</td><td>Elternkonto mit E-Mail oder Google. Kinderprofile mit Klasse und Schulform.</td></tr>
+    <tr><td>Quiz</td><td>Pro Fach feste Fragen und KI-Fragen passend zu Lehrplan, Klasse und Level.
+      Für Klasse 1 und 2 ein eigener Modus mit Zahlen, Buchstaben, Farben, Formen und Nachspuren.</td></tr>
+    <tr><td>Lexi (KI-Tutor)</td><td>Chat für Kinder. Lexi führt mit Fragen zur Lösung (Sokrates-Methode)
+      und verrät keine fertigen Antworten. Kinder können Aufgabenblätter fotografieren.</td></tr>
+    <tr><td>Aufgaben aus Fotos</td><td>Eltern fotografieren Hausaufgaben, die KI erstellt passende Übungen,
+      die Eltern prüfen und freigeben.</td></tr>
+    <tr><td>Motivation</td><td>XP und 50 Level, Sterne, Erfolge, Lern-Streak. Eltern legen eigene
+      Belohnungen fest, die das Kind freischaltet.</td></tr>
+    <tr><td>Eltern-Dashboard</td><td>Mit PIN geschützt. Statistik, Lernzeit, Fächerübersicht, Verlauf der
+      Lexi-Gespräche mit Warnhinweisen.</td></tr>
+    <tr><td>Abo</td><td>Über Google Play: 14 Tage zum Testen, danach Solo (1 Kind), Duo (2) oder Family (4).</td></tr>
+    <tr><td>Technik</td><td>Flutter-App, Firebase in Frankfurt, KI über Vertex AI in der EU.</td></tr>
+  </table>
+
+  <h2>Grenzen</h2>
+  <ul>
+    <li>Nur Android. Für iPhones hätte es den App Store gebraucht.</li>
+    <li>Ein Konto pro Familie. Kinder lernten auf dem Gerät der Eltern, ein eigenes Kinderhandy war nicht vorgesehen.</li>
+    <li>Der Eltern-PIN wurde im Gerät geprüft. Wer sich auskennt, hätte ihn umgehen können.</li>
+    <li>Keine Rollen: kein Zugang für Schulen, Lehrkräfte oder Klassen.</li>
+    <li>Lexi konnte nicht vorlesen.</li>
+  </ul>
+</section>
+
+<section class="chapter">
+  <div class="kicker">Teil 3</div>
+  <h1>Was neu dazugekommen ist</h1>
+  <p class="lead">Live seit dem 1. bis 3. November 2026 in der Web-App. Grundlage waren die Wünsche
+  der Lehrerin: Vorlesen, alle Kinder der Schule, alle Lehrkräfte auf alle Klassen, Kinder aufs
+  eigene Handy per Code oder QR.</p>
+
+  <h2>Für alle</h2>
+  <ul>
+    <li><b>Web-App:</b> Läuft im Browser auf iPhone, Tablet und PC. Beim Laden werden keine fremden
+      Server angefragt, Grafik-Engine und Schriften liegen bei uns.</li>
+    <li><b>Lexi liest vor:</b> Lautsprecher an jeder Nachricht, Schalter für automatisches Vorlesen.
+      Formeln werden gesprochen („1 geteilt durch 2“).</li>
+    <li><b>Schneller Start:</b> Der Startbildschirm wartet höchstens 5 Sekunden.</li>
+    <li><b>Kleinigkeiten:</b> Formeln stehen im Satz, der Lexi-Verlauf zeigt Fotos, der Erfolg heißt jetzt „Fleißig gelernt!“.</li>
+  </ul>
+
+  <h2>Sicherheit und Rollen</h2>
+  <ul>
+    <li>Jede Rolle (Eltern, Kindergerät, Schulleitung, Lehrkraft, Schüler) hat ein eigenes Konto.
+      Was wer darf, prüft der Server bei jedem Zugriff. Dafür gibt es 51 automatische Tests.</li>
+    <li>Der Eltern-PIN liegt verschlüsselt auf dem Server. Nach 5 Fehlversuchen ist er 5 Minuten gesperrt.</li>
+    <li>Codes und Karten sind nur als Prüfsumme gespeichert, nicht im Klartext.</li>
+  </ul>
+
+  <h2>Familien</h2>
+  <ul>
+    <li><b>Kinderhandy koppeln:</b> Eltern zeigen einen QR-Code, das Kind scannt ihn und ist angemeldet.
+      Es sieht nur sein eigenes Profil, keinen Elternbereich, keine Käufe.</li>
+    <li><b>Abmelden nur mit Eltern-PIN.</b> Das Kind kommt allein nicht heraus.</li>
+  </ul>
+
+  <div class="keep">
+  <h2>Schulen</h2>
+  <table>
+    <tr><th style="width:24%">Rolle</th><th>Was neu ist</th></tr>
+    <tr><td>Lerndex (wir)</td><td>Laden eine Schule per Einladungslink ein und legen fest, bis wann sie
+      freigeschaltet ist. Schulen können sich nicht selbst anlegen.</td></tr>
+    <tr><td>Schulleitung</td><td>Registriert die Schule über den Link. Verwaltet nur die Lehrkräfte:
+      anlegen, neue Karte, PIN zurücksetzen, entfernen. Sieht die Lizenz, aber keine Schülerdaten.</td></tr>
+    <tr><td>Lehrkraft</td><td>Meldet sich mit QR-Karte und eigener PIN an. Legt Klassen an, trägt
+      Schüler als Namensliste ein, druckt Schülerkarten und Elternbriefe. Sieht Klassen- und
+      Einzelstatistik. Erstellt Aufgaben aus einem Thema oder Foto und gibt sie an die Klasse.
+      Sieht keine Lexi-Gespräche.</td></tr>
+    <tr><td>Schüler</td><td>Scannt seine Karte am Tablet und ist angemeldet. Auf geteilten Tablets
+      meldet es sich danach ab, das nächste Kind scannt seine Karte.</td></tr>
+    <tr><td>Eltern</td><td>Scannen den Elternbrief und sehen ihr Schulkind im Eltern-Dashboard:
+      Statistik, Lexi-Gespräche, Belohnungen. Kostenlos. Mit der zweiten Karte im Brief lernt
+      das Kind zu Hause mit demselben Fortschritt.</td></tr>
+  </table>
+  </div>
+
+  <h2>Wer sieht was</h2>
+  <table>
+    <tr><th>Daten</th><th>Schulleitung</th><th>Lehrkraft</th><th>Eltern (verbunden)</th><th>Kind</th></tr>
+    <tr><td>Klassen, Schülerliste</td><td class="no">nein</td><td class="yes">alle der Schule</td><td class="no">nein</td><td class="no">nein</td></tr>
+    <tr><td>Statistik eines Kindes</td><td class="no">nein</td><td class="yes">ja</td><td class="yes">nur eigenes Kind</td><td class="yes">eigene</td></tr>
+    <tr><td>Lexi-Gespräche</td><td class="no">nein</td><td class="no">nein</td><td class="yes">nur eigenes Kind</td><td class="yes">eigene</td></tr>
+    <tr><td>Belohnungen festlegen</td><td class="no">nein</td><td class="no">nein</td><td class="yes">ja</td><td class="no">nein</td></tr>
+    <tr><td>Aufgaben verteilen</td><td class="no">nein</td><td class="yes">ja</td><td class="no">nein</td><td>bearbeiten</td></tr>
+    <tr><td>Lehrkräfte verwalten</td><td class="yes">ja</td><td class="no">nein</td><td class="no">nein</td><td class="no">nein</td></tr>
+    <tr><td>Lizenz</td><td>sehen</td><td class="no">nein</td><td class="no">nein</td><td class="no">nein</td></tr>
+  </table>
+
+  <h2>Kosten für Familien</h2>
+  <p>Kinder, die über die Schule kommen, kosten die Eltern nichts, die Schullizenz deckt sie ab.
+  Wer zusätzlich ein eigenes Kind ohne Schule anlegen will, braucht wie bisher ein Abo.</p>
+</section>
+
+<section class="chapter">
+  <div class="kicker">Teil 4</div>
+  <h1>Was geplant ist</h1>
+  <p class="lead">Geordnet nach Dringlichkeit. Die ersten Punkte hängen am Gespräch mit der Schule.</p>
+
+  <h2>Als Nächstes</h2>
+  <ul>
+    <li><span class="tag prio">Schule</span><b>Arbeitsverhalten, Stufen, Privilegien:</b> Die Lehrkraft bewertet
+      in der Lernzeit jedes Kind mit grün, gelb oder rot, in unter einer Minute für 25 Kinder.
+      Daraus ergeben sich Stufen mit Auf- und Abstieg, getrennt von den XP. Die Schule legt ihre
+      Privilegien selbst fest, von „freier Platz“ bis „zu Hause arbeiten“. Die Regeln klären wir vorher mit der Lehrerin.</li>
+    <li><span class="tag prio">Pflicht</span><b>Auftragsverarbeitungsvertrag</b> mit der Schule, bevor echte Schülerdaten eingetragen werden.</li>
+    <li><span class="tag mid">Komfort</span><b>Schülerliste importieren</b> aus der Schulverwaltung (CSV), statt Namen abzutippen.</li>
+    <li><span class="tag mid">Komfort</span><b>Lehreransicht für den PC</b> mit breiter Tabelle statt Handy-Layout.</li>
+  </ul>
+
+  <h2>Danach</h2>
+  <ul>
+    <li><b>Alles in die Play-Store-App übernehmen</b> und dort veröffentlichen. QR-Codes öffnen dann
+      direkt die installierte App statt den Browser.</li>
+    <li><b>Bezahlen im Web</b> für Familien (RevenueCat Web Billing mit Stripe). Den Abo-Status
+      schreibt dann der Server, nicht mehr die App.</li>
+    <li><b>Schutz vor Missbrauch der KI</b> im Browser (App Check mit reCAPTCHA).</li>
+    <li><b>Kleinere Punkte:</b> Lehrkräfte ändern ihre PIN selbst, Schulkonten löschen sich selbst,
+      Quizfragen vorlesen, eine natürlichere Vorlesestimme aus der EU.</li>
+    <li><b>Aufräumen:</b> Das alte PIN-Format der früheren App-Version abschalten, sobald alle Nutzer aktualisiert haben.</li>
+  </ul>
+
+  <h2>Später: eigenes Backend</h2>
+  <p>Wenn der Schulvertrag steht, ziehen die Daten aus Firebase in ein eigenes Laravel-Backend mit
+  MySQL auf einem Server in Deutschland. Die Oberfläche bleibt gleich.</p>
+  <ul>
+    <li>Schule, Klassen und Rollen passen sauberer in eine Datenbank mit Tabellen.</li>
+    <li>KI-Aufrufe laufen nur noch über den Server.</li>
+    <li>Hosting in Deutschland erleichtert das Datenschutzgespräch mit Schulen.</li>
+  </ul>
+</section>
+
+<section class="chapter">
+  <div class="kicker">Teil 5</div>
+  <h1>Anleitung: So funktioniert das Neue</h1>
+  <p class="lead">Der Ablauf von der Einladung einer Schule bis zum Elternbrief, Rolle für Rolle.</p>
+
+  <h2>5.1 Lerndex: Schule einladen und freischalten</h2>
+  <p>Das läuft über ein kleines Werkzeug im Projekt. Es braucht den Firebase-Login auf dem Rechner (<code>firebase login</code>).</p>
+  <pre>python3 tool/admin/schule.py einladen --bis 2027-07-31
+python3 tool/admin/schule.py einladen --name "Grundschule am Wald" --bis 2027-07-31 --tage 30
+python3 tool/admin/schule.py lizenz SCHUL_ID 2027-07-31
+python3 tool/admin/schule.py liste</pre>
+  <ul>
+    <li><b>einladen</b> erzeugt einen Einmal-Link (<code>…/schule/CODE</code>), standardmäßig 30 Tage gültig.
+      Den Link bekommt die Schulleitung per E-Mail. Mit <code>--bis</code> ist die Schule ab der
+      Registrierung bis zu diesem Datum freigeschaltet.</li>
+    <li><b>lizenz</b> verlängert oder setzt die Freischaltung einer bestehenden Schule.</li>
+    <li><b>liste</b> zeigt alle Schulen mit Lizenz, Lehrkräften und offenen Einladungen.</li>
+  </ul>
+  <div class="box"><p>Ohne gültige Lizenz sehen Schüler den Hinweis „Lerndex ist für deine Schule gerade
+  nicht freigeschaltet“. Lehrkräfte können weiter alles verwalten.</p></div>
+
+  <h2>5.2 Schulleitung</h2>
+  <ol class="steps">
+    <li>Einladungslink öffnen, Name der Schule, eigener Name, E-Mail und Passwort eingeben, dem Datenschutz zustimmen.</li>
+    <li>Bestätigungsmail anklicken. Danach öffnet sich automatisch die Verwaltung der Schule.</li>
+    <li><b>Lehrkraft anlegen:</b> Name eingeben. Die QR-Karte erscheint sofort auf dem Bildschirm
+      und lässt sich als Seite mit Anleitung drucken.</li>
+    <li>Im Menü einer Lehrkraft: <b>Neue Karte</b> (alte wird ungültig, PIN bleibt),
+      <b>PIN zurücksetzen</b> (neue Karte, Lehrkraft legt neue PIN fest) oder <b>Entfernen</b>.</li>
+  </ol>
+  <p>Die Schulleitung sieht bewusst keine Klassen und keine Schülerdaten. Unterrichtet sie selbst,
+  legt sie sich zusätzlich als Lehrkraft an und bekommt eine eigene Karte.</p>
+
+  <h2>5.3 Lehrkraft</h2>
+  <ol class="steps">
+    <li><b>Anmelden:</b> Karte mit der Kamera scannen. Beim ersten Mal eine PIN mit 4 bis 6 Ziffern
+      festlegen, danach immer Karte scannen und PIN eingeben. Nach 5 falschen PINs ist die Karte 15 Minuten gesperrt.</li>
+    <li><b>Klasse anlegen:</b> Name (z.B. 4a), Klassenstufe, Schulform. Daraus ergeben sich Fächer und Niveau der Aufgaben.</li>
+    <li><b>Schüler hinzufügen:</b> Ganze Liste auf einmal einfügen, ein Name pro Zeile.
+      Empfehlung: Vorname und Anfangsbuchstabe des Nachnamens.</li>
+    <li><b>Anmeldekarten drucken</b> (Drucker-Symbol): Eine A4-Seite mit 8 Karten zum Ausschneiden.
+      Das Kind scannt seine Karte am Tablet und ist angemeldet. Auf Schul-Tablets meldet es sich
+      danach über das Symbol oben links ab. Für ein einzelnes Kind gibt es im Menü
+      „Anmelde-Code (QR)“, der Code erscheint dann groß auf dem Bildschirm.</li>
+    <li><b>Statistik:</b> Oben in der Klasse: wie viele Kinder diese Woche aktiv waren, Lernzeit pro
+      Kind, Quizze. Pro Kind ein grüner oder oranger Punkt. Ein Tipp aufs Kind öffnet die Einzelstatistik.</li>
+    <li><b>Aufgaben verteilen</b> (Aufgaben-Symbol): Fach wählen, Thema eintippen oder Foto von
+      Arbeitsblatt oder Tafel machen, 5 oder 10 Aufgaben. Lexi erstellt sie, die Lehrkraft wählt
+      unpassende ab und bestimmt, welche Kinder sie bekommen. Die Aufgaben erscheinen im Quiz des
+      Kindes. Unter „Aufgaben“ in der Klasse lassen sie sich wieder zurückziehen.</li>
+    <li><b>Elternbriefe drucken</b> (Drucker-Symbol, „Elternbriefe“): Eine Seite pro Kind. Ein neuer
+      Brief macht den alten ungültig, bereits verbundene Eltern bleiben verbunden.</li>
+  </ol>
+  <div class="box warn"><p>Für Klasse 1 und 2 gibt es eigene Lernspiele. Eigene Aufgaben der Lehrkraft gehen dort noch nicht.</p></div>
+
+  <h2>5.4 Eltern</h2>
+  <ol class="steps">
+    <li>QR-Code <b>„Eltern verbinden“</b> im Brief scannen. Ohne Konto: kostenlos registrieren, mit Konto: anmelden.
+      Danach ist das Kind automatisch verbunden. Alternativ den Code aus dem Brief im Eltern-Dashboard
+      unter „Kind aus der Schule verbinden“ eingeben.</li>
+    <li>Im Eltern-Dashboard steht das Kind unter <b>„Kinder in der Schule“</b> mit Statistik,
+      Belohnungen und Lexi-Gesprächen.</li>
+    <li>QR-Code <b>„Zu Hause lernen“</b> auf dem Gerät scannen, auf dem das Kind lernen soll. Diese Karte
+      bleibt gültig, auch wenn die Schule neue Anmeldekarten druckt.</li>
+    <li>Über das Menü am Kind lässt sich die Verbindung jederzeit trennen. In der Schule ändert sich dadurch nichts.</li>
+  </ol>
+
+  <h2>5.5 Familien ohne Schule</h2>
+  <ul>
+    <li><b>Kinderhandy:</b> Im Eltern-Dashboard am Kind „Gerät verbinden“. Das Kind scannt den QR-Code
+      (15 Minuten gültig, nur einmal). Unter „Kind bearbeiten“ sehen Eltern die verbundenen Geräte
+      und können alle abmelden.</li>
+    <li><b>Abmelden am Kinderhandy:</b> Knopf oben links, nur mit Eltern-PIN.</li>
+    <li>Abo, Quiz, Lexi und Belohnungen funktionieren wie bisher.</li>
+  </ul>
+
+  <div class="keep">
+  <h2>5.6 Technik und Betrieb</h2>
+  <table>
+    <tr><th style="width:30%">Was</th><th>Wie</th></tr>
+    <tr><td>Web-App</td><td><code>lerndex-3775f.web.app</code> (Firebase Hosting). Vor jedem Build
+      <code>.dart_tool/flutter_build</code> und <code>build/web</code> löschen, sonst landet ein alter Stand online.</td></tr>
+    <tr><td>Server-Funktionen</td><td>19 Cloud Functions in Frankfurt (europe-west3).
+      Deploy mit <code>npm run deploy</code> im Ordner <code>functions</code>. Er fasst nur die
+      Lerndex-Funktionen an.</td></tr>
+    <tr><td>Neue Funktion freischalten</td><td>Die Firmenrichtlinie verbietet öffentlichen Aufruf über
+      „allUsers“. Neue Funktionen werden stattdessen im Cloud-Run-Dienst auf „ohne IAM-Prüfung“ gestellt.
+      Kevins Konto darf das inzwischen selbst.</td></tr>
+    <tr><td>Rechte-Regeln</td><td><code>firebase deploy --only firestore:rules,storage</code>.
+      Die vorherigen Regeln liegen gesichert in <code>docs/rules-backup/</code>.</td></tr>
+    <tr><td>Tests</td><td>51 Server-Tests im Emulator, 283 App-Tests.</td></tr>
+    <tr><td>Quelltext</td><td>Branch <code>schule</code>, nicht gemergt. Ein Push auf <code>main</code>
+      startet den Play-Store-Release über Codemagic.</td></tr>
+  </table>
+  </div>
+</section>
+
+<section class="chapter">
+  <div class="kicker">Teil 6</div>
+  <h1>Offene Punkte mit der Schule</h1>
+  <p class="lead">Zum Abhaken im Gespräch. Die rot markierten Punkte müssen geklärt sein, bevor
+  echte Schülerdaten eingetragen werden.</p>
+
+  <h2>Vertrag und Datenschutz</h2>
+  <ul class="check">
+    <li><span class="tag prio">vorher</span>Auftragsverarbeitungsvertrag (Art. 28 DSGVO): Wer unterschreibt für die Schule?</li>
+    <li><span class="tag prio">vorher</span>Datenschutzbeauftragten der Schule einbinden. Braucht die Schule eine Einwilligung der Eltern, oder reicht ihre Rechtsgrundlage für digitale Lernmittel (je nach Bundesland)?</li>
+    <li><span class="tag prio">vorher</span>Informationsblatt für Eltern: welche Daten, wofür, wo gespeichert (Frankfurt), KI über Vertex AI in der EU.</li>
+    <li>Namen der Schüler: Reicht Vorname und Anfangsbuchstabe?</li>
+    <li>Löschung: Was passiert am Schuljahresende, bei Schulwechsel, bei Abgang? Wer löscht, nach welcher Frist?</li>
+    <li>Lexi-Gespräche: Lehrkräfte sehen sie nicht, verbundene Eltern schon. Ist das für die Schule in Ordnung?</li>
+  </ul>
+
+  <h2>Lizenz und Kosten</h2>
+  <ul class="check">
+    <li>Bis wann läuft die Testphase? Was passiert danach?</li>
+    <li>Preis: pro Schule, pro Klasse oder pro Schüler? Laufzeit Schuljahr oder Kalenderjahr?</li>
+    <li>Abrechnung per Rechnung: an wen (Schule, Förderverein, Schulträger)?</li>
+    <li>Elternanbindung ist in der Lizenz enthalten. Passt das so?</li>
+  </ul>
+
+  <h2>Organisation</h2>
+  <ul class="check">
+    <li>Wie viele Schüler, Klassen und Lehrkräfte? Wer ist Schulleitung in Lerndex?</li>
+    <li>Geräte: Schul-Tablets, eigene Handys oder beides? Wie viele Kinder teilen sich ein Tablet?</li>
+    <li>WLAN und Filter: Die Schule muss die Web-App und die Google-Dienste in Frankfurt freigeben. Wer ist dort für die IT zuständig?</li>
+    <li>Schülerliste: In welchem Format kann die Schulverwaltung sie liefern (für den CSV-Import)?</li>
+    <li>Wer druckt und verteilt Anmeldekarten und Elternbriefe? Wann sollen die Eltern sie bekommen?</li>
+    <li>Ansprechpartner auf beiden Seiten, Weg für Fehlermeldungen, Bedarf an einer kurzen Einweisung.</li>
+  </ul>
+
+  <h2>Pädagogik</h2>
+  <ul class="check">
+    <li>Lernzeiten: Wann und wie lange? Sollen Kinder dort frei lernen oder nur verteilte Aufgaben bearbeiten?</li>
+    <li>Vorlesen bei Förderbedarf: Reicht die Gerätestimme, oder braucht es eine bessere Stimme? Sollen auch Quizfragen vorgelesen werden?</li>
+    <li>Klasse 1 und 2: Reichen die eigenen Lernspiele, oder werden dort auch eigene Aufgaben gebraucht?</li>
+    <li>Welche Statistiken helfen den Lehrkräften wirklich? Fehlt etwas, z.B. Trefferquote pro Thema?</li>
+  </ul>
+
+  <h2>Arbeitsverhalten und Stufen (für Phase 5)</h2>
+  <ul class="check">
+    <li>Wie viele Stufen? Wie viele grüne Bewertungen bis zur nächsten Stufe?</li>
+    <li>Was bewirkt Rot: eine Stufe runter oder zurück auf null? Und Gelb?</li>
+    <li>Bewertet wird pro Lernzeit oder pro Tag? Darf jede Lehrkraft jedes Kind bewerten?</li>
+    <li>Welche Privilegien gibt es, und wer pflegt die Liste?</li>
+    <li>Sehen Kinder und Eltern die Bewertung und die Stufe?</li>
+  </ul>
+</section>
+
+</body>
+</html>
