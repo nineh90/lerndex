@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lerndex/src/features/auth/data/child_device_repository.dart';
 import 'package:lerndex/src/features/auth/domain/account.dart';
+import 'package:lerndex/src/features/school/data/parent_link_repository.dart';
 import 'package:lerndex/src/features/school/data/school_repository.dart';
 import 'package:lerndex/src/features/school/domain/school_models.dart';
 import 'package:lerndex/src/features/school/presentation/school_class_screen.dart';
@@ -70,5 +71,27 @@ void main() {
     expect(svg, startsWith('<svg'));
     expect(RegExp(r'viewBox="0 0 (\d+) \1"').hasMatch(svg), isTrue);
     expect(svg, contains('h1v1h-1z'));
+  });
+
+  test('Elternbrief: Link, Code zum Abtippen, Namen maskiert', () {
+    expect(parentLinkCodeFromPath('/e/K7MXQ2PA'), 'K7MXQ2PA');
+    expect(parentLinkCodeFromPath('/e/K7MX-Q2PA/'), 'K7MX-Q2PA');
+    expect(parentLinkCodeFromPath('/k/K7MXQ2PA'), isNull);
+    expect(pairingCodeFromPath('/e/K7MXQ2PA'), isNull);
+
+    final letter = ParentLetter(
+      studentName: '<b>Mia</b>',
+      className: '4a',
+      schoolName: 'Schule & Co',
+      parentCode: 'K7MXQ2PA',
+      homeLink: Uri.parse('https://app.lerndex.de/s/ABCDEFGHJKLMNPQRSTUV'),
+    );
+    expect(letter.displayCode, 'K7MX-Q2PA');
+    final html = parentLettersHtml([letter]);
+    expect(html, isNot(contains('<b>Mia</b>')));
+    expect(html, contains('&lt;b&gt;Mia&lt;/b&gt;'));
+    expect(html, contains('Schule &amp; Co'));
+    expect(html, contains('K7MX-Q2PA'));
+    expect('<svg'.allMatches(html).length, 2);
   });
 }

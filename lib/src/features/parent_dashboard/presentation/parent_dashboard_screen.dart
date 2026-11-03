@@ -1,6 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import '../../school/data/parent_link_repository.dart';
+import '../../school/presentation/linked_school_children_section.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../auth/data/profile_repository.dart';
 import 'live_child_stat_card.dart';
@@ -73,7 +75,7 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
               onPressed: () => Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (_) => SchoolHomeScreen(membership: m),
+                  builder: (_) => schoolScreenFor(m),
                 ),
               ),
             ),
@@ -84,7 +86,10 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
           // ── Eigentlicher Inhalt ──────────────────────────────────────
           childrenAsync.when(
             data: (children) {
-              if (children.isEmpty) {
+              final hasSchoolChildren =
+                  (ref.watch(schoolChildLinksProvider).value ?? const [])
+                      .isNotEmpty;
+              if (children.isEmpty && !hasSchoolChildren) {
                 return Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -100,6 +105,8 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
                         'Tippe unten auf „Kind hinzufügen"',
                         style: TextStyle(fontSize: 14, color: Colors.grey[400]),
                       ),
+                      const SizedBox(height: 24),
+                      const LinkedSchoolChildrenSection(),
                     ],
                   ),
                 );
@@ -126,6 +133,7 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
                                 .toList(),
                       ),
                     ),
+                    const LinkedSchoolChildrenSection(),
                   ],
                 ),
               );

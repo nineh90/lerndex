@@ -19,7 +19,10 @@ import 'package:lerndex/src/features/auth/domain/account.dart';
 class ManageRewardsScreen extends ConsumerStatefulWidget {
   final ChildModel child;
 
-  const ManageRewardsScreen({super.key, required this.child});
+  /// Konto, unter dem das Kind liegt (verbundenes Schulkind: `school_<id>`).
+  final String? ownerUid;
+
+  const ManageRewardsScreen({super.key, required this.child, this.ownerUid});
 
   @override
   ConsumerState<ManageRewardsScreen> createState() =>
@@ -71,7 +74,7 @@ class _ManageRewardsScreenState extends ConsumerState<ManageRewardsScreen>
       body: StreamBuilder<List<RewardModel>>(
         stream: ref
             .watch(rewardServiceProvider)
-            .getRewardsStream(userId: user.ownerUid, childId: widget.child.id),
+            .getRewardsStream(userId: (widget.ownerUid ?? user.ownerUid), childId: widget.child.id),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(
@@ -112,17 +115,17 @@ class _ManageRewardsScreenState extends ConsumerState<ManageRewardsScreen>
             children: [
               _buildRewardsList(
                 allRelevant,
-                user.ownerUid,
+                (widget.ownerUid ?? user.ownerUid),
                 'Noch keine Belohnungen erstellt',
               ),
               _buildRewardsList(
                 activeRewards,
-                user.ownerUid,
+                (widget.ownerUid ?? user.ownerUid),
                 'Keine aktiven Belohnungen',
               ),
               _buildRewardsList(
                 claimedRewards,
-                user.ownerUid,
+                (widget.ownerUid ?? user.ownerUid),
                 'Noch keine Belohnungen eingelöst',
               ),
             ],
@@ -132,7 +135,7 @@ class _ManageRewardsScreenState extends ConsumerState<ManageRewardsScreen>
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showCreateRewardDialog(
           context,
-          ref.watch(authStateChangesProvider).value!.ownerUid,
+          widget.ownerUid ?? ref.watch(authStateChangesProvider).value!.ownerUid,
         ),
         backgroundColor: Colors.deepPurple,
         foregroundColor: Colors.white,

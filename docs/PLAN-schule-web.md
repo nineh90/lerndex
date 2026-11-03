@@ -302,3 +302,32 @@ Gewinn:
 
 Aufwand: Die ganze Datenschicht inklusive Echtzeit-Streams wird ersetzt. Deshalb in Phase 3
 den Datenzugriff zentral bündeln, dann ist es ein Austausch an einer Stelle statt an 113.
+
+## Phase 4b: Lehrkräfte per Karte, Aufgaben, Statistik, Eltern (03.11.2026, Branch `schule`)
+
+Entscheidungen mit Kevin (02.11.2026): Lehrer-Anmeldung per QR-Karte + PIN; die Schulleitung
+verwaltet nur Lehrkräfte und sieht keine Schülerdaten; Elternanbindung kostet nichts (Schul-
+lizenz), eigene Kinder brauchen weiter ein Abo; Eltern sehen auch Lexi-Gespräche aus der
+Schulzeit; Fortschritt aus einem Familienkonto wird nicht übernommen.
+
+- **Lehrkräfte:** `createTeacher`, `reissueTeacherCard` (optional PIN zurücksetzen),
+  `redeemTeacherCard` (PIN festlegen bzw. prüfen, Sperre 15 Min. nach 5 Fehlversuchen),
+  `removeTeacher` (Kartenlehrkraft: Konto, Karten, PIN weg). Druckvorlage mit Anleitung.
+  Einladungslinks und Beitritt per Code für Lehrkräfte gibt es nicht mehr.
+- **Statistik:** Klassenübersicht (aktiv diese Woche, Lernzeit pro Kind, Quizze) und pro Kind
+  die Statistikseite der Eltern ohne Lexi und Familienbelohnungen.
+- **Aufgaben:** Thema eintippen oder Foto (Arbeitsblatt, Tafelbild). Prompt-Modus
+  `teacherTopic`: Thema verbindlich für alle Fragen. Lehrkraft prüft, wählt Kinder, jedes Kind
+  bekommt ein freigegebenes Paket in `generated_batches` (`assignmentId`, `classId`).
+  Zurückziehen löscht alle Pakete des Auftrags.
+- **Elternbrief:** eine Seite pro Kind mit „Eltern verbinden“ (`…/e/CODE`) und „Zu Hause
+  lernen“ (Heimkarte, bleibt beim Neudruck der Schulkarten gültig). Ohne Anmeldung merkt sich
+  die App den Code und löst ihn nach Anmeldung/Registrierung im Familien-Dashboard ein.
+  Eltern ohne Abo, aber mit Schulkind, landen nicht auf der Abo-Seite.
+- **Tests:** 51 Emulator-Tests, 283 Flutter-Tests; Schulleitung → Lehrkraft → Klasse →
+  Statistik → Aufgaben und Elternbrief → Eltern-Dashboard im Emulator durchgeklickt.
+- **Deploy offen:** Functions (neu: createTeacher, reissueTeacherCard, redeemTeacherCard,
+  createParentLetters, linkSchoolChild, unlinkSchoolChild; alt löschen: createTeacherInvite,
+  joinSchool), Firestore- und Storage-Regeln, Web-App.
+- **Offen:** Elternbrief fürs Kinderhandy in der Android-App (dort öffnet der QR-Code den
+  Browser), Kartenlehrkräfte können ihre PIN nicht selbst ändern (nur Reset über die Leitung).

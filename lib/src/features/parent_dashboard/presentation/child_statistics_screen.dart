@@ -133,7 +133,7 @@ class ChildStatisticsScreen extends ConsumerWidget {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => TutorHistoryScreen(child: child),
+                      builder: (_) => TutorHistoryScreen(child: child, ownerUid: ownerUid),
                     ),
                   );
                 },

@@ -1,5 +1,6 @@
 import 'package:qr/qr.dart';
 
+import '../data/parent_link_repository.dart';
 import '../domain/school_models.dart';
 
 // ============================================================================
@@ -187,3 +188,83 @@ String teacherCardHtml(TeacherCard card) => '''<!DOCTYPE html>
 </main>
 </body>
 </html>''';
+
+/// Elternbriefe: eine A4-Seite pro Kind mit zwei QR-Codes – „Eltern
+/// verbinden“ (Elternkonto, Statistik, Belohnungen) und „Zu Hause lernen“
+/// (Anmeldung des Kindes auf dem eigenen Gerät).
+String parentLettersHtml(List<ParentLetter> letters) {
+  final pages = letters
+      .map(
+        (l) =>
+            '''
+<section class="letter">
+  <div class="school">${_escape(l.schoolName)}</div>
+  <h1>Lerndex für ${_escape(l.studentName)}</h1>
+  <p class="meta">Klasse ${_escape(l.className)}</p>
+  <p>Liebe Eltern,</p>
+  <p>in der Schule lernt ${_escape(l.studentName)} mit Lerndex. Mit diesem Brief können Sie
+  zu Hause dabei sein. Beides ist für Sie kostenlos.</p>
+  <div class="boxes">
+    <div class="box">
+      <h2>1. Eltern verbinden</h2>
+      <div class="qr">${qrSvg(l.parentLink.toString())}</div>
+      <p>Mit der Kamera Ihres Handys scannen und mit Ihrem Lerndex-Konto anmelden
+      (oder kostenlos eins anlegen). Danach sehen Sie, was Ihr Kind gelernt hat, und
+      können Belohnungen festlegen.</p>
+      <p class="code">Oder in der App unter „Kind aus der Schule verbinden“:<br><b>${l.displayCode}</b></p>
+    </div>
+    <div class="box">
+      <h2>2. Zu Hause lernen</h2>
+      <div class="qr">${qrSvg(l.homeLink.toString())}</div>
+      <p>Mit dem Handy oder Tablet scannen, auf dem Ihr Kind lernen soll. Dann ist
+      ${_escape(l.studentName)} dort angemeldet und lernt mit demselben Fortschritt wie in der Schule.</p>
+    </div>
+  </div>
+  <p class="small">Bitte geben Sie diesen Brief nicht weiter. Die Codes gehören nur zu Ihrem
+  Kind. Ist er verloren gegangen, stellt die Lehrkraft einen neuen aus, der alte gilt dann nicht mehr.</p>
+</section>''',
+      )
+      .join('\n');
+
+  return '''<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lerndex – Elternbriefe ${letters.isEmpty ? '' : _escape(letters.first.className)}</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+         color: #222; background: #F5F3FF; line-height: 1.45; }
+  .bar { background: #6B21A8; color: #fff; padding: 14px 20px; display: flex;
+         justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .bar button { background: #fff; color: #6B21A8; border: 0; border-radius: 10px;
+                padding: 10px 18px; font-size: 15px; font-weight: 600; cursor: pointer; }
+  .letter { background: #fff; max-width: 760px; margin: 20px auto; padding: 28px 32px;
+            border-radius: 14px; }
+  .school { color: #6B21A8; font-weight: 600; font-size: 13px; }
+  h1 { margin: 6px 0 0; font-size: 24px; }
+  .meta { margin: 0 0 16px; color: #555; }
+  .boxes { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 18px 0; }
+  .box { border: 2px dashed #C4B5FD; border-radius: 12px; padding: 14px; font-size: 14px; }
+  .box h2 { margin: 0 0 8px; font-size: 17px; color: #4C1D95; }
+  .qr svg { width: 150px; height: 150px; display: block; margin: 0 auto 8px; }
+  .code b { font-family: monospace; font-size: 18px; letter-spacing: 2px; }
+  .small { font-size: 12px; color: #666; }
+  @media (max-width: 560px) { .boxes { grid-template-columns: 1fr; } .letter { padding: 20px; } }
+  @media print {
+    @page { size: A4; margin: 15mm; }
+    body { background: #fff; }
+    .bar { display: none; }
+    .letter { margin: 0; padding: 0; max-width: none; border-radius: 0; break-after: page; }
+    .qr svg { width: 40mm; height: 40mm; }
+  }
+</style>
+</head>
+<body>
+<div class="bar"><span>Elternbriefe · ${letters.length} ${letters.length == 1 ? 'Kind' : 'Kinder'}</span>
+<button onclick="window.print()">Drucken</button></div>
+$pages
+</body>
+</html>''';
+}

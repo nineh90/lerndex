@@ -14,6 +14,8 @@ import '../school/data/school_repository.dart';
 import '../school/presentation/school_home_screen.dart';
 import '../school/presentation/school_signup_screen.dart';
 import '../school/presentation/teacher_card_screen.dart';
+import '../school/data/parent_link_repository.dart';
+import '../school/presentation/parent_link_intro_screen.dart';
 import '../auth/presentation/login_screen.dart';
 import '../student_dashboard/presentation/student_dashboard_screen.dart';
 import '../../shared/web/browser_url.dart';
@@ -69,6 +71,9 @@ class _LerndexSplashScreenState extends ConsumerState<LerndexSplashScreen>
 
   /// QR-Karte einer Lehrkraft
   String? _teacherCardToken;
+
+  /// Elternbrief gescannt, noch nicht angemeldet
+  bool _parentLinkIntro = false;
 
   /// Kinder-Link gescannt, während ein Eltern-/Lehrerkonto angemeldet ist
   String? _conflictPairingCode;
@@ -201,6 +206,20 @@ class _LerndexSplashScreenState extends ConsumerState<LerndexSplashScreen>
         if (user == null || !user.isChildDevice) _signupCode = schoolCode;
       }
 
+      // Elternbrief „Eltern verbinden“ (…/e/CODE): Code merken, eingelöst
+      // wird er im Familien-Dashboard (nach der Anmeldung).
+      final parentCode = kIsWeb ? parentLinkCodeFromPath(Uri.base.path) : null;
+      if (parentCode != null) {
+        replaceBrowserPath('/');
+        if (user == null ||
+            (!user.isChildDevice &&
+                !user.isTeacherDevice &&
+                !await authRepo.isSchoolAccount())) {
+          await ref.read(parentLinkRepositoryProvider).rememberPending(parentCode);
+          if (user == null) _parentLinkIntro = true;
+        }
+      }
+
       // QR-Karte einer Lehrkraft (…/l/TOKEN): Anmeldung mit PIN.
       final teacherToken = kIsWeb ? teacherCardFromPath(Uri.base.path) : null;
       if (teacherToken != null) {
@@ -250,7 +269,10 @@ class _LerndexSplashScreenState extends ConsumerState<LerndexSplashScreen>
         }
       }
 
-      if (_teacherCardToken != null && !(user?.isTeacherDevice ?? false)) {
+      if (_parentLinkIntro) {
+        destination = 'parentLinkIntro';
+        _setProgress(1.0, 'Weiter...');
+      } else if (_teacherCardToken != null && !(user?.isTeacherDevice ?? false)) {
         destination = 'teacherCard';
         _setProgress(1.0, 'Weiter...');
       } else if (_signupCode != null) {
@@ -446,6 +468,9 @@ class _LerndexSplashScreenState extends ConsumerState<LerndexSplashScreen>
         break;
       case 'schoolSignup':
         target = SchoolSignupScreen(code: _signupCode!);
+        break;
+      case 'parentLinkIntro':
+        target = const ParentLinkIntroScreen();
         break;
       case 'teacherCard':
         target = TeacherCardScreen(token: _teacherCardToken!);

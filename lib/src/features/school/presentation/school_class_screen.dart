@@ -7,6 +7,7 @@ import '../../../shared/web/browser_url.dart';
 import '../../auth/domain/account.dart';
 import '../../auth/domain/child_model.dart';
 import '../../parent_dashboard/presentation/child_statistics_screen.dart';
+import '../data/parent_link_repository.dart';
 import '../data/school_repository.dart';
 import '../../generated_tasks/data/generated_task_models.dart';
 import '../../generated_tasks/data/generated_task_repository.dart';
@@ -64,10 +65,22 @@ class SchoolClassScreen extends ConsumerWidget {
               ),
             ),
           if (students.isNotEmpty)
-            IconButton(
-              tooltip: 'Anmeldekarten für alle drucken',
+            PopupMenuButton<String>(
+              tooltip: 'Drucken',
               icon: const Icon(Icons.print),
-              onPressed: () => _printCards(context, ref, students),
+              onSelected: (v) => v == 'letters'
+                  ? _parentLetters(context, ref, students)
+                  : _printCards(context, ref, students),
+              itemBuilder: (_) => const [
+                PopupMenuItem(
+                  value: 'cards',
+                  child: Text('Anmeldekarten (Schule)'),
+                ),
+                PopupMenuItem(
+                  value: 'letters',
+                  child: Text('Elternbriefe'),
+                ),
+              ],
             ),
           if (students.isEmpty)
             IconButton(
@@ -159,6 +172,8 @@ class SchoolClassScreen extends ConsumerWidget {
               _openStats(context, s);
             case 'card':
               _printCards(context, ref, [s]);
+            case 'letter':
+              _parentLetters(context, ref, [s]);
             case 'rename':
               _rename(context, ref, s);
             case 'delete':
@@ -168,6 +183,7 @@ class SchoolClassScreen extends ConsumerWidget {
         itemBuilder: (_) => const [
           PopupMenuItem(value: 'stats', child: Text('Statistik')),
           PopupMenuItem(value: 'card', child: Text('Anmelde-Code (QR)')),
+          PopupMenuItem(value: 'letter', child: Text('Elternbrief')),
           PopupMenuItem(value: 'rename', child: Text('Umbenennen')),
           PopupMenuItem(
             value: 'delete',
@@ -189,6 +205,97 @@ class SchoolClassScreen extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  /// Elternbriefe: im Browser als Druckseite (eine Seite pro Kind), in den
+  /// Apps die Eltern-Codes zum Weitergeben.
+  Future<void> _parentLetters(
+    BuildContext context,
+    WidgetRef ref,
+    List<ChildModel> students,
+  ) async {
+    Object? tab;
+    final single = students.length == 1;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(
+          single
+              ? 'Elternbrief für ${students.first.name}'
+              : 'Elternbriefe für ${students.length} Kinder',
+        ),
+        content: const Text(
+          'Jeder Brief hat zwei QR-Codes: Damit verbinden sich die Eltern mit '
+          'ihrem Kind (Statistik, Belohnungen, ohne Abo), und das Kind meldet '
+          'sich zu Hause auf dem eigenen Gerät an. Ältere Elternbriefe gelten '
+          'danach nicht mehr. Bereits verbundene Eltern bleiben verbunden.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Abbrechen'),
+          ),
+          FilledButton(
+            onPressed: () {
+              tab = openBlankTab();
+              Navigator.pop(ctx, true);
+            },
+            child: const Text('Briefe erstellen'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !context.mounted) return;
+    try {
+      final letters = await ref
+          .read(parentLinkRepositoryProvider)
+          .createLetters(
+            students,
+            className: schoolClass.name,
+            schoolName: schoolName,
+          );
+      if (tab != null) {
+        writeHtmlToTab(tab, parentLettersHtml(letters));
+      } else if (context.mounted) {
+        await showDialog<void>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Eltern-Codes'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                for (final l in letters)
+                  ListTile(
+                    dense: true,
+                    title: Text(l.studentName),
+                    trailing: SelectableText(
+                      l.displayCode,
+                      style: const TextStyle(fontFamily: 'monospace'),
+                    ),
+                  ),
+                const SizedBox(height: 8),
+                Text(
+                  'Zum Drucken der Briefe die Klasse im Browser öffnen.',
+                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                ),
+              ],
+            ),
+            actions: [
+              FilledButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Fertig'),
+              ),
+            ],
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(schoolErrorText(e))));
+      }
+    }
   }
 
   Future<void> _addStudents(BuildContext context, WidgetRef ref) async {

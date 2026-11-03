@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../school/data/parent_link_repository.dart';
+import '../../school/presentation/school_section.dart' show schoolErrorText;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lerndex/src/features/auth/domain/child_model.dart';
 import 'package:lerndex/src/features/auth/presentation/widgets/child_limit_exceeded_screen.dart';
@@ -36,6 +38,33 @@ class _FamilyDashboardScreenState extends ConsumerState<FamilyDashboardScreen> {
   final _childListKey = GlobalKey();
 
   @override
+  void initState() {
+    super.initState();
+    // Eltern-Code aus einem gescannten Elternbrief (…/e/CODE), der vor der
+    // Anmeldung gemerkt wurde: jetzt einlösen.
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final messenger = ScaffoldMessenger.of(context);
+      try {
+        final name = await ref
+            .read(parentLinkRepositoryProvider)
+            .redeemPending();
+        if (name != null) {
+          messenger.showSnackBar(
+            SnackBar(content: Text('$name ist jetzt mit Ihrem Konto verbunden.')),
+          );
+        }
+      } catch (e) {
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text('Elternbrief: ${schoolErrorText(e)}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     final childrenAsync = ref.watch(childrenListProvider);
     final pendingRewards = ref.watch(totalPendingRewardsProvider);
@@ -49,10 +78,16 @@ class _FamilyDashboardScreenState extends ConsumerState<FamilyDashboardScreen> {
       error: (_, _) => true,
     );
 
+    // Mit der Schule verbundene Kinder brauchen kein Abo (Schullizenz). Erst
+    // für eigene Kinder ist es nötig (das Kinderlimit ohne Abo ist 0).
+    final schoolLinks = ref.watch(schoolChildLinksProvider);
+    final hasSchoolChildren =
+        schoolLinks.value?.isNotEmpty ?? schoolLinks.isLoading;
+
     // Kein Abo → Paywall als vollständiger Screen (nicht wegklickbar).
     // Parental Gate davor: Kinder können diesen Screen erreichen, Käufe
     // brauchen in Kids-Apps eine Erwachsenen-Schranke (Apple 1.3).
-    if (!hasAccess) {
+    if (!hasAccess && !hasSchoolChildren) {
       return ParentalGateScreen(
         builder: (_) => const PaywallScreen(canDismiss: false),
       );
@@ -148,10 +183,14 @@ class _FamilyDashboardScreenState extends ConsumerState<FamilyDashboardScreen> {
                         style: TextStyle(fontSize: 18, color: Colors.grey),
                       ),
                       const SizedBox(height: 8),
-                      const Text(
-                        'Öffne das Eltern-Dashboard um ein Kind hinzuzufügen',
+                      Text(
+                        hasSchoolChildren
+                            ? 'Schulkinder lernen mit der Karte „Zu Hause '
+                                  'lernen“ aus dem Elternbrief. Statistik und '
+                                  'Belohnungen finden Sie im Eltern-Dashboard.'
+                            : 'Öffne das Eltern-Dashboard um ein Kind hinzuzufügen',
                         textAlign: TextAlign.center,
-                        style: TextStyle(color: Colors.grey),
+                        style: const TextStyle(color: Colors.grey),
                       ),
                       const SizedBox(height: 24),
                       ElevatedButton.icon(

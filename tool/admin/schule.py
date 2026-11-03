@@ -124,7 +124,9 @@ def cmd_liste(_args):
         for m in members:
             f = m["fields"]
             role = "Schulleitung" if f.get("role", {}).get("stringValue") == "admin" else "Lehrkraft"
-            print(f"    {f.get('email', {}).get('stringValue', '?')}  {role}")
+            who = f.get('email', {}).get('stringValue') or f.get('name', {}).get('stringValue', '?')
+            login = "  (Karte + PIN)" if f.get('login', {}).get('stringValue') == 'card' else ""
+            print(f"    {who}  {role}{login}")
     signups = (api("GET", f"{DB}/schoolSignups?pageSize=300") or {}).get("documents", [])
     if signups:
         print("\nOffene Einladungen:")

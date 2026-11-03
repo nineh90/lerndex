@@ -96,20 +96,30 @@ Der Großteil der Provider nutzt noch die Legacy-APIs (`StateNotifierProvider`, 
 - `schoolSignups/{code}` — Einladungen für neue Schulen (von Lerndex), nur Functions
 - `users/school_{sid}` und `users/school_{sid}/children/{id}` — Schul-Konto (Lizenz
   `schoolLicenseUntil`) und Schüler, aufgebaut wie Eltern-Konto und Kinder
-- `studentCards/{sha256}`, `schoolInvites/{code}` — QR-Karten und Einladungen, nur Functions
+- `studentCards/{sha256}` (Schülerkarten, `kind: "home"` = Heimkarte aus dem Elternbrief),
+  `teacherCards/{sha256}`, `parentLinks/{code}` — nur Functions
+- `schools/{sid}/members/{teacherId}/private/pin` — PIN der Lehrkraft, nur Functions
+- `users/{uid}/linkedChildren/{schoolId}_{studentId}` — mit dem Elternkonto verbundene Schulkinder
 - Kinder-Limit hängt vom Abo-Plan ab (Starter: 1, Single: 1, Family: 3 + käufliche Slots)
 
 ### Konten und Rollen
 
 - **Eltern:** E-Mail/Google/Apple, kein `role`-Claim.
-- **Schule/Lehrkraft:** Konto mit Claims `{ schoolId, schoolRole }` (`admin` oder `teacher`),
-  gesetzt von `functions/school.js`. Sieht alle Klassen der Schule, aber keine Lexi-Chats der
-  Schüler. Schulen legt nur Lerndex an: `python3 tool/admin/schule.py einladen` erzeugt einen
-  Link `…/schule/CODE`, darüber registriert sich die Schulleitung; Lehrkräfte kommen über
-  `…/lehrer/CODE`. Neue Konten über diese Links sind **reine Schulkonten**
-  (`users/{uid}.accountType = "school"`): Die App zeigt nur den Schulbereich
-  (`SchoolRootScreen`), keinen Elternbereich und kein Abo. Wer mit einem Elternkonto beitritt,
-  behält beides. Lizenz: `python3 tool/admin/schule.py lizenz SCHUL_ID JJJJ-MM-TT`.
+- **Schulleitung:** E-Mail-Konto mit Claims `{ schoolId, schoolRole: "admin" }`, registriert über
+  den Einladungslink von Lerndex (`python3 tool/admin/schule.py einladen` → `…/schule/CODE`).
+  Reines Schulkonto (`users/{uid}.accountType = "school"`, `SchoolAdminScreen`): verwaltet nur
+  Lehrkräfte (anlegen, Karte neu, PIN zurücksetzen, entfernen) und sieht die Lizenz, keine
+  Schülerdaten. Lizenz: `python3 tool/admin/schule.py lizenz SCHUL_ID JJJJ-MM-TT`.
+- **Lehrkraft:** QR-Karte (`…/l/TOKEN`) + eigene PIN (beim ersten Scannen festgelegt, Prüfung in
+  `redeemTeacherCard`, Sperre nach 5 Fehlversuchen). Konto `teacher:<schoolId>:<teacherId>`
+  mit `{ role: "teacher", schoolId, schoolRole: "teacher" }`. Sieht alle Klassen der Schule,
+  legt Klassen/Schüler an, druckt Schülerkarten und Elternbriefe, verteilt Aufgaben
+  (`ClassTaskScreen`), sieht Statistiken, aber keine Lexi-Chats.
+- **Verbundene Eltern:** Elternbrief der Lehrkraft (`createParentLetters`) mit Eltern-Code
+  (`…/e/CODE`, `linkSchoolChild`) und Heimkarte für das Kind. Die Eltern-UID steht in
+  `parentUids` am Schülerdokument (nur Functions schreiben das). Eltern sehen das Schulkind im
+  Eltern-Dashboard (Statistik, Lexi, Belohnungen) und brauchen dafür kein Abo; eigene Kinder
+  weiter nur mit Abo.
 - **Kindergerät:** eigenes Konto `kid:<parentUid>:<childId>` mit Claims
   `{ role: "student", parentUid, childId }`, angelegt von der Cloud Function
   `redeemPairingCode` (QR-Code/Code aus dem Elternbereich). Schülergeräte genauso

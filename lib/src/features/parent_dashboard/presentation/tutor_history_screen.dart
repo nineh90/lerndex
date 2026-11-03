@@ -17,7 +17,10 @@ import 'package:lerndex/src/features/auth/domain/account.dart';
 class TutorHistoryScreen extends ConsumerStatefulWidget {
   final ChildModel child;
 
-  const TutorHistoryScreen({super.key, required this.child});
+  /// Konto, unter dem das Kind liegt (verbundenes Schulkind: `school_<id>`).
+  final String? ownerUid;
+
+  const TutorHistoryScreen({super.key, required this.child, this.ownerUid});
 
   @override
   ConsumerState<TutorHistoryScreen> createState() => _TutorHistoryScreenState();
@@ -49,7 +52,7 @@ class _TutorHistoryScreenState extends ConsumerState<TutorHistoryScreen> {
     try {
       final snapshot = await FirebaseFirestore.instance
           .collection('users')
-          .doc(user.ownerUid)
+          .doc((widget.ownerUid ?? user.ownerUid))
           .collection('children')
           .doc(widget.child.id)
           .get();
@@ -86,14 +89,14 @@ class _TutorHistoryScreenState extends ConsumerState<TutorHistoryScreen> {
           IconButton(
             icon: const Icon(Icons.delete_sweep),
             tooltip: 'Alle Gespräche löschen',
-            onPressed: () => _confirmDeleteAll(context, user.ownerUid),
+            onPressed: () => _confirmDeleteAll(context, (widget.ownerUid ?? user.ownerUid)),
           ),
         ],
       ),
       body: Column(
         children: [
           _buildFilterBar(),
-          Expanded(child: _buildSessionList(user.ownerUid)),
+          Expanded(child: _buildSessionList((widget.ownerUid ?? user.ownerUid))),
         ],
       ),
     );
