@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'dart:math';
 import 'package:cross_file/cross_file.dart';
 import 'package:firebase_ai/firebase_ai.dart';
+import '../features/auth/data/child_device_repository.dart' show lerndexFunctions;
+import 'ai_model.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -90,6 +92,45 @@ class VertexAIService {
     responseSchema: responseSchema,
   );
 
+  /// Erzeugt ein KI-Modell mit der App-weiten Konfiguration (Modell, Region,
+  /// Safety-Settings, Denk-Stufe). Im Browser läuft es über die Cloud Function
+  /// `aiGenerate` (functions/ai.js), sonst direkt über firebase_ai. Die
+  /// Function setzt Modell, Region und Safety-Settings selbst – dieselben Werte
+  /// wie hier, siehe [kidSafetySettings].
+  static AiModel createModel({
+    required int maxOutputTokens,
+    String? systemPrompt,
+    String? responseMimeType,
+    Schema? responseSchema,
+  }) {
+    final config = generationConfig(
+      maxOutputTokens: maxOutputTokens,
+      responseMimeType: responseMimeType,
+      responseSchema: responseSchema,
+    );
+    final system = systemPrompt == null ? null : Content.system(systemPrompt);
+    if (useServerAi) {
+      return ServerAiModel(
+        functions: lerndexFunctions(),
+        generationConfig: config,
+        systemInstruction: system,
+      );
+    }
+    return DirectAiModel(
+      vertexEu().generativeModel(
+        model: geminiModel,
+        generationConfig: config,
+        systemInstruction: system,
+        safetySettings: kidSafetySettings(),
+      ),
+    );
+  }
+
+  /// Im Browser immer über den eigenen Server (kein Schlüssel im Browser,
+  /// kein reCAPTCHA). Zum Testen in den Apps: --dart-define=SERVER_AI=true
+  static bool get useServerAi =>
+      kIsWeb || const bool.fromEnvironment('SERVER_AI');
+
   /// Antwort-Schema der Early-Learner-Malprüfung (Zahlen, Buchstaben,
   /// Formen): erzwingt valides JSON statt es aus Freitext zu fischen.
   static final Schema drawingCheckSchema = Schema.object(
@@ -102,16 +143,11 @@ class VertexAIService {
 
   /// Modell für die Prüfung von Kinder-Zeichnungen (Early-Learner-Screens,
   /// Nachzeichnen-Spiel). Mit [responseSchema] antwortet es als JSON.
-  static GenerativeModel drawingCheckModel({Schema? responseSchema}) =>
-      vertexEu().generativeModel(
-        model: geminiModel,
-        generationConfig: generationConfig(
-          maxOutputTokens: 1024,
-          responseMimeType: responseSchema != null ? 'application/json' : null,
-          responseSchema: responseSchema,
-        ),
-        safetySettings: kidSafetySettings(),
-      );
+  static AiModel drawingCheckModel({Schema? responseSchema}) => createModel(
+    maxOutputTokens: 1024,
+    responseMimeType: responseSchema != null ? 'application/json' : null,
+    responseSchema: responseSchema,
+  );
 
   /// Safety-Settings für jedes Modell, das Kindern Inhalte liefert.
   /// Achtung Semantik: HarmBlockThreshold.low = „blocke ab niedriger
@@ -170,10 +206,10 @@ class VertexAIService {
 
   // Tutor-Modell-Cache: ein GenerativeModel pro childId (inkl. systemInstruction).
   // Wird nur neu erstellt wenn sich das Kind ändert – nicht bei jeder Nachricht.
-  final Map<String, GenerativeModel> _tutorModels = {};
+  final Map<String, AiModel> _tutorModels = {};
 
-  GenerativeModel? _taskGeneratorModel;
-  GenerativeModel? _quizModel;
+  AiModel? _taskGeneratorModel;
+  AiModel? _quizModel;
 
   bool _taskInitialized = false;
   bool _quizInitialized = false;
@@ -194,7 +230,7 @@ class VertexAIService {
 
   /// Gibt das gecachte Tutor-Modell für das Kind zurück.
   /// Erstellt es beim ersten Aufruf (oder nach Profil-Änderung) neu.
-  GenerativeModel _getTutorModel(ChildModel child) {
+  AiModel _getTutorModel(ChildModel child) {
     final cacheKey =
         '${child.id}_${child.level}_${child.grade}_${child.schoolType}';
     if (_tutorModels.containsKey(cacheKey)) {
@@ -204,11 +240,9 @@ class VertexAIService {
     debugPrint(
       '🚀 Tutor-Modell wird erstellt (childId: ${child.id})...',
     );
-    final model = vertexEu().generativeModel(
-      model: VertexAIService.geminiModel,
-      generationConfig: generationConfig(maxOutputTokens: 4096),
-      systemInstruction: Content.system(_buildTutorSystemPrompt(child)),
-      safetySettings: kidSafetySettings(),
+    final model = createModel(
+      maxOutputTokens: 4096,
+      systemPrompt: _buildTutorSystemPrompt(child),
     );
     // Altes Modell für dieses Kind ggf. aus Cache entfernen
     _tutorModels.removeWhere((k, _) => k.startsWith('${child.id}_'));
@@ -221,11 +255,7 @@ class VertexAIService {
     if (_taskInitialized) return;
     debugPrint('🚀 Vertex AI Task-Modell wird initialisiert...');
     // Für Vision-Calls (Bild + Text): KEIN responseMimeType!
-    _taskGeneratorModel = vertexEu().generativeModel(
-      model: VertexAIService.geminiModel,
-      generationConfig: generationConfig(maxOutputTokens: 4096),
-      safetySettings: kidSafetySettings(),
-    );
+    _taskGeneratorModel = createModel(maxOutputTokens: 4096);
     _taskInitialized = true;
     debugPrint('✅ Task-Modell initialisiert');
   }
@@ -233,12 +263,8 @@ class VertexAIService {
   Future<void> _ensureQuizInitialized() async {
     if (_quizInitialized) return;
     debugPrint('🚀 Vertex AI Quiz-Modell wird initialisiert...');
-    _quizModel = vertexEu().generativeModel(
-      model: VertexAIService.geminiModel,
-      // 10 Fragen: bis ~3.700 Denk- + ~2.300 Antwort-Tokens gemessen.
-      generationConfig: generationConfig(maxOutputTokens: 16384),
-      safetySettings: kidSafetySettings(),
-    );
+    // 10 Fragen: bis ~3.700 Denk- + ~2.300 Antwort-Tokens gemessen.
+    _quizModel = createModel(maxOutputTokens: 16384);
     _quizInitialized = true;
     debugPrint('✅ Quiz-Modell initialisiert');
   }
@@ -614,11 +640,9 @@ DEINE AUFGABE:
 ''';
 
     try {
-      final model = vertexEu().generativeModel(
-        model: VertexAIService.geminiModel,
-        generationConfig: generationConfig(maxOutputTokens: 2048),
-        systemInstruction: Content.system(systemPrompt),
-        safetySettings: kidSafetySettings(),
+      final model = createModel(
+        maxOutputTokens: 2048,
+        systemPrompt: systemPrompt,
       );
 
       final prompt =

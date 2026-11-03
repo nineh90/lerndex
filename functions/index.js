@@ -407,3 +407,7 @@ exports.cleanupDeletedParent = functionsV1
 // ── 4. Schule ────────────────────────────────────────────────────────────────
 
 Object.assign(exports, require("./school"));
+
+// ── 5. KI für die Web-App ────────────────────────────────────────────────────
+
+Object.assign(exports, require("./ai"));

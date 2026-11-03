@@ -240,20 +240,19 @@ Future<void> _drawingCheck({
       Content.multi([TextPart(prompt), InlineDataPart('image/png', bytes)]),
     ]);
     sw.stop();
-    final finish = response.candidates.firstOrNull?.finishReason;
-    final usage = response.usageMetadata;
+    final finish = response.finishReason;
     final raw = response.text?.trim() ?? '';
     final parsed = jsonDecode(raw) as Map<String, dynamic>;
     final correct = parsed['correct'];
     final inTime = sw.elapsedMilliseconds < timeoutSeconds * 1000;
-    final technicalOk = correct is bool && finish == FinishReason.stop;
+    final technicalOk = correct is bool && finish == 'STOP';
     final judgedOk = correct == expected;
     _record(
       name,
       sw,
       technicalOk && inTime && judgedOk,
       '→ $raw | erwartet $expected | finish $finish | '
-      'Tokens denk/ges ${usage?.thoughtsTokenCount}/${usage?.totalTokenCount}'
+      'Tokens denk/ges ${response.thoughtsTokens}/${response.totalTokens}'
       '${inTime ? '' : ' | ZU LANGSAM (App-Timeout ${timeoutSeconds}s)'}',
     );
   } catch (e) {

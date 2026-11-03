@@ -18,6 +18,7 @@ import 'package:lerndex/src/features/student_dashboard/presentation/widgets/trea
 import 'package:lerndex/src/features/quiz/presentation/quiz_finish_service.dart';
 import 'color_shape_task_engine.dart';
 import 'package:lerndex/src/ai/vertex_ai_service.dart';
+import 'package:lerndex/src/ai/ai_model.dart';
 import 'package:lerndex/src/features/auth/domain/account.dart';
 
 // ============================================================================
@@ -75,7 +76,7 @@ class _ColorShapeQuizScreenState extends ConsumerState<ColorShapeQuizScreen>
   bool _isEvaluating = false;
   int _drawAttempts = 0;
   static const int _maxDrawAttempts = 3;
-  GenerativeModel? _aiModel;
+  AiModel? _aiModel;
 
   // Animation
   late AnimationController _feedbackController;

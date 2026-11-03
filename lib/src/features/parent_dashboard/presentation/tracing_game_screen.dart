@@ -12,6 +12,7 @@ import 'package:lerndex/src/features/tts/tts_provider.dart';
 import 'package:lerndex/src/features/auth/presentation/active_child_provider.dart';
 import 'package:lerndex/src/features/rewards/data/xp_service.dart';
 import 'package:lerndex/src/ai/vertex_ai_service.dart';
+import 'package:lerndex/src/ai/ai_model.dart';
 import 'package:lerndex/src/features/auth/domain/account.dart';
 
 // ============================================================================
@@ -186,7 +187,7 @@ class _TracingGameScreenState extends ConsumerState<TracingGameScreen>
   bool _showHint = true;
 
   // AI
-  GenerativeModel? _aiModel;
+  AiModel? _aiModel;
 
   // Animationen
   late AnimationController _feedbackCtrl;
