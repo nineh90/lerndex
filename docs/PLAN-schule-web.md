@@ -326,8 +326,10 @@ Schulzeit; Fortschritt aus einem Familienkonto wird nicht übernommen.
   Eltern ohne Abo, aber mit Schulkind, landen nicht auf der Abo-Seite.
 - **Tests:** 51 Emulator-Tests, 283 Flutter-Tests; Schulleitung → Lehrkraft → Klasse →
   Statistik → Aufgaben und Elternbrief → Eltern-Dashboard im Emulator durchgeklickt.
-- **Deploy offen:** Functions (neu: createTeacher, reissueTeacherCard, redeemTeacherCard,
-  createParentLetters, linkSchoolChild, unlinkSchoolChild; alt löschen: createTeacherInvite,
-  joinSchool), Firestore- und Storage-Regeln, Web-App.
+- **Deployt am 03.11.2026:** 19 Functions (6 neue per `invokerIamDisabled` freigeschaltet,
+  createTeacherInvite und joinSchool gelöscht), Firestore- und Storage-Regeln (jetzt per CLI,
+  `firebase deploy --only firestore:rules,storage`), Web-App. Vorherige Regeln:
+  `docs/rules-backup/*.live-2026-11-03.*` (Rulesets b8a5382f / 2b757466, zurück über den
+  Verlauf in der Console).
 - **Offen:** Elternbrief fürs Kinderhandy in der Android-App (dort öffnet der QR-Code den
   Browser), Kartenlehrkräfte können ihre PIN nicht selbst ändern (nur Reset über die Leitung).

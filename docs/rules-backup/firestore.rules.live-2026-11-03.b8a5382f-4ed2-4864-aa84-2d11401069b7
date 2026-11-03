@@ -1,0 +1,209 @@
+rules_version = '2';
+
+// Firestore Security Rules für Lerndex.
+//
+// Deployment: firebase deploy --only firestore:rules
+// (erst NACH den Cloud Functions, siehe docs/PLAN-schule-web.md)
+//
+// Rollen:
+// - Eltern: normales Konto ohne role-Claim. Darf alles unter users/{uid}.
+// - Kindergerät: eigenes Konto "kid:<parentUid>:<childId>", angelegt von der
+//   Cloud Function redeemPairingCode, mit den Claims
+//   { role: "student", parentUid, childId }. Darf nur sein eigenes Kind,
+//   das Eltern-Dokument lesen (Abo-Status) und die freigegebenen Aufgaben
+//   seines Kindes.
+//
+// Der Eltern-PIN liegt in users/{uid}/private/pin und ist für keinen Client
+// lesbar (Prüfung über die Cloud Function verifyParentPin). Alte PIN-Hashes
+// im users-Dokument zieht die Function beim ersten Prüfen dorthin um.
+//
+// Grenze: Auf einem gemeinsamen Gerät im Kindermodus ist weiter das Eltern-
+// konto angemeldet. Echte Trennung gibt es nur mit einem gekoppelten Gerät.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isParent() {
+      return isAuthenticated() && !('role' in request.auth.token);
+    }
+
+    function isOwner(userId) {
+      return isParent() && request.auth.uid == userId;
+    }
+
+    function isStudent() {
+      return isAuthenticated() && request.auth.token.role == 'student';
+    }
+
+    // Kindergerät der Familie userId
+    function isStudentOf(userId) {
+      return isStudent() && request.auth.token.parentUid == userId;
+    }
+
+    // Kindergerät genau dieses Kindes
+    function isStudentFor(userId, childId) {
+      return isStudentOf(userId) && request.auth.token.childId == childId;
+    }
+
+    // Lehrkraft (Claims schoolId + schoolRole, gesetzt von den Functions in
+    // functions/school.js). Lehrkräfte sind normale Konten, für die eigene
+    // Familie also weiter „Eltern“. Die Schüler einer Schule liegen unter
+    // users/school_<schoolId>/children – wie Kinder unter users/{uid}.
+    function isSchoolMember(schoolId) {
+      return isParent()
+        && request.auth.token.get('schoolId', '') == schoolId
+        && request.auth.token.get('schoolRole', '') in ['admin', 'teacher'];
+    }
+
+    // Lehrkraft der Schule, der dieses „Besitzer-Konto“ gehört.
+    // Alle Lehrkräfte sehen alle Klassen ihrer Schule.
+    function isTeacherOf(userId) {
+      return isParent()
+        && request.auth.token.get('schoolRole', '') in ['admin', 'teacher']
+        && userId == 'school_' + request.auth.token.get('schoolId', '');
+    }
+
+    // Lexi-Chats bleiben privat: Lehrkräfte sehen sie nicht (offene Frage
+    // an die Schule, siehe docs/PLAN-schule-web.md).
+    function isPrivateForTeachers(subcollection) {
+      return subcollection in ['tutor_sessions', 'active_tutor_chat', 'devices'];
+    }
+
+    // Felder am users-Dokument, die nur der Server setzt: testAccess
+    // (Review-Testaccount, nur über die Console) und pinSet (Cloud Functions).
+    //
+    // ÜBERGANG: Ältere App-Versionen schreiben hashedPin/pinSalt noch selbst
+    // ins users-Dokument. Das bleibt erlaubt, bis alle Nutzer auf der Version
+    // mit Server-PIN sind – dann hier hashedPin/pinSalt wie pinSet sperren.
+    function serverFieldsUnchanged() {
+      return request.resource.data.get('testAccess', false)
+          == resource.data.get('testAccess', false)
+        && request.resource.data.get('pinSet', null)
+          == resource.data.get('pinSet', null);
+    }
+
+    match /users/{userId} {
+      // Schul-Konto (users/school_<id>): Lizenz und Name setzt nur der Server
+      allow read: if isOwner(userId) || isStudentOf(userId) || isTeacherOf(userId);
+      allow delete: if isOwner(userId);
+      allow create: if isOwner(userId)
+        && !('testAccess' in request.resource.data)
+        && !('pinSet' in request.resource.data);
+      allow update: if isOwner(userId) && serverFieldsUnchanged();
+
+      // Eltern-PIN: nur Cloud Functions (Admin-SDK umgeht die Rules)
+      match /private/{docId} {
+        allow read, write: if false;
+      }
+
+      // Kinder-Profile inkl. aller Subcollections:
+      // tutor_sessions/{sid}/messages/{mid}, active_tutor_chat, rewards,
+      // learning_stats, ai_quiz_cache/{fach}/questions/{qid}, devices
+      match /children/{childId} {
+        allow read, write: if isOwner(userId);
+        // Kindergerät: eigenes Profil lesen und Fortschritt speichern,
+        // aber nicht anlegen oder löschen.
+        allow read, update: if isStudentFor(userId, childId);
+        // Lehrkraft: Schüler anlegen, bearbeiten, löschen
+        allow read, write: if isTeacherOf(userId);
+
+        // Gekoppelte Geräte: schreibt nur die Cloud Function
+        match /devices/{deviceId} {
+          allow read, delete: if isOwner(userId);
+        }
+
+        match /{subcollection}/{docId} {
+          allow read, write: if isOwner(userId)
+            || (isStudentFor(userId, childId) && subcollection != 'devices')
+            || (isTeacherOf(userId) && !isPrivateForTeachers(subcollection));
+
+          match /{nested}/{nestedDocId} {
+            allow read, write: if isOwner(userId) || isStudentFor(userId, childId)
+              || (isTeacherOf(userId) && !isPrivateForTeachers(subcollection));
+          }
+        }
+      }
+
+      // Von Eltern generierte Aufgaben-Batches (Foto → KI-Aufgaben).
+      // Das Kindergerät liest die Batches seines Kindes und markiert
+      // freigegebene Aufgaben als gelöst.
+      match /generated_batches/{batchId} {
+        allow read, write: if isOwner(userId) || isTeacherOf(userId);
+        allow read: if isStudentOf(userId)
+          && resource.data.childId == request.auth.token.childId;
+
+        match /{subcollection}/{subDocId} {
+          allow read, write: if isOwner(userId) || isTeacherOf(userId);
+          allow read, update: if isStudentOf(userId)
+            && get(/databases/$(database)/documents/users/$(userId)/generated_batches/$(batchId)).data.childId
+              == request.auth.token.childId;
+        }
+      }
+    }
+
+    // Kopplungscodes, Schul-Einladungen, Schülerkarten: nur Cloud Functions
+    match /pairingCodes/{code} {
+      allow read, write: if false;
+    }
+    match /schoolInvites/{code} {
+      allow read, write: if false;
+    }
+    match /studentCards/{tokenHash} {
+      allow read, write: if false;
+    }
+
+    // Schule: Name und Lehrerliste schreiben nur die Functions,
+    // Klassen pflegen die Lehrkräfte selbst.
+    match /schools/{schoolId} {
+      allow read: if isSchoolMember(schoolId);
+
+      match /members/{memberId} {
+        allow read: if isSchoolMember(schoolId);
+      }
+
+      match /classes/{classId} {
+        allow read, write: if isSchoolMember(schoolId);
+      }
+    }
+
+    // Warteliste: nur serverseitig (Admin-SDK) zugreifbar.
+    match /waitlist/{docId} {
+      allow read, write: if false;
+    }
+
+    // Feedback-Mails aus der App (Trigger-Email-Extension).
+    // Read/Update/Delete bleiben verboten – die Extension liest serverseitig
+    // via Admin-SDK und umgeht diese Rules ohnehin.
+    // Create nur für eingeloggte Eltern, nur an support@lerndex.de und nur
+    // mit plausiblen Feldern (verhindert Spam-/Relay-Missbrauch).
+    match /mail/{docId} {
+      allow read, update, delete: if false;
+      allow create: if isParent()
+        && request.resource.data.to is list
+        && request.resource.data.to.size() == 1
+        && request.resource.data.to[0] == 'support@lerndex.de'
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.message is map
+        && request.resource.data.message.text is string
+        && request.resource.data.message.text.size() >= 10
+        && request.resource.data.message.text.size() <= 2000
+        && request.resource.data.message.subject is string
+        && request.resource.data.message.subject.size() <= 200;
+    }
+
+    // Lehrer-Accounts (separater Zugang, gleiche Owner-Logik).
+    match /teachers/{teacherId} {
+      allow read, write, create: if isOwner(teacherId);
+    }
+
+    // Alles andere: explizit verboten (Default-Deny gilt zwar ohnehin,
+    // macht die Absicht aber sichtbar).
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+
