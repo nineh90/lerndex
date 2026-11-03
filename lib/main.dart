@@ -77,15 +77,12 @@ void main() async {
     await FirebaseStorage.instance.useStorageEmulator(host, 19199);
   }
 
-  // App Check im Browser: Dort steht der Firebase-Key offen im Quelltext,
-  // ohne App Check könnte jeder über unser Konto Vertex AI aufrufen.
-  // firebase_ai hängt das Token automatisch an. Ohne Site-Key bleibt es aus.
-  const recaptchaSiteKey = String.fromEnvironment('RECAPTCHA_SITE_KEY');
-  if (kIsWeb && recaptchaSiteKey.isNotEmpty) {
-    await FirebaseAppCheck.instance.activate(
-      providerWeb: ReCaptchaEnterpriseProvider(recaptchaSiteKey),
-    );
-  }
+  // App Check: Der Firebase-Key steht offen in der App bzw. im Browser-
+  // Quelltext. Ohne App Check könnte jeder über unser Konto Gemini aufrufen.
+  // Firebase AI Logic erzwingt App Check ab 21.01.2027 (seit 02.11.2026
+  // Pflicht, bis dahin auf Monitoring gestellt). firebase_ai hängt das Token
+  // automatisch an jede KI-Anfrage.
+  await _activateAppCheck(useEmulator: useEmulator);
 
   // NEU: RevenueCat initialisieren (vor runApp!)
   await SubscriptionService.initialize();
@@ -164,3 +161,41 @@ class _WebFrame extends StatelessWidget {
     );
   }
 }
+
+/// App Check aktivieren: Android über Play Integrity (Debug-Builds mit
+/// Debug-Token, siehe APP_CHECK_DEBUG_TOKEN), Browser über reCAPTCHA
+/// Enterprise (RECAPTCHA_SITE_KEY). iOS ist noch nicht eingerichtet.
+/// Ein Fehler hier darf den Start nie verhindern: Ohne Token lehnt höchstens
+/// die KI Anfragen ab, sobald App Check erzwungen ist.
+Future<void> _activateAppCheck({required bool useEmulator}) async {
+  const recaptchaSiteKey = String.fromEnvironment('RECAPTCHA_SITE_KEY');
+  const debugToken = String.fromEnvironment('APP_CHECK_DEBUG_TOKEN');
+  try {
+    if (kIsWeb) {
+      if (recaptchaSiteKey.isEmpty) {
+        debugPrint('⚠️ App Check im Browser aus: RECAPTCHA_SITE_KEY fehlt');
+        return;
+      }
+      await FirebaseAppCheck.instance.activate(
+        providerWeb: ReCaptchaEnterpriseProvider(recaptchaSiteKey),
+      );
+    } else if (defaultTargetPlatform == TargetPlatform.android) {
+      // Play Integrity klappt nur mit einer App aus dem Play Store (bzw. dem
+      // internen Test-Track). Lokale Builds und der Emulator nutzen den
+      // Debug-Provider; dessen Token muss in der Firebase Console unter
+      // App Check → Apps → lerndex (android) → Debug-Tokens eingetragen sein.
+      final debug = kDebugMode || useEmulator;
+      await FirebaseAppCheck.instance.activate(
+        providerAndroid: debug
+            ? AndroidDebugProvider(
+                debugToken: debugToken.isEmpty ? null : debugToken,
+              )
+            : const AndroidPlayIntegrityProvider(),
+      );
+    }
+  } catch (e, st) {
+    debugPrint('⚠️ App Check konnte nicht starten: $e');
+    if (!kIsWeb) FirebaseCrashlytics.instance.recordError(e, st);
+  }
+}
+
