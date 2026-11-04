@@ -35,7 +35,18 @@ veralteten Zwischenstand verwenden (am 01.11.2026 passiert: Koppel-Links taten l
 
 Web: `--no-web-resources-cdn` ist Pflicht, sonst lädt der Browser die Grafik-Engine von Google
 (Kinderdaten, Schulen). Warum und was sonst noch lokal liegt: `docs/PLAN-schule-web.md`,
-Abschnitt „Fremde Server im Browser“. Hosting über Firebase (`firebase deploy --only hosting`).
+Abschnitt „Fremde Server im Browser“.
+
+**Hosting: https://app.lerndex.de** auf Nils' Hostinger-VPS (187.124.178.193, `ssh nils-vps`),
+nginx hinter dem Traefik des n8n-Stacks, Ordner `/docker/lerndex-app` (nicht `/docker/lerndex`,
+das ist die Webseite lerndex.de). Deploy aus Branch `schule`: `tool/deploy/web_hostinger.sh`
+(baut mit leerem Cache, prüft danach die Seite), Konfiguration ändern: `--setup`. Dateien in
+`deploy/hostinger/`. Zurückschwenken auf einen älteren Stand: siehe `deploy/hostinger/deploy.sh`.
+Firebase Hosting (`lerndex-3775f.web.app`) ist der alte Weg und läuft vorerst parallel.
+
+**KI im Browser** läuft über die Cloud Function `aiGenerate` (`functions/ai.js`), nicht direkt
+über firebase_ai: kein Schlüssel im Browser, kein reCAPTCHA. Android ruft direkt auf, mit
+App Check (Play Integrity). Firebase erzwingt App Check für AI Logic ab 21.01.2027.
 
 ## Architektur
 
