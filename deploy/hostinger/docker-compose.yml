@@ -1,0 +1,38 @@
+# app.lerndex.de – die Lerndex-Web-App (Flutter Web) auf Nils' Hostinger-VPS.
+#
+# Gleiches Muster wie fahrsignal: nginx:alpine liefert den fertigen Build aus,
+# Traefik aus dem n8n-Stack (Netz n8n_default) holt das Zertifikat und leitet
+# app.lerndex.de hierher. Kein Port wird veröffentlicht, an Traefik selbst
+# ändert sich nichts. Die Webseite lerndex.de liegt getrennt in /docker/lerndex.
+#
+# Auf dem Server liegt das unter /docker/lerndex-app/deploy, der Build unter
+# /docker/lerndex-app/site/releases/<stand>, site/www zeigt auf den aktuellen.
+# Einrichten und Deploy: siehe README.md daneben.
+name: lerndex-app
+
+services:
+  web:
+    image: nginx:alpine
+    container_name: lerndex-app
+    restart: unless-stopped
+    volumes:
+      # site/ als Ganzes einhängen, nicht site/www: Docker löst Symlinks beim
+      # Mounten nur einmal auf, nginx soll dem Schwenk bei jedem Request folgen.
+      - ../site:/srv:ro
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    networks:
+      - n8n_default
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=n8n_default"
+      # Nur eintragen, was im DNS wirklich hierher zeigt (sonst scheitert
+      # Let's Encrypt und sperrt den Namen nach fünf Versuchen für eine Stunde).
+      - "traefik.http.routers.lerndex-app.rule=Host(`app.lerndex.de`)"
+      - "traefik.http.routers.lerndex-app.entrypoints=web,websecure"
+      - "traefik.http.routers.lerndex-app.tls=true"
+      - "traefik.http.routers.lerndex-app.tls.certresolver=mytlschallenge"
+      - "traefik.http.services.lerndex-app.loadbalancer.server.port=80"
+
+networks:
+  n8n_default:
+    external: true
