@@ -110,8 +110,13 @@ class _ChildPairingScreenState extends ConsumerState<ChildPairingScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                'Deine Eltern finden ihn im Elternbereich bei deinem Namen '
-                'unter „Eigenes Gerät“.',
+                kIsWeb
+                    ? 'Deine Eltern finden ihn im Elternbereich bei deinem '
+                          'Namen unter „Eigenes Gerät“.'
+                    : 'Deine Eltern finden ihn im Elternbereich bei deinem '
+                          'Namen unter „Eigenes Gerät“. Hast du eine '
+                          'Schülerkarte von der Schule? Die kannst du auch '
+                          'scannen.',
                 style: TextStyle(color: Colors.grey[700]),
                 textAlign: TextAlign.center,
               ),
