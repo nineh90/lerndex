@@ -6,7 +6,6 @@ import 'package:lerndex/src/features/subscription/data/subscription_model.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../auth/data/auth_repository.dart';
 import '../../auth/data/profile_repository.dart';
-import '../../../../main.dart';
 import '../../auth/presentation/account_deleted_screen.dart';
 import '../data/pin_repository.dart';
 // NEU: Subscription
@@ -626,9 +625,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     // Firestore- und Storage-Daten löschen
     await profileRepo.deleteAllUserData();
 
-    // Flag setzen damit MyApp nicht auf authStateChanges reagiert
-    ref.read(accountDeletionInProgressProvider.notifier).state = true;
-
     // Auth-Account löschen
     await FirebaseAuth.instance.currentUser?.delete();
 
@@ -663,7 +659,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   void _handleDeleteError(String message) {
     if (!mounted) return;
     setState(() => _isDeletingAccount = false);
-    ref.read(accountDeletionInProgressProvider.notifier).state = false;
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message), backgroundColor: Colors.red),

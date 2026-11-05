@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../../main.dart' show accountDeletionInProgressProvider;
 import 'login_screen.dart';
 
 class AccountDeletedScreen extends StatefulWidget {
@@ -16,9 +14,6 @@ class _AccountDeletedScreenState extends State<AccountDeletedScreen> {
     super.initState();
     Future.delayed(const Duration(seconds: 2), () {
       if (mounted) {
-        ProviderScope.containerOf(
-          context,
-        ).read(accountDeletionInProgressProvider.notifier).state = false;
         Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(builder: (_) => const LoginScreen()),
           (route) => false,

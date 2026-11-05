@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_riverpod/legacy.dart';
 import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -17,14 +16,11 @@ import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:image_picker_android/image_picker_android.dart';
 import 'package:image_picker_platform_interface/image_picker_platform_interface.dart';
 import 'src/features/auth/data/child_device_repository.dart';
-import 'src/features/auth/presentation/account_deleted_screen.dart';
 import 'src/features/splash/splash_screen.dart';
 import 'src/shared/web/browser_url.dart';
 import 'src/shared/app_links.dart';
 // NEU: RevenueCat
 import 'src/features/subscription/data/subscription_service.dart';
-
-final accountDeletionInProgressProvider = StateProvider<bool>((ref) => false);
 
 void main() async {
   final binding = WidgetsFlutterBinding.ensureInitialized();
@@ -112,13 +108,11 @@ void main() async {
   if (!kIsWeb) FlutterNativeSplash.remove();
 }
 
-class MyApp extends ConsumerWidget {
+class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final isDeletingAccount = ref.watch(accountDeletionInProgressProvider);
-
+  Widget build(BuildContext context) {
     return MaterialApp(
       navigatorKey: appNavigatorKey,
       title: 'Lerndex',
@@ -132,12 +126,10 @@ class MyApp extends ConsumerWidget {
       // Im Browser am PC/Tablet: Die Oberfläche ist fürs Handy gebaut und
       // würde sonst über die ganze Breite gezogen.
       builder: kIsWeb ? (context, child) => _WebFrame(child: child!) : null,
-      home: isDeletingAccount
-          ? const AccountDeletedScreen()
-          // Der Start-Link wird nur beim ersten Aufbau mitgegeben, danach
-          // ist er verbraucht (sonst würde er nach einem Neuaufbau noch
-          // einmal eingelöst).
-          : LerndexSplashScreen(linkPath: takeInitialAppLink()),
+      // Der Start-Link wird nur beim ersten Aufbau mitgegeben, danach ist er
+      // verbraucht (sonst würde er nach einem Neuaufbau noch einmal
+      // eingelöst).
+      home: LerndexSplashScreen(linkPath: takeInitialAppLink()),
     );
   }
 }
@@ -210,4 +202,3 @@ Future<void> _activateAppCheck({required bool useEmulator}) async {
     if (!kIsWeb) FirebaseCrashlytics.instance.recordError(e, st);
   }
 }
-
