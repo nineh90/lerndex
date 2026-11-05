@@ -5,12 +5,14 @@ import 'package:cross_file/cross_file.dart';
 import 'package:firebase_ai/firebase_ai.dart';
 import 'package:firebase_app_check/firebase_app_check.dart';
 import 'tolerant_app_check.dart';
-import '../features/auth/data/child_device_repository.dart' show lerndexFunctions;
+import '../features/auth/data/child_device_repository.dart'
+    show lerndexFunctions;
 import 'ai_model.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'ai_response_parser.dart';
+import 'tutor_safety_filter.dart';
 import '../features/auth/domain/child_model.dart';
 import '../features/tutor/domain/chat_message.dart';
 import '../features/generated_tasks/data/generated_task_models.dart';
@@ -30,11 +32,21 @@ class TutorResponse {
   final bool
   isCorrect; // true wenn Schüler eine Aufgabe korrekt beantwortet hat
 
+  /// Antwort kam nicht von der KI, sondern von der App selbst (Filter,
+  /// Hilfe-Antwort, Fehler). Dafür gibt es keine XP und keine Quiz-Fragen.
+  final bool isLocal;
+
   const TutorResponse({
     required this.text,
     required this.subject,
     this.isCorrect = false,
+    this.isLocal = false,
   });
+
+  const TutorResponse.local(this.text)
+    : subject = 'kein_schulfach',
+      isCorrect = false,
+      isLocal = true;
 
   bool get isSchoolSubject => subject != 'kein_schulfach';
 }
@@ -62,12 +74,12 @@ class VertexAIService {
   /// App Check über [TolerantAppCheck]: Ein fehlendes Token lässt die
   /// Anfrage nicht mehr scheitern (siehe dort).
   static FirebaseAI vertexEu() => FirebaseAI.vertexAI(
-        location: 'europe-west3',
-        // Als „veraltet“ markiert, weil firebase_ai App Check sonst selbst
-        // holt – genau das (ohne Rückfall) wollen wir hier nicht.
-        // ignore: deprecated_member_use
-        appCheck: TolerantAppCheck(FirebaseAppCheck.instance),
-      );
+    location: 'europe-west3',
+    // Als „veraltet“ markiert, weil firebase_ai App Check sonst selbst
+    // holt – genau das (ohne Rückfall) wollen wir hier nicht.
+    // ignore: deprecated_member_use
+    appCheck: TolerantAppCheck(FirebaseAppCheck.instance),
+  );
 
   /// Zentrales Gemini-Modell für ALLE KI-Aufrufe der App.
   /// Google zieht Modelle nach ~12 Monaten zurück (gemini-2.0-flash starb
@@ -145,10 +157,7 @@ class VertexAIService {
   /// Antwort-Schema der Early-Learner-Malprüfung (Zahlen, Buchstaben,
   /// Formen): erzwingt valides JSON statt es aus Freitext zu fischen.
   static final Schema drawingCheckSchema = Schema.object(
-    properties: {
-      'correct': Schema.boolean(),
-      'recognized': Schema.string(),
-    },
+    properties: {'correct': Schema.boolean(), 'recognized': Schema.string()},
     optionalProperties: ['recognized'],
   );
 
@@ -248,9 +257,7 @@ class VertexAIService {
       return _tutorModels[cacheKey]!;
     }
 
-    debugPrint(
-      '🚀 Tutor-Modell wird erstellt (childId: ${child.id})...',
-    );
+    debugPrint('🚀 Tutor-Modell wird erstellt (childId: ${child.id})...');
     final model = createModel(
       maxOutputTokens: 4096,
       systemPrompt: _buildTutorSystemPrompt(child),
@@ -292,49 +299,24 @@ class VertexAIService {
   }) async {
     final hasImage = imageFile != null;
 
-    // Selbstgefährdungs-Signale: hier wäre die generische "Frag mich was zu
-    // Mathe"-Abweisung falsch. Stattdessen eine unterstützende Antwort mit
-    // Verweis auf Erwachsene und die "Nummer gegen Kummer" (116 111).
-    if (_mentionsSelfHarm(userMessage)) {
-      return const TutorResponse(
-        text:
-            'Das klingt, als würde es dir gerade nicht gut gehen. 💜 '
-            'Darüber solltest du unbedingt mit einem Erwachsenen sprechen, '
-            'dem du vertraust – zum Beispiel mit deinen Eltern oder einer '
-            'Lehrerin. Du kannst auch jederzeit kostenlos und anonym bei der '
-            '„Nummer gegen Kummer" anrufen: 116 111. Dort hört dir jemand zu.',
-        subject: 'kein_schulfach',
-      );
+    // Hilferufe (Selbstgefährdung, Gewalt gegen das Kind, Mobbing) bekommen
+    // eine warme Antwort mit Ansprechpartnern, gesperrte Themen eine
+    // Ablehnung. Beides greift auch auf den Begleittext eines Fotos.
+    switch (TutorSafetyFilter.check(userMessage)) {
+      case TutorSafety.help:
+        return const TutorResponse.local(TutorSafetyFilter.helpResponse);
+      case TutorSafety.blocked:
+        return const TutorResponse.local(TutorSafetyFilter.blockedResponse);
+      case TutorSafety.ok:
+        break;
     }
 
-    // Sicherheitschecks – greifen immer auf den (ggf. leeren) Begleittext.
-    if (!_isAppropriateQuestion(userMessage)) {
-      return const TutorResponse(
-        text:
-            'Diese Frage kann ich leider nicht beantworten. Ich bin Lexi und helfe dir nur beim Lernen! 📚 Hast du eine Frage zu Mathe, Deutsch, Englisch oder anderen Schulfächern? 🎓',
-        subject: 'kein_schulfach',
+    // Ob es um ein Schulthema geht, entscheidet die KI (Systemprompt,
+    // [FACH:kein_schulfach]). Ein Stichwortfilter wies echte Schulfragen ab.
+    if (!hasImage && userMessage.length > 500) {
+      return const TutorResponse.local(
+        'Deine Frage ist etwas zu lang. Kannst du sie kürzer formulieren? 😊',
       );
-    }
-
-    // Text-basierte Filter nur ohne Bild anwenden – ein Foto eines Aufgaben-
-    // blattes lässt sich nicht per Stichwort beurteilen. Bei Bildern verlässt
-    // sich der Schutz auf die Vertex-Safety-Settings + den System-Prompt.
-    if (!hasImage) {
-      if (_isNonSchoolQuestion(userMessage)) {
-        return TutorResponse(
-          text:
-              'Das ist eine interessante Frage, ${child.name}! Aber ich bin Lexi, dein Lernbegleiter, und helfe dir nur bei Schulfächern. 📚 Hast du vielleicht eine Frage zu Mathe, Deutsch, Englisch oder einem anderen Schulfach? 🎓',
-          subject: 'kein_schulfach',
-        );
-      }
-
-      if (userMessage.length > 500) {
-        return const TutorResponse(
-          text:
-              'Deine Frage ist etwas zu lang. Kannst du sie kürzer formulieren? 😊',
-          subject: 'kein_schulfach',
-        );
-      }
     }
 
     try {
@@ -359,9 +341,7 @@ class VertexAIService {
               : '[Foto vom Aufgabenblatt gesendet] $text';
         }
         if (text.isEmpty) continue;
-        history.add(
-          Content(msg.isUser ? 'user' : 'model', [TextPart(text)]),
-        );
+        history.add(Content(msg.isUser ? 'user' : 'model', [TextPart(text)]));
       }
 
       // ✅ DSGVO-FIX: Keine Chat-Inhalte mehr loggen. debugPrint landet auch
@@ -396,10 +376,8 @@ class VertexAIService {
       final text = response.text;
 
       if (text == null || text.isEmpty) {
-        return const TutorResponse(
-          text:
-              'Hmm, ich bin mir bei dieser Frage nicht sicher. Kannst du sie anders formulieren? 🤔',
-          subject: 'kein_schulfach',
+        return const TutorResponse.local(
+          'Hmm, ich bin mir bei dieser Frage nicht sicher. Kannst du sie anders formulieren? 🤔',
         );
       }
 
@@ -416,9 +394,8 @@ class VertexAIService {
       );
     } catch (e, st) {
       _reportAiError(e, st, 'Tutor-Chat');
-      return const TutorResponse(
-        text: 'Ups, da ist etwas schiefgelaufen. Versuch es nochmal! 😅',
-        subject: 'kein_schulfach',
+      return const TutorResponse.local(
+        'Ups, da ist etwas schiefgelaufen. Versuch es nochmal! 😅',
       );
     }
   }
@@ -627,7 +604,7 @@ Füge als ALLERLETZTE Zeile IMMER das Schulfach-Tag an (wird automatisch entfern
   // --------------------------------------------------------------------------
 
   /// Erklärt eine falsch beantwortete Quiz-Frage direkt und ohne Umwege.
-  /// Umgeht bewusst die Tutor-Filter (_isNonSchoolQuestion, Sokrates-Methode),
+  /// Umgeht bewusst die Tutor-Filter (TutorSafetyFilter, Sokrates-Methode),
   /// weil hier die richtige Antwort bereits bekannt ist und erklärt werden soll.
   Future<String> explainWrongAnswer({
     required String question,
@@ -656,8 +633,7 @@ DEINE AUFGABE:
         systemPrompt: systemPrompt,
       );
 
-      final prompt =
-          'Frage: "$question"\nRichtige Antwort: "$correctAnswer"';
+      final prompt = 'Frage: "$question"\nRichtige Antwort: "$correctAnswer"';
       final response = await model
           .generateContent([Content.text(prompt)])
           .timeout(_aiTimeout);
@@ -891,9 +867,9 @@ WICHTIG: Antworte NUR mit diesem JSON-Array, ohne Markdown oder Text davor/danac
     final teacher = teacherTopic == null || teacherTopic.trim().isEmpty
         ? null
         : (teacherTopic.trim().length > 120
-              ? teacherTopic.trim().substring(0, 120)
-              : teacherTopic.trim())
-            .replaceAll('"', "'");
+                  ? teacherTopic.trim().substring(0, 120)
+                  : teacherTopic.trim())
+              .replaceAll('"', "'");
     // Ab Klasse 3 strenge Vielfalt erzwingen; Klasse 1–2 darf bewusst
     // wiederholungsfreundlicher sein (Übungseffekt für Erstleser).
     final strictVariety = child.grade >= 3;
@@ -908,11 +884,11 @@ WICHTIG: Antworte NUR mit diesem JSON-Array, ohne Markdown oder Text davor/danac
     final topicFocus = teacher != null
         ? ''
         : _pickTopicFocus(
-      schoolType: child.schoolType,
-      grade: child.grade,
-      subject: subject,
-      level: child.level,
-    );
+            schoolType: child.schoolType,
+            grade: child.grade,
+            subject: subject,
+            level: child.level,
+          );
 
     // Optionaler Themen-Fokus aus dem Tutor-Gespräch: lenkt die Generierung
     // gezielt auf das, womit sich das Kind gerade beschäftigt hat – ohne den
@@ -949,13 +925,10 @@ die zum Lehrplan und Niveau passen.
         ..writeln('Bevorzuge ANDERE Unterthemen innerhalb des Lehrplans.');
     }
     if (recentQuestions.isNotEmpty) {
-      final recent = recentQuestions
-          .take(12)
-          .map((q) {
-            final t = q.trim();
-            return t.length > 90 ? '${t.substring(0, 90)}…' : t;
-          })
-          .toList();
+      final recent = recentQuestions.take(12).map((q) {
+        final t = q.trim();
+        return t.length > 90 ? '${t.substring(0, 90)}…' : t;
+      }).toList();
       avoidance
         ..writeln()
         ..writeln(
@@ -1748,130 +1721,6 @@ Antworte NUR mit einem JSON-Array, kein Text oder Markdown davor/danach:
       // Oberstufe Klasse 11–13
       return 'Mathe, Deutsch, Englisch, Chemie, Physik, Geschichte';
     }
-  }
-
-  // --------------------------------------------------------------------------
-  // SICHERHEITS-FILTER (Tutor)
-  // --------------------------------------------------------------------------
-
-  /// ✅ FIX: Der alte Filter prüfte mit `contains()` auf Substrings und
-  /// blockierte dadurch echte Schulthemen:
-  ///   - "gewalt"    → blockierte "Gewaltenteilung" (Politik, Kl. 8+)
-  ///   - "blut"      → blockierte "Blutkreislauf" (Biologie, Kl. 5/6)
-  ///   - "schlagen"  → blockierte "nachschlagen", "vorschlagen"
-  ///   - "töten"     → blockierte "abtöten" (Bakterien, Biologie)
-  ///
-  /// Neu: Whitelist für legitime Schulbegriffe + Wortgrenzen-Matching.
-  /// Der eigentliche Schutz für Grenzfälle liegt weiterhin bei den
-  /// Vertex-Safety-Settings und dem System-Prompt.
-  static final List<RegExp> _whitelistPatterns = [
-    RegExp(r'gewalten?teilung'), // Politik/Geschichte
-    RegExp(r'blut(kreislauf|gefäß|körperchen|druck|plasma|zelle|gruppe)'),
-    RegExp(r'(nach|vor|auf|an|zu|durch|über|um)schlagen'),
-    RegExp(r'schlagzeile|schlagwort|taktschlag|herzschlag'),
-    RegExp(r'abtöten'), // Biologie (Bakterien abtöten)
-  ];
-
-  static final List<RegExp> _blockedPatterns = [
-    RegExp(r'gewalt'),
-    RegExp(r'waffe'),
-    RegExp(r'\bsex'),
-    RegExp(r'drogen'),
-    RegExp(r'schlagen'),
-    RegExp(r'töten'),
-    RegExp(r'\bblut\b|blutig'),
-  ];
-
-  /// Selbstgefährdungs-Signale werden getrennt behandelt: statt der
-  /// generischen Abweisung gibt es eine unterstützende Antwort
-  /// (siehe sendTutorMessage).
-  static final RegExp _selfHarmPattern = RegExp(
-    r'selbstmord|suizid|umbringen|ritzen|selbstverletz|nicht mehr leben',
-  );
-
-  bool _mentionsSelfHarm(String userMessage) =>
-      _selfHarmPattern.hasMatch(userMessage.toLowerCase());
-
-  bool _isAppropriateQuestion(String userMessage) {
-    var lower = userMessage.toLowerCase();
-
-    // Legitime Schulbegriffe entfernen, bevor die Blockliste greift
-    for (final pattern in _whitelistPatterns) {
-      lower = lower.replaceAll(pattern, '');
-    }
-
-    return !_blockedPatterns.any((pattern) => pattern.hasMatch(lower));
-  }
-
-  bool _isNonSchoolQuestion(String userMessage) {
-    final lower = userMessage.toLowerCase();
-    const nonSchoolKeywords = [
-      'rezept',
-      'kochen',
-      'backen',
-      'nudeln',
-      'pizza',
-      'kuchen',
-      'zubereiten',
-      'essen machen',
-      'gericht',
-      'nudelsalat',
-      'videospiel',
-      'spiel spielen',
-      'gaming',
-      'zocken',
-      'film',
-      'serie',
-      'netflix',
-      'youtube',
-      'tiktok',
-      'instagram',
-      'fernsehen',
-      'streaming',
-      'handy kaufen',
-      'smartphone',
-      'computer kaufen',
-      'laptop',
-      'spiel herunterladen',
-      'app installieren',
-      'fußball spielen',
-      'freunde treffen',
-      'party',
-      'urlaub',
-      'reise',
-      'ausflug',
-      'wie mache ich',
-      'wie koche',
-      'wie spiele',
-      'wie baue ich',
-      'wie bastle',
-    ];
-
-    if (nonSchoolKeywords.any((kw) => lower.contains(kw))) return true;
-
-    if (lower.contains('wie') &&
-        (lower.contains('mache') ||
-            lower.contains('koche') ||
-            lower.contains('baue') ||
-            lower.contains('bastle'))) {
-      const schoolRelated = [
-        'hausaufgabe',
-        'aufgabe',
-        'rechnen',
-        'lösen',
-        'berechnen',
-        'schreiben',
-        'lernen',
-        'verstehen',
-        'erklären',
-        'mathe',
-        'deutsch',
-        'englisch',
-      ];
-      if (!schoolRelated.any((word) => lower.contains(word))) return true;
-    }
-
-    return false;
   }
 
   // Tag-Parsing (FACH/KORREKT) ausgelagert nach AiResponseParser (testbar).

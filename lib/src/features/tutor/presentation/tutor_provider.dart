@@ -12,7 +12,8 @@ import '../../auth/data/auth_repository.dart';
 import '../../auth/domain/child_model.dart';
 import '../../rewards/data/xp_service.dart';
 import '../../quiz/data/ai_question_cache_repository.dart';
-import '../../generated_tasks/data/generated_task_models.dart' show Subject, SubjectExtension;
+import '../../generated_tasks/data/generated_task_models.dart'
+    show Subject, SubjectExtension;
 import 'package:lerndex/src/features/auth/domain/account.dart';
 
 class TutorNotifier extends StateNotifier<List<ChatMessage>> {
@@ -271,10 +272,7 @@ class TutorNotifier extends StateNotifier<List<ChatMessage>> {
     _hasUserSentMessage = true;
 
     // User-Nachricht sofort anzeigen (mit lokaler Bild-Vorschau falls Foto).
-    final userMessage = ChatMessage.user(
-      text,
-      localImagePath: imageFile?.path,
-    );
+    final userMessage = ChatMessage.user(text, localImagePath: imageFile?.path);
     state = [...state, userMessage];
 
     // Foto in Firebase Storage hochladen → URL persistieren (Eltern-Ansicht).
@@ -313,6 +311,10 @@ class TutorNotifier extends StateNotifier<List<ChatMessage>> {
       state = [...state.where((m) => !m.isLoading), tutorMessage];
 
       _saveChatMessage(tutorMessage);
+
+      // Abweisung, Hilfe-Antwort oder Fehler kamen von der App selbst: keine
+      // XP und keine Quiz-Fragen aus diesem Text.
+      if (tutorResponse.isLocal) return;
 
       // XP vergeben wenn KI ein Schulfach erkannt hat.
       // Priorität 1: KI-Tag aus der Antwort (zuverlässigste Quelle)

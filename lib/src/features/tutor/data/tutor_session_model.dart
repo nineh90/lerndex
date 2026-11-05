@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../../ai/tutor_safety_filter.dart';
 
 /// 💬 TUTOR SESSION MODEL
 /// Repräsentiert eine zusammenhängende Tutor-Session
@@ -138,11 +139,12 @@ class TutorSession {
   ///   'off_topic'  → Nicht-Schulthema (Alltag, Freizeit, …)
   ///   'critical'   → potenziell bedenklicher Inhalt
   ///
-  // TODO: Refactor – ähnliche Prüfung existiert in FirebaseAIService
-  // (_isAppropriateQuestion / _isNonSchoolQuestion). Beim nächsten Review
-  // in eine gemeinsame ContentAnalyzer-Klasse konsolidieren.
+  /// Was Lexi mit Hilfe-Antwort oder Ablehnung beantwortet
+  /// (TutorSafetyFilter), ist immer 'critical'. Die Wortlisten darunter
+  /// laufen auf dem Text ohne Schulbegriffe („nachschlagen“, „Blutkreislauf“).
   static String? detectContentFlag(String text) {
-    final q = text.toLowerCase().trim();
+    if (TutorSafetyFilter.check(text) != TutorSafety.ok) return 'critical';
+    final q = TutorSafetyFilter.stripSchoolTerms(text);
     // ── 🚨 CRITICAL: Bedenkliche Inhalte ─────────────────────────────────────
     // Gewalt
     if (q.contains('töten') ||
@@ -176,7 +178,7 @@ class TutorSession {
     // Sexueller Inhalt
     if (q.contains('sex') ||
         q.contains('nackt') ||
-        q.contains('pornо') ||
+        q.contains('porno') ||
         q.contains('erotik') ||
         q.contains('intim') && (q.contains('bild') || q.contains('video')) ||
         q.contains('vergewaltigung')) {
