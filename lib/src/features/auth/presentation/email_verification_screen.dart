@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/auth_repository.dart';
 import '../../school/presentation/school_home_screen.dart';
 import 'setup_dialog.dart';
+import '../../../shared/user_message.dart';
 
 /// E-Mail Verifizierungs-Screen
 /// Erscheint nach der Registrierung per E-Mail
@@ -99,7 +100,7 @@ class _EmailVerificationScreenState
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
+          SnackBar(content: Text(userMessage(e)), backgroundColor: Colors.red),
         );
       }
     } finally {

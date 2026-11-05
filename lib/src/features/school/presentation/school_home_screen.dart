@@ -6,6 +6,7 @@ import '../data/school_repository.dart';
 import '../domain/school_models.dart';
 import 'school_class_screen.dart';
 import 'school_admin_screen.dart';
+import '../../../shared/user_message.dart';
 
 /// Startseite eines reinen Schulkontos: lädt die Schul-Rolle aus dem
 /// (frischen) Token und zeigt den Schulbereich – ohne Elternbereich.
@@ -114,7 +115,7 @@ class SchoolHomeScreen extends ConsumerWidget {
           const _Header('Klassen'),
           ...classes.when(
             loading: () => [const Center(child: CircularProgressIndicator())],
-            error: (e, _) => [Text('Fehler: $e')],
+            error: (e, _) => [Text(userMessage(e))],
             data: (list) => list.isEmpty
                 ? [
                     const Padding(

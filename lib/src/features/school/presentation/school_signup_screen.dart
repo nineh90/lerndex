@@ -8,7 +8,7 @@ import '../../auth/presentation/email_verification_screen.dart';
 import '../../auth/presentation/sign_out.dart';
 import '../../splash/splash_screen.dart';
 import '../data/school_repository.dart';
-import 'school_section.dart' show schoolErrorText;
+import '../../../shared/user_message.dart';
 
 /// Registrierung einer Schule über den Einladungslink von Lerndex
 /// (…/schule/CODE): Die Schulleitung legt die Schule und ihr Konto an. Das
@@ -61,7 +61,7 @@ class _SchoolSignupScreenState extends ConsumerState<SchoolSignupScreen> {
       await action();
     } catch (e) {
       _registering = false;
-      if (mounted) setState(() => _error = schoolErrorText(e));
+      if (mounted) setState(() => _error = userMessage(e));
     } finally {
       if (mounted) setState(() => _busy = false);
     }

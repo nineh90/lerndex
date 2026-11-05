@@ -7,7 +7,7 @@ import '../../auth/data/auth_repository.dart';
 import '../../auth/presentation/sign_out.dart';
 import '../data/school_repository.dart';
 import 'school_home_screen.dart';
-import 'school_section.dart' show schoolErrorText;
+import '../../../shared/user_message.dart';
 
 /// Lehrkraft scannt ihre QR-Karte (…/l/TOKEN): beim ersten Mal PIN
 /// festlegen, danach PIN eingeben. Die PIN prüft der Server
@@ -88,10 +88,10 @@ class _TeacherCardScreenState extends ConsumerState<TeacherCardScreen> {
         setState(_loadInfo);
         error = e.message;
       } else {
-        error = schoolErrorText(e);
+        error = userMessage(e);
       }
     } catch (e) {
-      error = schoolErrorText(e);
+      error = userMessage(e);
     }
     if (!mounted) return;
     _pin.clear();
@@ -124,7 +124,7 @@ class _TeacherCardScreenState extends ConsumerState<TeacherCardScreen> {
                       future: _info,
                       builder: (context, snap) {
                         if (snap.hasError) {
-                          return _message(schoolErrorText(snap.error!));
+                          return _message(userMessage(snap.error!));
                         }
                         if (!snap.hasData) {
                           return const Center(

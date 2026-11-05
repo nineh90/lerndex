@@ -5,7 +5,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../../parent_dashboard/data/pin_repository.dart' show PinLockedException;
+import '../../parent_dashboard/data/pin_repository.dart'
+    show PinLockedException;
+import '../../../shared/user_message.dart';
 
 // ============================================================================
 // KINDERGERÄTE KOPPELN
@@ -180,8 +182,9 @@ class ChildDeviceRepository {
       .map((s) => s.size);
 }
 
-class PairingException implements Exception {
+class PairingException implements FriendlyException {
   const PairingException(this.message);
+  @override
   final String message;
 
   @override

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../school/data/parent_link_repository.dart';
-import '../../school/presentation/school_section.dart' show schoolErrorText;
+import '../../../shared/user_message.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lerndex/src/features/auth/domain/child_model.dart';
 import 'package:lerndex/src/features/auth/presentation/widgets/child_limit_exceeded_screen.dart';
@@ -56,7 +56,7 @@ class _FamilyDashboardScreenState extends ConsumerState<FamilyDashboardScreen> {
       } catch (e) {
         messenger.showSnackBar(
           SnackBar(
-            content: Text('Elternbrief: ${schoolErrorText(e)}'),
+            content: Text('Elternbrief: ${userMessage(e)}'),
             backgroundColor: Colors.red,
           ),
         );
@@ -382,7 +382,7 @@ class _FamilyDashboardScreenState extends ConsumerState<FamilyDashboardScreen> {
               );
             },
             loading: () => const Center(child: CircularProgressIndicator()),
-            error: (e, st) => Center(child: Text('Fehler: $e')),
+            error: (e, st) => Center(child: Text(userMessage(e))),
           ),
 
           // ── Tutorial Overlay ───────────────────────────────────────────

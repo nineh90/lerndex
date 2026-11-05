@@ -8,6 +8,7 @@ import '../../subscription/data/subscription_provider.dart';
 import '../data/auth_repository.dart';
 import 'email_verification_screen.dart';
 import 'setup_dialog.dart';
+import '../../../shared/user_message.dart';
 
 /// Registrierungs-Screen — Name + E-Mail + Passwort ODER Google
 class RegisterScreen extends ConsumerStatefulWidget {
@@ -184,7 +185,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
+          SnackBar(content: Text(userMessage(e)), backgroundColor: Colors.red),
         );
       }
     } finally {
@@ -226,7 +227,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
+          SnackBar(content: Text(userMessage(e)), backgroundColor: Colors.red),
         );
       }
     } finally {
@@ -259,7 +260,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
+          SnackBar(content: Text(userMessage(e)), backgroundColor: Colors.red),
         );
       }
     } finally {

@@ -10,6 +10,7 @@ import '../../../shared/platform_info.dart';
 import '../../auth/presentation/sign_out.dart';
 import '../../school/presentation/school_section.dart';
 import '../data/subscription_service.dart';
+import '../../../shared/user_message.dart';
 
 /// Sucht das RevenueCat-Package zu einem Plan im aktuellen Offering.
 Package? _packageForPlan(Offering offering, SubscriptionPlan plan) {
@@ -99,7 +100,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
             ? _buildWebNoPurchase(hasActivePlan)
             : offeringsAsync.when(
                 loading: () => const Center(child: CircularProgressIndicator()),
-                error: (e, _) => _buildError(e.toString()),
+                error: (e, _) => _buildError(userMessage(e)),
                 data: (offerings) {
                   if (offerings == null || offerings.current == null) {
                     return _buildError(
@@ -433,7 +434,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text(e.toString())));
+        ).showSnackBar(SnackBar(content: Text(userMessage(e))));
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -459,7 +460,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text(e.toString())));
+        ).showSnackBar(SnackBar(content: Text(userMessage(e))));
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);

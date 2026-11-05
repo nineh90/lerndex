@@ -7,7 +7,7 @@ import '../../parent_dashboard/presentation/tutor_history_screen.dart';
 import '../../rewards/presentation/manage_rewards_screen.dart';
 import '../data/parent_link_repository.dart';
 import '../domain/class_stats.dart';
-import 'school_section.dart' show schoolErrorText;
+import '../../../shared/user_message.dart';
 
 /// Eltern-Dashboard: Kinder, die über den Elternbrief der Schule verbunden
 /// sind. Statistik, Belohnungen und Lexi-Gespräche wie bei eigenen Kindern;
@@ -102,7 +102,7 @@ Future<void> connectSchoolChild(BuildContext context, WidgetRef ref) async {
     messenger.showSnackBar(SnackBar(content: Text('$name ist jetzt verbunden.')));
   } catch (e) {
     messenger.showSnackBar(
-      SnackBar(content: Text(schoolErrorText(e)), backgroundColor: Colors.red),
+      SnackBar(content: Text(userMessage(e)), backgroundColor: Colors.red),
     );
   }
 }
@@ -245,7 +245,7 @@ class _LinkedChildCard extends ConsumerWidget {
       if (context.mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text(schoolErrorText(e))));
+        ).showSnackBar(SnackBar(content: Text(userMessage(e))));
       }
     }
   }

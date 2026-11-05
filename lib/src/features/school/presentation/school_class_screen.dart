@@ -14,7 +14,7 @@ import '../../generated_tasks/data/generated_task_repository.dart';
 import '../domain/class_stats.dart';
 import '../domain/school_models.dart';
 import 'class_task_screen.dart';
-import 'school_section.dart';
+import '../../../shared/user_message.dart';
 import 'student_cards_print.dart';
 
 /// Eine Klasse: Schüler anlegen, Anmeldekarten (QR) drucken, Schüler löschen.
@@ -293,7 +293,7 @@ class SchoolClassScreen extends ConsumerWidget {
       if (context.mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text(schoolErrorText(e))));
+        ).showSnackBar(SnackBar(content: Text(userMessage(e))));
       }
     }
   }
@@ -352,7 +352,7 @@ class SchoolClassScreen extends ConsumerWidget {
         SnackBar(content: Text('${names.length} Schüler hinzugefügt')),
       );
     } catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text(schoolErrorText(e))));
+      messenger.showSnackBar(SnackBar(content: Text(userMessage(e))));
     }
   }
 
@@ -421,7 +421,7 @@ class SchoolClassScreen extends ConsumerWidget {
       if (context.mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text(schoolErrorText(e))));
+        ).showSnackBar(SnackBar(content: Text(userMessage(e))));
       }
     }
   }
@@ -486,7 +486,7 @@ class SchoolClassScreen extends ConsumerWidget {
     try {
       await ref.read(schoolRepositoryProvider).deleteStudent(student.id);
     } catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text(schoolErrorText(e))));
+      messenger.showSnackBar(SnackBar(content: Text(userMessage(e))));
     }
   }
 }

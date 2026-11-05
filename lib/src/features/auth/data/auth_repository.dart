@@ -7,6 +7,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import '../../../shared/user_message.dart';
 
 part 'auth_repository.g.dart';
 
@@ -132,7 +133,7 @@ class AuthRepository {
     } on FirebaseAuthException catch (e) {
       throw _handleAuthException(e);
     } catch (e) {
-      throw e.toString();
+      throw userMessage(e);
     }
   }
 
@@ -206,7 +207,7 @@ class AuthRepository {
     } on FirebaseAuthException catch (e) {
       throw _handleAuthException(e);
     } catch (e) {
-      throw e.toString();
+      throw userMessage(e);
     }
   }
 
@@ -383,7 +384,7 @@ class AuthRepository {
       case 'popup-blocked':
         return 'Der Browser hat das Anmeldefenster blockiert. Bitte Popups für Lerndex erlauben.';
       default:
-        return 'Fehler: ${e.message}';
+        return userMessage(e);
     }
   }
 }

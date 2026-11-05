@@ -15,6 +15,7 @@ import '../../subscription/presentation/paywall_screen.dart';
 import 'feedback_dialog.dart';
 import '../../school/presentation/school_section.dart';
 import 'package:lerndex/src/features/auth/domain/account.dart';
+import '../../../shared/user_message.dart';
 
 /// Einstellungsbereich im Elterndashboard
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -264,7 +265,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         });
                       } catch (e) {
                         setDialogState(() {
-                          error = 'Fehler: $e';
+                          error = userMessage(e);
                           loading = false;
                         });
                       }
@@ -421,7 +422,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         }
                       } catch (e) {
                         setDialogState(() {
-                          error = 'Fehler: $e';
+                          error = userMessage(e);
                           loading = false;
                         });
                       }

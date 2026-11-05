@@ -13,6 +13,7 @@ import 'setup_dialog.dart';
 import 'family_dashboard_screen.dart';
 // NEU: Subscription
 import '../../subscription/data/subscription_provider.dart';
+import '../../../shared/user_message.dart';
 
 /// Login-Screen für bestehende Nutzer
 /// Neue Nutzer werden zu RegisterScreen weitergeleitet
@@ -89,7 +90,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         );
       }
     } catch (e) {
-      _showError(e.toString());
+      _showError(userMessage(e));
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -104,7 +105,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         uid: result.credential.user?.uid,
       );
     } catch (e) {
-      _showError(e.toString());
+      _showError(userMessage(e));
     } finally {
       if (mounted) setState(() => _isGoogleLoading = false);
     }
@@ -120,7 +121,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         uid: result.credential.user?.uid,
       );
     } catch (e) {
-      _showError(e.toString());
+      _showError(userMessage(e));
     } finally {
       if (mounted) setState(() => _isAppleLoading = false);
     }
@@ -255,7 +256,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         );
       }
     } catch (e) {
-      _showError(e.toString());
+      _showError(userMessage(e));
     }
   }
 
