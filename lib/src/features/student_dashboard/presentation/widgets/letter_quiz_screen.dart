@@ -11,11 +11,10 @@ import 'package:firebase_ai/firebase_ai.dart';
 import 'package:lerndex/src/features/auth/data/auth_repository.dart';
 import 'package:lerndex/src/features/auth/presentation/active_child_provider.dart';
 import 'package:lerndex/src/features/learning_time/learning_time_tracker.dart';
-import 'package:lerndex/src/features/rewards/data/xp_service.dart';
 import 'package:lerndex/src/features/tts/tts_provider.dart';
 import 'package:lerndex/src/features/student_dashboard/presentation/widgets/avatar_progress_bar.dart';
 import 'package:lerndex/src/features/student_dashboard/presentation/widgets/treasure_chest_overlay.dart';
-import 'package:lerndex/src/features/quiz/presentation/quiz_finish_service.dart';
+import 'early_quiz/early_quiz_session.dart';
 import 'letter_task_engine.dart';
 import 'package:lerndex/src/ai/vertex_ai_service.dart';
 import 'package:lerndex/src/ai/ai_model.dart';
@@ -54,16 +53,15 @@ class _LetterQuizScreenState extends ConsumerState<LetterQuizScreen>
 
   List<LetterTask> _tasks = [];
   int _currentIndex = 0;
-  int _correctAnswers = 0;
+  EarlyQuizScore _score = EarlyQuizScore(0);
+  int get _correctAnswers => _score.correctCount;
+  List<bool?> get _stepResults => _score.stepResults;
   bool _isFinished = false;
   bool _showFeedback = false;
   bool _wasCorrect = false;
   bool _showRetryChoice = false;
   String _feedbackText = '';
-  bool _finishQuizCalled = false;
   bool _showTreasureChest = false;
-
-  List<bool?> _stepResults = [];
 
   // Für buchstabeMalen
   final GlobalKey _canvasKey = GlobalKey();
@@ -87,7 +85,9 @@ class _LetterQuizScreenState extends ConsumerState<LetterQuizScreen>
 
   // Tracking
   LearningTimeTracker? _timeTracker;
+  EarlyQuizFinish? _finish;
   String? _childId;
+  late final TtsController _tts;
 
   @override
   void initState() {
@@ -95,6 +95,7 @@ class _LetterQuizScreenState extends ConsumerState<LetterQuizScreen>
     final child = ref.read(activeChildProvider);
     final user = ref.read(authStateChangesProvider).value;
     _childId = child?.id;
+    _tts = ref.read(ttsControllerProvider.notifier);
 
     if (child != null && user != null) {
       _timeTracker = LearningTimeTracker(
@@ -103,6 +104,11 @@ class _LetterQuizScreenState extends ConsumerState<LetterQuizScreen>
         subject: 'Buchstaben',
       );
       _timeTracker!.startTracking();
+      _finish = EarlyQuizFinish(
+        userId: user.ownerUid,
+        childId: child.id,
+        timeTracker: _timeTracker,
+      );
     }
 
     _feedbackController = AnimationController(
@@ -143,7 +149,7 @@ class _LetterQuizScreenState extends ConsumerState<LetterQuizScreen>
     final tasks = engine.generate(_questionCount);
     setState(() {
       _tasks = tasks;
-      _stepResults = List.filled(tasks.length, null);
+      _score = EarlyQuizScore(tasks.length);
     });
     Future.delayed(const Duration(milliseconds: 600), () {
       if (mounted) _speakCurrentQuestion();
@@ -167,23 +173,10 @@ class _LetterQuizScreenState extends ConsumerState<LetterQuizScreen>
     _shakeController.dispose();
     _confettiController.dispose();
     _finishConfettiController.dispose();
-    // Abbruch mitten im Quiz (oder vor dem Schließen der Schatzkiste):
-    // Tracker stoppen und die bisherige Lernzeit sichern – best effort,
-    // unawaited. Regulär erledigt das QuizFinishService in _finishQuiz.
-    if (!_finishQuizCalled) {
-      final tracker = _timeTracker;
-      if (tracker != null) {
-        tracker.stopTracking();
-        unawaited(
-          tracker.saveTime().catchError((Object e) {
-            debugPrint('⚠️ LetterQuiz: Lernzeit-Rettung fehlgeschlagen: $e');
-          }),
-        );
-      }
-    }
-    try {
-      ref.read(ttsControllerProvider.notifier).stop();
-    } catch (_) {}
+    // Abbruch mitten im Quiz: XP und Lernzeit retten. Quiz fertig: der
+    // Abschluss läuft ohne diesen Bildschirm zu Ende.
+    _finish?.onDispose(pendingXP: _score.earnedXP);
+    _tts.stop();
     super.dispose();
   }
 
@@ -197,7 +190,7 @@ class _LetterQuizScreenState extends ConsumerState<LetterQuizScreen>
   void _speakCurrentQuestion() {
     if (!_ttsEnabled || _tasks.isEmpty) return;
     final task = _tasks[_currentIndex];
-    ref.read(ttsControllerProvider.notifier).speakQuestion(_buildTtsText(task));
+    _tts.speakQuestion(_buildTtsText(task));
   }
 
   /// Baut TTS-freundlichen Text – keine Unterstriche, keine Sonderzeichen.
@@ -226,14 +219,12 @@ class _LetterQuizScreenState extends ConsumerState<LetterQuizScreen>
 
   void _speakFeedback(String text) {
     if (!_ttsEnabled) return;
-    ref.read(ttsControllerProvider.notifier).speakFeedback(text);
+    _tts.speakFeedback(text);
   }
 
   void _speakResult() {
     if (!_ttsEnabled) return;
-    ref
-        .read(ttsControllerProvider.notifier)
-        .speakResult(correct: _correctAnswers, total: _tasks.length);
+    _tts.speakResult(correct: _correctAnswers, total: _tasks.length);
   }
 
   // ── Antwort-Logik ─────────────────────────────────────────────────────────
@@ -247,23 +238,13 @@ class _LetterQuizScreenState extends ConsumerState<LetterQuizScreen>
       _showFeedback = true;
       _wasCorrect = correct;
       _feedbackText = correct ? task.feedbackCorrect : task.feedbackWrong;
-      if (correct) _correctAnswers++;
-      _stepResults[_currentIndex] = correct;
+      _score.record(_currentIndex, correct: correct);
     });
 
     if (correct) {
       HapticFeedback.lightImpact();
       _bounceController.forward().then((_) => _bounceController.reverse());
       _confettiController.play();
-      final child = ref.read(activeChildProvider);
-      final user = ref.read(authStateChangesProvider).value;
-      if (child != null && user != null) {
-        try {
-          await ref
-              .read(xpServiceProvider)
-              .addXP(userId: user.ownerUid, childId: child.id, xpToAdd: 3);
-        } catch (_) {}
-      }
     } else {
       HapticFeedback.heavyImpact();
       _shakeController.forward().then((_) => _shakeController.reset());
@@ -276,15 +257,7 @@ class _LetterQuizScreenState extends ConsumerState<LetterQuizScreen>
     if (correct) {
       await Future.delayed(const Duration(milliseconds: 1800));
       if (!mounted) return;
-      if (_ttsEnabled) {
-        int waitMs = 0;
-        while (waitMs < 4000 &&
-            mounted &&
-            ref.read(ttsControllerProvider).isSpeaking) {
-          await Future.delayed(const Duration(milliseconds: 100));
-          waitMs += 100;
-        }
-      }
+      await _waitForSpeechEnd();
       if (!mounted) return;
       setState(() => _showFeedback = false);
       _advanceToNext();
@@ -292,6 +265,18 @@ class _LetterQuizScreenState extends ConsumerState<LetterQuizScreen>
       await Future.delayed(const Duration(milliseconds: 1400));
       if (!mounted) return;
       setState(() => _showRetryChoice = true);
+    }
+  }
+
+  /// Wartet (höchstens 4 s), bis die Sprachausgabe fertig ist.
+  Future<void> _waitForSpeechEnd() async {
+    if (!_ttsEnabled || !ref.read(ttsControllerProvider).isSpeaking) return;
+    try {
+      await _tts.stream
+          .firstWhere((s) => !s.isSpeaking)
+          .timeout(const Duration(seconds: 4));
+    } catch (_) {
+      // Timeout oder Controller weg – einfach weiter
     }
   }
 
@@ -310,12 +295,13 @@ class _LetterQuizScreenState extends ConsumerState<LetterQuizScreen>
         if (mounted) _speakCurrentQuestion();
       });
     } else {
-      _timeTracker?.stopTracking();
-      if (_correctAnswers >= 4) {
+      // Abschluss sofort starten – nicht erst nach der Schatzkiste.
+      _startFinish();
+      if (_score.earnsTreasure) {
         setState(() => _showTreasureChest = true);
       } else {
         setState(() => _isFinished = true);
-        _finishQuiz();
+        _presentFinish();
         Future.delayed(const Duration(milliseconds: 500), () {
           if (mounted) _speakResult();
         });
@@ -330,28 +316,21 @@ class _LetterQuizScreenState extends ConsumerState<LetterQuizScreen>
       _drawStrokes = [];
       _currentStroke = [];
       _isEvaluating = false;
-      _stepResults[_currentIndex] = null;
+      _drawAttempts = 0;
+      _score.retry(_currentIndex);
     });
     Future.delayed(const Duration(milliseconds: 300), () {
       if (mounted) _speakCurrentQuestion();
     });
   }
 
-  Future<void> _finishQuiz() async {
-    if (_finishQuizCalled) return;
-    _finishQuizCalled = true;
-    final child = ref.read(activeChildProvider);
-    final user = ref.read(authStateChangesProvider).value;
-    if (child == null || user == null) return;
-    await QuizFinishService.finish(
-      ref: ref,
-      context: context,
-      userId: user.ownerUid,
-      childId: child.id,
-      isPerfect: _correctAnswers == _tasks.length,
-      timeTracker: _timeTracker,
-    );
+  void _startFinish() {
+    _timeTracker?.stopTracking();
+    _finish?.start(ref, isPerfect: _score.isPerfect, earnedXP: _score.earnedXP);
   }
+
+  /// Popups (Belohnung, Streak) erst, wenn der Abschluss-Bildschirm steht.
+  void _presentFinish() => _finish?.present(() => mounted ? context : null);
 
   // ── Vertex AI Buchstaben-Erkennung ────────────────────────────────────────
 
@@ -500,14 +479,14 @@ class _LetterQuizScreenState extends ConsumerState<LetterQuizScreen>
     if (_showTreasureChest) {
       return Scaffold(
         body: TreasureChestOverlay(
-          earnedStars: _correctAnswers * 3,
-          isPerfect: _correctAnswers == _tasks.length,
+          earnedStars: _score.earnedXP,
+          isPerfect: _score.isPerfect,
           onDismiss: () {
             setState(() {
               _showTreasureChest = false;
               _isFinished = true;
             });
-            _finishQuiz();
+            _presentFinish();
             Future.delayed(const Duration(milliseconds: 300), () {
               if (mounted) {
                 _speakResult();
@@ -586,7 +565,7 @@ class _LetterQuizScreenState extends ConsumerState<LetterQuizScreen>
             children: [
               GestureDetector(
                 onTap: () {
-                  ref.read(ttsControllerProvider.notifier).stop();
+                  _tts.stop();
                   Navigator.pop(context);
                 },
                 child: Container(
@@ -1387,9 +1366,9 @@ class _LetterQuizScreenState extends ConsumerState<LetterQuizScreen>
   // ── Finish Screen ─────────────────────────────────────────────────────────
 
   Widget _buildFinishScreen() {
-    final allCorrect = _correctAnswers == _tasks.length;
-    final earnedXP = _correctAnswers * 3;
-    final showConfetti = _correctAnswers >= 4;
+    final allCorrect = _score.isPerfect;
+    final earnedXP = _score.earnedXP;
+    final showConfetti = _score.earnsTreasure;
 
     final wrongTasks = <LetterTask>[];
     for (int i = 0; i < _tasks.length; i++) {
@@ -1595,7 +1574,7 @@ class _LetterQuizScreenState extends ConsumerState<LetterQuizScreen>
                     const SizedBox(height: 36),
                     GestureDetector(
                       onTap: () {
-                        ref.read(ttsControllerProvider.notifier).stop();
+                        _tts.stop();
                         Navigator.pop(context);
                       },
                       child: Container(
