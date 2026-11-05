@@ -92,6 +92,37 @@ class XPService {
   // XP HINZUFÜGEN
   // =========================================================================
 
+  /// Felder für das Kind-Dokument, wenn [xpToAdd] XP dazukommen, und das
+  /// Ergebnis. Für Transaktionen, die XP zusammen mit anderen Änderungen
+  /// schreiben (z.B. Bonus-XP einer Belohnung).
+  static ({Map<String, dynamic> fields, XPResult result}) xpGainFields(
+    Map<String, dynamic> childData,
+    int xpToAdd,
+  ) {
+    final currentXP = (childData['xp'] as num?)?.toInt() ?? 0;
+    final currentLevel = (childData['level'] as num?)?.toInt() ?? 1;
+
+    final newXP = currentXP + xpToAdd;
+    final newLevel = calculateLevelFromXP(newXP);
+    final xpToNext = calculateXPToNextLevel(newXP, newLevel);
+
+    return (
+      fields: {
+        'xp': newXP,
+        'level': newLevel,
+        'xpToNextLevel': xpToNext,
+        'lastXPGain': FieldValue.serverTimestamp(),
+      },
+      result: XPResult(
+        newXP: newXP,
+        newLevel: newLevel,
+        leveledUp: newLevel > currentLevel,
+        xpGained: xpToAdd,
+        xpToNextLevel: xpToNext,
+      ),
+    );
+  }
+
   /// Fügt XP hinzu und gibt Ergebnis zurück
   Future<XPResult> addXP({
     required String userId,
@@ -114,29 +145,9 @@ class XPService {
           throw Exception('Kind nicht gefunden');
         }
 
-        final data = snapshot.data()!;
-        final currentXP = data['xp'] ?? 0;
-        final currentLevel = data['level'] ?? 1;
-
-        final newXP = currentXP + xpToAdd;
-        final newLevel = calculateLevelFromXP(newXP);
-        final leveledUp = newLevel > currentLevel;
-        final xpToNext = calculateXPToNextLevel(newXP, newLevel);
-
-        transaction.update(docRef, {
-          'xp': newXP,
-          'level': newLevel,
-          'xpToNextLevel': xpToNext,
-          'lastXPGain': FieldValue.serverTimestamp(),
-        });
-
-        return XPResult(
-          newXP: newXP,
-          newLevel: newLevel,
-          leveledUp: leveledUp,
-          xpGained: xpToAdd,
-          xpToNextLevel: xpToNext,
-        );
+        final (:fields, :result) = xpGainFields(snapshot.data()!, xpToAdd);
+        transaction.update(docRef, fields);
+        return result;
       });
 
       debugPrint(
