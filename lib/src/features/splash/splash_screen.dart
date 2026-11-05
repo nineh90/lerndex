@@ -1,7 +1,6 @@
 import 'dart:math' as math;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../auth/data/auth_repository.dart';
@@ -207,9 +206,10 @@ class _LerndexSplashScreenState extends ConsumerState<LerndexSplashScreen>
 
       _setProgress(_bootstrapShare * 0.5, 'Anmeldung prüfen...');
 
-      // Link, mit dem die App geöffnet wurde: in der App vom Aufrufer
-      // (App Link, QR-Scanner), im Browser aus der Adresszeile.
-      final path = _linkPath ?? (kIsWeb ? Uri.base.path : null);
+      // Link, mit dem die App geöffnet wurde: vom Aufrufer (App Link,
+      // QR-Scanner) bzw. beim Start aus readInitialAppLink (im Browser aus
+      // der Adresszeile, siehe web/index.html).
+      final path = _linkPath;
 
       // Einladungslink für eine Schule (…/schule/CODE, von Lerndex):
       // Registrierung der Schulleitung.

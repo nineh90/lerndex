@@ -8,6 +8,7 @@ import '../features/auth/data/child_device_repository.dart';
 import '../features/school/data/parent_link_repository.dart';
 import '../features/school/data/school_repository.dart';
 import '../features/splash/splash_screen.dart';
+import 'web/browser_url.dart';
 
 // ============================================================================
 // LERNDEX-LINKS IN DER APP
@@ -38,8 +39,13 @@ String? lerndexLinkPath(String raw) {
   if (uri == null || !_lerndexHosts.contains(uri.host.toLowerCase())) {
     return null;
   }
-  final path = uri.path;
-  final known = pairingCodeFromPath(path) ??
+  return knownLinkPath(uri.path);
+}
+
+/// [path], wenn der Startbildschirm ihn versteht (…/k/CODE usw.), sonst null.
+String? knownLinkPath(String path) {
+  final known =
+      pairingCodeFromPath(path) ??
       studentCardFromPath(path) ??
       teacherCardFromPath(path) ??
       parentLinkCodeFromPath(path) ??
@@ -57,10 +63,18 @@ void openLinkPath(String path) {
 
 String? _initialLinkPath;
 
-/// Nur Android/iOS: Link, mit dem die App gestartet wurde (Pfad), oder null.
-/// Merkt ihn sich für [takeInitialAppLink].
+/// Link, mit dem die App gestartet wurde (Pfad), oder null. Merkt ihn sich
+/// für [takeInitialAppLink].
+///
+/// Im Browser hat web/index.html den Pfad schon vor dem Start aus der
+/// Adresszeile genommen (Codes sollen nicht im Verlauf bleiben). Ging das
+/// nicht, steht er noch in der Adresszeile.
 Future<String?> readInitialAppLink() async {
-  if (kIsWeb) return null;
+  if (kIsWeb) {
+    _initialLinkPath = knownLinkPath(takeStoredLinkPath() ?? Uri.base.path);
+    if (_initialLinkPath != null) replaceBrowserPath('/');
+    return _initialLinkPath;
+  }
   try {
     final uri = await AppLinks().getInitialLink().timeout(
       const Duration(seconds: 2),
