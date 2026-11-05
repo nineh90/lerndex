@@ -91,6 +91,21 @@ test("Schule anlegen: Admin-Claims, Schul-Konto, nur einmal", async () => {
   assert.equal((await adb.doc(`users/${admin.uid}`).get()).get("accountType"), undefined);
 });
 
+test("Schule anlegen: Lerndex bekommt eine Mail", async () => {
+  const account = await freshAccount();
+  const code = await schoolSignup({ licenseUntil: Timestamp.fromDate(new Date("2027-07-31T21:59:59Z")) });
+  const { schoolId } = await account.call("createSchool", { code, name: "Realschule Lengerich" });
+  const mails = await adb.collection("mail").where("schoolId", "==", schoolId).get();
+  assert.equal(mails.size, 1);
+  const mail = mails.docs[0].data();
+  assert.equal(mail.type, "schoolCreated");
+  assert.deepEqual(mail.to, ["support@lerndex.de"]);
+  assert.equal(mail.message.subject, "Neue Schule: Realschule Lengerich");
+  assert.match(mail.message.text, /Lizenz bis:\s+31\.7\.2027/);
+  assert.match(mail.message.text, /@schule\.de/);
+  assert.match(mail.message.text, new RegExp(code));
+});
+
 test("Schule anlegen nur mit Einladungscode von Lerndex", async () => {
   const account = await freshAccount();
   await expectError(account.call("createSchool", { name: "Ohne Code" }), "not-found");

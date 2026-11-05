@@ -29,6 +29,7 @@ const { FieldValue, Timestamp } = require("firebase-admin/firestore");
 const { getStorage } = require("firebase-admin/storage");
 const { db, auth } = require("./lib/firebase");
 const { redeemOnce } = require("./lib/claim");
+const { notifyLerndex } = require("./lib/notify");
 const {
   kidUid,
   normalizeCode,
@@ -172,8 +173,35 @@ exports.createSchool = onCall(async (request) => {
     return { schoolId, schoolName, schoolAccount };
   });
   if (!result) throw invalid;
+  await notifySchoolCreated(result, user, code);
   return result;
 });
+
+/** Mail an Lerndex: Eine eingeladene Schule hat sich registriert. */
+async function notifySchoolCreated({ schoolId, schoolName }, user, code) {
+  const license = await db.doc(`users/${schoolOwnerUid(schoolId)}`).get();
+  const until = license.get("schoolLicenseUntil");
+  const untilText = until?.toDate
+    ? until.toDate().toLocaleDateString("de-DE", { timeZone: "Europe/Berlin" })
+    : "keine";
+  const now = new Date().toLocaleString("de-DE", { timeZone: "Europe/Berlin" });
+  await notifyLerndex(
+    `Neue Schule: ${schoolName}`,
+    [
+      "Eine Schule hat sich über einen Einladungslink bei Lerndex registriert.",
+      "",
+      `Schule:         ${schoolName}`,
+      `Schulleitung:   ${user.displayName || "(kein Name)"} <${user.email || "keine E-Mail"}>`,
+      `Lizenz bis:     ${untilText}`,
+      `Einladung:      ${code}`,
+      `Schul-ID:       ${schoolId}`,
+      `Zeitpunkt:      ${now}`,
+      "",
+      "Übersicht: python3 tool/admin/schule.py liste",
+    ].join("\n"),
+    { type: "schoolCreated", schoolId },
+  );
+}
 
 // ── Lehrkräfte: QR-Karte + PIN ──────────────────────────────────────────────
 //
