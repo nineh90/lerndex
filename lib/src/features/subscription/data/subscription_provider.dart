@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -73,6 +74,8 @@ class SubscriptionNotifier
       }
       final status = await _service.getSubscriptionStatus();
       if (mounted) state = AsyncValue.data(status);
+      // Gespeicherten Status für Browser und Kindergeräte auffrischen
+      unawaited(_service.syncWithServer());
     } catch (e, st) {
       if (mounted) state = AsyncValue.error(e, st);
     }
@@ -115,46 +118,6 @@ final offeringsProvider = FutureProvider<Offerings?>((ref) {
 // =============================================================================
 // CONVENIENCE PROVIDER
 // =============================================================================
-
-/// Schneller Zugriff: Hat der User gerade Zugriff auf die App?
-final hasSubscriptionAccessProvider = Provider<bool>((ref) {
-  final status = ref.watch(subscriptionStatusProvider);
-  return status.when(
-    data: (s) => s.hasAccess,
-    loading: () => true, // Im Zweifel Zugriff lassen (vermeidet Flackern)
-    error: (_, _) => true,
-  );
-});
-
-/// Schneller Zugriff: Wie viele Kinder darf der User anlegen?
-final childLimitProvider = Provider<int>((ref) {
-  final status = ref.watch(subscriptionStatusProvider);
-  return status.when(
-    data: (s) => s.childLimit,
-    loading: () => 4, // Im Zweifel großzügig
-    error: (_, _) => 4,
-  );
-});
-
-/// Schneller Zugriff: Aktueller Plan (oder none)
-final currentPlanProvider = Provider<SubscriptionPlan>((ref) {
-  final status = ref.watch(subscriptionStatusProvider);
-  return status.when(
-    data: (s) => s.plan,
-    loading: () => SubscriptionPlan.none,
-    error: (_, _) => SubscriptionPlan.none,
-  );
-});
-
-/// Anzahl bisher zugekaufter extra Kind-Slots.
-final extraChildSlotsProvider = Provider<int>((ref) {
-  final status = ref.watch(subscriptionStatusProvider);
-  return status.when(
-    data: (s) => s.extraChildSlots,
-    loading: () => 0,
-    error: (_, _) => 0,
-  );
-});
 
 /// Darf der User gerade einen weiteren Kind-Slot kaufen?
 /// (Nur Family-Plan + aktives Abo)

@@ -33,37 +33,56 @@ void main() {
 
   group('SubscriptionPlanExtension.fromString', () {
     test('mappt bekannte Strings', () {
-      expect(SubscriptionPlanExtension.fromString('trial'),
-          SubscriptionPlan.trial);
-      expect(SubscriptionPlanExtension.fromString('solo'),
-          SubscriptionPlan.solo);
+      expect(
+        SubscriptionPlanExtension.fromString('trial'),
+        SubscriptionPlan.trial,
+      );
+      expect(
+        SubscriptionPlanExtension.fromString('solo'),
+        SubscriptionPlan.solo,
+      );
       expect(SubscriptionPlanExtension.fromString('duo'), SubscriptionPlan.duo);
-      expect(SubscriptionPlanExtension.fromString('family'),
-          SubscriptionPlan.family);
+      expect(
+        SubscriptionPlanExtension.fromString('family'),
+        SubscriptionPlan.family,
+      );
     });
     test('null und unbekannt → none', () {
       expect(SubscriptionPlanExtension.fromString(null), SubscriptionPlan.none);
-      expect(SubscriptionPlanExtension.fromString('quatsch'),
-          SubscriptionPlan.none);
+      expect(
+        SubscriptionPlanExtension.fromString('quatsch'),
+        SubscriptionPlan.none,
+      );
     });
   });
 
   group('SubscriptionPlanExtension.fromEntitlement', () {
     test('null → none', () {
-      expect(SubscriptionPlanExtension.fromEntitlement(null),
-          SubscriptionPlan.none);
+      expect(
+        SubscriptionPlanExtension.fromEntitlement(null),
+        SubscriptionPlan.none,
+      );
     });
     test('erkennt Produkt-Identifier per Substring', () {
-      expect(SubscriptionPlanExtension.fromEntitlement('lerndex_solo_monthly'),
-          SubscriptionPlan.solo);
-      expect(SubscriptionPlanExtension.fromEntitlement('lerndex_duo'),
-          SubscriptionPlan.duo);
-      expect(SubscriptionPlanExtension.fromEntitlement('lerndex_family'),
-          SubscriptionPlan.family);
+      expect(
+        SubscriptionPlanExtension.fromEntitlement('lerndex_solo_monthly'),
+        SubscriptionPlan.solo,
+      );
+      expect(
+        SubscriptionPlanExtension.fromEntitlement('lerndex_duo'),
+        SubscriptionPlan.duo,
+      );
+      expect(
+        SubscriptionPlanExtension.fromEntitlement('lerndex_family'),
+        SubscriptionPlan.family,
+      );
     });
-    test('unbekanntes Produkt → none', () {
-      expect(SubscriptionPlanExtension.fromEntitlement('something_else'),
-          SubscriptionPlan.none);
+    test('unbekanntes Produkt mit aktivem Entitlement → solo', () {
+      // Wer zahlt, darf nie ohne Zugang dastehen
+      expect(
+        SubscriptionPlanExtension.fromEntitlement('lerndex_monthly'),
+        SubscriptionPlan.solo,
+      );
     });
   });
 
@@ -92,12 +111,18 @@ void main() {
     });
 
     test('hasAccess erfordert isActive UND Plan mit Zugriff', () {
-      const inactiveFamily =
-          SubscriptionStatus(plan: SubscriptionPlan.family, isActive: false);
-      const activeNone =
-          SubscriptionStatus(plan: SubscriptionPlan.none, isActive: true);
-      const activeFamily =
-          SubscriptionStatus(plan: SubscriptionPlan.family, isActive: true);
+      const inactiveFamily = SubscriptionStatus(
+        plan: SubscriptionPlan.family,
+        isActive: false,
+      );
+      const activeNone = SubscriptionStatus(
+        plan: SubscriptionPlan.none,
+        isActive: true,
+      );
+      const activeFamily = SubscriptionStatus(
+        plan: SubscriptionPlan.family,
+        isActive: true,
+      );
       expect(inactiveFamily.hasAccess, isFalse);
       expect(activeNone.hasAccess, isFalse);
       expect(activeFamily.hasAccess, isTrue);
@@ -113,12 +138,18 @@ void main() {
     });
 
     test('canPurchaseExtraChildSlot nur bei aktivem Family-Plan', () {
-      const activeFamily =
-          SubscriptionStatus(plan: SubscriptionPlan.family, isActive: true);
-      const activeDuo =
-          SubscriptionStatus(plan: SubscriptionPlan.duo, isActive: true);
-      const inactiveFamily =
-          SubscriptionStatus(plan: SubscriptionPlan.family, isActive: false);
+      const activeFamily = SubscriptionStatus(
+        plan: SubscriptionPlan.family,
+        isActive: true,
+      );
+      const activeDuo = SubscriptionStatus(
+        plan: SubscriptionPlan.duo,
+        isActive: true,
+      );
+      const inactiveFamily = SubscriptionStatus(
+        plan: SubscriptionPlan.family,
+        isActive: false,
+      );
       expect(activeFamily.canPurchaseExtraChildSlot, isTrue);
       expect(activeDuo.canPurchaseExtraChildSlot, isFalse);
       expect(inactiveFamily.canPurchaseExtraChildSlot, isFalse);
@@ -131,7 +162,7 @@ void main() {
     });
 
     test('fromFirestore liest alle Felder', () {
-      final expires = DateTime(2026, 12, 31, 23, 59);
+      final expires = DateTime(2099, 12, 31, 23, 59);
       final status = SubscriptionStatus.fromFirestore({
         'plan': 'family',
         'isActive': true,
@@ -146,17 +177,23 @@ void main() {
       expect(status.childLimit, 6);
     });
 
-    test('toFirestore enthält Plan und Status', () {
-      const status = SubscriptionStatus(
-        plan: SubscriptionPlan.solo,
-        isActive: true,
-        isTrial: false,
+    test('abgelaufenes Abo gilt nach 3 Tagen Kulanz nicht mehr', () {
+      Map<String, dynamic> abo(Duration ago) => {
+        'plan': 'family',
+        'isActive': true,
+        'expiresAt': Timestamp.fromDate(DateTime.now().subtract(ago)),
+      };
+      expect(
+        SubscriptionStatus.fromFirestore(
+          abo(const Duration(days: 1)),
+        ).hasAccess,
+        isTrue,
       );
-      final map = status.toFirestore();
-      expect(map['plan'], 'solo');
-      expect(map['isActive'], isTrue);
-      // extraChildSlots wird bewusst NICHT überschrieben
-      expect(map.containsKey('extraChildSlots'), isFalse);
+      final expired = SubscriptionStatus.fromFirestore(
+        abo(const Duration(days: 4)),
+      );
+      expect(expired.isActive, isFalse);
+      expect(expired.hasAccess, isFalse);
     });
   });
 }

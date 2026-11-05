@@ -6,6 +6,7 @@ import 'package:purchases_flutter/purchases_flutter.dart';
 import '../../../shared/platform_info.dart';
 import 'subscription_model.dart';
 import 'package:lerndex/src/features/auth/domain/account.dart';
+import '../../auth/data/child_device_repository.dart' show lerndexFunctions;
 
 class SubscriptionService {
   SubscriptionService(this._firestore, this._auth);
@@ -120,10 +121,12 @@ class SubscriptionService {
     Purchases.addCustomerInfoUpdateListener((customerInfo) {
       // Kindergerät: RevenueCat kennt dort nur einen anonymen Nutzer ohne Abo
       if (_auth.currentUser?.isChildDevice ?? false) return;
+      // Nach dem Abmelden meldet RevenueCat den anonymen Nutzer ohne Abo –
+      // der gehört zu keinem Konto mehr.
+      if (customerInfo.originalAppUserId.startsWith(r'$RCAnonymousID')) return;
       final status = _parseCustomerInfo(customerInfo);
-      // Immer in Firestore syncen – auch bei Kündigung (leerer Status),
-      // damit der App-Start-Cache nie einen abgelaufenen Zugriff zurückgibt.
-      _syncToFirestore(status);
+      // Den gespeicherten Status (Browser, Kindergeräte) schreibt der Server.
+      unawaited(syncWithServer());
       controller.add(status);
     });
     return controller.stream;
@@ -133,7 +136,13 @@ class SubscriptionService {
     final entitlement = info.entitlements.active[_entitlementId];
 
     if (entitlement == null) {
-      return SubscriptionStatus.empty;
+      // Zusatzplätze gelten nur mit Family-Abo, bleiben aber gezählt
+      return SubscriptionStatus(
+        plan: SubscriptionPlan.none,
+        isActive: false,
+        isTrial: false,
+        extraChildSlots: _extraSlots(info),
+      );
     }
 
     final plan = SubscriptionPlanExtension.fromEntitlement(
@@ -151,6 +160,7 @@ class SubscriptionService {
       isActive: true,
       isTrial: isTrial,
       expiresAt: expiresAt,
+      extraChildSlots: _extraSlots(info),
     );
   }
 
@@ -193,7 +203,7 @@ class SubscriptionService {
           if (oldProductId == package.storeProduct.identifier) {
             debugPrint('ℹ️ Dasselbe Produkt bereits aktiv: $oldProductId');
             final status = _parseCustomerInfo(customerInfo);
-            await _syncToFirestore(status);
+            unawaited(syncWithServer());
             return status;
           }
 
@@ -225,7 +235,7 @@ class SubscriptionService {
       }
 
       final status = _parseCustomerInfo(result.customerInfo);
-      await _syncToFirestore(status);
+      unawaited(syncWithServer());
       return status;
     } on PurchasesErrorCode catch (e) {
       if (e == PurchasesErrorCode.purchaseCancelledError) {
@@ -243,7 +253,7 @@ class SubscriptionService {
     try {
       final customerInfo = await Purchases.restorePurchases();
       final status = _parseCustomerInfo(customerInfo);
-      await _syncToFirestore(status);
+      unawaited(syncWithServer());
       return status;
     } catch (e) {
       throw 'Wiederherstellen fehlgeschlagen: $e';
@@ -251,7 +261,8 @@ class SubscriptionService {
   }
 
   /// Kauft einen zusätzlichen Kind-Slot (Consumable, 6,99 €).
-  /// Erhöht nach erfolgreichem Kauf `extraChildSlots` in Firestore um 1.
+  /// Die Zahl der Plätze ergibt sich aus den Käufen bei RevenueCat
+  /// (App: CustomerInfo, Server: syncSubscription).
   /// Nur erlaubt wenn der User einen aktiven Family-Plan hat.
   Future<void> purchaseExtraChildSlot() async {
     try {
@@ -279,10 +290,8 @@ class SubscriptionService {
       }
 
       await Purchases.purchase(PurchaseParams.storeProduct(product));
-
-      // Kauf erfolgreich → Slot-Zähler in Firestore atomar erhöhen
-      await _incrementExtraChildSlot();
-      debugPrint('✅ Extra Kind-Slot gekauft und in Firestore gespeichert');
+      await syncWithServer();
+      debugPrint('✅ Extra Kind-Slot gekauft');
     } on PurchasesErrorCode catch (e) {
       if (e == PurchasesErrorCode.purchaseCancelledError) {
         throw 'Kauf abgebrochen.';
@@ -295,34 +304,25 @@ class SubscriptionService {
     }
   }
 
-  /// Erhöht `extraChildSlots` im Firestore-Userdokument atomar um 1.
-  Future<void> _incrementExtraChildSlot() async {
-    final uid = _auth.currentUser?.ownerUid;
-    if (uid == null) return;
+  /// Gekaufte Zusatz-Kinderplätze (Consumable, jeder Kauf ein Platz).
+  static int _extraSlots(CustomerInfo info) => info.nonSubscriptionTransactions
+      .where((t) => t.productIdentifier == _extraChildSlotProductId)
+      .length;
 
-    await _firestore.collection('users').doc(uid).update({
-      'subscription.extraChildSlots': FieldValue.increment(1),
-      'subscriptionUpdatedAt': FieldValue.serverTimestamp(),
-    });
-  }
-
-  Future<void> _syncToFirestore(SubscriptionStatus status) async {
-    final uid = _auth.currentUser?.ownerUid;
-    if (uid == null) return;
-
+  /// Der Server holt den Status bei RevenueCat und speichert ihn am
+  /// Elternkonto (Browser und Kindergeräte lesen ihn dort). Fehler sind hier
+  /// unkritisch: der RevenueCat-Webhook gleicht ebenfalls ab.
+  Future<void> syncWithServer() async {
+    final user = _auth.currentUser;
+    if (user == null || user.isChildDevice || !isConfigured) return;
     try {
-      await _firestore.collection('users').doc(uid).update({
-        'subscription': status.toFirestore(),
-        'subscriptionUpdatedAt': FieldValue.serverTimestamp(),
-      });
-      debugPrint(
-        '✅ Abo-Status in Firestore gespeichert: ${status.plan.displayName}',
-      );
+      await lerndexFunctions().httpsCallable('syncSubscription').call();
     } catch (e) {
-      debugPrint('❌ Fehler beim Speichern des Abo-Status: $e');
+      debugPrint('⚠️ Abo-Abgleich mit dem Server fehlgeschlagen: $e');
     }
   }
 
+  /// Gespeicherter Status (vom Server geschrieben).
   Future<SubscriptionStatus> getStatusFromFirestore() async {
     final uid = _auth.currentUser?.ownerUid;
     if (uid == null) return SubscriptionStatus.empty;
@@ -331,8 +331,8 @@ class SubscriptionService {
       final doc = await _firestore.collection('users').doc(uid).get();
       final data = doc.data();
       // Review-Testaccount: Top-Level-Flag gewinnt über alles. Es liegt
-      // bewusst NICHT unter `subscription`, damit der RevenueCat-Sync
-      // (_syncToFirestore überschreibt nur `subscription.*`) es nie wegräumt.
+      // bewusst NICHT unter `subscription`, damit der Abo-Abgleich des
+      // Servers es nie wegräumt.
       if (data?['testAccess'] == true) {
         return SubscriptionStatus.testAccess;
       }

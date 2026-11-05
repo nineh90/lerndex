@@ -77,13 +77,15 @@ extension SubscriptionPlanExtension on SubscriptionPlan {
     }
   }
 
-  /// Aus RevenueCat Entitlement-String parsen
+  /// Plan aus der Produkt-ID eines aktiven Entitlements (gleich in
+  /// functions/lib/revenuecat.js). Unbekannte Produkt-IDs zählen als solo:
+  /// Wer zahlt, darf nie ohne Zugang dastehen.
   static SubscriptionPlan fromEntitlement(String? productIdentifier) {
     if (productIdentifier == null) return SubscriptionPlan.none;
-    if (productIdentifier.contains('solo')) return SubscriptionPlan.solo;
-    if (productIdentifier.contains('duo')) return SubscriptionPlan.duo;
-    if (productIdentifier.contains('family')) return SubscriptionPlan.family;
-    return SubscriptionPlan.none;
+    final id = productIdentifier.toLowerCase();
+    if (id.contains('family')) return SubscriptionPlan.family;
+    if (id.contains('duo')) return SubscriptionPlan.duo;
+    return SubscriptionPlan.solo;
   }
 
   /// Aus Firestore-String parsen
@@ -170,13 +172,19 @@ class SubscriptionStatus {
     if (data == null) return SubscriptionStatus.empty;
 
     final plan = SubscriptionPlanExtension.fromString(data['plan'] as String?);
-    final isActive = data['isActive'] as bool? ?? false;
     final isTrial = data['isTrial'] as bool? ?? false;
 
     DateTime? expiresAt;
     if (data['expiresAt'] != null) {
       expiresAt = (data['expiresAt'] as Timestamp).toDate();
     }
+    // Abgelaufen ist abgelaufen, auch wenn niemand den Status aktualisiert
+    // hat (3 Tage Kulanz wie functions/lib/access.js: Verlängerungen kommen
+    // per Webhook manchmal verzögert an).
+    final expired =
+        expiresAt != null &&
+        expiresAt.add(const Duration(days: 3)).isBefore(DateTime.now());
+    final isActive = (data['isActive'] as bool? ?? false) && !expired;
 
     DateTime? trialEndsAt;
     if (data['trialEndsAt'] != null) {
@@ -191,17 +199,5 @@ class SubscriptionStatus {
       trialEndsAt: trialEndsAt,
       extraChildSlots: (data['extraChildSlots'] as int?) ?? 0,
     );
-  }
-
-  /// Zu Firestore-Map konvertieren
-  Map<String, dynamic> toFirestore() {
-    return {
-      'plan': plan.toFirestore(),
-      'isActive': isActive,
-      'isTrial': isTrial,
-      if (expiresAt != null) 'expiresAt': Timestamp.fromDate(expiresAt!),
-      if (trialEndsAt != null) 'trialEndsAt': Timestamp.fromDate(trialEndsAt!),
-      // extraChildSlots wird NICHT hier überschrieben – nur via incrementExtraChildSlot()
-    };
   }
 }
