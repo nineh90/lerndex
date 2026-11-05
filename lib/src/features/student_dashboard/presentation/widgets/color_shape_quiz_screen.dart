@@ -1,9 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
-import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:confetti/confetti.dart';
@@ -14,6 +12,7 @@ import 'package:lerndex/src/features/learning_time/learning_time_tracker.dart';
 import 'package:lerndex/src/features/tts/tts_provider.dart';
 import 'package:lerndex/src/features/student_dashboard/presentation/widgets/avatar_progress_bar.dart';
 import 'package:lerndex/src/features/student_dashboard/presentation/widgets/treasure_chest_overlay.dart';
+import 'early_quiz/draw_canvas.dart';
 import 'early_quiz/early_quiz_session.dart';
 import 'color_shape_task_engine.dart';
 import 'package:lerndex/src/ai/vertex_ai_service.dart';
@@ -68,11 +67,11 @@ class _ColorShapeQuizScreenState extends ConsumerState<ColorShapeQuizScreen>
   bool _showTreasureChest = false;
 
   // Für formZeichnen
-  final GlobalKey _canvasKey = GlobalKey();
-  List<List<Offset?>> _drawStrokes = [];
-  List<Offset> _currentStroke = [];
+  final DrawingController _drawing = DrawingController();
   bool _isEvaluating = false;
   int _drawAttempts = 0;
+  // Prüfung nicht erreichbar (offline, KI gestört) – ab 2 Mal „Weiter“
+  int _drawCheckFailures = 0;
   static const int _maxDrawAttempts = 3;
   AiModel? _aiModel;
 
@@ -177,6 +176,7 @@ class _ColorShapeQuizScreenState extends ConsumerState<ColorShapeQuizScreen>
     _shakeController.dispose();
     _confettiController.dispose();
     _finishConfettiController.dispose();
+    _drawing.dispose();
     // Abbruch mitten im Quiz: XP und Lernzeit retten. Quiz fertig: der
     // Abschluss läuft ohne diesen Bildschirm zu Ende.
     _finish?.onDispose(pendingXP: _score.earnedXP);
@@ -284,10 +284,10 @@ class _ColorShapeQuizScreenState extends ConsumerState<ColorShapeQuizScreen>
     setState(() {
       _showFeedback = false;
       _showRetryChoice = false;
-      _drawStrokes = [];
-      _currentStroke = [];
+      _drawing.clear();
       _isEvaluating = false;
       _drawAttempts = 0;
+      _drawCheckFailures = 0;
     });
     if (_currentIndex < _tasks.length - 1) {
       setState(() => _currentIndex++);
@@ -313,10 +313,10 @@ class _ColorShapeQuizScreenState extends ConsumerState<ColorShapeQuizScreen>
     setState(() {
       _showFeedback = false;
       _showRetryChoice = false;
-      _drawStrokes = [];
-      _currentStroke = [];
+      _drawing.clear();
       _isEvaluating = false;
       _drawAttempts = 0;
+      _drawCheckFailures = 0;
       _score.retry(_currentIndex);
     });
     Future.delayed(const Duration(milliseconds: 300), () {
@@ -346,7 +346,7 @@ class _ColorShapeQuizScreenState extends ConsumerState<ColorShapeQuizScreen>
     // englischer Freitext („a wobbly circle") und nicht kindgerecht.
     bool? isCorrect;
     try {
-      final imageBytes = await _captureCanvas();
+      final imageBytes = await _drawing.capturePng();
       if (imageBytes != null && _aiModel != null) {
         final shapeHints = {
           'Kreis':
@@ -397,9 +397,12 @@ class _ColorShapeQuizScreenState extends ConsumerState<ColorShapeQuizScreen>
 
     if (isCorrect == null) {
       // Kein Versuch verbraucht, Zeichnung bleibt → Kind kann neu abschicken.
+      // Klappt die Prüfung wiederholt nicht, darf es überspringen (Weiter).
       HapticFeedback.heavyImpact();
-      const msg =
-          'Ups, das hat gerade nicht geklappt. Versuch es gleich nochmal!';
+      setState(() => _drawCheckFailures++);
+      final msg = _drawCheckFailures >= 2
+          ? 'Ich kann gerade nicht nachschauen. Tippe auf Weiter!'
+          : 'Ups, das hat gerade nicht geklappt. Versuch es gleich nochmal!';
       _showDrawHint(msg);
       _speakFeedback(msg);
       return;
@@ -409,17 +412,23 @@ class _ColorShapeQuizScreenState extends ConsumerState<ColorShapeQuizScreen>
       await _checkAnswer(shape);
     } else {
       _drawAttempts++;
+      _score.markFailedAttempt(_currentIndex);
       if (_drawAttempts >= _maxDrawAttempts) {
         await _checkAnswer('__WRONG__');
       } else {
         HapticFeedback.heavyImpact();
         setState(() {
-          _drawStrokes = [];
-          _currentStroke = [];
+          _drawing.clear();
         });
         _showDrawHint('Das erkenne ich noch nicht als $shape – nochmal!');
       }
     }
+  }
+
+  /// Malprüfung nicht erreichbar: Aufgabe ohne Wertung überspringen.
+  void _skipDrawTask() {
+    _score.skip(_currentIndex);
+    _advanceToNext();
   }
 
   void _showDrawHint(String msg) {
@@ -432,21 +441,6 @@ class _ColorShapeQuizScreenState extends ConsumerState<ColorShapeQuizScreen>
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
     );
-  }
-
-  Future<Uint8List?> _captureCanvas() async {
-    try {
-      final boundary =
-          _canvasKey.currentContext?.findRenderObject()
-              as RenderRepaintBoundary?;
-      if (boundary == null) return null;
-      final image = await boundary.toImage(pixelRatio: 2.0);
-      final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
-      return byteData?.buffer.asUint8List();
-    } catch (e) {
-      debugPrint('ColorShapeQuiz: capture error: $e');
-      return null;
-    }
   }
 
   // ── Build ─────────────────────────────────────────────────────────────────
@@ -884,168 +878,13 @@ class _ColorShapeQuizScreenState extends ConsumerState<ColorShapeQuizScreen>
   }
 
   Widget _buildDrawCanvas(ColorShapeTask task) {
-    return Column(
-      children: [
-        RepaintBoundary(
-          key: _canvasKey,
-          child: GestureDetector(
-            onPanStart: _showFeedback || _isEvaluating
-                ? null
-                : (d) => setState(() {
-                    _currentStroke = [d.localPosition];
-                  }),
-            onPanUpdate: _showFeedback || _isEvaluating
-                ? null
-                : (d) => setState(() => _currentStroke.add(d.localPosition)),
-            onPanEnd: _showFeedback || _isEvaluating
-                ? null
-                : (d) => setState(() {
-                    _drawStrokes.add([..._currentStroke, null]);
-                    _currentStroke = [];
-                  }),
-            child: Container(
-              height: 180,
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(24),
-                border: Border.all(
-                  color: widget.subjectColors.first.withValues(alpha: 0.35),
-                  width: 2,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.08),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(22),
-                child: Stack(
-                  children: [
-                    CustomPaint(
-                      painter: _DrawingPainter(
-                        strokes: _drawStrokes,
-                        currentStroke: _currentStroke,
-                        color: const Color(0xFF1A1A2E),
-                      ),
-                      child: const SizedBox.expand(),
-                    ),
-                    if (_isEvaluating)
-                      Container(
-                        color: Colors.white.withValues(alpha: 0.8),
-                        child: Center(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              CircularProgressIndicator(
-                                color: widget.subjectColors.first,
-                                strokeWidth: 3,
-                              ),
-                              const SizedBox(height: 12),
-                              Text(
-                                'Ich schaue nach...',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w700,
-                                  color: widget.subjectColors.first,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            GestureDetector(
-              onTap: _isEvaluating || _showFeedback
-                  ? null
-                  : () {
-                      HapticFeedback.lightImpact();
-                      setState(() {
-                        _drawStrokes = [];
-                        _currentStroke = [];
-                      });
-                    },
-              child: Container(
-                width: 56,
-                height: 56,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: Colors.grey.shade300, width: 2),
-                ),
-                child: const Icon(
-                  Icons.delete_outline_rounded,
-                  color: Color(0xFF888888),
-                  size: 26,
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: GestureDetector(
-                onTap:
-                    (_drawStrokes.isEmpty && _currentStroke.isEmpty) ||
-                        _isEvaluating ||
-                        _showFeedback
-                    ? null
-                    : () => _submitDrawing(task),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  height: 56,
-                  decoration: BoxDecoration(
-                    color:
-                        (_drawStrokes.isNotEmpty || _currentStroke.isNotEmpty)
-                        ? Colors.white
-                        : Colors.white.withValues(alpha: 0.4),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color:
-                          (_drawStrokes.isNotEmpty || _currentStroke.isNotEmpty)
-                          ? widget.subjectColors.first
-                          : Colors.white.withValues(alpha: 0.3),
-                      width: 2,
-                    ),
-                    boxShadow: _drawStrokes.isNotEmpty
-                        ? [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.1),
-                              blurRadius: 8,
-                              offset: const Offset(0, 3),
-                            ),
-                          ]
-                        : null,
-                  ),
-                  child: Center(
-                    child: Text(
-                      '✓ Prüfen',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w900,
-                        color:
-                            (_drawStrokes.isNotEmpty ||
-                                _currentStroke.isNotEmpty)
-                            ? widget.subjectColors.first
-                            : Colors.white.withValues(alpha: 0.4),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ],
+    return DrawCanvas(
+      controller: _drawing,
+      accentColor: widget.subjectColors.first,
+      enabled: !_showFeedback,
+      isEvaluating: _isEvaluating,
+      onSubmit: () => _submitDrawing(task),
+      onSkip: _drawCheckFailures >= 2 ? _skipDrawTask : null,
     );
   }
 
@@ -1569,55 +1408,4 @@ class _RetryBtn extends StatelessWidget {
       ),
     );
   }
-}
-
-/// Drawing Painter
-class _DrawingPainter extends CustomPainter {
-  final List<List<Offset?>> strokes;
-  final List<Offset> currentStroke;
-  final Color color;
-
-  _DrawingPainter({
-    required this.strokes,
-    required this.currentStroke,
-    required this.color,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color
-      ..strokeWidth = 16
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round
-      ..style = PaintingStyle.stroke;
-
-    void drawStroke(List<Offset?> stroke) {
-      final path = Path();
-      bool moved = false;
-      for (final point in stroke) {
-        if (point == null) {
-          moved = false;
-          continue;
-        }
-        if (!moved) {
-          path.moveTo(point.dx, point.dy);
-          moved = true;
-        } else {
-          path.lineTo(point.dx, point.dy);
-        }
-      }
-      canvas.drawPath(path, paint);
-    }
-
-    for (final stroke in strokes) {
-      drawStroke(stroke);
-    }
-    if (currentStroke.isNotEmpty) {
-      drawStroke(currentStroke.map((o) => o as Offset?).toList());
-    }
-  }
-
-  @override
-  bool shouldRepaint(_DrawingPainter old) => true;
 }
