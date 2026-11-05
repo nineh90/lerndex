@@ -7,6 +7,7 @@ import '../domain/school_models.dart';
 import 'school_class_screen.dart';
 import 'school_admin_screen.dart';
 import '../../../shared/user_message.dart';
+import '../../../shared/legal_links.dart';
 
 /// Startseite eines reinen Schulkontos: lädt die Schul-Rolle aus dem
 /// (frischen) Token und zeigt den Schulbereich – ohne Elternbereich.
@@ -157,6 +158,8 @@ class SchoolHomeScreen extends ConsumerWidget {
                       )
                       .toList(),
           ),
+          const SizedBox(height: 24),
+          const LegalFooter(),
         ],
       ),
     );

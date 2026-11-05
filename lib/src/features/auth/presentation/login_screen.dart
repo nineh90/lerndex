@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import '../../school/presentation/school_home_screen.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../data/auth_repository.dart';
 import 'child_pairing_screen.dart';
 import 'register_screen.dart';
@@ -14,6 +13,7 @@ import 'family_dashboard_screen.dart';
 // NEU: Subscription
 import '../../subscription/data/subscription_provider.dart';
 import '../../../shared/user_message.dart';
+import '../../../shared/legal_links.dart';
 
 /// Login-Screen für bestehende Nutzer
 /// Neue Nutzer werden zu RegisterScreen weitergeleitet
@@ -211,10 +211,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   decoration: TextDecoration.underline,
                 ),
                 recognizer: TapGestureRecognizer()
-                  ..onTap = () => launchUrl(
-                    Uri.parse('https://www.lerndex.de/datenschutz.php'),
-                    mode: LaunchMode.externalApplication,
-                  ),
+                  ..onTap = () => openLegalLink(LegalLinks.privacy),
               ),
               const TextSpan(
                 text:
@@ -561,6 +558,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       ),
                     ),
                   ),
+                  const SizedBox(height: 12),
+                  const LegalFooter(color: Colors.white70),
                 ],
               ),
             ),

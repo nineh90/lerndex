@@ -8,6 +8,8 @@ import '../../auth/presentation/sign_out.dart';
 import '../data/school_repository.dart';
 import 'school_home_screen.dart';
 import '../../../shared/user_message.dart';
+import '../../../shared/legal_links.dart';
+import '../../auth/domain/account.dart';
 
 /// Lehrkraft scannt ihre QR-Karte (…/l/TOKEN): beim ersten Mal PIN
 /// festlegen, danach PIN eingeben. Die PIN prüft der Server
@@ -118,9 +120,17 @@ class _TeacherCardScreenState extends ConsumerState<TeacherCardScreen> {
             padding: const EdgeInsets.all(24),
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 400),
-              child: user != null
-                  ? _signedIn(user.email ?? 'ein anderes Konto')
-                  : FutureBuilder<({bool pinSet, String name})>(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (user != null)
+                    _signedIn(
+                      user.isTeacherDevice
+                          ? 'eine Lehrkraft (Lehrer-Karte)'
+                          : user.email ?? 'ein anderes Konto',
+                    )
+                  else
+                    FutureBuilder<({bool pinSet, String name})>(
                       future: _info,
                       builder: (context, snap) {
                         if (snap.hasError) {
@@ -134,6 +144,10 @@ class _TeacherCardScreenState extends ConsumerState<TeacherCardScreen> {
                         return _pinForm(snap.data!);
                       },
                     ),
+                  const SizedBox(height: 24),
+                  const LegalFooter(),
+                ],
+              ),
             ),
           ),
         ),

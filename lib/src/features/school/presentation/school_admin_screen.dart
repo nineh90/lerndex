@@ -9,6 +9,7 @@ import '../domain/school_models.dart';
 import 'school_home_screen.dart' show SchoolLogoutAction;
 import '../../../shared/user_message.dart';
 import 'student_cards_print.dart';
+import '../../../shared/legal_links.dart';
 
 /// Schulleitung: verwaltet nur die Lehrkräfte (anlegen, Karte neu ausstellen,
 /// PIN zurücksetzen, entfernen) und sieht die Lizenz. Klassen und Schüler
@@ -87,6 +88,8 @@ class SchoolAdminScreen extends ConsumerWidget {
                   .toList();
             },
           ),
+          const SizedBox(height: 24),
+          const LegalFooter(),
         ],
       ),
     );

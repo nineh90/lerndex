@@ -7,6 +7,7 @@ import '../../splash/splash_screen.dart';
 import '../../../shared/app_links.dart';
 import '../data/child_device_repository.dart';
 import 'qr_scan_screen.dart';
+import '../../../shared/legal_links.dart';
 
 /// „Ich bin ein Kind“: Kopplungscode eintippen, den die Eltern im
 /// Elternbereich (Kind bearbeiten → Eigenes Gerät) erzeugt haben.
@@ -188,6 +189,8 @@ class _ChildPairingScreenState extends ConsumerState<ChildPairingScreen> {
                       )
                     : const Text('Los geht\'s', style: TextStyle(fontSize: 16)),
               ),
+              const SizedBox(height: 24),
+              const LegalFooter(adultGate: true),
             ],
           ),
         ),

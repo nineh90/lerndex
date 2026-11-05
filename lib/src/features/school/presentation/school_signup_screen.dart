@@ -1,7 +1,6 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../auth/data/auth_repository.dart';
 import '../../auth/presentation/email_verification_screen.dart';
@@ -9,6 +8,7 @@ import '../../auth/presentation/sign_out.dart';
 import '../../splash/splash_screen.dart';
 import '../data/school_repository.dart';
 import '../../../shared/user_message.dart';
+import '../../../shared/legal_links.dart';
 
 /// Registrierung einer Schule über den Einladungslink von Lerndex
 /// (…/schule/CODE): Die Schulleitung legt die Schule und ihr Konto an. Das
@@ -162,6 +162,8 @@ class _SchoolSignupScreenState extends ConsumerState<SchoolSignupScreen> {
                       textAlign: TextAlign.center,
                     ),
                   ],
+                  const SizedBox(height: 16),
+                  const LegalFooter(),
                 ],
               ),
             ),
@@ -237,9 +239,7 @@ class _SchoolSignupScreenState extends ConsumerState<SchoolSignupScreen> {
                       decoration: TextDecoration.underline,
                     ),
                     recognizer: TapGestureRecognizer()
-                      ..onTap = () => launchUrl(
-                        Uri.parse('https://www.lerndex.de/datenschutz.php'),
-                      ),
+                      ..onTap = () => openLegalLink(LegalLinks.privacy),
                   ),
                   const TextSpan(text: ' gelesen und stimme ihr zu.'),
                 ],
