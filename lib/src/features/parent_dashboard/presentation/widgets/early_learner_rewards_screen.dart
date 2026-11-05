@@ -34,162 +34,133 @@ class EarlyLearnerRewardsScreen extends ConsumerWidget {
       return const Center(child: Text('🤔', style: TextStyle(fontSize: 64)));
     }
 
-    final rewardsStream = ref
-        .watch(rewardServiceProvider)
-        .getRewardsStream(userId: user.ownerUid, childId: activeChild.id);
-
-    return StreamBuilder<List<RewardModel>>(
-      stream: rewardsStream,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: Text('⏳', style: TextStyle(fontSize: 56)));
-        }
-
-        final allRewards = snapshot.data ?? [];
-        final c = activeChild;
-
-        bool conditionMet(RewardModel r) {
-          switch (r.trigger) {
-            case RewardTrigger.level:
-              return r.requiredLevel != null && c.level >= r.requiredLevel!;
-            case RewardTrigger.xp:
-              if (r.requiredXP == null) return false;
-              final xpTarget = (r.baselineXP ?? 0) + r.requiredXP!;
-              return c.xp >= xpTarget;
-            case RewardTrigger.stars:
-              return r.requiredStars != null && c.stars >= r.requiredStars!;
-            case RewardTrigger.streak:
-              return r.requiredStreak != null &&
-                  (c.streak ?? 0) >= r.requiredStreak!;
-            case RewardTrigger.quizCount:
-              return r.requiredQuizCount != null &&
-                  (c.totalQuizzes ?? 0) >= r.requiredQuizCount!;
-            case RewardTrigger.manual:
-              return true;
-            default:
-              return false;
-          }
-        }
-
-        final approvedRewards = allRewards
-            .where(
-              (r) =>
-                  r.type == RewardType.parent &&
-                  r.status == RewardStatus.approved,
-            )
-            .toList();
-
-        // Pending aber Bedingung bereits erfüllt → als verfügbar zeigen
-        final pendingButMet = allRewards
-            .where(
-              (r) =>
-                  r.type == RewardType.parent &&
-                  r.status == RewardStatus.pending &&
-                  conditionMet(r),
-            )
-            .toList();
-
-        // Pending und noch nicht erfüllt → wirklich gesperrt
-        final pendingParentRewards = allRewards
-            .where(
-              (r) =>
-                  r.type == RewardType.parent &&
-                  r.status == RewardStatus.pending &&
-                  !conditionMet(r),
-            )
-            .toList();
-
-        final claimedRewards = allRewards
-            .where(
-              (r) =>
-                  r.type == RewardType.parent &&
-                  r.status == RewardStatus.claimed,
-            )
-            .toList();
-        final systemRewards = allRewards
-            .where((r) => r.type == RewardType.system)
-            .toList();
-
-        return SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 100),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // ── Einlösbare Eltern-Geschenke ─────────────────────────
-              if (approvedRewards.isNotEmpty || pendingButMet.isNotEmpty) ...[
-                _ParentRewardGrid(
-                  rewards: [...approvedRewards, ...pendingButMet],
-                  userId: user.ownerUid,
-                  childId: activeChild.id,
-                  child: activeChild,
-                  mode: _TileMode.available,
-                ),
-                const SizedBox(height: 24),
-              ],
-
-              // ── Gesperrte Eltern-Geschenke (mit Fortschritt) ────────
-              if (pendingParentRewards.isNotEmpty) ...[
-                _ParentRewardGrid(
-                  rewards: pendingParentRewards,
-                  userId: user.ownerUid,
-                  childId: activeChild.id,
-                  child: activeChild,
-                  mode: _TileMode.locked,
-                ),
-                const SizedBox(height: 24),
-              ],
-
-              // ── Systembelohnungen nach Kategorie ────────────────────
-              if (systemRewards.isNotEmpty) ...[
-                _SystemAchievements(rewards: systemRewards, child: activeChild),
-              ],
-
-              // ── Eingelöst (ganz unten, dezent) ──────────────────────
-              if (claimedRewards.isNotEmpty) ...[
-                const SizedBox(height: 8),
-                const Divider(color: Color(0xFFE0D8FF)),
-                const SizedBox(height: 12),
-                ...claimedRewards.map(
-                  (r) => _ParentRewardTile(
-                    reward: r,
-                    userId: user.ownerUid,
-                    childId: activeChild.id,
-                    child: activeChild,
-                    mode: _TileMode.claimed,
-                  ),
-                ),
-                const SizedBox(height: 16),
-              ],
-
-              // ── Leer-Zustand ────────────────────────────────────────
-              if (approvedRewards.isEmpty &&
-                  pendingParentRewards.isEmpty &&
-                  claimedRewards.isEmpty &&
-                  systemRewards.isEmpty)
-                const Center(
-                  child: Padding(
-                    padding: EdgeInsets.only(top: 60),
-                    child: Column(
-                      children: [
-                        Text('🎁', style: TextStyle(fontSize: 80)),
-                        SizedBox(height: 16),
-                        Text(
-                          'Lern weiter!\nBald gibt es Geschenke!',
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w800,
-                            color: Color(0xFF37205A),
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-            ],
+    final rewardsAsync = ref.watch(
+      rewardsStreamProvider((userId: user.ownerUid, childId: activeChild.id)),
+    );
+    if (!rewardsAsync.hasValue) {
+      if (rewardsAsync.hasError) {
+        return const Center(
+          child: Padding(
+            padding: EdgeInsets.all(24),
+            child: Text(
+              '🙈\nDie Geschenke laden gerade nicht.\nVersuch es gleich noch mal!',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+              textAlign: TextAlign.center,
+            ),
           ),
         );
-      },
+      }
+      return const Center(child: Text('⏳', style: TextStyle(fontSize: 56)));
+    }
+
+    final allRewards = rewardsAsync.value ?? [];
+
+    // Einlösbar ist nur, was freigeschaltet ist (approved). Gesperrte
+    // oder von den Eltern zurückgezogene Belohnungen (pending) bleiben
+    // gesperrt, auch wenn die Bedingung schon erfüllt ist – freigeschaltet
+    // wird nach dem nächsten Quiz bzw. von den Eltern.
+    final approvedRewards = allRewards
+        .where(
+          (r) =>
+              r.type == RewardType.parent && r.status == RewardStatus.approved,
+        )
+        .toList();
+
+    final pendingParentRewards = allRewards
+        .where(
+          (r) =>
+              r.type == RewardType.parent && r.status == RewardStatus.pending,
+        )
+        .toList();
+
+    final claimedRewards = allRewards
+        .where(
+          (r) =>
+              r.type == RewardType.parent && r.status == RewardStatus.claimed,
+        )
+        .toList();
+    final systemRewards = allRewards
+        .where((r) => r.type == RewardType.system)
+        .toList();
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 100),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ── Einlösbare Eltern-Geschenke ─────────────────────────
+          if (approvedRewards.isNotEmpty) ...[
+            _ParentRewardGrid(
+              rewards: approvedRewards,
+              userId: user.ownerUid,
+              childId: activeChild.id,
+              child: activeChild,
+              mode: _TileMode.available,
+            ),
+            const SizedBox(height: 24),
+          ],
+
+          // ── Gesperrte Eltern-Geschenke (mit Fortschritt) ────────
+          if (pendingParentRewards.isNotEmpty) ...[
+            _ParentRewardGrid(
+              rewards: pendingParentRewards,
+              userId: user.ownerUid,
+              childId: activeChild.id,
+              child: activeChild,
+              mode: _TileMode.locked,
+            ),
+            const SizedBox(height: 24),
+          ],
+
+          // ── Systembelohnungen nach Kategorie ────────────────────
+          if (systemRewards.isNotEmpty) ...[
+            _SystemAchievements(rewards: systemRewards, child: activeChild),
+          ],
+
+          // ── Eingelöst (ganz unten, dezent) ──────────────────────
+          if (claimedRewards.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            const Divider(color: Color(0xFFE0D8FF)),
+            const SizedBox(height: 12),
+            ...claimedRewards.map(
+              (r) => _ParentRewardTile(
+                reward: r,
+                userId: user.ownerUid,
+                childId: activeChild.id,
+                child: activeChild,
+                mode: _TileMode.claimed,
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
+
+          // ── Leer-Zustand ────────────────────────────────────────
+          if (approvedRewards.isEmpty &&
+              pendingParentRewards.isEmpty &&
+              claimedRewards.isEmpty &&
+              systemRewards.isEmpty)
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.only(top: 60),
+                child: Column(
+                  children: [
+                    Text('🎁', style: TextStyle(fontSize: 80)),
+                    SizedBox(height: 16),
+                    Text(
+                      'Lern weiter!\nBald gibt es Geschenke!',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF37205A),
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
 }
@@ -383,11 +354,17 @@ class _ParentRewardTileState extends ConsumerState<_ParentRewardTile>
               childId: widget.childId,
               rewardId: widget.reward.id,
             );
-      } catch (_) {
+      } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(const SnackBar(content: Text('Fehler beim Einlösen')));
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                e is RewardNotClaimableException
+                    ? 'Das Geschenk ist gerade gesperrt. Frag deine Eltern!'
+                    : 'Das hat nicht geklappt. Versuch es gleich noch mal!',
+              ),
+            ),
+          );
         }
       }
     }
@@ -487,7 +464,9 @@ class _ParentRewardTileState extends ConsumerState<_ParentRewardTile>
                   width: 80,
                   height: 80,
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: isLocked ? 0.06 : 0.12),
+                    color: Colors.white.withValues(
+                      alpha: isLocked ? 0.06 : 0.12,
+                    ),
                     shape: BoxShape.circle,
                   ),
                 ),
@@ -500,7 +479,9 @@ class _ParentRewardTileState extends ConsumerState<_ParentRewardTile>
                   width: 55,
                   height: 55,
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: isLocked ? 0.04 : 0.08),
+                    color: Colors.white.withValues(
+                      alpha: isLocked ? 0.04 : 0.08,
+                    ),
                     shape: BoxShape.circle,
                   ),
                 ),
@@ -519,8 +500,8 @@ class _ParentRewardTileState extends ConsumerState<_ParentRewardTile>
                           emoji,
                           style: TextStyle(
                             fontSize: 32,
-                            color: Colors.white.withValues(alpha: 
-                              isLocked ? 0.4 : 1.0,
+                            color: Colors.white.withValues(
+                              alpha: isLocked ? 0.4 : 1.0,
                             ),
                           ),
                         ),
@@ -700,7 +681,9 @@ class _ClaimDialog extends StatelessWidget {
                         borderRadius: BorderRadius.circular(20),
                         boxShadow: [
                           BoxShadow(
-                            color: const Color(0xFF7C4DFF).withValues(alpha: 0.4),
+                            color: const Color(
+                              0xFF7C4DFF,
+                            ).withValues(alpha: 0.4),
                             blurRadius: 12,
                             offset: const Offset(0, 4),
                           ),
@@ -809,7 +792,9 @@ class _SystemAchievements extends StatelessWidget {
                             child: LinearProgressIndicator(
                               value: total > 0 ? doneCount / total : 0,
                               minHeight: 12,
-                              backgroundColor: cat.color.withValues(alpha: 0.15),
+                              backgroundColor: cat.color.withValues(
+                                alpha: 0.15,
+                              ),
                               valueColor: AlwaysStoppedAnimation<Color>(
                                 cat.color,
                               ),
@@ -985,7 +970,9 @@ class _AchievCard extends StatelessWidget {
               width: 60,
               height: 60,
               decoration: BoxDecoration(
-                color: done ? color.withValues(alpha: 0.15) : const Color(0xFFF3F0FF),
+                color: done
+                    ? color.withValues(alpha: 0.15)
+                    : const Color(0xFFF3F0FF),
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Center(

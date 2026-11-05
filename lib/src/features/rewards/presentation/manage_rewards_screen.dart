@@ -33,6 +33,21 @@ class _ManageRewardsScreenState extends ConsumerState<ManageRewardsScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
+  // Stream einmal anlegen und behalten: ein neuer Stream bei jedem build()
+  // meldet die Abfrage neu an und lässt die Liste flackern.
+  Stream<List<RewardModel>>? _stream;
+  String? _streamOwner;
+
+  Stream<List<RewardModel>> _rewardsStream(String ownerUid) {
+    if (_stream == null || _streamOwner != ownerUid) {
+      _streamOwner = ownerUid;
+      _stream = ref
+          .read(rewardServiceProvider)
+          .getRewardsStream(userId: ownerUid, childId: widget.child.id);
+    }
+    return _stream!;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -72,9 +87,7 @@ class _ManageRewardsScreenState extends ConsumerState<ManageRewardsScreen>
         ),
       ),
       body: StreamBuilder<List<RewardModel>>(
-        stream: ref
-            .watch(rewardServiceProvider)
-            .getRewardsStream(userId: (widget.ownerUid ?? user.ownerUid), childId: widget.child.id),
+        stream: _rewardsStream(widget.ownerUid ?? user.ownerUid),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(
@@ -83,7 +96,16 @@ class _ManageRewardsScreenState extends ConsumerState<ManageRewardsScreen>
           }
 
           if (snapshot.hasError) {
-            return Center(child: Text('Fehler: ${snapshot.error}'));
+            return const Center(
+              child: Padding(
+                padding: EdgeInsets.all(24),
+                child: Text(
+                  'Die Belohnungen konnten nicht geladen werden. '
+                  'Bitte prüfe die Internetverbindung.',
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            );
           }
 
           // Nur eltern-erstellte Belohnungen – System-Achievements gehören ins Schüler-Dashboard
@@ -135,7 +157,8 @@ class _ManageRewardsScreenState extends ConsumerState<ManageRewardsScreen>
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showCreateRewardDialog(
           context,
-          widget.ownerUid ?? ref.watch(authStateChangesProvider).value!.ownerUid,
+          widget.ownerUid ??
+              ref.watch(authStateChangesProvider).value!.ownerUid,
         ),
         backgroundColor: Colors.deepPurple,
         foregroundColor: Colors.white,
@@ -164,7 +187,7 @@ class _ManageRewardsScreenState extends ConsumerState<ManageRewardsScreen>
             const SizedBox(height: 8),
             Text(
               'Tippe auf „Neue Belohnung" um eine hinzuzufügen.',
-              style: TextStyle(fontSize: 13, color: Colors.grey[400]),
+              style: TextStyle(fontSize: 13, color: Colors.grey[700]),
               textAlign: TextAlign.center,
             ),
           ],
@@ -226,12 +249,13 @@ class _ManageRewardsScreenState extends ConsumerState<ManageRewardsScreen>
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
+        scrollable: true,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Row(
           children: [
             Icon(Icons.delete_outline, color: Colors.red.shade400),
             const SizedBox(width: 8),
-            const Text('Belohnung löschen?'),
+            const Expanded(child: Text('Belohnung löschen?')),
           ],
         ),
         content: Text('"${reward.title}" wird dauerhaft gelöscht.'),
@@ -270,9 +294,7 @@ class _ManageRewardsScreenState extends ConsumerState<ManageRewardsScreen>
         }
       } catch (e) {
         if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Fehler: $e'), backgroundColor: Colors.red),
-          );
+          _showError(context, 'Die Belohnung konnte nicht gelöscht werden.');
         }
       }
     }
@@ -290,9 +312,7 @@ class _ManageRewardsScreenState extends ConsumerState<ManageRewardsScreen>
           .update({'parentSeen': true});
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Fehler: $e'), backgroundColor: Colors.red),
-        );
+        _showError(context, 'Das hat nicht geklappt.');
       }
     }
   }
@@ -314,6 +334,11 @@ class _ManageRewardsScreenState extends ConsumerState<ManageRewardsScreen>
             'status': newStatus.toFirestore(),
             if (newStatus == RewardStatus.approved)
               'approvedAt': FieldValue.serverTimestamp(),
+            // Zurückgezogen bleibt gesperrt, auch wenn die Bedingung
+            // erfüllt ist (checkAndApproveRewards überspringt sie).
+            'withdrawn': newStatus == RewardStatus.pending
+                ? true
+                : FieldValue.delete(),
           });
 
       if (mounted) {
@@ -329,10 +354,17 @@ class _ManageRewardsScreenState extends ConsumerState<ManageRewardsScreen>
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Fehler: $e'), backgroundColor: Colors.red),
-        );
+        _showError(context, 'Die Freigabe konnte nicht geändert werden.');
       }
     }
+  }
+
+  void _showError(BuildContext context, String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('$message Bitte prüfe die Internetverbindung.'),
+        backgroundColor: Colors.red,
+      ),
+    );
   }
 }
