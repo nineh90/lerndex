@@ -5,7 +5,7 @@
 #   tool/deploy/web_hostinger.sh --setup   # nginx/Compose auf dem Server aktualisieren
 #                                          # und Container (neu) starten
 #
-# Baut nur den Branch "schule" ohne offene Änderungen, immer mit leerem
+# Baut nur den Branch "main" ohne offene Änderungen, immer mit leerem
 # Build-Cache (am 01.11.2026 lief sonst ein alter Stand live). SSH-Ziel ist
 # der Host "nils-vps" aus ~/.ssh/config (Benutzer kevin).
 set -euo pipefail
@@ -24,8 +24,8 @@ if [ "${1:-}" = "--setup" ]; then
 fi
 
 branch=$(git rev-parse --abbrev-ref HEAD)
-if [ "$branch" != "schule" ]; then
-    echo "Abbruch: Deploy nur aus dem Branch schule (aktuell: $branch)" >&2; exit 1
+if [ "$branch" != "main" ]; then
+    echo "Abbruch: Deploy nur aus dem Branch main (aktuell: $branch)" >&2; exit 1
 fi
 if [ -n "$(git status --porcelain --untracked-files=no)" ]; then
     echo "Abbruch: offene Änderungen, bitte erst committen" >&2; exit 1

@@ -22,11 +22,20 @@ Generierte Dateien enden auf `.g.dart` — nie manuell bearbeiten.
 
 ## Build & Release
 
-CI/CD läuft über Codemagic (`codemagic.yaml`). Lokaler Release-Build:
+Kein CI mehr (Codemagic am 05.11.2026 entfernt, Entscheidung Kevin + Nils). Android-Release
+von Hand, aus `main`:
+
+1. `version:` in `pubspec.yaml` hochzählen (Build-Nummer muss größer sein als die letzte in Play)
+2. `flutter analyze` und `flutter test` (laufen sonst nirgends automatisch)
+3. `flutter build appbundle --release --dart-define-from-file=dart-defines.json`
+   (signiert mit `android/key.properties` → `lerndex-key-new.jks`, Upload-Schlüssel)
+4. `build/app/outputs/bundle/release/app-release.aab` in der Play Console hochladen
+
+Play-App-Signing-Schlüssel (SHA-256 `4F:9E:51:…:FC:6C`) und Upload-Schlüssel (`2C:48:8D:…:28:2C`)
+müssen in Firebase (Android-App, für App Check/Play Integrity) und in
+`web/.well-known/assetlinks.json` (App Links) stehen. iOS ist derzeit nicht eingerichtet.
 
 ```bash
-flutter build apk --dart-define-from-file=dart-defines.json
-flutter build ipa --dart-define-from-file=dart-defines.json
 flutter build web --no-web-resources-cdn --dart-define-from-file=dart-defines.json
 ```
 
@@ -39,7 +48,7 @@ Abschnitt „Fremde Server im Browser“.
 
 **Hosting: https://app.lerndex.de** auf Nils' Hostinger-VPS (187.124.178.193, `ssh nils-vps`),
 nginx hinter dem Traefik des n8n-Stacks, Ordner `/docker/lerndex-app` (nicht `/docker/lerndex`,
-das ist die Webseite lerndex.de). Deploy aus Branch `schule`: `tool/deploy/web_hostinger.sh`
+das ist die Webseite lerndex.de). Deploy aus Branch `main` (von Hand): `tool/deploy/web_hostinger.sh`
 (baut mit leerem Cache, prüft danach die Seite), Konfiguration ändern: `--setup`. Dateien in
 `deploy/hostinger/`. Zurückschwenken auf einen älteren Stand: siehe `deploy/hostinger/deploy.sh`.
 Firebase Hosting (`lerndex-3775f.web.app`) ist der alte Weg und läuft vorerst parallel.
