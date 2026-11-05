@@ -20,6 +20,7 @@ import 'src/features/auth/data/child_device_repository.dart';
 import 'src/features/auth/presentation/account_deleted_screen.dart';
 import 'src/features/splash/splash_screen.dart';
 import 'src/shared/web/browser_url.dart';
+import 'src/shared/app_links.dart';
 // NEU: RevenueCat
 import 'src/features/subscription/data/subscription_service.dart';
 
@@ -99,6 +100,11 @@ void main() async {
     };
   }
 
+  // App Link (QR-Code mit der Kamera gescannt → App öffnet sich): Pfad beim
+  // Start lesen, spätere Links bei laufender App öffnen den Start neu.
+  final initialLinkPath = await readInitialAppLink();
+  listenForAppLinks(initialPath: initialLinkPath);
+
   runApp(const ProviderScope(child: MyApp()));
 
   if (!kIsWeb) FlutterNativeSplash.remove();
@@ -112,6 +118,7 @@ class MyApp extends ConsumerWidget {
     final isDeletingAccount = ref.watch(accountDeletionInProgressProvider);
 
     return MaterialApp(
+      navigatorKey: appNavigatorKey,
       title: 'Lerndex',
       debugShowCheckedModeBanner: false,
       localizationsDelegates: GlobalMaterialLocalizations.delegates,
@@ -125,7 +132,10 @@ class MyApp extends ConsumerWidget {
       builder: kIsWeb ? (context, child) => _WebFrame(child: child!) : null,
       home: isDeletingAccount
           ? const AccountDeletedScreen()
-          : const LerndexSplashScreen(),
+          // Der Start-Link wird nur beim ersten Aufbau mitgegeben, danach
+          // ist er verbraucht (sonst würde er nach einem Neuaufbau noch
+          // einmal eingelöst).
+          : LerndexSplashScreen(linkPath: takeInitialAppLink()),
     );
   }
 }

@@ -37,7 +37,12 @@ import 'package:lerndex/src/features/auth/domain/account.dart';
 // ============================================================================
 
 class LerndexSplashScreen extends ConsumerStatefulWidget {
-  const LerndexSplashScreen({super.key});
+  const LerndexSplashScreen({super.key, this.linkPath});
+
+  /// Pfad eines Lerndex-Links (…/k/CODE, …/s/TOKEN usw.), mit dem die App
+  /// geöffnet wurde (App Link oder QR-Scanner). Im Browser kommt der Pfad
+  /// aus der Adresszeile.
+  final String? linkPath;
 
   @override
   ConsumerState<LerndexSplashScreen> createState() =>
@@ -96,9 +101,14 @@ class _LerndexSplashScreenState extends ConsumerState<LerndexSplashScreen>
     colors: [Color(0xFF3B0764), Color(0xFF6B21A8), Color(0xFF7C3AED)],
   );
 
+  /// Beim Anlegen festgehalten: Baut sich die App währenddessen neu auf,
+  /// kommt ein Widget ohne Link, der Start soll ihn trotzdem einlösen.
+  late final String? _linkPath;
+
   @override
   void initState() {
     super.initState();
+    _linkPath = widget.linkPath;
     _initAnimations();
     _generateParticles();
     _startSplash();
@@ -197,9 +207,13 @@ class _LerndexSplashScreenState extends ConsumerState<LerndexSplashScreen>
 
       _setProgress(_bootstrapShare * 0.5, 'Anmeldung prüfen...');
 
+      // Link, mit dem die App geöffnet wurde: in der App vom Aufrufer
+      // (App Link, QR-Scanner), im Browser aus der Adresszeile.
+      final path = _linkPath ?? (kIsWeb ? Uri.base.path : null);
+
       // Einladungslink für eine Schule (…/schule/CODE, von Lerndex):
       // Registrierung der Schulleitung.
-      final schoolCode = kIsWeb ? schoolSignupFromPath(Uri.base.path) : null;
+      final schoolCode = path == null ? null : schoolSignupFromPath(path);
       if (schoolCode != null) {
         replaceBrowserPath('/');
         // Ein Kindergerät meldet sich dafür nicht ab (das dürfen nur Eltern)
@@ -208,7 +222,7 @@ class _LerndexSplashScreenState extends ConsumerState<LerndexSplashScreen>
 
       // Elternbrief „Eltern verbinden“ (…/e/CODE): Code merken, eingelöst
       // wird er im Familien-Dashboard (nach der Anmeldung).
-      final parentCode = kIsWeb ? parentLinkCodeFromPath(Uri.base.path) : null;
+      final parentCode = path == null ? null : parentLinkCodeFromPath(path);
       if (parentCode != null) {
         replaceBrowserPath('/');
         if (user == null ||
@@ -221,7 +235,7 @@ class _LerndexSplashScreenState extends ConsumerState<LerndexSplashScreen>
       }
 
       // QR-Karte einer Lehrkraft (…/l/TOKEN): Anmeldung mit PIN.
-      final teacherToken = kIsWeb ? teacherCardFromPath(Uri.base.path) : null;
+      final teacherToken = path == null ? null : teacherCardFromPath(path);
       if (teacherToken != null) {
         replaceBrowserPath('/');
         if (user == null || !user.isChildDevice) _teacherCardToken = teacherToken;
@@ -230,7 +244,7 @@ class _LerndexSplashScreenState extends ConsumerState<LerndexSplashScreen>
       // Koppel-Link aus dem QR-Code (…/k/CODE): Gerät als Kind anmelden.
       // Ist ein Eltern- oder Lehrerkonto angemeldet, wird nachgefragt
       // (LinkConflictScreen); ein Kindergerät bleibt, wie es ist.
-      final linkCode = kIsWeb ? pairingCodeFromPath(Uri.base.path) : null;
+      final linkCode = path == null ? null : pairingCodeFromPath(path);
       if (linkCode != null) {
         replaceBrowserPath('/');
         if (user != null && !user.isChildDevice) {
@@ -250,7 +264,7 @@ class _LerndexSplashScreenState extends ConsumerState<LerndexSplashScreen>
 
       // Schüler-QR-Karte (…/s/TOKEN): auf geteilten Schul-Tablets meldet
       // die Karte das Kind an – auch wenn vorher ein anderes Kind dran war.
-      final cardToken = kIsWeb ? studentCardFromPath(Uri.base.path) : null;
+      final cardToken = path == null ? null : studentCardFromPath(path);
       if (cardToken != null) {
         replaceBrowserPath('/');
         if (user != null && !user.isChildDevice) {

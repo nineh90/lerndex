@@ -17,6 +17,10 @@
     <uses-permission
         android:name="com.google.android.gms.permission.AD_ID"
         tools:node="remove" />
+    <!-- c2dm.RECEIVE und WAKE_LOCK im fertigen Paket kommen über
+         cloud_functions → firebase-functions → firebase-iid mit. Lerndex
+         schickt keine Push-Nachrichten; bewusst NICHT entfernt, weil
+         firebase-iid bei Functions-Aufrufen intern ein Token holt. -->
 
     <!-- ═══════════════════════════════════════════════════════════════════ -->
     <!-- KAMERA                                                              -->
@@ -61,6 +65,31 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
+            <!-- App Links: Die QR-Codes und Karten zeigen auf app.lerndex.de.
+                 Mit der Kamera gescannt, öffnet Android direkt die App statt
+                 des Browsers. Bestätigt wird das über
+                 https://app.lerndex.de/.well-known/assetlinks.json (dort
+                 stehen die Fingerabdrücke der Signaturschlüssel). Gelesen
+                 werden die Links im Dart-Code mit app_links
+                 (lib/src/shared/app_links.dart). -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="https" android:host="app.lerndex.de"/>
+                <!-- Kind koppeln, Schülerkarte, Lehrerkarte, Elternbrief,
+                     Schul-Einladung -->
+                <data android:pathPrefix="/k/"/>
+                <data android:pathPrefix="/s/"/>
+                <data android:pathPrefix="/l/"/>
+                <data android:pathPrefix="/e/"/>
+                <data android:pathPrefix="/schule/"/>
+            </intent-filter>
+            <!-- Links liest app_links, nicht Flutters eingebautes Deep-Linking
+                 (das würde /k/CODE als Seite der App öffnen wollen). -->
+            <meta-data
+                android:name="flutter_deeplinking_enabled"
+                android:value="false" />
         </activity>
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->

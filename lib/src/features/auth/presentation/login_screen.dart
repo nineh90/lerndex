@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import '../../../shared/platform_info.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -545,8 +546,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               ),
                             ),
                             icon: const Text('🧒', style: TextStyle(fontSize: 18)),
-                            label: const Text(
-                              'Ich bin ein Kind – Code eingeben',
+                            label: Text(
+                              kIsWeb
+                                  ? 'Ich bin ein Kind – Code eingeben'
+                                  : 'Ich bin ein Kind – QR-Code scannen',
                               style: TextStyle(
                                 color: Color(0xFF6B21A8),
                                 fontWeight: FontWeight.w600,

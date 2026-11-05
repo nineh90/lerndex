@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "de.nilsdigital.lerndex",
+      "sha256_cert_fingerprints": [
+        "2C:48:8D:3E:51:66:51:AE:AC:79:32:54:D2:68:2A:B9:23:98:42:99:4C:CE:CC:A7:F0:94:E4:D7:58:09:28:2C"
+      ]
+    }
+  }
+]

@@ -1,9 +1,12 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../splash/splash_screen.dart';
+import '../../../shared/app_links.dart';
 import '../data/child_device_repository.dart';
+import 'qr_scan_screen.dart';
 
 /// „Ich bin ein Kind“: Kopplungscode eintippen, den die Eltern im
 /// Elternbereich (Kind bearbeiten → Eigenes Gerät) erzeugt haben.
@@ -54,6 +57,29 @@ class _ChildPairingScreenState extends ConsumerState<ChildPairingScreen> {
     }
   }
 
+  /// Nur in der App: QR-Code der Eltern (…/k/CODE) oder Schülerkarte
+  /// (…/s/TOKEN) scannen. Der Startbildschirm löst den Link ein wie im
+  /// Browser; ein reiner Code landet im Eingabefeld.
+  Future<void> _scan() async {
+    final text = await Navigator.of(context).push<String>(
+      MaterialPageRoute(builder: (_) => const QrScanScreen()),
+    );
+    if (text == null || !mounted) return;
+    final path = lerndexLinkPath(text);
+    if (path != null) {
+      openLinkPath(path);
+      return;
+    }
+    final code = text.replaceAll(RegExp(r'[^A-Za-z0-9]'), '');
+    if (code.length == 8) {
+      _controller.text = '${code.substring(0, 4)}-${code.substring(4)}';
+      await _submit();
+      return;
+    }
+    setState(() => _error = 'Das ist kein Lerndex-Code. Frag deine Eltern '
+        'nach dem QR-Code unter „Eigenes Gerät“.');
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -75,8 +101,10 @@ class _ChildPairingScreenState extends ConsumerState<ChildPairingScreen> {
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 12),
-              const Text(
-                'Gib den Code ein, den deine Eltern dir zeigen.',
+              Text(
+                kIsWeb
+                    ? 'Gib den Code ein, den deine Eltern dir zeigen.'
+                    : 'Scanne den QR-Code, den deine Eltern dir zeigen.',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
                 textAlign: TextAlign.center,
               ),
@@ -88,9 +116,31 @@ class _ChildPairingScreenState extends ConsumerState<ChildPairingScreen> {
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 24),
+              if (!kIsWeb) ...[
+                FilledButton.icon(
+                  onPressed: _loading ? null : _scan,
+                  icon: const Icon(Icons.qr_code_scanner),
+                  label: const Text(
+                    'QR-Code scannen',
+                    style: TextStyle(fontSize: 16),
+                  ),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: const Color(0xFF6B21A8),
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  'oder den Code eintippen:',
+                  style: TextStyle(color: Colors.grey[700]),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+              ],
               TextField(
                 controller: _controller,
-                autofocus: true,
+                // In der App zuerst der Scanner, im Browser gleich tippen
+                autofocus: kIsWeb,
                 enabled: !_loading,
                 textAlign: TextAlign.center,
                 textCapitalization: TextCapitalization.characters,
