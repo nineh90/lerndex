@@ -93,9 +93,11 @@ void main() async {
     // Alle Flutter-Framework-Fehler an Crashlytics weiterleiten
     FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
 
-    // Async-Fehler die Flutter nicht selbst fängt (z.B. in Futures/Isolates)
+    // Async-Fehler, die Flutter nicht selbst fängt (z.B. in Futures). Die
+    // App läuft danach weiter – als „nicht fatal“ melden, sonst sähe jede
+    // abgebrochene Netzwerkanfrage in Crashlytics wie ein Absturz aus.
     PlatformDispatcher.instance.onError = (error, stack) {
-      FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+      FirebaseCrashlytics.instance.recordError(error, stack, fatal: false);
       return true;
     };
   }
