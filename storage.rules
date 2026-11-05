@@ -53,7 +53,7 @@ service firebase.storage {
 
     // Fotos für Klassenaufgaben (Arbeitsblatt, Tafelbild)
     match /task_images/{userId}/{allPaths=**} {
-      allow read: if isTeacherOf(userId);
+      allow read, delete: if isTeacherOf(userId);
       allow create, update: if isTeacherOf(userId) && isValidImage();
     }
 

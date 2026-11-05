@@ -99,7 +99,8 @@ service cloud.firestore {
 
     // Felder am users-Dokument, die nur der Server setzt: testAccess
     // (Review-Testaccount, nur über die Console), pinSet (Cloud Functions),
-    // Schulfelder (createSchool, schule.py lizenz).
+    // Schulfelder (createSchool, schule.py lizenz), Abo (syncSubscription,
+    // RevenueCat-Webhook in functions/subscription.js).
     //
     // ÜBERGANG: Ältere App-Versionen schreiben hashedPin/pinSalt noch selbst
     // ins users-Dokument. Das bleibt erlaubt, bis alle Nutzer auf der Version
@@ -110,7 +111,8 @@ service cloud.firestore {
         && request.resource.data.get('pinSet', null)
           == resource.data.get('pinSet', null)
         && !request.resource.data.diff(resource.data).affectedKeys()
-          .hasAny(['schoolLicenseUntil', 'isSchool', 'accountType', 'schoolId']);
+          .hasAny(['schoolLicenseUntil', 'isSchool', 'accountType', 'schoolId',
+                   'subscription', 'subscriptionUpdatedAt']);
     }
 
     // Felder am Kind, die Eltern bzw. Lehrkräfte festlegen. Das Kindergerät
@@ -154,7 +156,7 @@ service cloud.firestore {
       allow create: if isOwner(userId)
         && !request.resource.data.keys().hasAny([
           'testAccess', 'pinSet', 'schoolLicenseUntil', 'isSchool',
-          'accountType', 'schoolId',
+          'accountType', 'schoolId', 'subscription', 'subscriptionUpdatedAt',
         ]);
       allow update: if isOwner(userId) && serverFieldsUnchanged();
 

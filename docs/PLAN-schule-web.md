@@ -333,3 +333,42 @@ Schulzeit; Fortschritt aus einem Familienkonto wird nicht übernommen.
   Verlauf in der Console).
 - **Offen:** Elternbrief fürs Kinderhandy in der Android-App (dort öffnet der QR-Code den
   Browser), Kartenlehrkräfte können ihre PIN nicht selbst ändern (nur Reset über die Leitung).
+
+## Review 05.11.2026: Sicherheit, DSGVO, Abo
+
+Funde und Stand: siehe Commits ab 424e25a. Live seit 05.11.: Kinderschutz-Regeln
+(Mail-Relay zu, Kindergerät darf Profil und Belohnungen nicht frei ändern).
+
+**Neue Functions** (`functions/subscription.js`, `functions/cleanup.js`):
+- `syncSubscription` (App ruft nach Kauf/Start auf) und `revenuecatWebhook`: Der
+  Server holt den Abo-Status bei RevenueCat und schreibt `users/{uid}.subscription`
+  (inkl. `extraChildSlots` = Käufe von `lerndex_extra_child_slot`). Die App schreibt
+  das Feld nicht mehr.
+- `deleteRevenueCatCustomer`: löscht den Kunden bei RevenueCat, wenn ein Elternkonto
+  gelöscht wird.
+- `cleanupOldTutorChats`: täglich 03:30, löscht Lexi-Gespräche (`startedAt` älter
+  als 14 Tage), alte `active_tutor_chat`-Reste und Fotos in `tutor_worksheets/`.
+- `aiGenerate` nur noch für Geräte-/Lehrerkonten und Eltern mit bestätigter
+  E-Mail und Abo (oder Testzugang, Schullizenz); Denkstufe höchstens LOW.
+
+**Reihenfolge beim Deploy:**
+1. Secrets anlegen (Kevin):
+   `firebase functions:secrets:set REVENUECAT_SECRET_KEY` (RevenueCat → API Keys →
+   Secret API Key, v1) und `firebase functions:secrets:set REVENUECAT_WEBHOOK_AUTH`
+   (langer Zufallswert, z. B. `openssl rand -hex 32`).
+2. `firebase deploy --only firestore:indexes` (Index `tutor_sessions.startedAt` als
+   Collection-Group; die übrigen Indizes stehen unverändert in `firestore.indexes.json`).
+3. `cd functions && npm run deploy`. Die vier neuen Functions danach per
+   `invokerIamDisabled` freischalten (wie unter „Stand Deploy 02.11.“ beschrieben);
+   `cleanupOldTutorChats` ist ein Zeitplan und braucht das nicht.
+4. RevenueCat → Integrations → Webhooks: URL von `revenuecatWebhook`
+   (europe-west3), Authorization-Header = Wert von `REVENUECAT_WEBHOOK_AUTH`.
+   Einmal „Send test event“ (Antwort 200).
+5. Bestehende Abos einmal abgleichen: `python3 tool/admin/abo_abgleich.py --los`
+   (schickt für jedes Konto mit `subscription`-Feld ein Ereignis an den Webhook).
+6. Regeln (`firestore.rules`, `storage.rules`) deployen: sperrt `subscription` für
+   Clients. Ältere App-Versionen, die das Feld noch selbst schreiben, scheitern
+   damit leise (Fehler wird abgefangen); der Kauf eines Zusatzplatzes zeigt dort
+   eine Fehlermeldung, obwohl er geklappt hat – der Server zählt ihn trotzdem.
+7. nginx: `tool/deploy/web_hostinger.sh --setup` (HSTS, Einbett-Schutz, keine
+   Versionsnummer).

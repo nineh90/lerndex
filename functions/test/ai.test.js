@@ -55,12 +55,15 @@ test("KI-Antwort: Denk-Teile weg, Abschlussgrund und Tokens", () => {
 });
 
 if (process.env.FIRESTORE_EMULATOR_HOST) {
-  const { adb, device, parentWithChildren, expectError, closeDevices } = require("./_client");
+  const { adb, device, parentWithChildren, expectError, closeDevices, adminAuth } = require("./_client");
   test.after(closeDevices);
 
   test("KI im Emulator: nur angemeldet, mit Tageslimit", async () => {
     await expectError(device().call("aiGenerate", { contents: [text("Hallo")] }), "unauthenticated");
     const parent = await parentWithChildren();
+    await adminAuth().updateUser(parent.uid, { emailVerified: true });
+    await parent.auth.currentUser.getIdToken(true);
+    await adb.doc(`users/${parent.uid}`).set({ subscription: { isActive: true, plan: "solo" } }, { merge: true });
     const r = await parent.call("aiGenerate", { contents: [text("Hallo")] });
     assert.equal(r.text, "Platzhalter: Hallo");
     assert.equal((await adb.doc(`aiUsage/${parent.uid}`).get()).get("count"), 1);

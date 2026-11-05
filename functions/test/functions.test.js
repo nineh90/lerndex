@@ -148,6 +148,22 @@ test("PIN: nach 5 Fehlversuchen gesperrt", async () => {
   });
 });
 
+test("PIN: jede weitere Sperre dauert länger", async () => {
+  const parent = await parentWithChildren();
+  await parent.call("setParentPin", { pin: "4711" });
+  await adb.doc(`users/${parent.uid}/private/pin`).update({ lockouts: 2 });
+  for (let i = 0; i < 5; i++) await parent.call("verifyParentPin", { pin: "0000" });
+  await assert.rejects(parent.call("verifyParentPin", { pin: "4711" }), (e) => {
+    // dritte Sperre: 20 Minuten
+    assert.ok(e.details.retryAfterSeconds > 15 * 60, String(e.details.retryAfterSeconds));
+    return true;
+  });
+  // Nach Ablauf und richtigem PIN beginnt die Zählung von vorn
+  await adb.doc(`users/${parent.uid}/private/pin`).update({ lockedUntil: null });
+  assert.deepEqual(await parent.call("verifyParentPin", { pin: "4711" }), { ok: true });
+  assert.equal((await adb.doc(`users/${parent.uid}/private/pin`).get()).get("lockouts"), 0);
+});
+
 test("PIN: alter Hash aus dem users-Dokument wird umgezogen", async () => {
   const parent = await parentWithChildren();
   const salt = "c2FsdC1zYWx0LXNhbHQ=";
@@ -236,18 +252,40 @@ test("Elternkonto gelöscht: PIN und offene Codes weg", async () => {
   await parent.call("setParentPin", { pin: "4711" });
   await parent.call("createPairingCode", { childId: "jan" });
 
+  // Gekoppeltes Kindergerät, dessen Kind die App schon gelöscht hat
+  const { code } = await parent.call("createPairingCode", { childId: "max" });
+  await device().call("redeemPairingCode", { code });
+  await adb.doc(`users/${parent.uid}/children/max`).delete();
+  await adb.doc(`aiUsage/${parent.uid}`).set({ count: 1 });
+
   await adminAuth().deleteUser(parent.uid);
 
   // Der Trigger läuft asynchron
   let pinExists = true;
   let openCodes = 1;
-  for (let i = 0; i < 40 && (pinExists || openCodes > 0); i++) {
+  let userExists = true;
+  for (let i = 0; i < 60 && (pinExists || openCodes > 0 || userExists); i++) {
     await new Promise((r) => setTimeout(r, 250));
     pinExists = (await adb.doc(`users/${parent.uid}/private/pin`).get()).exists;
     openCodes = (await adb.collection("pairingCodes").where("parentUid", "==", parent.uid).get()).size;
+    userExists = (await adb.collection(`users/${parent.uid}/children`).get()).size > 0 ||
+      (await adb.doc(`users/${parent.uid}`).get()).exists;
   }
   assert.equal(pinExists, false);
   assert.equal(openCodes, 0);
+  assert.equal(userExists, false);
+  // Konto des Kindergeräts (Kind schon gelöscht) ist auch weg
+  for (let i = 0; i < 20; i++) {
+    try {
+      await adminAuth().getUser(`kid:${parent.uid}:max`);
+      await new Promise((r) => setTimeout(r, 250));
+    } catch {
+      break;
+    }
+  }
+  await assert.rejects(adminAuth().getUser(`kid:${parent.uid}:max`));
+  assert.equal((await adb.doc(`kidAccounts/kid:${parent.uid}:max`).get()).exists, false);
+  assert.equal((await adb.doc(`aiUsage/${parent.uid}`).get()).exists, false);
 });
 
 test("PIN: alte App ändert den PIN – der neue gilt auch in der neuen App", async () => {

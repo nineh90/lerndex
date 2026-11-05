@@ -322,9 +322,18 @@ test("Schüler löschen: Daten inkl. Lexi-Chats, Karten und Konto weg", async ()
   await setDoc(doc(mia.db, `users/${admin.owner}/children/s1/tutor_sessions/t1`), { a: 1 });
   await setDoc(doc(mia.db, `users/${admin.owner}/children/s1/tutor_sessions/t1/messages/m1`), { t: "hi" });
 
+  await adb.doc(`users/${admin.owner}/generated_batches/b1`).set({ childId: "s1", classId: "c1" });
+  await adb.doc(`users/${admin.owner}/generated_batches/b1/questions/q1`).set({ q: "1+1" });
+  await adb.doc(`users/${admin.owner}/generated_batches/b2`).set({ childId: "s2", classId: "c1" });
+  await adb.doc(`aiUsage/kid:${admin.owner}:s1`).set({ count: 3 });
+
   await admin.call("deleteStudent", { studentId: "s1" });
 
   assert.equal((await adb.doc(`users/${admin.owner}/children/s1`).get()).exists, false);
+  assert.equal((await adb.doc(`users/${admin.owner}/generated_batches/b1`).get()).exists, false);
+  assert.equal((await adb.doc(`users/${admin.owner}/generated_batches/b1/questions/q1`).get()).exists, false);
+  assert.equal((await adb.doc(`users/${admin.owner}/generated_batches/b2`).get()).exists, true);
+  assert.equal((await adb.doc(`aiUsage/kid:${admin.owner}:s1`).get()).exists, false);
   assert.equal((await adb.doc(`users/${admin.owner}/children/s1/tutor_sessions/t1/messages/m1`).get()).exists, false);
   await expectError(device().call("redeemStudentCard", { token: cards[0].token }), "not-found");
   await assert.rejects(adminAuth().getUser(`kid:${admin.owner}:s1`));

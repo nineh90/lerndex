@@ -12,6 +12,7 @@
 // 3. Schule (school.js): Lehrkräfte, Schülerkarten.
 
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
+const { getStorage } = require("firebase-admin/storage");
 const functionsV1 = require("firebase-functions/v1");
 const { FieldValue, Timestamp } = require("firebase-admin/firestore");
 const crypto = require("node:crypto");
@@ -25,6 +26,7 @@ const {
   hashPin,
   legacyHashPin,
   newSalt,
+  lockoutMs,
 } = require("./lib/helpers");
 
 // ── Hilfen ───────────────────────────────────────────────────────────────────
@@ -50,6 +52,20 @@ function requireString(value, name, maxLength = 128) {
     throw new HttpsError("invalid-argument", `${name} fehlt oder ist ungültig.`);
   }
   return value;
+}
+
+/** Gerätekonto (Kind, Schüler) samt Merkzettel und KI-Zähler löschen. */
+async function deleteDeviceAccount(uid) {
+  try {
+    await auth.revokeRefreshTokens(uid);
+    await auth.deleteUser(uid);
+  } catch (e) {
+    if (e.code !== "auth/user-not-found") throw e;
+  }
+  await Promise.all([
+    db.doc(`kidAccounts/${uid}`).delete(),
+    db.doc(`aiUsage/${uid}`).delete(),
+  ]);
 }
 
 async function requireChild(parentUid, childId) {
@@ -124,6 +140,9 @@ exports.redeemPairingCode = onCall(async (request) => {
     // Claims am Konto speichern, damit sie auch nach dem Token-Refresh gelten
     await auth.setCustomUserClaims(uid, claims);
     const token = await auth.createCustomToken(uid, claims);
+    // Merken, damit das Konto beim Löschen des Elternkontos mit weg kann
+    // (dann gibt es die Kinder-Dokumente oft schon nicht mehr)
+    await db.doc(`kidAccounts/${uid}`).set({ parentUid, childId });
 
     // Für die Elternansicht („Verbundene Geräte“). Bewusst nur der Zeitpunkt.
     const device = await db
@@ -147,12 +166,7 @@ exports.unpairChildDevices = onCall(async (request) => {
   const childId = requireString(request.data?.childId, "childId");
 
   const uid = kidUid(parentUid, childId);
-  try {
-    await auth.revokeRefreshTokens(uid);
-    await auth.deleteUser(uid);
-  } catch (e) {
-    if (e.code !== "auth/user-not-found") throw e;
-  }
+  await deleteDeviceAccount(uid);
 
   const devices = await db
     .collection(`users/${parentUid}/children/${childId}/devices`)
@@ -204,6 +218,7 @@ exports.leaveChildDevice = onCall(async (request) => {
 const PIN_PATTERN = /^\d{4,6}$/;
 const MAX_FAILED_ATTEMPTS = 5;
 const LOCKOUT_MS = 5 * 60 * 1000;
+
 // Wer sich gerade neu angemeldet hat, darf den PIN ohne alten PIN neu setzen
 // (Grundlage für „PIN vergessen“).
 const RECENT_LOGIN_S = 5 * 60;
@@ -308,6 +323,7 @@ async function checkPin(uid, pin) {
       await db.doc(`users/${uid}/private/pin`).update({
         failedAttempts: 0,
         lockedUntil: null,
+        lockouts: 0,
         lastUsed: FieldValue.serverTimestamp(),
       });
     }
@@ -316,9 +332,10 @@ async function checkPin(uid, pin) {
 
   const failed = (stored.failedAttempts || 0) + 1;
   const locked = failed >= MAX_FAILED_ATTEMPTS;
+  const lockouts = (stored.lockouts || 0) + (locked ? 1 : 0);
   const update = {
     failedAttempts: locked ? 0 : failed,
-    lockedUntil: locked ? Timestamp.fromMillis(Date.now() + LOCKOUT_MS) : null,
+    lockedUntil: locked ? Timestamp.fromMillis(Date.now() + lockoutMs(lockouts, LOCKOUT_MS)) : null,
   };
   if (stored.legacy) {
     await db.doc(`users/${uid}`).set(
@@ -326,7 +343,7 @@ async function checkPin(uid, pin) {
       { merge: true },
     );
   } else {
-    await db.doc(`users/${uid}/private/pin`).update(update);
+    await db.doc(`users/${uid}/private/pin`).update({ ...update, lockouts });
   }
   return { ok: false, pinSet: true };
 }
@@ -373,7 +390,10 @@ exports.setParentPin = onCall(async (request) => {
 /**
  * Die App löscht beim Kontolöschen alle Daten, an die sie herankommt. Den PIN
  * (private/pin), offene Kopplungscodes und den Eintrag in der Lehrerliste
- * einer Schule darf sie nicht anfassen – das erledigt dieser Trigger. (Auth-Trigger gibt es nur als 1. Generation.)
+ * einer Schule darf sie nicht anfassen – das erledigt dieser Trigger. Er
+ * löscht außerdem alles noch einmal, falls die App unterwegs abbricht:
+ * Konto-Dokument mit allen Unterdaten, Fotos, Kindergeräte-Konten,
+ * KI-Zähler. (Auth-Trigger gibt es nur als 1. Generation.)
  */
 exports.cleanupDeletedParent = functionsV1
   .region("europe-west3")
@@ -402,6 +422,22 @@ exports.cleanupDeletedParent = functionsV1
       }
     }
     await db.recursiveDelete(db.collection(`users/${user.uid}/linkedChildren`));
+
+    // Kindergeräte-Konten: gemerkte und die der noch vorhandenen Kinder
+    const kidUids = new Set();
+    const tracked = await db.collection("kidAccounts").where("parentUid", "==", user.uid).get();
+    tracked.docs.forEach((doc) => kidUids.add(doc.id));
+    const children = await db.collection(`users/${user.uid}/children`).get();
+    children.docs.forEach((doc) => kidUids.add(kidUid(user.uid, doc.id)));
+    for (const uid of kidUids) await deleteDeviceAccount(uid);
+
+    // Restliche Daten und Fotos
+    await db.recursiveDelete(db.doc(`users/${user.uid}`));
+    await db.doc(`aiUsage/${user.uid}`).delete();
+    const bucket = getStorage().bucket();
+    for (const folder of ["task_images", "tutor_worksheets", "feedback"]) {
+      await bucket.deleteFiles({ prefix: `${folder}/${user.uid}/` });
+    }
   });
 
 // ── 4. Schule ────────────────────────────────────────────────────────────────
@@ -411,3 +447,11 @@ Object.assign(exports, require("./school"));
 // ── 5. KI für die Web-App ────────────────────────────────────────────────────
 
 Object.assign(exports, require("./ai"));
+
+// ── 6. Abo (RevenueCat) ──────────────────────────────────────────────────────
+
+Object.assign(exports, require("./subscription"));
+
+// ── 7. Aufbewahrung: Lexi-Gespräche nach 14 Tagen löschen ────────────────────
+
+exports.cleanupOldTutorChats = require("./cleanup").cleanupOldTutorChats;

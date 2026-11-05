@@ -39,6 +39,7 @@ const {
   schoolOwnerUid,
   hashPin,
   newSalt,
+  lockoutMs,
 } = require("./lib/helpers");
 
 const MAX_STUDENTS_PER_CALL = 60;
@@ -343,13 +344,19 @@ exports.redeemTeacherCard = onCall(async (request) => {
     if (!ok) {
       const failed = (data.failedAttempts || 0) + 1;
       const locked = failed >= TEACHER_MAX_FAILED;
+      const lockouts = (data.lockouts || 0) + (locked ? 1 : 0);
       await pinRef.update({
         failedAttempts: locked ? 0 : failed,
-        lockedUntil: locked ? Timestamp.fromMillis(Date.now() + TEACHER_LOCK_MS) : null,
+        lockedUntil: locked
+          ? Timestamp.fromMillis(Date.now() + lockoutMs(lockouts, TEACHER_LOCK_MS))
+          : null,
+        lockouts,
       });
       return { ok: false };
     }
-    await pinRef.update({ failedAttempts: 0, lockedUntil: null, lastUsed: FieldValue.serverTimestamp() });
+    await pinRef.update({
+      failedAttempts: 0, lockedUntil: null, lockouts: 0, lastUsed: FieldValue.serverTimestamp(),
+    });
   }
 
   const uid = teacherUid(schoolId, teacherId);
@@ -495,6 +502,17 @@ exports.redeemStudentCard = onCall(async (request) => {
   return { token: customToken, childName: student.get("name") || "" };
 });
 
+/** Gerätekonto eines Schülers samt KI-Zähler löschen. */
+async function deleteStudentAccount(uid) {
+  try {
+    await auth.revokeRefreshTokens(uid);
+    await auth.deleteUser(uid);
+  } catch (e) {
+    if (e.code !== "auth/user-not-found") throw e;
+  }
+  await db.doc(`aiUsage/${uid}`).delete();
+}
+
 /** Karten eines Schülers löschen und sein Gerätekonto entfernen. */
 async function revokeCardsAndAccount(schoolId, studentId) {
   const cards = await db
@@ -506,13 +524,7 @@ async function revokeCardsAndAccount(schoolId, studentId) {
   cards.docs.forEach((doc) => batch.delete(doc.ref));
   await batch.commit();
 
-  const uid = kidUid(schoolOwnerUid(schoolId), studentId);
-  try {
-    await auth.revokeRefreshTokens(uid);
-    await auth.deleteUser(uid);
-  } catch (e) {
-    if (e.code !== "auth/user-not-found") throw e;
-  }
+  await deleteStudentAccount(kidUid(schoolOwnerUid(schoolId), studentId));
   return cards.size;
 }
 
@@ -693,8 +705,12 @@ exports.deleteStudent = onCall(async (request) => {
 
   const owner = schoolOwnerUid(schoolId);
   await db.recursiveDelete(db.doc(`users/${owner}/children/${studentId}`));
-  await getStorage()
-    .bucket()
-    .deleteFiles({ prefix: `tutor_worksheets/${owner}/${studentId}/` });
+  // Aufgaben, die die Klasse bekommen hat (ein Batch pro Schüler)
+  const batches = await db.collection(`users/${owner}/generated_batches`)
+    .where("childId", "==", studentId).get();
+  for (const batch of batches.docs) await db.recursiveDelete(batch.ref);
+  const bucket = getStorage().bucket();
+  await bucket.deleteFiles({ prefix: `tutor_worksheets/${owner}/${studentId}/` });
+  await bucket.deleteFiles({ prefix: `task_images/${owner}/${studentId}/` });
   return { deleted: true };
 });

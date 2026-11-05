@@ -3,7 +3,9 @@
 // und es braucht weder App Check noch reCAPTCHA (siehe lib/src/ai/ai_model.dart).
 //
 // Schutz:
-// - nur angemeldete Konten (Eltern, Kinder-/Schüler-/Lehrergeräte)
+// - nur Kinder-/Schüler-/Lehrergeräte (Konten der Functions) und Eltern mit
+//   bestätigter E-Mail und aktivem Abo bzw. Testzugang. Sonst könnte jeder
+//   mit frisch angelegten Konten Gemini auf Kosten von Lerndex nutzen.
 // - Tageslimit pro Konto (aiUsage/{uid}, nur Functions)
 // - Modell, Region und Safety-Settings legt diese Function fest, nicht der
 //   Client. Erlaubt sind nur Text und Bilder, Token-Limit gedeckelt.
@@ -14,8 +16,25 @@ const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { FieldValue } = require("firebase-admin/firestore");
 const { getApp } = require("firebase-admin/app");
 const { db } = require("./lib/firebase");
+const { hasAccess } = require("./lib/access");
 
 const { buildRequest, extractResult, MODEL, LOCATION, DAILY_LIMIT } = require("./lib/ai_request");
+
+/** Wirft permission-denied, wenn das Konto die KI nicht nutzen darf. */
+async function requireAiAccount(auth) {
+  const token = auth.token;
+  // Geräte- und Lehrerkonten legen nur die Functions an
+  if (token.role === "student" || token.role === "teacher") return;
+  // Lehrkräfte mit eigenem E-Mail-Konto (ältere Einladungen)
+  if (token.schoolRole === "teacher" && token.schoolId) return;
+  if (token.email_verified !== true) {
+    throw new HttpsError("permission-denied", "Bitte bestätige zuerst deine E-Mail-Adresse.");
+  }
+  const user = await db.doc(`users/${auth.uid}`).get();
+  if (!hasAccess(user.data())) {
+    throw new HttpsError("permission-denied", "Lexi gibt es mit einem Lerndex-Abo.");
+  }
+}
 
 /** Zählt den Aufruf; wirft resource-exhausted über dem Tageslimit. */
 async function countUsage(uid) {
@@ -68,6 +87,7 @@ exports.aiGenerate = onCall(
   async (request) => {
     if (!request.auth) throw new HttpsError("unauthenticated", "Bitte zuerst anmelden.");
     const vertexRequest = buildRequest(request.data);
+    await requireAiAccount(request.auth);
     await countUsage(request.auth.uid);
 
     if (process.env.FUNCTIONS_EMULATOR === "true") {

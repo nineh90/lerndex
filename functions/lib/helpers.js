@@ -55,6 +55,17 @@ function legacyHashPin(pin) {
   return Math.abs(hash).toString();
 }
 
+const MAX_LOCKOUT_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Sperrdauer nach der n-ten PIN-Sperre in Folge: base, 2×, 4×, … höchstens
+ * 24 h. Mit fester Sperre wäre ein 4-stelliger PIN in wenigen Tagen
+ * durchprobiert.
+ */
+function lockoutMs(lockouts, base) {
+  return Math.min(base * 2 ** Math.max(0, lockouts - 1), MAX_LOCKOUT_MS);
+}
+
 function newSalt() {
   return base64UrlPadded(crypto.randomBytes(16));
 }
@@ -91,4 +102,5 @@ module.exports = {
   hashPin,
   legacyHashPin,
   newSalt,
+  lockoutMs,
 };

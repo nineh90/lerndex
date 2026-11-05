@@ -11,7 +11,8 @@ const MAX_TEXT = 60000;
 const MAX_IMAGE_BASE64 = 7 * 1024 * 1024;
 const MAX_REQUEST = 9 * 1024 * 1024;
 const IMAGE_TYPES = ["image/png", "image/jpeg", "image/webp", "image/heic", "image/heif"];
-const THINKING_LEVELS = ["MINIMAL", "LOW", "MEDIUM", "HIGH"];
+// Höhere Denkstufen kosten ein Vielfaches und braucht die App nicht
+const THINKING_LEVELS = ["MINIMAL", "LOW"];
 
 // Wie kidSafetySettings() in lib/src/ai/vertex_ai_service.dart:
 // Sexuelles und Gefährliches streng, Belästigung und Hassrede mittel.
