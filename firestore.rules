@@ -98,7 +98,8 @@ service cloud.firestore {
     }
 
     // Felder am users-Dokument, die nur der Server setzt: testAccess
-    // (Review-Testaccount, nur über die Console) und pinSet (Cloud Functions).
+    // (Review-Testaccount, nur über die Console), pinSet (Cloud Functions),
+    // Schulfelder (createSchool, schule.py lizenz).
     //
     // ÜBERGANG: Ältere App-Versionen schreiben hashedPin/pinSalt noch selbst
     // ins users-Dokument. Das bleibt erlaubt, bis alle Nutzer auf der Version
@@ -107,7 +108,40 @@ service cloud.firestore {
       return request.resource.data.get('testAccess', false)
           == resource.data.get('testAccess', false)
         && request.resource.data.get('pinSet', null)
-          == resource.data.get('pinSet', null);
+          == resource.data.get('pinSet', null)
+        && !request.resource.data.diff(resource.data).affectedKeys()
+          .hasAny(['schoolLicenseUntil', 'isSchool', 'accountType', 'schoolId']);
+    }
+
+    // Felder am Kind, die Eltern bzw. Lehrkräfte festlegen. Das Kindergerät
+    // speichert nur seinen Fortschritt (XP, Level, Streak, Avatar, Lernzeit).
+    function studentKeepsProfile() {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+        'name', 'age', 'grade', 'schoolType', 'isActive', 'hiddenSubjects',
+        'classId', 'parentUids',
+      ]);
+    }
+
+    // Belohnungen vom Kindergerät: nur Systembelohnungen anlegen
+    // (Level, Avatare) ...
+    function isSystemRewardCreate() {
+      return request.resource.data.get('type', '') == 'system'
+        && request.resource.data.get('createdBy', '') == 'system';
+    }
+
+    // ... und vorhandene nur freischalten (pending → approved, wenn das Ziel
+    // erreicht ist) oder einlösen (approved → claimed). Titel, Text,
+    // Bedingung und Bonus-XP legen die Eltern fest.
+    function isStudentRewardUpdate() {
+      let changed = request.resource.data.diff(resource.data).affectedKeys();
+      let before = resource.data.get('status', '');
+      let after = request.resource.data.get('status', '');
+      return changed.hasOnly(['status', 'approvedAt', 'claimedAt', 'parentSeen', 'title'])
+        && (!changed.hasAny(['title']) || resource.data.get('type', '') == 'system')
+        && (!changed.hasAny(['parentSeen']) || request.resource.data.parentSeen == false)
+        && (!changed.hasAny(['status'])
+          || (before == 'pending' && after == 'approved')
+          || (before == 'approved' && after == 'claimed'));
     }
 
     match /users/{userId} {
@@ -118,8 +152,10 @@ service cloud.firestore {
             && isSchoolMember(request.auth.token.get('schoolId', '')));
       allow delete: if isOwner(userId);
       allow create: if isOwner(userId)
-        && !('testAccess' in request.resource.data)
-        && !('pinSet' in request.resource.data);
+        && !request.resource.data.keys().hasAny([
+          'testAccess', 'pinSet', 'schoolLicenseUntil', 'isSchool',
+          'accountType', 'schoolId',
+        ]);
       allow update: if isOwner(userId) && serverFieldsUnchanged();
 
       // Eltern-PIN: nur Cloud Functions (Admin-SDK umgeht die Rules)
@@ -140,7 +176,7 @@ service cloud.firestore {
         // Kindergerät: eigenes Profil lesen und Fortschritt speichern,
         // aber nicht anlegen oder löschen.
         allow read: if isStudentFor(userId, childId);
-        allow update: if isStudentFor(userId, childId) && parentUidsUnchanged();
+        allow update: if isStudentFor(userId, childId) && studentKeepsProfile();
         // Lehrkraft: Schüler anlegen, bearbeiten, löschen
         allow read, delete: if isTeacherOf(userId);
         allow create: if isTeacherOf(userId)
@@ -156,8 +192,14 @@ service cloud.firestore {
 
         match /{subcollection}/{docId} {
           allow read, write: if isOwner(userId)
-            || (isStudentFor(userId, childId) && subcollection != 'devices')
+            || (isStudentFor(userId, childId) && !(subcollection in ['devices', 'rewards']))
             || (isTeacherOf(userId) && !isPrivateForTeachers(subcollection));
+          // Kindergerät und Belohnungen: siehe isStudentRewardUpdate
+          allow read: if isStudentFor(userId, childId) && subcollection == 'rewards';
+          allow create: if isStudentFor(userId, childId) && subcollection == 'rewards'
+            && isSystemRewardCreate();
+          allow update: if isStudentFor(userId, childId) && subcollection == 'rewards'
+            && isStudentRewardUpdate();
           // Verbundene Eltern: alles lesen (auch Lexi), Belohnungen pflegen,
           // Lexi-Gespräche löschen
           allow read: if isLinkedParent(userId, childId) && subcollection != 'devices';
@@ -165,7 +207,8 @@ service cloud.firestore {
           allow delete: if isLinkedParent(userId, childId) && subcollection == 'tutor_sessions';
 
           match /{nested}/{nestedDocId} {
-            allow read, write: if isOwner(userId) || isStudentFor(userId, childId)
+            allow read, write: if isOwner(userId)
+              || (isStudentFor(userId, childId) && !(subcollection in ['devices', 'rewards']))
               || (isTeacherOf(userId) && !isPrivateForTeachers(subcollection));
             allow read: if isLinkedParent(userId, childId) && subcollection != 'devices';
             allow delete: if isLinkedParent(userId, childId) && subcollection == 'tutor_sessions';
@@ -233,15 +276,46 @@ service cloud.firestore {
     // Read/Update/Delete bleiben verboten – die Extension liest serverseitig
     // via Admin-SDK und umgeht diese Rules ohnehin.
     // Create nur für eingeloggte Eltern, nur an support@lerndex.de und nur
-    // mit plausiblen Feldern (verhindert Spam-/Relay-Missbrauch).
+    // mit genau den Feldern der App. Die Erweiterung kennt auch cc, bcc,
+    // html, template, from, headers und lädt Anhänge über path von beliebigen
+    // URLs oder Dateien – ohne hasOnly wäre das ein offenes Mail-Relay.
+    function ownEmail() {
+      return request.auth.token.get('email', '');
+    }
+
+    // Höchstens ein Screenshot, nur aus dem eigenen feedback/-Ordner
+    function validAttachments(message) {
+      return !('attachments' in message)
+        || (message.attachments is list
+          && message.attachments.size() <= 1
+          && (message.attachments.size() == 0
+            || (message.attachments[0] is map
+              && message.attachments[0].keys().hasOnly(['filename', 'path'])
+              && message.attachments[0].filename is string
+              && message.attachments[0].filename.matches('screenshot[.](png|jpg|jpeg|webp)')
+              && message.attachments[0].path is string
+              && message.attachments[0].path.matches(
+                'https://firebasestorage[.]googleapis[.]com/v0/b/[a-z0-9.-]+/o/feedback%2F'
+                + request.auth.uid
+                + '%2F[0-9]+[.](png|jpg|jpeg|webp)[?]alt=media&token=[a-f0-9-]+'))));
+    }
+
     match /mail/{docId} {
       allow read, update, delete: if false;
       allow create: if isParent()
+        && request.resource.data.keys().hasOnly([
+          'to', 'message', 'userId', 'userEmail', 'appVersion', 'platform',
+          'createdAt', 'replyTo',
+        ])
+        && request.resource.data.get('replyTo', ownEmail()) == ownEmail()
+        && request.resource.data.get('userEmail', null) in [null, ownEmail()]
         && request.resource.data.to is list
         && request.resource.data.to.size() == 1
         && request.resource.data.to[0] == 'support@lerndex.de'
         && request.resource.data.userId == request.auth.uid
         && request.resource.data.message is map
+        && request.resource.data.message.keys().hasOnly(['subject', 'text', 'attachments'])
+        && validAttachments(request.resource.data.message)
         && request.resource.data.message.text is string
         && request.resource.data.message.text.size() >= 10
         && request.resource.data.message.text.size() <= 2000

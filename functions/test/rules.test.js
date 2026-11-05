@@ -88,6 +88,16 @@ test("Eltern: PIN, testAccess und pinSet nicht selbst setzbar", async () => {
   await assertSucceeds(updateDoc(doc(parent(), `users/${PARENT}`), { displayName: "K" }));
 });
 
+test("Eltern: Schul-Lizenz und Kontotyp nicht selbst setzbar", async () => {
+  const db = parent();
+  for (const field of ["schoolLicenseUntil", "isSchool", "accountType", "schoolId"]) {
+    await assertFails(updateDoc(doc(db, `users/${PARENT}`), { [field]: "x" }));
+  }
+  const fresh = env.authenticatedContext("parent3").firestore();
+  await assertFails(setDoc(doc(fresh, "users/parent3"), { accountType: "school" }));
+  await assertSucceeds(setDoc(doc(fresh, "users/parent3"), { displayName: "Neu" }));
+});
+
 test("Eltern: Kopplungscodes nur über die Function", async () => {
   await assertFails(getDoc(doc(parent(), "pairingCodes/ABCDEFGH")));
   await assertFails(setDoc(doc(parent(), "pairingCodes/XYZXYZXY"), { parentUid: PARENT }));
@@ -100,7 +110,9 @@ test("Kindergerät: eigenes Kind lesen und Fortschritt speichern", async () => {
   await assertSucceeds(getDoc(doc(db, `users/${PARENT}/children/${CHILD}`)));
   await assertSucceeds(updateDoc(doc(db, `users/${PARENT}/children/${CHILD}`), { xp: 20 }));
   await assertSucceeds(getDoc(doc(db, `users/${PARENT}/children/${CHILD}/rewards/r1`)));
-  await assertSucceeds(setDoc(doc(db, `users/${PARENT}/children/${CHILD}/rewards/r2`), { title: "b" }));
+  await assertSucceeds(setDoc(doc(db, `users/${PARENT}/children/${CHILD}/rewards/r2`), {
+    title: "b", type: "system", createdBy: "system", status: "approved",
+  }));
   await assertSucceeds(
     setDoc(doc(db, `users/${PARENT}/children/${CHILD}/tutor_sessions/s1/messages/m2`), { text: "x" }),
   );
@@ -161,6 +173,88 @@ test("Kindergerät darf keine Support-Mails anlegen", async () => {
     to: ["support@lerndex.de"], userId: `kid:${PARENT}:${CHILD}`,
     message: { subject: "a", text: "0123456789" },
   }));
+});
+
+test("Kindergerät: Profil (Name, Klasse, Fächer) bleibt Elternsache", async () => {
+  const db = student().firestore();
+  const child = doc(db, `users/${PARENT}/children/${CHILD}`);
+  for (const field of ["name", "grade", "age", "schoolType", "isActive", "hiddenSubjects", "classId", "parentUids"]) {
+    await assertFails(updateDoc(child, { [field]: "x" }));
+  }
+  await assertSucceeds(updateDoc(child, { xp: 30, level: 2, streak: 3, selectedAvatar: "a" }));
+});
+
+test("Kindergerät: Belohnungen nur freischalten und einlösen", async () => {
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    const db = ctx.firestore();
+    const base = `users/${PARENT}/children/${CHILD}/rewards`;
+    await setDoc(doc(db, `${base}/p1`), { title: "Kino", type: "parent", status: "pending", bonusXP: 10 });
+    await setDoc(doc(db, `${base}/a1`), { title: "Eis", type: "parent", status: "approved" });
+    await setDoc(doc(db, `${base}/s1`), { title: "Alt", type: "system", status: "pending" });
+  });
+  const db = student().firestore();
+  const r = (id) => doc(db, `users/${PARENT}/children/${CHILD}/rewards/${id}`);
+
+  // Eigene Belohnungen erfinden: nein
+  await assertFails(setDoc(r("x1"), { title: "PS5", type: "parent", status: "approved" }));
+  await assertFails(setDoc(r("x2"), { title: "PS5", type: "system", createdBy: "parent1" }));
+  // Belohnung der Eltern ändern: nein
+  await assertFails(updateDoc(r("p1"), { title: "PS5" }));
+  await assertFails(updateDoc(r("p1"), { bonusXP: 9999 }));
+  await assertFails(updateDoc(r("a1"), { status: "pending" }));
+  await assertFails(deleteDoc(r("a1")));
+  // Freischalten, einlösen, Systemtitel umbenennen: ja
+  await assertSucceeds(updateDoc(r("p1"), { status: "approved", approvedAt: 1 }));
+  await assertSucceeds(updateDoc(r("a1"), { status: "claimed", claimedAt: 1, parentSeen: false }));
+  await assertSucceeds(updateDoc(r("s1"), { title: "Neu" }));
+  // Eingelöst bleibt eingelöst
+  await assertFails(updateDoc(r("a1"), { status: "approved" }));
+});
+
+// ── Feedback-Mail ────────────────────────────────────────────────────────────
+
+const EMAIL = "kevin@example.de";
+const mailer = () => env.authenticatedContext(PARENT, { email: EMAIL }).firestore();
+const shot = (uid = PARENT) =>
+  "https://firebasestorage.googleapis.com/v0/b/lerndex-3775f.firebasestorage.app/o/" +
+  `feedback%2F${uid}%2F1730800000000.jpg?alt=media&token=0a1b2c3d-1111-2222-3333-444455556666`;
+const mail = (extra = {}, message = {}) => ({
+  to: ["support@lerndex.de"],
+  message: { subject: "Feedback: Hallo", text: "Das ist ein Test.", ...message },
+  userId: PARENT, userEmail: EMAIL, appVersion: "1.2.0+17", platform: "android",
+  replyTo: EMAIL, createdAt: 1,
+  ...extra,
+});
+
+test("Feedback-Mail: so wie die App sie schreibt", async () => {
+  const db = mailer();
+  await assertSucceeds(setDoc(doc(db, "mail/ok1"), mail()));
+  await assertSucceeds(setDoc(doc(db, "mail/ok2"), mail({}, {
+    attachments: [{ filename: "screenshot.jpg", path: shot() }],
+  })));
+});
+
+test("Feedback-Mail: kein Relay über cc, bcc, html oder fremde Anhänge", async () => {
+  const db = mailer();
+  await assertFails(setDoc(doc(db, "mail/x1"), mail({ bcc: ["opfer@example.com"] })));
+  await assertFails(setDoc(doc(db, "mail/x2"), mail({ cc: ["opfer@example.com"] })));
+  await assertFails(setDoc(doc(db, "mail/x3"), mail({ toUids: ["parent2"] })));
+  await assertFails(setDoc(doc(db, "mail/x4"), mail({ from: "chef@lerndex.de" })));
+  await assertFails(setDoc(doc(db, "mail/x5"), mail({ replyTo: "fremd@example.com" })));
+  await assertFails(setDoc(doc(db, "mail/x6"), mail({}, { html: "<a href=x>Klick</a>" })));
+  await assertFails(setDoc(doc(db, "mail/x7"), mail({ template: { name: "x" } })));
+  await assertFails(setDoc(doc(db, "mail/x8"), mail({}, {
+    attachments: [{ filename: "screenshot.jpg", path: "/proc/self/environ" }],
+  })));
+  await assertFails(setDoc(doc(db, "mail/x9"), mail({}, {
+    attachments: [{ filename: "screenshot.jpg", path: shot(OTHER) }],
+  })));
+  await assertFails(setDoc(doc(db, "mail/x10"), mail({}, {
+    attachments: [{ filename: "screenshot.jpg", path: "https://evil.example/x.jpg" }],
+  })));
+  await assertFails(setDoc(doc(db, "mail/x11"), mail({}, {
+    attachments: [{ filename: "a.exe", path: shot() }],
+  })));
 });
 
 // ── Storage ──────────────────────────────────────────────────────────────────
