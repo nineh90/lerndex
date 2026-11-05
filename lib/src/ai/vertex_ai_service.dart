@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'dart:math';
 import 'package:cross_file/cross_file.dart';
 import 'package:firebase_ai/firebase_ai.dart';
+import 'package:firebase_app_check/firebase_app_check.dart';
+import 'tolerant_app_check.dart';
 import '../features/auth/data/child_device_repository.dart' show lerndexFunctions;
 import 'ai_model.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
@@ -56,7 +58,16 @@ class VertexAIService {
   /// europe-west3 (Frankfurt): gemini-3.5-flash gibt es in der EU nur hier
   /// (europe-west4 bietet es nicht an), und die ML-Verarbeitung bleibt in
   /// Deutschland (Stand 10/2026, Vertex-AI-Doku „Data residency").
-  static FirebaseAI vertexEu() => FirebaseAI.vertexAI(location: 'europe-west3');
+  ///
+  /// App Check über [TolerantAppCheck]: Ein fehlendes Token lässt die
+  /// Anfrage nicht mehr scheitern (siehe dort).
+  static FirebaseAI vertexEu() => FirebaseAI.vertexAI(
+        location: 'europe-west3',
+        // Als „veraltet“ markiert, weil firebase_ai App Check sonst selbst
+        // holt – genau das (ohne Rückfall) wollen wir hier nicht.
+        // ignore: deprecated_member_use
+        appCheck: TolerantAppCheck(FirebaseAppCheck.instance),
+      );
 
   /// Zentrales Gemini-Modell für ALLE KI-Aufrufe der App.
   /// Google zieht Modelle nach ~12 Monaten zurück (gemini-2.0-flash starb
