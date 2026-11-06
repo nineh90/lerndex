@@ -8,6 +8,7 @@ import '../../../shared/app_links.dart';
 import '../data/child_device_repository.dart';
 import 'qr_scan_screen.dart';
 import '../../../shared/legal_links.dart';
+import '../../../shared/user_message.dart';
 
 /// „Ich bin ein Kind“: Kopplungscode eintippen, den die Eltern im
 /// Elternbereich (Kind bearbeiten → Eigenes Gerät) erzeugt haben.
@@ -50,9 +51,10 @@ class _ChildPairingScreenState extends ConsumerState<ChildPairingScreen> {
         MaterialPageRoute(builder: (_) => const LerndexSplashScreen()),
         (_) => false,
       );
-    } on PairingException catch (e) {
+    } catch (e) {
+      if (!mounted) return;
       setState(() {
-        _error = e.message;
+        _error = userMessage(e);
         _loading = false;
       });
     }
@@ -62,9 +64,9 @@ class _ChildPairingScreenState extends ConsumerState<ChildPairingScreen> {
   /// (…/s/TOKEN) scannen. Der Startbildschirm löst den Link ein wie im
   /// Browser; ein reiner Code landet im Eingabefeld.
   Future<void> _scan() async {
-    final text = await Navigator.of(context).push<String>(
-      MaterialPageRoute(builder: (_) => const QrScanScreen()),
-    );
+    final text = await Navigator.of(
+      context,
+    ).push<String>(MaterialPageRoute(builder: (_) => const QrScanScreen()));
     if (text == null || !mounted) return;
     final path = lerndexLinkPath(text);
     if (path != null) {
@@ -77,8 +79,11 @@ class _ChildPairingScreenState extends ConsumerState<ChildPairingScreen> {
       await _submit();
       return;
     }
-    setState(() => _error = 'Das ist kein Lerndex-Code. Frag deine Eltern '
-        'nach dem QR-Code unter „Eigenes Gerät“.');
+    setState(
+      () => _error =
+          'Das ist kein Lerndex-Code. Frag deine Eltern '
+          'nach dem QR-Code unter „Eigenes Gerät“.',
+    );
   }
 
   @override

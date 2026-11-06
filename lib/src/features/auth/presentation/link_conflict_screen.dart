@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../splash/splash_screen.dart';
 import '../data/child_device_repository.dart';
+import '../../../shared/user_message.dart';
+import 'child_login_confirm.dart';
 import 'sign_out.dart';
 
 /// Jemand scannt einen Koppel-Code (…/k/CODE) oder eine Schülerkarte
@@ -38,26 +40,32 @@ class _LinkConflictScreenState extends ConsumerState<LinkConflictScreen> {
     );
   }
 
+  /// Erst den Code bzw. die Karte prüfen und nachfragen, dann abmelden und
+  /// als Kind anmelden. Scheitert die Prüfung, bleibt das Konto angemeldet.
   Future<void> _switch() async {
     setState(() {
       _busy = true;
       _error = null;
     });
+    final repo = ref.read(childDeviceRepositoryProvider);
     try {
-      await signOutAccount(ref);
-      final repo = ref.read(childDeviceRepositoryProvider);
-      if (_isCard) {
-        await repo.redeemStudentCard(widget.cardToken!);
-      } else {
-        await repo.redeemPairingCode(widget.pairingCode!);
+      final login = _isCard
+          ? await repo.checkStudentCard(widget.cardToken!)
+          : await repo.checkPairingCode(widget.pairingCode!);
+      if (!mounted) return;
+      if (!await confirmChildLogin(context, login, isCard: _isCard)) {
+        if (mounted) setState(() => _busy = false);
+        return;
       }
+      await signOutAccount(ref);
+      await repo.signInAs(login);
       if (mounted) _restart();
-    } on PairingException catch (e) {
-      // Abgemeldet ist schon – zurück zum Start (Anmeldung) mit Hinweis
+    } catch (e) {
+      // Ist schon abgemeldet, führt „Weiter“ zur Anmeldung
       if (!mounted) return;
       setState(() {
         _busy = false;
-        _error = e.message;
+        _error = userMessage(e);
       });
     }
   }

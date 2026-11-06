@@ -21,15 +21,29 @@ import '../../../shared/user_message.dart';
 FirebaseFunctions lerndexFunctions() =>
     FirebaseFunctions.instanceFor(region: 'europe-west3');
 
-/// Adresse der Web-App für den Kopplungslink. Im Browser die aktuelle Seite,
-/// in den Apps per --dart-define=WEB_APP_URL=… (Standard app.lerndex.de).
-String webAppOrigin() {
-  if (kIsWeb) return Uri.base.origin;
-  const url = String.fromEnvironment(
-    'WEB_APP_URL',
-    defaultValue: 'https://app.lerndex.de',
-  );
-  return url;
+/// Adresse der Web-App in Links und QR-Codes (Koppeln, Schülerkarten,
+/// Lehrer-Karten, Elternbriefe). Immer app.lerndex.de, auch wenn die Seite
+/// gerade über eine andere Adresse läuft (z.B. das alte Firebase Hosting):
+/// Nur für app.lerndex.de öffnet Android die App, und gedruckte Karten
+/// sollen gültig bleiben, wenn eine alte Adresse abgeschaltet wird.
+/// Abweichend per --dart-define=WEB_APP_URL=…; mit dem Emulator im Browser
+/// die gerade laufende Test-Seite.
+String webAppOrigin() => webAppOriginFor(
+  configured: const String.fromEnvironment('WEB_APP_URL'),
+  emulatorInBrowser:
+      kIsWeb && const bool.fromEnvironment('USE_FIREBASE_EMULATOR'),
+  currentOrigin: kIsWeb ? Uri.base.origin : '',
+);
+
+/// Logik von [webAppOrigin], testbar.
+String webAppOriginFor({
+  required String configured,
+  required bool emulatorInBrowser,
+  required String currentOrigin,
+}) {
+  if (configured.isNotEmpty) return configured;
+  if (emulatorInBrowser && currentOrigin.isNotEmpty) return currentOrigin;
+  return 'https://app.lerndex.de';
 }
 
 class PairingCode {
@@ -81,55 +95,81 @@ class ChildDeviceRepository {
     );
   }
 
-  /// Kindergerät: Code einlösen und als Kind anmelden. Gibt den Namen des
-  /// Kindes zurück. Wirft [PairingException] mit kindgerechtem Text.
-  Future<String> redeemPairingCode(String code) async {
+  /// Kindergerät: Code prüfen, ohne schon anzumelden. Danach fragt die App
+  /// nach („Als Mia anmelden?“) und meldet erst dann mit [signInAs] an –
+  /// ein fremder Link soll das Gerät nicht still umstellen. Der Code ist
+  /// damit verbraucht. Wirft [PairingException] mit kindgerechtem Text.
+  Future<ChildLogin> checkPairingCode(String code) => _fetchLogin(
+    'redeemPairingCode',
+    {'code': code},
+    notFound:
+        'Der Code stimmt nicht oder ist abgelaufen. '
+        'Bitte deine Eltern um einen neuen Code.',
+  );
+
+  /// Schülergerät: QR-Karte der Schule prüfen, ohne schon anzumelden (siehe
+  /// [checkPairingCode]). Die Karte bleibt gültig.
+  Future<ChildLogin> checkStudentCard(String token) => _fetchLogin(
+    'redeemStudentCard',
+    {'token': token},
+    notFound:
+        'Diese Karte gilt nicht mehr. Bitte frag deine Lehrerin oder '
+        'deinen Lehrer nach einer neuen.',
+  );
+
+  Future<ChildLogin> _fetchLogin(
+    String function,
+    Map<String, Object> data, {
+    required String notFound,
+  }) async {
     try {
-      final result = await _functions.httpsCallable('redeemPairingCode').call({
-        'code': code,
-      });
-      final data = Map<String, dynamic>.from(result.data as Map);
-      await _auth.signInWithCustomToken(data['token'] as String);
-      final deviceId = data['deviceId'] as String?;
-      if (deviceId != null) {
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString(_deviceIdKey, deviceId);
-      }
-      return data['childName'] as String? ?? '';
-    } on FirebaseFunctionsException catch (e) {
-      if (e.code == 'not-found') {
-        throw const PairingException(
-          'Der Code stimmt nicht oder ist abgelaufen. '
-          'Bitte deine Eltern um einen neuen Code.',
-        );
-      }
-      throw const PairingException(
-        'Das hat gerade nicht geklappt. Bitte versuch es gleich nochmal.',
+      final result = await _functions.httpsCallable(function).call(data);
+      final map = Map<String, dynamic>.from(result.data as Map);
+      return ChildLogin(
+        token: map['token'] as String,
+        childName: map['childName'] as String? ?? '',
+        deviceId: map['deviceId'] as String?,
       );
+    } on FirebaseFunctionsException catch (e) {
+      if (e.code == 'not-found') throw PairingException(notFound);
+      throw const PairingException(_tryAgain);
+    } catch (e) {
+      debugPrint('⚠️ $function: $e');
+      throw const PairingException(_tryAgain);
     }
   }
 
-  /// Schülergerät: QR-Karte der Schule einlösen und als Schüler anmelden.
-  Future<String> redeemStudentCard(String token) async {
+  /// Mit einem geprüften Code bzw. einer Karte anmelden. Der Token aus der
+  /// Function gilt eine Stunde. Wirft [PairingException].
+  Future<void> signInAs(ChildLogin login) async {
     try {
-      final result = await _functions.httpsCallable('redeemStudentCard').call({
-        'token': token,
-      });
-      final data = Map<String, dynamic>.from(result.data as Map);
-      await _auth.signInWithCustomToken(data['token'] as String);
-      return data['childName'] as String? ?? '';
-    } on FirebaseFunctionsException catch (e) {
-      if (e.code == 'not-found') {
-        throw const PairingException(
-          'Diese Karte gilt nicht mehr. Bitte frag deine Lehrerin oder '
-          'deinen Lehrer nach einer neuen.',
-        );
-      }
-      throw const PairingException(
-        'Das hat gerade nicht geklappt. Bitte versuch es gleich nochmal.',
-      );
+      await _auth.signInWithCustomToken(login.token);
+    } catch (e) {
+      debugPrint('⚠️ Anmeldung als Kind: $e');
+      throw const PairingException(_tryAgain);
+    }
+    final deviceId = login.deviceId;
+    if (deviceId == null) return;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_deviceIdKey, deviceId);
+    } catch (e) {
+      // Nur für das spätere Abmelden mit Eltern-PIN nötig – die Function
+      // findet das Gerät dann nicht, meldet aber trotzdem ab.
+      debugPrint('⚠️ Geräte-ID nicht gespeichert: $e');
     }
   }
+
+  /// Code eingeben (das Kind selbst): prüfen und gleich anmelden. Gibt den
+  /// Namen des Kindes zurück. Wirft [PairingException].
+  Future<String> redeemPairingCode(String code) async {
+    final login = await checkPairingCode(code);
+    await signInAs(login);
+    return login.childName;
+  }
+
+  static const _tryAgain =
+      'Das hat gerade nicht geklappt. Bitte versuch es gleich nochmal.';
 
   /// Kindergerät zu Hause: dieses Gerät mit dem Eltern-PIN abmelden. Gibt
   /// false bei falschem PIN zurück. Bei true ist das Gerät aus der Liste der
@@ -180,6 +220,22 @@ class ChildDeviceRepository {
       .collection('devices')
       .snapshots()
       .map((s) => s.size);
+}
+
+/// Geprüfter Code bzw. geprüfte Karte, noch nicht angemeldet.
+class ChildLogin {
+  const ChildLogin({
+    required this.token,
+    required this.childName,
+    this.deviceId,
+  });
+
+  /// Custom Token für signInWithCustomToken (eine Stunde gültig)
+  final String token;
+  final String childName;
+
+  /// Nur beim Koppeln zu Hause: Eintrag in der Geräteliste der Eltern
+  final String? deviceId;
 }
 
 class PairingException implements FriendlyException {
