@@ -155,7 +155,7 @@ class _EarlyLearnerDashboardScreenState
 
   @override
   Widget build(BuildContext context) {
-    final rewardsCount = ref.watch(availableRewardsCountProvider).value ?? 0;
+    final rewardsCount = ref.watch(availableRewardsCountProvider);
 
     return PopScope(
       canPop: _currentTab == _EarlyTab.home,
@@ -670,44 +670,46 @@ class _CompactHeader extends ConsumerWidget {
               ),
 
               // ── TTS Toggle ─────────────────────────────────────────
-              Semantics(
-                button: true,
-                toggled: ttsEnabled,
-                label: 'Vorlesen',
-                excludeSemantics: true,
-                child: GestureDetector(
-                  onTap: () {
-                    HapticFeedback.selectionClick();
-                    ref.read(ttsSettingsProvider(child.id).notifier).toggle();
-                  },
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 250),
-                    width: 48,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      color: ttsEnabled
-                          ? Colors.white.withValues(alpha: 0.35)
-                          : Colors.black.withValues(alpha: 0.15),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Center(
-                      child: AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 200),
-                        child: Icon(
-                          ttsEnabled
-                              ? (isSpeaking
-                                    ? Icons.volume_up_rounded
-                                    : Icons.volume_up_rounded)
-                              : Icons.volume_off_rounded,
-                          key: ValueKey(ttsEnabled),
-                          color: Colors.white,
-                          size: 24,
+              // Ohne Stimme auf dem Gerät kein Vorlesen-Schalter
+              if (ref.watch(ttsControllerProvider).isAvailable)
+                Semantics(
+                  button: true,
+                  toggled: ttsEnabled,
+                  label: 'Vorlesen',
+                  excludeSemantics: true,
+                  child: GestureDetector(
+                    onTap: () {
+                      HapticFeedback.selectionClick();
+                      ref.read(ttsSettingsProvider(child.id).notifier).toggle();
+                    },
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 250),
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: ttsEnabled
+                            ? Colors.white.withValues(alpha: 0.35)
+                            : Colors.black.withValues(alpha: 0.15),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Center(
+                        child: AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 200),
+                          child: Icon(
+                            ttsEnabled
+                                ? (isSpeaking
+                                      ? Icons.volume_up_rounded
+                                      : Icons.volume_up_rounded)
+                                : Icons.volume_off_rounded,
+                            key: ValueKey(ttsEnabled),
+                            color: Colors.white,
+                            size: 24,
+                          ),
                         ),
                       ),
                     ),
                   ),
                 ),
-              ),
             ],
           ),
         ],
@@ -996,7 +998,7 @@ class _GiftTeaserState extends ConsumerState<_GiftTeaser>
 
   @override
   Widget build(BuildContext context) {
-    final rewardsCount = ref.watch(availableRewardsCountProvider).value ?? 0;
+    final rewardsCount = ref.watch(availableRewardsCountProvider);
 
     // Nichts anzeigen wenn keine Belohnungen verfügbar
     if (rewardsCount == 0) return const SizedBox.shrink();

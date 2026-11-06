@@ -16,24 +16,23 @@ import 'package:lerndex/src/features/auth/domain/account.dart';
 
 /// Anzahl der einlösbaren Eltern-Belohnungen für das aktive Kind.
 /// Wird als Badge in der Bottom-Navigation angezeigt.
-final availableRewardsCountProvider = StreamProvider<int>((ref) {
-  final activeChild = ref.watch(activeChildProvider);
+final availableRewardsCountProvider = Provider<int>((ref) {
+  // Nur die ID beobachten: XP-Änderungen am Kind sollen den Stream nicht
+  // neu anmelden.
+  final childId = ref.watch(activeChildProvider.select((c) => c?.id));
   final user = ref.watch(authStateChangesProvider).value;
-
-  if (activeChild == null || user == null) return Stream.value(0);
-
-  return ref
-      .read(rewardServiceProvider)
-      .getRewardsStream(userId: user.ownerUid, childId: activeChild.id)
-      .map(
-        (rewards) => rewards
-            .where(
-              (r) =>
-                  r.type == RewardType.parent &&
-                  r.status == RewardStatus.approved,
-            )
-            .length,
-      );
+  if (childId == null || user == null) return 0;
+  final rewards = ref
+      .watch(rewardsStreamProvider((userId: user.ownerUid, childId: childId)))
+      .value;
+  return rewards
+          ?.where(
+            (r) =>
+                r.type == RewardType.parent &&
+                r.status == RewardStatus.approved,
+          )
+          .length ??
+      0;
 });
 
 /// Signal-Provider: wird auf true gesetzt wenn das Dashboard nach einem

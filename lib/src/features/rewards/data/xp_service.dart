@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -488,10 +489,19 @@ class XPService {
       debugPrint('🔥 Streak: Pause > 1 Tag → zurückgesetzt auf 1');
     }
 
-    await docRef.update({
-      'streak': newStreak,
-      'lastLearningDate': FieldValue.serverTimestamp(),
-    });
+    // Nicht auf den Server warten: Firestore übernimmt die Änderung sofort
+    // in den lokalen Stand und reicht sie offline nach. Mit await hinge der
+    // Quiz-Abschluss ohne Netz hier fest.
+    unawaited(
+      docRef
+          .update({
+            'streak': newStreak,
+            'lastLearningDate': FieldValue.serverTimestamp(),
+          })
+          .catchError((Object e) {
+            debugPrint('⚠️ Streak speichern fehlgeschlagen: $e');
+          }),
+    );
 
     debugPrint('✅ Streak gespeichert: $newStreak Tage');
     return newStreak;

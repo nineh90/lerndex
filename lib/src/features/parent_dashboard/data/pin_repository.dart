@@ -2,9 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../domain/parent_pin_model.dart';
-import '../../auth/data/auth_repository.dart';
 import '../../auth/data/child_device_repository.dart';
-import 'package:lerndex/src/features/auth/domain/account.dart';
 
 /// Wird geworfen, wenn der PIN nach zu vielen Fehlversuchen gesperrt ist.
 /// toString() ist bewusst nutzerfreundlich, da Dialoge "Fehler: $e" anzeigen.
@@ -92,13 +90,4 @@ class PinRepository {
 /// Provider für PIN Repository
 final pinRepositoryProvider = Provider<PinRepository>((ref) {
   return PinRepository(FirebaseFirestore.instance, lerndexFunctions());
-});
-
-/// Provider der prüft ob PIN gesetzt ist
-final hasPinSetProvider = FutureProvider<bool>((ref) async {
-  final user = ref.watch(authStateChangesProvider).value;
-  if (user == null) return false;
-
-  final pinRepo = ref.watch(pinRepositoryProvider);
-  return await pinRepo.hasPinSet(user.ownerUid);
 });

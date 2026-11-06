@@ -120,36 +120,40 @@ class _ThemePickerSheetState extends ConsumerState<ThemePickerSheet> {
           // Das Bild liegt als Datei im App-Verzeichnis. Im Browser gibt es
           // das nicht, dort fällt die Option weg.
           if (!kIsWeb) ...[
-          Text(
-            'Hintergrundbild',
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-              color: themeState.theme.onSurface.withValues(alpha: 0.6),
-              letterSpacing: 0.5,
-            ),
-          ),
-          const SizedBox(height: 12),
-
-          // Aktuelles Bild Vorschau
-          if (themeState.backgroundImageUrl != null) ...[
-            _BackgroundPreview(
-              url: themeState.backgroundImageUrl!,
-              onRemove: () => themeNotifier.clearBackground(),
-              theme: themeState.theme,
+            Text(
+              'Hintergrundbild',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: themeState.theme.onSurface.withValues(alpha: 0.6),
+                letterSpacing: 0.5,
+              ),
             ),
             const SizedBox(height: 12),
-          ],
 
-          // Upload-Button / Fortschritt
-          if (_isUploading)
-            _UploadProgress(progress: _uploadProgress, theme: themeState.theme)
-          else
-            _UploadButton(
-              theme: themeState.theme,
-              hasBackground: themeState.backgroundImageUrl != null,
-              onTap: () => _pickAndUpload(themeNotifier, user.ownerUid, child.id),
-            ),
+            // Aktuelles Bild Vorschau
+            if (themeState.backgroundImageUrl != null) ...[
+              _BackgroundPreview(
+                url: themeState.backgroundImageUrl!,
+                onRemove: () => themeNotifier.clearBackground(),
+                theme: themeState.theme,
+              ),
+              const SizedBox(height: 12),
+            ],
+
+            // Upload-Button / Fortschritt
+            if (_isUploading)
+              _UploadProgress(
+                progress: _uploadProgress,
+                theme: themeState.theme,
+              )
+            else
+              _UploadButton(
+                theme: themeState.theme,
+                hasBackground: themeState.backgroundImageUrl != null,
+                onTap: () =>
+                    _pickAndUpload(themeNotifier, user.ownerUid, child.id),
+              ),
           ],
         ],
       ),
@@ -360,7 +364,10 @@ class _UploadButton extends StatelessWidget {
         width: double.infinity,
         padding: const EdgeInsets.symmetric(vertical: 16),
         decoration: BoxDecoration(
-          border: Border.all(color: theme.primary.withValues(alpha: 0.5), width: 2),
+          border: Border.all(
+            color: theme.primary.withValues(alpha: 0.5),
+            width: 2,
+          ),
           borderRadius: BorderRadius.circular(16),
           color: theme.primary.withValues(alpha: 0.08),
         ),

@@ -500,6 +500,7 @@ mixin EarlyQuizStateMixin<W extends ConsumerStatefulWidget, T extends EarlyTask>
       stageEmoji: stageEmoji(stage),
       stageName: stageName(stage),
       isSpeaking: ttsState.isSpeaking,
+      canSpeak: ttsState.isAvailable,
       onBack: () {
         tts.stop();
         Navigator.pop(context);

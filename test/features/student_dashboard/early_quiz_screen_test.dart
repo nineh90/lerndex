@@ -8,8 +8,12 @@ import 'package:lerndex/src/features/student_dashboard/presentation/widgets/lett
 import 'package:lerndex/src/features/student_dashboard/presentation/widgets/math_quiz_screen.dart';
 import 'package:lerndex/src/features/tts/tts_provider.dart';
 
-/// Sprachausgabe ohne Plugin.
+/// Sprachausgabe ohne Plugin, verhält sich wie ein Gerät mit Stimme.
 class _SilentTts extends TtsController {
+  _SilentTts() {
+    state = state.copyWith(isInitialized: true);
+  }
+
   @override
   Future<void> stop() async {}
 

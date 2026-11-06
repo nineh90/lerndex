@@ -76,7 +76,7 @@ class _BatchDetailScreenState extends ConsumerState<BatchDetailScreen> {
                   children: [
                     Icon(Icons.delete, color: Colors.red),
                     SizedBox(width: 8),
-                    Text('Batch löschen'),
+                    Text('Aufgabenpaket löschen'),
                   ],
                 ),
               ),
@@ -379,9 +379,9 @@ class _BatchDetailScreenState extends ConsumerState<BatchDetailScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Batch löschen?'),
+        title: const Text('Aufgabenpaket löschen?'),
         content: const Text(
-          'Möchtest du diesen Batch wirklich löschen? Alle Aufgaben werden entfernt.',
+          'Möchtest du dieses Aufgabenpaket wirklich löschen? Alle Aufgaben darin werden entfernt.',
         ),
         actions: [
           TextButton(
@@ -411,7 +411,7 @@ class _BatchDetailScreenState extends ConsumerState<BatchDetailScreen> {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('✅ Batch gelöscht'),
+            content: Text('✅ Aufgabenpaket gelöscht'),
             backgroundColor: Colors.green,
           ),
         );

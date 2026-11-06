@@ -97,7 +97,7 @@ class _SecondaryDashboardScreenState
     final themeIds = (userId: user.ownerUid, childId: widget.child.id);
     final themeState = ref.watch(dashboardThemeProvider(themeIds));
     final theme = themeState.theme;
-    final rewardsCount = ref.watch(availableRewardsCountProvider).value ?? 0;
+    final rewardsCount = ref.watch(availableRewardsCountProvider);
 
     // Auf Navigation-Signal vom Quiz lauschen
     ref.listen<bool>(navigateToRewardsTabProvider, (_, shouldNavigate) {

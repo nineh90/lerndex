@@ -252,8 +252,7 @@ class _PrimaryDashboardScreenState
   @override
   Widget build(BuildContext context) {
     final child = widget.child;
-    final availableRewardsCount =
-        ref.watch(availableRewardsCountProvider).value ?? 0;
+    final availableRewardsCount = ref.watch(availableRewardsCountProvider);
 
     // Auf Navigation-Signal vom Quiz lauschen
     ref.listen<bool>(navigateToRewardsTabProvider, (_, shouldNavigate) {

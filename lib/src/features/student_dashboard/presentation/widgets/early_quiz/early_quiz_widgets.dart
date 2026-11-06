@@ -130,6 +130,7 @@ class EarlyQuizHeader extends StatelessWidget {
     required this.stageEmoji,
     required this.stageName,
     required this.isSpeaking,
+    this.canSpeak = true,
     required this.onBack,
     required this.onSpeak,
   });
@@ -146,6 +147,10 @@ class EarlyQuizHeader extends StatelessWidget {
   final bool isSpeaking;
   final VoidCallback onBack;
   final VoidCallback onSpeak;
+
+  /// Ohne Stimme auf dem Gerät (z.B. Browser ohne lokale deutsche Stimme)
+  /// gibt es keinen Vorlese-Knopf.
+  final bool canSpeak;
 
   @override
   Widget build(BuildContext context) {
@@ -173,16 +178,19 @@ class EarlyQuizHeader extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              _HeaderCircleButton(
-                icon: isSpeaking
-                    ? Icons.volume_up_rounded
-                    : Icons.volume_up_outlined,
-                label: 'Aufgabe vorlesen',
-                onTap: () {
-                  HapticFeedback.selectionClick();
-                  onSpeak();
-                },
-              ),
+              if (canSpeak)
+                _HeaderCircleButton(
+                  icon: isSpeaking
+                      ? Icons.volume_up_rounded
+                      : Icons.volume_up_outlined,
+                  label: 'Aufgabe vorlesen',
+                  onTap: () {
+                    HapticFeedback.selectionClick();
+                    onSpeak();
+                  },
+                )
+              else
+                const SizedBox(width: 48),
             ],
           ),
           const SizedBox(height: 6),

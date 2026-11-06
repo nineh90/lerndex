@@ -262,8 +262,8 @@ class _AvatarSettingsSheetState extends ConsumerState<AvatarSettingsSheet> {
                                       errorBuilder: (_, _, _) => Icon(
                                         Icons.face,
                                         size: 42,
-                                        color: avatar.color.withValues(alpha: 
-                                          isUnlocked ? 1.0 : 0.3,
+                                        color: avatar.color.withValues(
+                                          alpha: isUnlocked ? 1.0 : 0.3,
                                         ),
                                       ),
                                     ),

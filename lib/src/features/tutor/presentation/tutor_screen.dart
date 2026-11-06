@@ -564,6 +564,9 @@ class _TutorScreenState extends ConsumerState<TutorScreen> {
                           constraints: const BoxConstraints(maxHeight: 120),
                           child: TextField(
                             controller: _messageController,
+                            // Tippen auf der Bildschirmtastatur ist Lernzeit
+                            // (der Tracker sieht nur Berührungen der App)
+                            onChanged: (_) => _timeTracker?.markActivity(),
                             decoration: InputDecoration(
                               hintText: 'Stell mir eine Frage...',
                               border: OutlineInputBorder(

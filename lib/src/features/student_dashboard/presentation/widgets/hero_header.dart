@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../../parent_dashboard/presentation/live_child_stat_card.dart'
+    show liveChildProvider;
 import '../../../auth/data/auth_repository.dart';
 import '../../../auth/domain/child_model.dart';
 import '../../../rewards/data/xp_service.dart';
 import 'header_badge.dart';
-import 'package:lerndex/src/features/auth/domain/account.dart';
 
 // ============================================================================
 // HERO HEADER – nahtlos an AppBar, enthält Level/Sterne/XP
@@ -35,30 +35,16 @@ class HeroHeader extends ConsumerWidget {
         ),
       ),
       padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
-      child: user == null
-          ? _buildContent(
-              child.level,
-              child.stars,
-              child.xp,
-              child.xpToNextLevel,
-            )
-          : StreamBuilder<DocumentSnapshot>(
-              stream: FirebaseFirestore.instance
-                  .collection('users')
-                  .doc(user.ownerUid)
-                  .collection('children')
-                  .doc(child.id)
-                  .snapshots(),
-              builder: (context, snapshot) {
-                final data = snapshot.data?.data() as Map<String, dynamic>?;
-                final level = data?['level'] as int? ?? child.level;
-                final stars = data?['stars'] as int? ?? child.stars;
-                final xp = data?['xp'] as int? ?? child.xp;
-                final xpToNextLevel =
-                    data?['xpToNextLevel'] as int? ?? child.xpToNextLevel;
-                return _buildContent(level, stars, xp, xpToNextLevel);
-              },
-            ),
+      // Gemeinsamer Live-Stream fürs Kind (nicht bei jedem build() neu)
+      child: Builder(
+        builder: (context) {
+          final live = user == null
+              ? null
+              : ref.watch(liveChildProvider(child.id)).value;
+          final c = live ?? child;
+          return _buildContent(c.level, c.stars, c.xp, c.xpToNextLevel);
+        },
+      ),
     );
   }
 
