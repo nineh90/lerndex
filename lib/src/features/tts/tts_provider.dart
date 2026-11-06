@@ -7,6 +7,7 @@ import 'package:flutter_tts/flutter_tts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../shared/platform_info.dart';
 import 'speakable_text.dart';
+import 'web_voices.dart';
 
 // ============================================================================
 // TTS PROVIDER – Zentraler Text-to-Speech Service für Lerndex
@@ -28,6 +29,11 @@ import 'speakable_text.dart';
 // • Pitch: 1.1 (leicht höher → freundlicher, kindgerechter)
 // • Singleton-Instanz: FlutterTts wird einmal erstellt und wiederverwendet
 // • Stop-before-speak: Jeder neue speak() stoppt laufende Ausgabe
+// • Datenschutz: nur Stimmen, die auf dem Gerät sprechen. Im Browser sind
+//   z.B. die „Google“-Stimmen in Chrome Netzwerkstimmen (localService =
+//   false) – der Text ginge an Google. Gibt es keine lokale deutsche Stimme,
+//   bleibt die Sprachausgabe aus ([TtsState.isAvailable]) und die
+//   Vorlese-Knöpfe werden ausgeblendet.
 // ============================================================================
 
 // ── TTS State ─────────────────────────────────────────────────────────────────
@@ -62,6 +68,10 @@ class TtsState {
 
   /// True, solange der Text mit dieser Kennung gesprochen wird.
   bool isSpeakingId(String id) => isSpeaking && utteranceId == id;
+
+  /// Vorlesen ist möglich (mit erlaubter Stimme eingerichtet). Sonst
+  /// Vorlese-Knöpfe ausblenden.
+  bool get isAvailable => isInitialized;
 }
 
 // ── TTS Controller ────────────────────────────────────────────────────────────
@@ -125,7 +135,19 @@ class TtsController extends StateNotifier<TtsState> {
 
   Future<void> _init() async {
     try {
-      await _tts.setLanguage(_language);
+      if (kIsWeb) {
+        // Nicht setLanguage(): das Plugin nähme dann die erste deutsche
+        // Stimme – in Chrome eine Netzwerkstimme von Google.
+        final voice = pickLocalWebVoice(await browserVoices());
+        if (voice == null) {
+          debugPrint('🎙️ TTS: keine lokale deutsche Stimme – Vorlesen aus');
+          if (mounted) state = state.copyWith(isInitialized: false);
+          return;
+        }
+        await _tts.setVoice({'name': voice.name, 'locale': voice.lang});
+      } else {
+        await _tts.setLanguage(_language);
+      }
       await _tts.setSpeechRate(_speechRate);
       await _tts.setPitch(_pitch);
       await _tts.setVolume(_volume);
@@ -148,7 +170,7 @@ class TtsController extends StateNotifier<TtsState> {
 
       // Beste verfügbare deutsche Stimme wählen
       // iOS: Siri/Neural-Stimmen klingen deutlich natürlicher
-      await _selectBestVoice();
+      if (!kIsWeb) await _selectBestVoice();
 
       _tts.setStartHandler(() {
         // Kennung jetzt übernehmen: der Abbruch der vorigen Ausgabe (Cancel-
@@ -319,13 +341,33 @@ class TtsController extends StateNotifier<TtsState> {
 
   // ── Hilfsmethoden ─────────────────────────────────────────────────────────
 
-  /// Wählt die best verfügbare deutsche Stimme.
+  /// Lokale deutsche Stimme im Browser (de-DE vor de-AT/de-CH), nie eine
+  /// Netzwerkstimme. null = keine passende Stimme.
+  @visibleForTesting
+  static WebVoice? pickLocalWebVoice(List<WebVoice> voices) {
+    final german = voices
+        .where((v) => v.localService && v.lang.toLowerCase().startsWith('de'))
+        .toList();
+    if (german.isEmpty) return null;
+    return german.firstWhere(
+      (v) => v.lang.toLowerCase().replaceAll('_', '-') == 'de-de',
+      orElse: () => german.first,
+    );
+  }
+
+  /// Wählt die best verfügbare deutsche Stimme (Apps).
   /// iOS: Siri/Neural-Stimmen bevorzugen (klingen deutlich natürlicher)
-  /// Android: Google-Stimme bevorzugen
+  /// Android: Google-Stimme bevorzugen, aber nur Stimmen ohne Netz
+  /// (network_required = 1 schickt den Text an Google).
   Future<void> _selectBestVoice() async {
     try {
-      final voices = await _tts.getVoices as List?;
-      if (voices == null || voices.isEmpty) return;
+      final allVoices = await _tts.getVoices as List?;
+      if (allVoices == null || allVoices.isEmpty) return;
+      final voices = allVoices
+          .whereType<Map>()
+          .where((v) => v['network_required']?.toString() != '1')
+          .toList();
+      if (voices.isEmpty) return;
 
       // Preferred voice IDs (iOS Neural/Siri Stimmen für de-DE)
       const iosPreferred = [
