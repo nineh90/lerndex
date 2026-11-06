@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../school/data/parent_link_repository.dart';
-import '../../school/presentation/school_section.dart' show schoolErrorText;
+import '../../../shared/user_message.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lerndex/src/features/auth/domain/child_model.dart';
 import 'package:lerndex/src/features/auth/presentation/widgets/child_limit_exceeded_screen.dart';
@@ -37,31 +37,76 @@ class _FamilyDashboardScreenState extends ConsumerState<FamilyDashboardScreen> {
   final _settingsButtonKey = GlobalKey();
   final _childListKey = GlobalKey();
 
+  /// Kinder, deren Reaktivierung schon angestoßen ist – build() läuft oft,
+  /// geschrieben werden soll nur einmal.
+  final _reactivationRequested = <String>{};
+
   @override
   void initState() {
     super.initState();
     // Eltern-Code aus einem gescannten Elternbrief (…/e/CODE), der vor der
-    // Anmeldung gemerkt wurde: jetzt einlösen.
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      final messenger = ScaffoldMessenger.of(context);
-      try {
-        final name = await ref
-            .read(parentLinkRepositoryProvider)
-            .redeemPending();
-        if (name != null) {
-          messenger.showSnackBar(
-            SnackBar(content: Text('$name ist jetzt mit Ihrem Konto verbunden.')),
-          );
-        }
-      } catch (e) {
-        messenger.showSnackBar(
-          SnackBar(
-            content: Text('Elternbrief: ${schoolErrorText(e)}'),
-            backgroundColor: Colors.red,
+    // Anmeldung gemerkt wurde: nachfragen und einlösen.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _redeemPendingCode());
+  }
+
+  /// Gemerkten Eltern-Code nur nach Rückfrage einlösen: Er könnte von einem
+  /// früheren Besuch stammen oder für ein anderes Konto gedacht sein.
+  Future<void> _redeemPendingCode() async {
+    final repo = ref.read(parentLinkRepositoryProvider);
+    final String? code;
+    try {
+      code = await repo.pendingCode();
+    } catch (_) {
+      return;
+    }
+    if (code == null || !mounted) return;
+    await repo.clearPending();
+    if (!mounted) return;
+
+    final account = ref.read(authStateChangesProvider).value?.email;
+    final display = code.length == 8
+        ? '${code.substring(0, 4)}-${code.substring(4)}'
+        : code;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        scrollable: true,
+        title: const Text('Kind aus der Schule verbinden?'),
+        content: Text(
+          'Sie haben einen Elternbrief gescannt (Code $display). Soll das '
+          'Kind aus diesem Brief mit '
+          '${account == null ? 'diesem Konto' : 'dem Konto $account'} '
+          'verbunden werden? Sie sehen dann seine Statistik und können '
+          'Belohnungen festlegen.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Nein'),
           ),
-        );
-      }
-    });
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Verbinden'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final name = await repo.link(code);
+      messenger.showSnackBar(
+        SnackBar(content: Text('$name ist jetzt mit Ihrem Konto verbunden.')),
+      );
+    } catch (e) {
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text('Elternbrief: ${userMessage(e)}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   @override
@@ -115,13 +160,25 @@ class _FamilyDashboardScreenState extends ConsumerState<FamilyDashboardScreen> {
     final slotsAvailable = childLimit - activeChildren.length;
     if (pausedChildren.isNotEmpty && slotsAvailable > 0) {
       if (slotsAvailable >= pausedChildren.length) {
-        // Alle pausierten Kinder passen rein → automatisch reaktivieren
-        WidgetsBinding.instance.addPostFrameCallback((_) async {
-          final repo = ref.read(profileRepositoryProvider);
-          for (final child in pausedChildren) {
-            await repo.reactivateChild(child.id);
-          }
-        });
+        // Alle pausierten Kinder passen rein → automatisch reaktivieren,
+        // pro Kind nur einmal (build läuft bei jedem Neuaufbau)
+        final todo = pausedChildren
+            .where((c) => _reactivationRequested.add(c.id))
+            .toList();
+        if (todo.isNotEmpty) {
+          WidgetsBinding.instance.addPostFrameCallback((_) async {
+            final repo = ref.read(profileRepositoryProvider);
+            for (final child in todo) {
+              try {
+                await repo.reactivateChild(child.id);
+              } catch (e) {
+                // Beim nächsten Öffnen erneut versuchen
+                _reactivationRequested.remove(child.id);
+                debugPrint('⚠️ Reaktivierung von ${child.id}: $e');
+              }
+            }
+          });
+        }
       } else {
         // Nicht alle passen rein → User wählt welche reaktiviert werden
         return ChildReactivationScreen(
@@ -359,8 +416,10 @@ class _FamilyDashboardScreenState extends ConsumerState<FamilyDashboardScreen> {
                             : GestureDetector(
                                 // Parental Gate vor der Paywall (Kids-App)
                                 onTap: () async {
-                                  final ok =
-                                      await showParentalGate(context, ref);
+                                  final ok = await showParentalGate(
+                                    context,
+                                    ref,
+                                  );
                                   if (!ok || !context.mounted) return;
                                   Navigator.push(
                                     context,
@@ -382,7 +441,7 @@ class _FamilyDashboardScreenState extends ConsumerState<FamilyDashboardScreen> {
               );
             },
             loading: () => const Center(child: CircularProgressIndicator()),
-            error: (e, st) => Center(child: Text('Fehler: $e')),
+            error: (e, st) => Center(child: Text(userMessage(e))),
           ),
 
           // ── Tutorial Overlay ───────────────────────────────────────────
@@ -486,7 +545,9 @@ class _FamilyDashboardScreenState extends ConsumerState<FamilyDashboardScreen> {
       tutNotifier.setStep(TutorialStep.enterPin);
     }
 
-    final hasPin = await ref.read(pinRepositoryProvider).hasPinSet(user.ownerUid);
+    final hasPin = await ref
+        .read(pinRepositoryProvider)
+        .hasPinSet(user.ownerUid);
     if (!context.mounted) return;
 
     if (!hasPin) {

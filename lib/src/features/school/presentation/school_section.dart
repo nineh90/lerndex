@@ -1,4 +1,3 @@
-import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -21,16 +20,11 @@ class SchoolSection extends ConsumerWidget {
       return ListTile(
         leading: const Icon(Icons.school, color: Colors.deepPurple),
         title: const Text('Lehrerbereich öffnen'),
-        subtitle: Text(
-          name ?? '…',
-          style: const TextStyle(fontSize: 12),
-        ),
+        subtitle: Text(name ?? '…', style: const TextStyle(fontSize: 12)),
         trailing: const Icon(Icons.chevron_right),
         onTap: () => Navigator.push(
           context,
-          MaterialPageRoute(
-            builder: (_) => schoolScreenFor(membership),
-          ),
+          MaterialPageRoute(builder: (_) => schoolScreenFor(membership)),
         ),
       );
     }
@@ -48,11 +42,4 @@ class SchoolSection extends ConsumerWidget {
       ],
     );
   }
-
-}
-
-/// Fehlermeldung der Cloud Functions ohne technisches Drumherum.
-String schoolErrorText(Object e) {
-  if (e is FirebaseFunctionsException) return e.message ?? e.code;
-  return e.toString();
 }

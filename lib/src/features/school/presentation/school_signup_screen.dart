@@ -1,14 +1,14 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../auth/data/auth_repository.dart';
 import '../../auth/presentation/email_verification_screen.dart';
 import '../../auth/presentation/sign_out.dart';
 import '../../splash/splash_screen.dart';
 import '../data/school_repository.dart';
-import 'school_section.dart' show schoolErrorText;
+import '../../../shared/user_message.dart';
+import '../../../shared/legal_links.dart';
 
 /// Registrierung einer Schule über den Einladungslink von Lerndex
 /// (…/schule/CODE): Die Schulleitung legt die Schule und ihr Konto an. Das
@@ -61,7 +61,7 @@ class _SchoolSignupScreenState extends ConsumerState<SchoolSignupScreen> {
       await action();
     } catch (e) {
       _registering = false;
-      if (mounted) setState(() => _error = schoolErrorText(e));
+      if (mounted) setState(() => _error = userMessage(e));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -73,9 +73,7 @@ class _SchoolSignupScreenState extends ConsumerState<SchoolSignupScreen> {
     final name = _name.text.trim();
     final email = _email.text.trim();
     final password = _password.text;
-    if (schoolName.length < 3 ||
-        name.isEmpty ||
-        email.isEmpty) {
+    if (schoolName.length < 3 || name.isEmpty || email.isEmpty) {
       setState(() => _error = 'Bitte alle Felder ausfüllen.');
       return;
     }
@@ -91,6 +89,8 @@ class _SchoolSignupScreenState extends ConsumerState<SchoolSignupScreen> {
     _registering = true;
     await _run(() async {
       final auth = ref.read(authRepositoryProvider);
+      // Schulkonto: im Browser nur für diesen Tab angemeldet (Schul-PCs)
+      await auth.keepLoginInThisTabOnly();
       await auth.createUserWithEmailAndPassword(email, password, name);
       try {
         await auth.recordPrivacyConsent();
@@ -100,6 +100,7 @@ class _SchoolSignupScreenState extends ConsumerState<SchoolSignupScreen> {
       } catch (_) {
         // Code ungültig o.ä.: kein Konto ohne Schule zurücklassen
         await auth.abortNewSocialAccount();
+        await auth.keepLoginOnThisDevice();
         _registering = false;
         rethrow;
       }
@@ -143,10 +144,7 @@ class _SchoolSignupScreenState extends ConsumerState<SchoolSignupScreen> {
                   const SizedBox(height: 8),
                   const Text(
                     title,
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w700,
-                    ),
+                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 20),
@@ -162,6 +160,8 @@ class _SchoolSignupScreenState extends ConsumerState<SchoolSignupScreen> {
                       textAlign: TextAlign.center,
                     ),
                   ],
+                  const SizedBox(height: 16),
+                  const LegalFooter(),
                 ],
               ),
             ),
@@ -237,9 +237,7 @@ class _SchoolSignupScreenState extends ConsumerState<SchoolSignupScreen> {
                       decoration: TextDecoration.underline,
                     ),
                     recognizer: TapGestureRecognizer()
-                      ..onTap = () => launchUrl(
-                        Uri.parse('https://www.lerndex.de/datenschutz.php'),
-                      ),
+                      ..onTap = () => openLegalLink(LegalLinks.privacy),
                   ),
                   const TextSpan(text: ' gelesen und stimme ihr zu.'),
                 ],

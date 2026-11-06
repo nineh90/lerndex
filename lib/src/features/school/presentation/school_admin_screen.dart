@@ -7,8 +7,9 @@ import '../../../shared/web/browser_url.dart';
 import '../data/school_repository.dart';
 import '../domain/school_models.dart';
 import 'school_home_screen.dart' show SchoolLogoutAction;
-import 'school_section.dart' show schoolErrorText;
+import '../../../shared/user_message.dart';
 import 'student_cards_print.dart';
+import '../../../shared/legal_links.dart';
 
 /// Schulleitung: verwaltet nur die Lehrkräfte (anlegen, Karte neu ausstellen,
 /// PIN zurücksetzen, entfernen) und sieht die Lizenz. Klassen und Schüler
@@ -68,7 +69,7 @@ class SchoolAdminScreen extends ConsumerWidget {
           const SizedBox(height: 8),
           ...members.when(
             loading: () => [const Center(child: CircularProgressIndicator())],
-            error: (e, _) => [Text('Fehler: $e')],
+            error: (e, _) => [Text(userMessage(e))],
             data: (list) {
               final teachers = list.where((m) => !m.isAdmin).toList();
               if (teachers.isEmpty) {
@@ -87,6 +88,8 @@ class SchoolAdminScreen extends ConsumerWidget {
                   .toList();
             },
           ),
+          const SizedBox(height: 24),
+          const LegalFooter(),
         ],
       ),
     );
@@ -234,7 +237,7 @@ class SchoolAdminScreen extends ConsumerWidget {
       if (context.mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text(schoolErrorText(e))));
+        ).showSnackBar(SnackBar(content: Text(userMessage(e))));
       }
     }
   }
@@ -272,7 +275,7 @@ class SchoolAdminScreen extends ConsumerWidget {
       if (context.mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text(schoolErrorText(e))));
+        ).showSnackBar(SnackBar(content: Text(userMessage(e))));
       }
     }
   }
@@ -354,7 +357,8 @@ class TeacherCardDialog extends StatelessWidget {
       actions: [
         if (kIsWeb)
           TextButton.icon(
-            onPressed: () => writeHtmlToTab(openBlankTab(), teacherCardHtml(card)),
+            onPressed: () =>
+                writeHtmlToTab(openBlankTab(), teacherCardHtml(card)),
             icon: const Icon(Icons.print_outlined),
             label: const Text('Drucken'),
           ),

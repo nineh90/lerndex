@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lerndex/src/features/auth/data/profile_repository.dart';
 import 'package:lerndex/src/features/auth/domain/child_model.dart';
+import '../../../../shared/user_message.dart';
 
 /// Wird gezeigt wenn ein User mehr Kinder hat als sein aktueller Plan erlaubt.
 /// Beispiel: War auf Family (4 Kinder), jetzt auf Solo (1 Kind) gewechselt.
@@ -202,15 +203,13 @@ class _ChildLimitExceededScreenState
         await repo.deactivateChild(child.id);
       }
 
-      if (mounted) {
-        // Screen schließen — FamilyDashboard baut sich neu
-        Navigator.of(context).pop();
-      }
+      // Kein pop: Der Screen ist ins FamilyDashboard eingebettet (keine
+      // eigene Route). Das Dashboard baut sich über den Kinder-Stream neu.
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('Fehler: $e')));
+        ).showSnackBar(SnackBar(content: Text(userMessage(e))));
       }
     } finally {
       if (mounted) setState(() => _isSaving = false);

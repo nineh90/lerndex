@@ -40,10 +40,17 @@
          Play-Policy verbietet diese Permissions bei nur gelegentlichem
          Medienzugriff (Play-Rejection vom 16.07.2026). -->
 
+    <!-- Keine Auto-Sicherung: Auf Kinder-, Schüler- und Lehrergeräten liegt
+         die Anmeldung im App-Speicher. Eine Sicherung (Google-Konto) oder die
+         Übertragung auf ein neues Gerät würde sie mitnehmen.
+         dataExtractionRules gilt ab Android 12, allowBackup davor. -->
     <application
         android:label="Lerndex"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:allowBackup="false"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        tools:replace="android:allowBackup">
         <activity
             android:name=".MainActivity"
             android:exported="true"

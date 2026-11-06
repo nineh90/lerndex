@@ -13,13 +13,31 @@
   <!-- Als App auf dem Home-Bildschirm (iPhone/iPad) -->
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="Lerndex">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 
   <link rel="icon" type="image/png" href="favicon.png"/>
 
   <title>Lerndex</title>
+
+  <!-- Links mit Anmelde-Codes (…/k/, /s/, /l/, /e/, /schule/) sofort aus der
+       Adresszeile und dem Verlauf nehmen, noch bevor Flutter lädt. Der Pfad
+       wartet im sessionStorage, die App liest ihn beim Start einmal aus
+       (lib/src/shared/web/browser_url_web.dart, takeStoredLinkPath).
+       Muster wie in lib/src/shared/app_links.dart. -->
+  <script>
+    (function () {
+      var path = location.pathname;
+      if (!/^\/(k|s|l|e|schule)\/[A-Za-z0-9-]{8,64}\/?$/.test(path)) return;
+      try {
+        sessionStorage.setItem('lerndex_link_path', path);
+      } catch (e) {
+        return; // Ohne Speicher liest die App den Pfad wie bisher selbst
+      }
+      history.replaceState(null, '', '/');
+    })();
+  </script>
 
   <!-- RevenueCat lädt sein Skript sonst beim Start von cdn.jsdelivr.net und
        damit Stripe.js. Solange es keine Web-Käufe gibt, zeigt die Adresse auf

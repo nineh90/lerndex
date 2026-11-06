@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../shared/widgets/parental_gate.dart';
 import '../../../tutorial_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../../shared/legal_links.dart';
 
 /// Einstellungen im Family-Dashboard (für alle sichtbar – auch Kinder).
 /// Enthält nur unkritische Optionen: App-Tour & Rechtliches.
@@ -82,7 +83,7 @@ class FamilySettingsScreen extends ConsumerWidget {
               color: Colors.grey,
             ),
             onTap: () =>
-                _launchUrl(context, ref, 'https://lerndex.de/datenschutz.php'),
+                _launchUrl(context, ref, LegalLinks.privacy),
           ),
 
           ListTile(
@@ -97,14 +98,14 @@ class FamilySettingsScreen extends ConsumerWidget {
               size: 18,
               color: Colors.grey,
             ),
-            onTap: () => _launchUrl(context, ref, 'https://lerndex.de/agb.php'),
+            onTap: () => _launchUrl(context, ref, LegalLinks.terms),
           ),
 
           ListTile(
             leading: const Icon(Icons.info_outline, color: Color(0xFF6B21A8)),
             title: const Text('Impressum'),
             subtitle: const Text(
-              'Angaben gemäß § 5 TMG',
+              'Angaben gemäß § 5 DDG',
               style: TextStyle(fontSize: 12),
             ),
             trailing: const Icon(
@@ -113,7 +114,7 @@ class FamilySettingsScreen extends ConsumerWidget {
               color: Colors.grey,
             ),
             onTap: () =>
-                _launchUrl(context, ref, 'https://lerndex.de/impressum.php'),
+                _launchUrl(context, ref, LegalLinks.imprint),
           ),
         ],
       ),

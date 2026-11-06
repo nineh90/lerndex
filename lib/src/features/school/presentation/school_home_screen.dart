@@ -1,21 +1,89 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../shared/activity_tracker.dart';
+import '../../auth/data/auth_repository.dart';
+import '../../auth/presentation/login_screen.dart';
 import '../../auth/presentation/sign_out.dart';
 import '../data/school_repository.dart';
 import '../domain/school_models.dart';
 import 'school_class_screen.dart';
 import 'school_admin_screen.dart';
+import '../../../shared/user_message.dart';
+import '../../../shared/legal_links.dart';
 
-/// Startseite eines reinen Schulkontos: lädt die Schul-Rolle aus dem
-/// (frischen) Token und zeigt den Schulbereich – ohne Elternbereich.
-class SchoolRootScreen extends ConsumerWidget {
+/// Startseite eines reinen Schulkontos bzw. Lehrergeräts: lädt die
+/// Schul-Rolle aus dem (frischen) Token und zeigt den Schulbereich – ohne
+/// Elternbereich.
+///
+/// Im Browser (Klassen-PC) gilt die Anmeldung nur für den Tab und endet nach
+/// [idleLimit] ohne Eingabe.
+class SchoolRootScreen extends ConsumerStatefulWidget {
   const SchoolRootScreen({super.key});
 
+  static const idleLimit = Duration(minutes: 30);
+
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<SchoolRootScreen> createState() => _SchoolRootScreenState();
+}
+
+class _SchoolRootScreenState extends ConsumerState<SchoolRootScreen> {
+  /// Einmal pro Seite laden (nicht bei jedem build, mit Token-Erneuerung)
+  late final Future<SchoolMembership?> _membership = ref
+      .read(schoolRepositoryProvider)
+      .membership(refresh: true);
+
+  Timer? _idleTimer;
+  bool _signingOut = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (kIsWeb) {
+      // Auch Anmeldungen von vor dieser Einstellung (E-Mail-Login der
+      // Schulleitung) nur noch im Tab halten – Firebase zieht sie um.
+      ref.read(authRepositoryProvider).keepLoginInThisTabOnly();
+      ActivityTracker.touch();
+      _idleTimer = Timer.periodic(
+        const Duration(minutes: 1),
+        (_) => _checkIdle(),
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    _idleTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _checkIdle() async {
+    if (_signingOut || !ActivityTracker.idleFor(SchoolRootScreen.idleLimit)) {
+      return;
+    }
+    _signingOut = true;
+    _idleTimer?.cancel();
+    final navigator = Navigator.of(context);
+    await signOutAccount(ref);
+    navigator.pushAndRemoveUntil(
+      MaterialPageRoute(
+        builder: (_) => const LoginScreen(
+          notice:
+              'Sie wurden nach 30 Minuten ohne Eingabe abgemeldet. Bitte '
+              'melden Sie sich neu an.',
+        ),
+      ),
+      (_) => false,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return FutureBuilder<SchoolMembership?>(
-      future: ref.read(schoolRepositoryProvider).membership(refresh: true),
+      future: _membership,
       builder: (context, snap) {
         if (snap.connectionState != ConnectionState.done) {
           return const Scaffold(
@@ -34,12 +102,15 @@ class SchoolRootScreen extends ConsumerWidget {
             foregroundColor: Colors.white,
             actions: const [SchoolLogoutAction()],
           ),
-          body: const Center(
+          body: Center(
             child: Padding(
-              padding: EdgeInsets.all(32),
+              padding: const EdgeInsets.all(32),
               child: Text(
-                'Dieses Konto gehört zu keiner Schule mehr. Wenn das nicht '
-                'stimmt, wenden Sie sich bitte an Ihre Schulleitung.',
+                snap.hasError
+                    ? userMessage(snap.error!)
+                    : 'Dieses Konto gehört zu keiner Schule mehr. Wenn das '
+                          'nicht stimmt, wenden Sie sich bitte an Ihre '
+                          'Schulleitung.',
                 textAlign: TextAlign.center,
               ),
             ),
@@ -114,7 +185,7 @@ class SchoolHomeScreen extends ConsumerWidget {
           const _Header('Klassen'),
           ...classes.when(
             loading: () => [const Center(child: CircularProgressIndicator())],
-            error: (e, _) => [Text('Fehler: $e')],
+            error: (e, _) => [Text(userMessage(e))],
             data: (list) => list.isEmpty
                 ? [
                     const Padding(
@@ -130,16 +201,23 @@ class SchoolHomeScreen extends ConsumerWidget {
                           child: ListTile(
                             leading: CircleAvatar(
                               backgroundColor: Colors.deepPurple.shade100,
-                              child: Text(
-                                c.name,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.deepPurple,
+                              child: Padding(
+                                padding: const EdgeInsets.all(4),
+                                child: FittedBox(
+                                  child: Text(
+                                    classAvatarLabel(c.name),
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.deepPurple,
+                                    ),
+                                  ),
                                 ),
                               ),
                             ),
                             title: Text('Klasse ${c.name}'),
-                            subtitle: Text('${c.grade}. Klasse · ${c.schoolType}'),
+                            subtitle: Text(
+                              '${c.grade}. Klasse · ${c.schoolType}',
+                            ),
                             trailing: const Icon(Icons.chevron_right),
                             onTap: () => Navigator.push(
                               context,
@@ -156,6 +234,8 @@ class SchoolHomeScreen extends ConsumerWidget {
                       )
                       .toList(),
           ),
+          const SizedBox(height: 24),
+          const LegalFooter(),
         ],
       ),
     );
@@ -169,6 +249,7 @@ class SchoolHomeScreen extends ConsumerWidget {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setState) => AlertDialog(
+          scrollable: true,
           title: const Text('Klasse anlegen'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
@@ -220,17 +301,21 @@ class SchoolHomeScreen extends ConsumerWidget {
       ),
     );
     final name = nameCtrl.text.trim();
-    if (ok != true || name.isEmpty) return;
-    await ref
-        .read(schoolRepositoryProvider)
-        .addClass(
-          membership.schoolId,
-          name: name,
-          grade: grade,
-          schoolType: schoolType,
-        );
+    if (ok != true || name.isEmpty || !context.mounted) return;
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await ref
+          .read(schoolRepositoryProvider)
+          .addClass(
+            membership.schoolId,
+            name: name,
+            grade: grade,
+            schoolType: schoolType,
+          );
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text(userMessage(e))));
+    }
   }
-
 }
 
 class _Header extends StatelessWidget {
@@ -249,4 +334,22 @@ class _Header extends StatelessWidget {
       ),
     ),
   );
+}
+
+/// Kurzform des Klassennamens für den runden Avatar: „5b“ bleibt, aus
+/// „Sonnenklasse“ wird „SO“, aus „Klasse 3 Füchse“ „3F“.
+String classAvatarLabel(String name) {
+  final trimmed = name.trim();
+  if (trimmed.isEmpty) return '?';
+  if (trimmed.length <= 3) return trimmed;
+  final words = trimmed
+      .split(RegExp(r'\s+'))
+      .where((w) => w.toLowerCase() != 'klasse')
+      .toList();
+  if (words.isEmpty) return trimmed.substring(0, 2).toUpperCase();
+  if (words.length == 1) {
+    final w = words.first;
+    return w.length <= 3 ? w : w.substring(0, 2).toUpperCase();
+  }
+  return words.take(2).map((w) => w[0].toUpperCase()).join();
 }

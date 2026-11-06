@@ -3,10 +3,10 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../parent_dashboard/data/pin_repository.dart';
-import '../../data/auth_repository.dart';
 import '../../data/child_device_repository.dart';
 import '../active_child_provider.dart';
 import '../login_screen.dart';
+import '../sign_out.dart';
 
 /// Abmelden auf einem Kinder- oder Schülergerät.
 ///
@@ -35,13 +35,11 @@ class DeviceLogoutButton extends ConsumerWidget {
         // Navigator vorher holen: Abmelden baut das Dashboard um, danach
         // gäbe es diesen Knopf (und seinen context) nicht mehr.
         final navigator = Navigator.of(context);
-        final activeChild = ref.read(activeChildProvider.notifier);
-        await ref.read(authRepositoryProvider).signOut();
+        await signOutAccount(ref);
         navigator.pushAndRemoveUntil(
           MaterialPageRoute(builder: (_) => const LoginScreen()),
           (_) => false,
         );
-        activeChild.deselect();
       },
     );
   }
@@ -102,8 +100,9 @@ class _ParentPinLogoutDialogState
     });
     String? error;
     try {
-      final ok =
-          await ref.read(childDeviceRepositoryProvider).leaveDevice(_pin.text);
+      final ok = await ref
+          .read(childDeviceRepositoryProvider)
+          .leaveDevice(_pin.text);
       if (ok) {
         if (mounted) Navigator.pop(context, true);
         return;
@@ -111,7 +110,8 @@ class _ParentPinLogoutDialogState
       error = 'Falscher PIN';
     } on PinLockedException catch (e) {
       final minutes = (e.remaining.inSeconds / 60).ceil();
-      error = 'Zu viele Versuche. Bitte in $minutes '
+      error =
+          'Zu viele Versuche. Bitte in $minutes '
           '${minutes == 1 ? 'Minute' : 'Minuten'} nochmal.';
     } on PairingException catch (e) {
       error = e.message;
@@ -129,6 +129,7 @@ class _ParentPinLogoutDialogState
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
+      scrollable: true,
       title: const Text('Gerät abmelden'),
       content: Column(
         mainAxisSize: MainAxisSize.min,

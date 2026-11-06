@@ -7,7 +7,7 @@ import '../../parent_dashboard/presentation/tutor_history_screen.dart';
 import '../../rewards/presentation/manage_rewards_screen.dart';
 import '../data/parent_link_repository.dart';
 import '../domain/class_stats.dart';
-import 'school_section.dart' show schoolErrorText;
+import '../../../shared/user_message.dart';
 
 /// Eltern-Dashboard: Kinder, die über den Elternbrief der Schule verbunden
 /// sind. Statistik, Belohnungen und Lexi-Gespräche wie bei eigenen Kindern;
@@ -54,6 +54,7 @@ Future<void> connectSchoolChild(BuildContext context, WidgetRef ref) async {
   final code = await showDialog<String>(
     context: context,
     builder: (ctx) => AlertDialog(
+      scrollable: true,
       title: const Text('Kind aus der Schule verbinden'),
       content: Column(
         mainAxisSize: MainAxisSize.min,
@@ -99,10 +100,12 @@ Future<void> connectSchoolChild(BuildContext context, WidgetRef ref) async {
   final messenger = ScaffoldMessenger.of(context);
   try {
     final name = await ref.read(parentLinkRepositoryProvider).link(code);
-    messenger.showSnackBar(SnackBar(content: Text('$name ist jetzt verbunden.')));
+    messenger.showSnackBar(
+      SnackBar(content: Text('$name ist jetzt verbunden.')),
+    );
   } catch (e) {
     messenger.showSnackBar(
-      SnackBar(content: Text(schoolErrorText(e)), backgroundColor: Colors.red),
+      SnackBar(content: Text(userMessage(e)), backgroundColor: Colors.red),
     );
   }
 }
@@ -183,7 +186,10 @@ class _LinkedChildCard extends ConsumerWidget {
                   TextButton.icon(
                     onPressed: () => _push(
                       context,
-                      ChildStatisticsScreen(child: child, ownerUid: link.ownerUid),
+                      ChildStatisticsScreen(
+                        child: child,
+                        ownerUid: link.ownerUid,
+                      ),
                     ),
                     icon: const Icon(Icons.bar_chart, size: 18),
                     label: const Text('Statistik'),
@@ -191,7 +197,10 @@ class _LinkedChildCard extends ConsumerWidget {
                   TextButton.icon(
                     onPressed: () => _push(
                       context,
-                      ManageRewardsScreen(child: child, ownerUid: link.ownerUid),
+                      ManageRewardsScreen(
+                        child: child,
+                        ownerUid: link.ownerUid,
+                      ),
                     ),
                     icon: const Icon(Icons.card_giftcard, size: 18),
                     label: const Text('Belohnungen'),
@@ -245,7 +254,7 @@ class _LinkedChildCard extends ConsumerWidget {
       if (context.mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text(schoolErrorText(e))));
+        ).showSnackBar(SnackBar(content: Text(userMessage(e))));
       }
     }
   }

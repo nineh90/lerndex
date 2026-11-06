@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../auth/data/auth_repository.dart';
@@ -114,11 +115,21 @@ class SchoolRepository {
     });
     final custom = data['token'] as String?;
     if (custom == null) return false;
+    // Im Browser (Klassen-PC): Anmeldung nur in diesem Tab speichern, nicht
+    // dauerhaft – sonst sieht die nächste Person am PC alle Klassen.
+    if (kIsWeb) {
+      try {
+        await _auth.setPersistence(Persistence.SESSION);
+      } catch (e) {
+        debugPrint('⚠️ Anmeldung nur für den Tab nicht möglich: $e');
+      }
+    }
     await _auth.signInWithCustomToken(custom);
     return true;
   }
 
-  Future<void> removeTeacher(String uid) => _call('removeTeacher', {'uid': uid});
+  Future<void> removeTeacher(String uid) =>
+      _call('removeTeacher', {'uid': uid});
 
   /// Lizenz der Schule (null = keine). Liest das Schulkonto `users/school_<id>`.
   Stream<DateTime?> watchLicense(String schoolId) => _firestore
@@ -138,8 +149,12 @@ class SchoolRepository {
       .doc(schoolId)
       .collection('members')
       .snapshots()
-      .map((s) => s.docs.map(SchoolMember.fromDoc).toList()
-        ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase())));
+      .map(
+        (s) => s.docs.map(SchoolMember.fromDoc).toList()
+          ..sort(
+            (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
+          ),
+      );
 
   // ── Klassen ───────────────────────────────────────────────────────────────
 
@@ -148,8 +163,9 @@ class SchoolRepository {
 
   Stream<List<SchoolClass>> watchClasses(String schoolId) =>
       _classes(schoolId).snapshots().map(
-        (s) => s.docs.map(SchoolClass.fromDoc).toList()
-          ..sort((a, b) => a.name.compareTo(b.name)),
+        (s) =>
+            s.docs.map(SchoolClass.fromDoc).toList()
+              ..sort((a, b) => a.name.compareTo(b.name)),
       );
 
   Future<void> addClass(
@@ -181,10 +197,12 @@ class SchoolRepository {
           .where('classId', isEqualTo: classId)
           .snapshots()
           .map(
-            (s) => s.docs.map((d) => ChildModel.fromMap(d.data(), d.id)).toList()
-              ..sort(
-                (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
-              ),
+            (s) =>
+                s.docs.map((d) => ChildModel.fromMap(d.data(), d.id)).toList()
+                  ..sort(
+                    (a, b) =>
+                        a.name.toLowerCase().compareTo(b.name.toLowerCase()),
+                  ),
           );
 
   /// Schüler einer Klasse anlegen. Bewusst ohne KI-Vorladen: bei einer
@@ -266,32 +284,30 @@ final schoolMembershipProvider = FutureProvider<SchoolMembership?>((ref) {
   return ref.watch(schoolRepositoryProvider).membership();
 });
 
-final schoolLicenseProvider = StreamProvider.family<DateTime?, String>((
+final schoolLicenseProvider = StreamProvider.autoDispose
+    .family<DateTime?, String>((ref, id) {
+      return ref.watch(schoolRepositoryProvider).watchLicense(id);
+    });
+
+final schoolNameProvider = StreamProvider.autoDispose.family<String, String>((
   ref,
   id,
 ) {
-  return ref.watch(schoolRepositoryProvider).watchLicense(id);
-});
-
-final schoolNameProvider = StreamProvider.family<String, String>((ref, id) {
   return ref.watch(schoolRepositoryProvider).watchSchoolName(id);
 });
 
-final schoolClassesProvider =
-    StreamProvider.family<List<SchoolClass>, String>((ref, schoolId) {
+final schoolClassesProvider = StreamProvider.autoDispose
+    .family<List<SchoolClass>, String>((ref, schoolId) {
       return ref.watch(schoolRepositoryProvider).watchClasses(schoolId);
     });
 
-final schoolMembersProvider =
-    StreamProvider.family<List<SchoolMember>, String>((ref, schoolId) {
+final schoolMembersProvider = StreamProvider.autoDispose
+    .family<List<SchoolMember>, String>((ref, schoolId) {
       return ref.watch(schoolRepositoryProvider).watchMembers(schoolId);
     });
 
-final classStudentsProvider =
-    StreamProvider.family<
-      List<ChildModel>,
-      ({String schoolId, String classId})
-    >((ref, ids) {
+final classStudentsProvider = StreamProvider.autoDispose
+    .family<List<ChildModel>, ({String schoolId, String classId})>((ref, ids) {
       return ref
           .watch(schoolRepositoryProvider)
           .watchStudents(ids.schoolId, ids.classId);

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../auth/presentation/login_screen.dart';
 import '../../auth/presentation/register_screen.dart';
+import '../../../shared/legal_links.dart';
 
 /// QR-Code „Eltern verbinden“ gescannt, aber noch nicht angemeldet. Der Code
 /// ist gemerkt (ParentLinkRepository.rememberPending) und wird nach der
@@ -33,7 +34,11 @@ class ParentLinkIntroScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const Text('👨‍👩‍👧', style: TextStyle(fontSize: 52), textAlign: TextAlign.center),
+                  const Text(
+                    '👨‍👩‍👧',
+                    style: TextStyle(fontSize: 52),
+                    textAlign: TextAlign.center,
+                  ),
                   const SizedBox(height: 12),
                   const Text(
                     'Mit Ihrem Kind verbinden',
@@ -67,6 +72,8 @@ class ParentLinkIntroScreen extends StatelessWidget {
                     ),
                     child: const Text('Ich habe schon ein Konto'),
                   ),
+                  const SizedBox(height: 24),
+                  const LegalFooter(),
                 ],
               ),
             ),

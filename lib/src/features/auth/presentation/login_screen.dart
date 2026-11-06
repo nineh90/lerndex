@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import '../../school/presentation/school_home_screen.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../data/auth_repository.dart';
 import 'child_pairing_screen.dart';
 import 'register_screen.dart';
@@ -13,11 +12,16 @@ import 'setup_dialog.dart';
 import 'family_dashboard_screen.dart';
 // NEU: Subscription
 import '../../subscription/data/subscription_provider.dart';
+import '../../../shared/user_message.dart';
+import '../../../shared/legal_links.dart';
 
 /// Login-Screen für bestehende Nutzer
 /// Neue Nutzer werden zu RegisterScreen weitergeleitet
 class LoginScreen extends ConsumerStatefulWidget {
-  const LoginScreen({super.key});
+  const LoginScreen({super.key, this.notice});
+
+  /// Hinweis beim Öffnen, z.B. nach der Abmeldung wegen Inaktivität.
+  final String? notice;
 
   @override
   ConsumerState<LoginScreen> createState() => _LoginScreenState();
@@ -30,6 +34,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   bool _isGoogleLoading = false;
   bool _isAppleLoading = false;
   bool _obscurePassword = true;
+
+  @override
+  void initState() {
+    super.initState();
+    final notice = widget.notice;
+    if (notice != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(notice), duration: const Duration(seconds: 8)),
+        );
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -55,41 +73,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           .signInWithEmailAndPassword(email, password);
 
       if (!mounted) return;
-
-      // Reines Schulkonto: direkt in den Schulbereich
-      if (await ref.read(authRepositoryProvider).isSchoolAccount()) {
-        if (!mounted) return;
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const SchoolRootScreen()),
-        );
-        return;
-      }
-
-      // NEU: RevenueCat identifizieren + Abo-Status laden
-      final uid = credential.user?.uid;
-      if (uid != null) {
-        await ref.read(subscriptionServiceProvider).identifyUser(uid);
-        await ref.read(subscriptionStatusProvider.notifier).refresh();
-      }
-
-      if (!mounted) return;
-
-      final onboardingDone = await ref
-          .read(authRepositoryProvider)
-          .isOnboardingComplete();
-      if (!mounted) return;
-
-      if (!onboardingDone) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const SetupDialog()),
-        );
-      } else {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const FamilyDashboardScreen()),
-        );
-      }
+      await _openAccount(credential.user?.uid);
     } catch (e) {
-      _showError(e.toString());
+      _showError(userMessage(e));
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -104,7 +90,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         uid: result.credential.user?.uid,
       );
     } catch (e) {
-      _showError(e.toString());
+      _showError(userMessage(e));
     } finally {
       if (mounted) setState(() => _isGoogleLoading = false);
     }
@@ -120,30 +106,23 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         uid: result.credential.user?.uid,
       );
     } catch (e) {
-      _showError(e.toString());
+      _showError(userMessage(e));
     } finally {
       if (mounted) setState(() => _isAppleLoading = false);
     }
   }
 
-  /// Gemeinsamer Ablauf nach erfolgreichem Social-Login (Google/Apple):
-  /// RevenueCat identifizieren, Abo laden, dann zu Onboarding oder Dashboard.
+  /// Gemeinsamer Ablauf nach erfolgreichem Social-Login (Google/Apple).
   Future<void> _continueAfterAuth({
     required bool isNewUser,
     required String? uid,
   }) async {
     if (!mounted) return;
 
-    // RevenueCat identifizieren + Abo-Status laden
-    if (uid != null) {
-      await ref.read(subscriptionServiceProvider).identifyUser(uid);
-      await ref.read(subscriptionStatusProvider.notifier).refresh();
-    }
-    if (!mounted) return;
-
     // Neuer User → erst Datenschutz-Zustimmung, dann Onboarding.
     // Über den Login-Screen können via Google/Apple neue Accounts entstehen,
     // die die Checkbox des Register-Screens nie gesehen haben (DSGVO Art. 7/8).
+    // RevenueCat bekommt die UID erst NACH der Zustimmung.
     if (isNewUser) {
       final accepted = await _askPrivacyConsent();
       if (!mounted) return;
@@ -161,34 +140,49 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       }
 
       await ref.read(authRepositoryProvider).recordPrivacyConsent();
+      await _identifySubscriber(uid);
       if (!mounted) return;
 
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const SetupDialog()),
-      );
+      Navigator.of(
+        context,
+      ).pushReplacement(MaterialPageRoute(builder: (_) => const SetupDialog()));
       return;
     }
 
-    // Reines Schulkonto: direkt in den Schulbereich
-    if (await ref.read(authRepositoryProvider).isSchoolAccount()) {
-      if (!mounted) return;
+    await _openAccount(uid);
+  }
+
+  /// Bestehendes Konto: Schulkonto → Schulbereich (ohne RevenueCat),
+  /// sonst Abo laden und zu Onboarding oder Familien-Dashboard. Liest
+  /// users/{uid} dafür nur einmal.
+  Future<void> _openAccount(String? uid) async {
+    final info = await ref.read(authRepositoryProvider).accountInfo();
+    if (!mounted) return;
+
+    if (info.isSchool) {
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (_) => const SchoolRootScreen()),
       );
       return;
     }
 
-    // Bestehender User: Onboarding abgeschlossen?
-    final onboardingDone =
-        await ref.read(authRepositoryProvider).isOnboardingComplete();
+    await _identifySubscriber(uid);
     if (!mounted) return;
 
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(
-        builder: (_) =>
-            onboardingDone ? const FamilyDashboardScreen() : const SetupDialog(),
+        builder: (_) => info.onboardingDone
+            ? const FamilyDashboardScreen()
+            : const SetupDialog(),
       ),
     );
+  }
+
+  /// RevenueCat identifizieren und Abo-Status laden.
+  Future<void> _identifySubscriber(String? uid) async {
+    if (uid == null) return;
+    await ref.read(subscriptionServiceProvider).identifyUser(uid);
+    await ref.read(subscriptionStatusProvider.notifier).refresh();
   }
 
   /// Zeigt den Datenschutz-Zustimmungsdialog für neue Social-Login-Accounts.
@@ -210,10 +204,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   decoration: TextDecoration.underline,
                 ),
                 recognizer: TapGestureRecognizer()
-                  ..onTap = () => launchUrl(
-                    Uri.parse('https://www.lerndex.de/datenschutz.php'),
-                    mode: LaunchMode.externalApplication,
-                  ),
+                  ..onTap = () => openLegalLink(LegalLinks.privacy),
               ),
               const TextSpan(
                 text:
@@ -255,7 +246,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         );
       }
     } catch (e) {
-      _showError(e.toString());
+      _showError(userMessage(e));
     }
   }
 
@@ -545,7 +536,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 builder: (_) => const ChildPairingScreen(),
                               ),
                             ),
-                            icon: const Text('🧒', style: TextStyle(fontSize: 18)),
+                            icon: const Text(
+                              '🧒',
+                              style: TextStyle(fontSize: 18),
+                            ),
                             label: Text(
                               kIsWeb
                                   ? 'Ich bin ein Kind – Code eingeben'
@@ -560,6 +554,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       ),
                     ),
                   ),
+                  const SizedBox(height: 12),
+                  const LegalFooter(color: Colors.white70),
                 ],
               ),
             ),

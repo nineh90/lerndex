@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
@@ -14,7 +15,7 @@ import '../../generated_tasks/data/generated_task_repository.dart';
 import '../domain/class_stats.dart';
 import '../domain/school_models.dart';
 import 'class_task_screen.dart';
-import 'school_section.dart';
+import '../../../shared/user_message.dart';
 import 'student_cards_print.dart';
 
 /// Eine Klasse: Schüler anlegen, Anmeldekarten (QR) drucken, Schüler löschen.
@@ -32,16 +33,12 @@ class SchoolClassScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final students =
-        ref
-            .watch(
-              classStudentsProvider((
-                schoolId: schoolId,
-                classId: schoolClass.id,
-              )),
-            )
-            .value ??
-        const <ChildModel>[];
+    final studentsAsync = ref.watch(
+      classStudentsProvider((schoolId: schoolId, classId: schoolClass.id)),
+    );
+    final students = studentsAsync.value ?? const <ChildModel>[];
+    // Erst nach dem Laden „keine Schüler“ zeigen bzw. löschen anbieten
+    final loaded = studentsAsync.hasValue;
 
     return Scaffold(
       appBar: AppBar(
@@ -76,22 +73,14 @@ class SchoolClassScreen extends ConsumerWidget {
                   value: 'cards',
                   child: Text('Anmeldekarten (Schule)'),
                 ),
-                PopupMenuItem(
-                  value: 'letters',
-                  child: Text('Elternbriefe'),
-                ),
+                PopupMenuItem(value: 'letters', child: Text('Elternbriefe')),
               ],
             ),
-          if (students.isEmpty)
+          if (loaded && students.isEmpty)
             IconButton(
               tooltip: 'Leere Klasse löschen',
               icon: const Icon(Icons.delete_outline),
-              onPressed: () async {
-                await ref
-                    .read(schoolRepositoryProvider)
-                    .deleteClass(schoolId, schoolClass.id);
-                if (context.mounted) Navigator.pop(context);
-              },
+              onPressed: () => _deleteClass(context, ref),
             ),
         ],
       ),
@@ -102,7 +91,19 @@ class SchoolClassScreen extends ConsumerWidget {
         icon: const Icon(Icons.person_add),
         label: const Text('Schüler hinzufügen'),
       ),
-      body: students.isEmpty
+      body: !loaded
+          ? Center(
+              child: studentsAsync.hasError
+                  ? Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Text(
+                        userMessage(studentsAsync.error!),
+                        textAlign: TextAlign.center,
+                      ),
+                    )
+                  : const CircularProgressIndicator(),
+            )
+          : students.isEmpty
           ? const Center(
               child: Padding(
                 padding: EdgeInsets.all(24),
@@ -194,6 +195,39 @@ class SchoolClassScreen extends ConsumerWidget {
     );
   }
 
+  Future<void> _deleteClass(BuildContext context, WidgetRef ref) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        scrollable: true,
+        title: Text('Klasse ${schoolClass.name} löschen?'),
+        content: const Text('Die Klasse hat keine Schüler mehr.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Abbrechen'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Löschen'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !context.mounted) return;
+    final navigator = Navigator.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await ref
+          .read(schoolRepositoryProvider)
+          .deleteClass(schoolId, schoolClass.id);
+      navigator.pop();
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text(userMessage(e))));
+    }
+  }
+
   void _openStats(BuildContext context, ChildModel s) {
     Navigator.push(
       context,
@@ -207,8 +241,10 @@ class SchoolClassScreen extends ConsumerWidget {
     );
   }
 
-  /// Elternbriefe: im Browser als Druckseite (eine Seite pro Kind), in den
-  /// Apps die Eltern-Codes zum Weitergeben.
+  /// Elternbriefe: im Browser als Druckseite (eine Seite pro Kind). In den
+  /// Apps (oder wenn der Browser den Tab blockiert) pro Kind beide QR-Codes
+  /// auf dem Bildschirm, mit Text zum Kopieren und Weitergeben – die neuen
+  /// Heimkarten ersetzen die alten, sie dürfen also nicht verloren gehen.
   Future<void> _parentLetters(
     BuildContext context,
     WidgetRef ref,
@@ -219,6 +255,7 @@ class SchoolClassScreen extends ConsumerWidget {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
+        scrollable: true,
         title: Text(
           single
               ? 'Elternbrief für ${students.first.name}'
@@ -227,8 +264,9 @@ class SchoolClassScreen extends ConsumerWidget {
         content: const Text(
           'Jeder Brief hat zwei QR-Codes: Damit verbinden sich die Eltern mit '
           'ihrem Kind (Statistik, Belohnungen, ohne Abo), und das Kind meldet '
-          'sich zu Hause auf dem eigenen Gerät an. Ältere Elternbriefe gelten '
-          'danach nicht mehr. Bereits verbundene Eltern bleiben verbunden.',
+          'sich zu Hause auf dem eigenen Gerät an. Ältere Elternbriefe und '
+          'ihre QR-Codes für zu Hause gelten danach nicht mehr. Bereits '
+          'verbundene Eltern bleiben verbunden.',
         ),
         actions: [
           TextButton(
@@ -237,6 +275,7 @@ class SchoolClassScreen extends ConsumerWidget {
           ),
           FilledButton(
             onPressed: () {
+              // Tab sofort im Tipp öffnen, sonst blockiert der Browser ihn
               tab = openBlankTab();
               Navigator.pop(ctx, true);
             },
@@ -259,43 +298,23 @@ class SchoolClassScreen extends ConsumerWidget {
       } else if (context.mounted) {
         await showDialog<void>(
           context: context,
-          builder: (ctx) => AlertDialog(
-            title: const Text('Eltern-Codes'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                for (final l in letters)
-                  ListTile(
-                    dense: true,
-                    title: Text(l.studentName),
-                    trailing: SelectableText(
-                      l.displayCode,
-                      style: const TextStyle(fontFamily: 'monospace'),
-                    ),
-                  ),
-                const SizedBox(height: 8),
-                Text(
-                  'Zum Drucken der Briefe die Klasse im Browser öffnen.',
-                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                ),
-              ],
-            ),
-            actions: [
-              FilledButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: const Text('Fertig'),
-              ),
-            ],
-          ),
+          builder: (_) => _ParentLettersDialog(letters: letters),
         );
       }
     } catch (e) {
+      _showErrorInTab(tab, userMessage(e));
       if (context.mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text(schoolErrorText(e))));
+        ).showSnackBar(SnackBar(content: Text(userMessage(e))));
       }
     }
+  }
+
+  /// Der Druck-Tab ist schon offen, die Function aber gescheitert: statt
+  /// einer leeren Seite den Fehler zeigen.
+  void _showErrorInTab(Object? tab, String message) {
+    if (tab != null) writeHtmlToTab(tab, printErrorHtml(message));
   }
 
   Future<void> _addStudents(BuildContext context, WidgetRef ref) async {
@@ -303,6 +322,7 @@ class SchoolClassScreen extends ConsumerWidget {
     final text = await showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
+        scrollable: true,
         title: Text('Schüler für ${schoolClass.name}'),
         content: SizedBox(
           width: 360,
@@ -352,7 +372,7 @@ class SchoolClassScreen extends ConsumerWidget {
         SnackBar(content: Text('${names.length} Schüler hinzugefügt')),
       );
     } catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text(schoolErrorText(e))));
+      messenger.showSnackBar(SnackBar(content: Text(userMessage(e))));
     }
   }
 
@@ -370,6 +390,7 @@ class SchoolClassScreen extends ConsumerWidget {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
+        scrollable: true,
         title: Text(
           single
               ? 'Anmelde-Code für ${students.first.name}'
@@ -418,10 +439,11 @@ class SchoolClassScreen extends ConsumerWidget {
         );
       }
     } catch (e) {
+      _showErrorInTab(tab, userMessage(e));
       if (context.mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text(schoolErrorText(e))));
+        ).showSnackBar(SnackBar(content: Text(userMessage(e))));
       }
     }
   }
@@ -449,10 +471,15 @@ class SchoolClassScreen extends ConsumerWidget {
         ],
       ),
     );
-    if (name == null || name.isEmpty) return;
-    await ref
-        .read(schoolRepositoryProvider)
-        .renameStudent(schoolId, student.id, name);
+    if (name == null || name.isEmpty || !context.mounted) return;
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await ref
+          .read(schoolRepositoryProvider)
+          .renameStudent(schoolId, student.id, name);
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text(userMessage(e))));
+    }
   }
 
   Future<void> _delete(
@@ -486,7 +513,7 @@ class SchoolClassScreen extends ConsumerWidget {
     try {
       await ref.read(schoolRepositoryProvider).deleteStudent(student.id);
     } catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text(schoolErrorText(e))));
+      messenger.showSnackBar(SnackBar(content: Text(userMessage(e))));
     }
   }
 }
@@ -519,6 +546,7 @@ class _CardsOnScreenDialogState extends State<_CardsOnScreenDialog> {
     final card = widget.cards[_index];
     final qrSize = (MediaQuery.sizeOf(context).width - 140).clamp(160.0, 280.0);
     return AlertDialog(
+      scrollable: true,
       title: Column(
         children: [
           Text(card.name, textAlign: TextAlign.center),
@@ -570,6 +598,122 @@ class _CardsOnScreenDialogState extends State<_CardsOnScreenDialog> {
           FilledButton(
             onPressed: () => setState(() => _index++),
             child: Text('Weiter (${_index + 2}/${widget.cards.length})'),
+          )
+        else
+          FilledButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Fertig'),
+          ),
+      ],
+    );
+  }
+}
+
+/// Elternbriefe auf dem Bildschirm (Apps, oder wenn der Browser keinen Tab
+/// öffnen durfte): pro Kind „Eltern verbinden“ und „Zu Hause lernen“ als
+/// QR-Code, dazu der Text mit beiden Links zum Kopieren (z.B. für eine
+/// Nachricht an die Eltern).
+class _ParentLettersDialog extends StatefulWidget {
+  const _ParentLettersDialog({required this.letters});
+  final List<ParentLetter> letters;
+
+  @override
+  State<_ParentLettersDialog> createState() => _ParentLettersDialogState();
+}
+
+class _ParentLettersDialogState extends State<_ParentLettersDialog> {
+  int _index = 0;
+
+  Future<void> _copy(String text, String done) async {
+    await Clipboard.setData(ClipboardData(text: text));
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(done)));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final letters = widget.letters;
+    final l = letters[_index];
+    final qrSize = (MediaQuery.sizeOf(context).width - 160).clamp(140.0, 220.0);
+    Widget qr(String title, Uri link, String hint) => Column(
+      children: [
+        Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+        const SizedBox(height: 6),
+        QrImageView(
+          data: link.toString(),
+          size: qrSize,
+          backgroundColor: Colors.white,
+        ),
+        Text(
+          hint,
+          style: TextStyle(fontSize: 12, color: Colors.grey[700]),
+          textAlign: TextAlign.center,
+        ),
+      ],
+    );
+
+    return AlertDialog(
+      scrollable: true,
+      title: Column(
+        children: [
+          Text(l.studentName, textAlign: TextAlign.center),
+          Text(
+            'Elternbrief${letters.length > 1 ? ' ${_index + 1}/${letters.length}' : ''}',
+            style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+          ),
+        ],
+      ),
+      content: SizedBox(
+        width: qrSize + 40,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            qr('1. Eltern verbinden', l.parentLink, 'Code: ${l.displayCode}'),
+            const SizedBox(height: 16),
+            qr(
+              '2. Zu Hause lernen',
+              l.homeLink,
+              'Mit dem Gerät scannen, auf dem das Kind lernt.',
+            ),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: () => _copy(
+                parentLetterText(l),
+                'Text für ${l.studentName} kopiert',
+              ),
+              icon: const Icon(Icons.copy, size: 18),
+              label: const Text('Text mit Links kopieren'),
+            ),
+            if (letters.length > 1)
+              TextButton.icon(
+                onPressed: () => _copy(
+                  letters.map(parentLetterText).join('\n\n'),
+                  'Texte für ${letters.length} Kinder kopiert',
+                ),
+                icon: const Icon(Icons.copy_all, size: 18),
+                label: const Text('Alle Briefe als Text kopieren'),
+              ),
+            const SizedBox(height: 4),
+            Text(
+              'Zum Ausdrucken die Klasse im Browser öffnen und die Briefe '
+              'dort erstellen.',
+              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+      actionsAlignment: MainAxisAlignment.spaceBetween,
+      actions: [
+        if (_index > 0)
+          TextButton(
+            onPressed: () => setState(() => _index--),
+            child: const Text('Zurück'),
+          ),
+        if (_index < letters.length - 1)
+          FilledButton(
+            onPressed: () => setState(() => _index++),
+            child: Text('Weiter (${_index + 2}/${letters.length})'),
           )
         else
           FilledButton(
@@ -634,8 +778,8 @@ class _ClassOverview extends StatelessWidget {
 }
 
 /// Aufträge der Klasse: Aufgaben, die eine Lehrkraft an Kinder gegeben hat.
-final classAssignmentsProvider =
-    StreamProvider.family<List<ClassAssignment>, ({String owner, String classId})>(
+final classAssignmentsProvider = StreamProvider.autoDispose
+    .family<List<ClassAssignment>, ({String owner, String classId})>(
       (ref, key) => ref
           .watch(generatedTaskRepositoryProvider)
           .watchClassAssignments(key.owner, key.classId),
@@ -651,7 +795,9 @@ class _AssignmentList extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final owner = schoolOwnerUid(schoolId);
     final list =
-        ref.watch(classAssignmentsProvider((owner: owner, classId: classId))).value ??
+        ref
+            .watch(classAssignmentsProvider((owner: owner, classId: classId)))
+            .value ??
         const <ClassAssignment>[];
     if (list.isEmpty) return const SizedBox.shrink();
     return Card(

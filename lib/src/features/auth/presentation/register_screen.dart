@@ -3,11 +3,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../../subscription/data/subscription_provider.dart';
 import '../data/auth_repository.dart';
 import 'email_verification_screen.dart';
+import 'login_screen.dart';
 import 'setup_dialog.dart';
+import '../../splash/splash_screen.dart';
+import '../../../shared/user_message.dart';
+import '../../../shared/legal_links.dart';
 
 /// Registrierungs-Screen — Name + E-Mail + Passwort ODER Google
 class RegisterScreen extends ConsumerStatefulWidget {
@@ -44,6 +47,21 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     super.dispose();
+  }
+
+  /// Zurück zur Anmeldung. Kam man über den Elternbrief hierher
+  /// (pushAndRemoveUntil), gibt es keine Seite darunter – pop hinterließe
+  /// einen schwarzen Bildschirm.
+  void _back() {
+    final navigator = Navigator.of(context);
+    if (navigator.canPop()) {
+      navigator.pop();
+    } else {
+      navigator.pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
+        (_) => false,
+      );
+    }
   }
 
   /// Öffnet den DatePicker zur Geburtstagseingabe
@@ -184,7 +202,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
+          SnackBar(content: Text(userMessage(e)), backgroundColor: Colors.red),
         );
       }
     } finally {
@@ -202,6 +220,28 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     await ref.read(subscriptionStatusProvider.notifier).refresh();
   }
 
+  /// Nach Google/Apple: Nur ein NEUES Konto bekommt die Zustimmung
+  /// gespeichert und läuft durchs Onboarding. Ein bestehendes Konto (auch
+  /// ein Schulkonto) geht über den Start, der entscheidet, wohin – sonst
+  /// würden Zustimmung und Einrichtung überschrieben.
+  Future<void> _finishSocialRegister({required bool isNewUser}) async {
+    if (!isNewUser) {
+      if (!mounted) return;
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const LerndexSplashScreen()),
+        (_) => false,
+      );
+      return;
+    }
+    // Zustimmung zur Datenschutzerklärung protokollieren (Art. 7 DSGVO)
+    await ref.read(authRepositoryProvider).recordPrivacyConsent();
+    await _identifySubscriber();
+    if (!mounted) return;
+    Navigator.of(
+      context,
+    ).pushReplacement(MaterialPageRoute(builder: (_) => const SetupDialog()));
+  }
+
   /// Registrierung per Google
   Future<void> _googleRegister() async {
     if (!_privacyAccepted) {
@@ -215,18 +255,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     }
     setState(() => _isGoogleLoading = true);
     try {
-      await ref.read(authRepositoryProvider).signInWithGoogle();
-      // Zustimmung zur Datenschutzerklärung protokollieren (Art. 7 DSGVO)
-      await ref.read(authRepositoryProvider).recordPrivacyConsent();
-      await _identifySubscriber();
-      if (!mounted) return;
-      Navigator.of(
-        context,
-      ).pushReplacement(MaterialPageRoute(builder: (_) => const SetupDialog()));
+      final result = await ref.read(authRepositoryProvider).signInWithGoogle();
+      await _finishSocialRegister(isNewUser: result.isNewUser);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
+          SnackBar(content: Text(userMessage(e)), backgroundColor: Colors.red),
         );
       }
     } finally {
@@ -248,18 +282,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     }
     setState(() => _isAppleLoading = true);
     try {
-      await ref.read(authRepositoryProvider).signInWithApple();
-      // Zustimmung zur Datenschutzerklärung protokollieren (Art. 7 DSGVO)
-      await ref.read(authRepositoryProvider).recordPrivacyConsent();
-      await _identifySubscriber();
-      if (!mounted) return;
-      Navigator.of(
-        context,
-      ).pushReplacement(MaterialPageRoute(builder: (_) => const SetupDialog()));
+      final result = await ref.read(authRepositoryProvider).signInWithApple();
+      await _finishSocialRegister(isNewUser: result.isNewUser);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
+          SnackBar(content: Text(userMessage(e)), backgroundColor: Colors.red),
         );
       }
     } finally {
@@ -286,7 +314,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 alignment: Alignment.centerLeft,
                 child: IconButton(
                   icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
-                  onPressed: () => Navigator.of(context).pop(),
+                  onPressed: _back,
                 ),
               ),
 
@@ -618,12 +646,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                                                 fontWeight: FontWeight.w600,
                                               ),
                                               recognizer: TapGestureRecognizer()
-                                                ..onTap = () => launchUrl(
-                                                  Uri.parse(
-                                                    'https://www.lerndex.de/datenschutz.php',
-                                                  ),
-                                                  mode: LaunchMode
-                                                      .externalApplication,
+                                                ..onTap = () => openLegalLink(
+                                                  LegalLinks.privacy,
                                                 ),
                                             ),
                                           ],

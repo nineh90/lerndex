@@ -1,14 +1,17 @@
 import 'dart:math' as math;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../auth/data/auth_repository.dart';
 import '../auth/domain/child_model.dart';
 import '../auth/data/child_device_repository.dart';
 import '../auth/presentation/active_child_provider.dart';
+import '../auth/presentation/child_login_confirm.dart';
 import '../auth/presentation/child_pairing_screen.dart';
+import '../auth/presentation/email_verification_screen.dart';
+import '../auth/presentation/sign_out.dart';
+import '../../shared/user_message.dart';
 import '../auth/presentation/link_conflict_screen.dart';
 import '../school/data/school_repository.dart';
 import '../school/presentation/school_home_screen.dart';
@@ -31,9 +34,9 @@ import 'package:lerndex/src/features/auth/domain/account.dart';
 // ============================================================================
 // LERNDEX SPLASH SCREEN
 //
-// Zeigt eine kindgerechte Animation beim App-Start.
-// Gleichzeitig werden im Hintergrund alle Kinder + alle Fächer parallel
-// gecacht, sodass das Quiz beim ersten Tippen sofort startet.
+// Zeigt eine kindgerechte Animation beim App-Start und entscheidet, wohin
+// es geht. Auf einem Kindergerät werden dabei die Fächer des Kindes
+// vorgeladen, sodass das Quiz beim ersten Tippen sofort startet.
 // ============================================================================
 
 class LerndexSplashScreen extends ConsumerStatefulWidget {
@@ -79,6 +82,10 @@ class _LerndexSplashScreenState extends ConsumerState<LerndexSplashScreen>
 
   /// Elternbrief gescannt, noch nicht angemeldet
   bool _parentLinkIntro = false;
+
+  /// E-Mail-Konto ohne bestätigte Adresse → Bestätigungs-Screen
+  String _verifyName = '';
+  bool _verifySchool = false;
 
   /// Kinder-Link gescannt, während ein Eltern-/Lehrerkonto angemeldet ist
   String? _conflictPairingCode;
@@ -207,9 +214,15 @@ class _LerndexSplashScreenState extends ConsumerState<LerndexSplashScreen>
 
       _setProgress(_bootstrapShare * 0.5, 'Anmeldung prüfen...');
 
-      // Link, mit dem die App geöffnet wurde: in der App vom Aufrufer
-      // (App Link, QR-Scanner), im Browser aus der Adresszeile.
-      final path = _linkPath ?? (kIsWeb ? Uri.base.path : null);
+      // Link, mit dem die App geöffnet wurde: vom Aufrufer (App Link,
+      // QR-Scanner) bzw. beim Start aus readInitialAppLink (im Browser aus
+      // der Adresszeile, siehe web/index.html).
+      final path = _linkPath;
+
+      // users/{uid} höchstens einmal lesen (Schulkonto? Onboarding fertig?)
+      ({bool isSchool, bool onboardingDone})? info;
+      Future<({bool isSchool, bool onboardingDone})> accountInfo() async =>
+          info ??= await authRepo.accountInfo();
 
       // Einladungslink für eine Schule (…/schule/CODE, von Lerndex):
       // Registrierung der Schulleitung.
@@ -221,29 +234,36 @@ class _LerndexSplashScreenState extends ConsumerState<LerndexSplashScreen>
       }
 
       // Elternbrief „Eltern verbinden“ (…/e/CODE): Code merken, eingelöst
-      // wird er im Familien-Dashboard (nach der Anmeldung).
+      // wird er im Familien-Dashboard (nach der Anmeldung, mit Rückfrage).
       final parentCode = path == null ? null : parentLinkCodeFromPath(path);
       if (parentCode != null) {
         replaceBrowserPath('/');
         if (user == null ||
             (!user.isChildDevice &&
                 !user.isTeacherDevice &&
-                !await authRepo.isSchoolAccount())) {
-          await ref.read(parentLinkRepositoryProvider).rememberPending(parentCode);
+                !(await accountInfo()).isSchool)) {
+          await ref
+              .read(parentLinkRepositoryProvider)
+              .rememberPending(parentCode);
           if (user == null) _parentLinkIntro = true;
         }
       }
 
-      // QR-Karte einer Lehrkraft (…/l/TOKEN): Anmeldung mit PIN.
+      // QR-Karte einer Lehrkraft (…/l/TOKEN): Anmeldung mit PIN. Ist schon
+      // jemand angemeldet (auch eine andere Lehrkraft), fragt der
+      // TeacherCardScreen nach („Abmelden und mit Karte anmelden“).
       final teacherToken = path == null ? null : teacherCardFromPath(path);
       if (teacherToken != null) {
         replaceBrowserPath('/');
-        if (user == null || !user.isChildDevice) _teacherCardToken = teacherToken;
+        if (user == null || !user.isChildDevice) {
+          _teacherCardToken = teacherToken;
+        }
       }
 
-      // Koppel-Link aus dem QR-Code (…/k/CODE): Gerät als Kind anmelden.
-      // Ist ein Eltern- oder Lehrerkonto angemeldet, wird nachgefragt
-      // (LinkConflictScreen); ein Kindergerät bleibt, wie es ist.
+      // Koppel-Link aus dem QR-Code (…/k/CODE): Gerät als Kind anmelden –
+      // erst nach Rückfrage mit dem Namen des Kindes. Ist ein Eltern- oder
+      // Lehrerkonto angemeldet, fragt der LinkConflictScreen; ein
+      // Kindergerät bleibt, wie es ist.
       final linkCode = path == null ? null : pairingCodeFromPath(path);
       if (linkCode != null) {
         replaceBrowserPath('/');
@@ -251,19 +271,22 @@ class _LerndexSplashScreenState extends ConsumerState<LerndexSplashScreen>
           _conflictPairingCode = linkCode;
         } else if (user == null) {
           _setProgress(_bootstrapShare * 0.5, 'Gerät wird verbunden...');
+          final repo = ref.read(childDeviceRepositoryProvider);
           try {
-            await ref
-                .read(childDeviceRepositoryProvider)
-                .redeemPairingCode(linkCode);
-            user = authRepo.currentUser;
-          } on PairingException catch (e) {
-            _pairingError = e.message;
+            final login = await repo.checkPairingCode(linkCode);
+            if (await _confirmChildLogin(login, isCard: false)) {
+              await repo.signInAs(login);
+              user = authRepo.currentUser;
+            }
+          } catch (e) {
+            _pairingError = userMessage(e);
           }
         }
       }
 
       // Schüler-QR-Karte (…/s/TOKEN): auf geteilten Schul-Tablets meldet
       // die Karte das Kind an – auch wenn vorher ein anderes Kind dran war.
+      // Vorher Rückfrage mit dem Namen; bei „Nein“ bleibt alles, wie es ist.
       final cardToken = path == null ? null : studentCardFromPath(path);
       if (cardToken != null) {
         replaceBrowserPath('/');
@@ -271,13 +294,15 @@ class _LerndexSplashScreenState extends ConsumerState<LerndexSplashScreen>
           _conflictCardToken = cardToken;
         } else if (user == null || user.isSchoolDevice) {
           _setProgress(_bootstrapShare * 0.5, 'Anmelden...');
+          final repo = ref.read(childDeviceRepositoryProvider);
           try {
-            if (user != null) await authRepo.signOut();
-            await ref
-                .read(childDeviceRepositoryProvider)
-                .redeemStudentCard(cardToken);
-          } on PairingException catch (e) {
-            _pairingError = e.message;
+            final login = await repo.checkStudentCard(cardToken);
+            if (await _confirmChildLogin(login, isCard: true)) {
+              if (user != null) await signOutAccount(ref);
+              await repo.signInAs(login);
+            }
+          } catch (e) {
+            _pairingError = userMessage(e);
           }
           user = authRepo.currentUser;
         }
@@ -286,7 +311,7 @@ class _LerndexSplashScreenState extends ConsumerState<LerndexSplashScreen>
       if (_parentLinkIntro) {
         destination = 'parentLinkIntro';
         _setProgress(1.0, 'Weiter...');
-      } else if (_teacherCardToken != null && !(user?.isTeacherDevice ?? false)) {
+      } else if (_teacherCardToken != null) {
         destination = 'teacherCard';
         _setProgress(1.0, 'Weiter...');
       } else if (_signupCode != null) {
@@ -294,7 +319,9 @@ class _LerndexSplashScreenState extends ConsumerState<LerndexSplashScreen>
         _setProgress(1.0, 'Weiter...');
       } else if (_conflictPairingCode != null || _conflictCardToken != null) {
         // Eltern-/Lehrerkonto angemeldet und ein Kinder-Link gescannt
-        _conflictAccount = user?.email ?? 'ein anderes Konto';
+        _conflictAccount = user?.isTeacherDevice ?? false
+            ? 'eine Lehrkraft (Lehrer-Karte)'
+            : user?.email ?? 'ein anderes Konto';
         destination = 'conflict';
         _setProgress(1.0, 'Weiter...');
       } else if (user == null) {
@@ -303,39 +330,40 @@ class _LerndexSplashScreenState extends ConsumerState<LerndexSplashScreen>
       } else if (user.isChildDevice) {
         await _prepareChildDevice(user, maxPrefetchWait);
         destination = 'child';
-      } else if (user.isTeacherDevice || await authRepo.isSchoolAccount()) {
+      } else if (user.isTeacherDevice) {
+        destination = 'school';
+        _setProgress(1.0, 'Los geht\'s! ✨');
+      } else if (await authRepo.needsEmailVerification()) {
+        // Wie beim Login: E-Mail-Konten erst nach der Bestätigung
+        _verifyName = user.displayName ?? '';
+        _verifySchool = (await accountInfo()).isSchool;
+        destination = 'verifyEmail';
+        _setProgress(1.0, 'Weiter...');
+      } else if ((await accountInfo()).isSchool) {
         // Reines Schulkonto: nur der Schulbereich, kein Abo, kein Elternbereich
         destination = 'school';
         _setProgress(1.0, 'Los geht\'s! ✨');
       } else {
-        // NEU: RevenueCat User identifizieren
+        // RevenueCat-Nutzer identifizieren, Abo-Status laden
         final subscriptionService = ref.read(subscriptionServiceProvider);
         await subscriptionService.identifyUser(user.ownerUid);
-
-        // NEU: Abo-Status laden & in Provider speichern
         _setProgress(_bootstrapShare * 0.7, 'Abo prüfen...');
         await ref.read(subscriptionStatusProvider.notifier).refresh();
 
-        final onboardingDone = await authRepo.isOnboardingComplete();
-        _setProgress(_bootstrapShare, 'Lade deine Kinder...');
-
-        if (!onboardingDone) {
-          destination = 'onboarding';
-          _setProgress(1.0, 'Los geht\'s! ✨');
-        } else {
-          destination = 'dashboard';
-          await _prefetchAllChildren(user.ownerUid).timeout(
-            maxPrefetchWait,
-            onTimeout: () => _setProgress(1.0, 'Los geht\'s! ✨'),
-          );
-        }
+        // Kein Vorladen von Quizfragen: In der Eltern-App ist noch kein Kind
+        // ausgewählt. Das Kinder-Dashboard lädt die Fächer des gewählten
+        // Kindes selbst vor (sonst bis zu 7 KI-Aufrufe pro Kind beim Start).
+        destination = (await accountInfo()).onboardingDone
+            ? 'dashboard'
+            : 'onboarding';
+        _setProgress(1.0, 'Los geht\'s! ✨');
       }
     } catch (e) {
       debugPrint('⚠️ Splash init error: $e');
       // Kindergerät, das nicht mehr darf (abgemeldet, Kind gelöscht):
       // abmelden, damit es nicht bei jedem Start wieder scheitert.
       if (authRepo.currentUser?.isChildDevice ?? false) {
-        await authRepo.signOut();
+        await signOutAccount(ref);
       }
       destination = 'login';
       _setProgress(1.0, 'Weiter...');
@@ -377,25 +405,13 @@ class _LerndexSplashScreenState extends ConsumerState<LerndexSplashScreen>
     );
   }
 
-  /// Lädt alle Kinder des Users aus Firestore und startet
-  /// den parallelen Quiz-Prefetch für alle Kinder + Fächer.
-  Future<void> _prefetchAllChildren(String userId) async {
-    try {
-      final snapshot = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(userId)
-          .collection('children')
-          .get();
-
-      final children = snapshot.docs
-          .map((doc) => ChildModel.fromMap(doc.data(), doc.id))
-          .toList();
-
-      await _prefetchChildren(userId, children);
-    } catch (e) {
-      debugPrint('⚠️ Prefetch-Fehler im Splash: $e');
-      _setProgress(1.0, 'Weiter...');
-    }
+  /// Rückfrage „Als Mia anmelden?“ vor dem Anmelden über einen Link.
+  Future<bool> _confirmChildLogin(
+    ChildLogin login, {
+    required bool isCard,
+  }) async {
+    if (!mounted) return false;
+    return confirmChildLogin(context, login, isCard: isCard);
   }
 
   /// Quiz-Prefetch für die übergebenen Kinder (alle Fächer, parallel).
@@ -485,6 +501,12 @@ class _LerndexSplashScreenState extends ConsumerState<LerndexSplashScreen>
         break;
       case 'parentLinkIntro':
         target = const ParentLinkIntroScreen();
+        break;
+      case 'verifyEmail':
+        target = EmailVerificationScreen(
+          displayName: _verifyName,
+          schoolAccount: _verifySchool,
+        );
         break;
       case 'teacherCard':
         target = TeacherCardScreen(token: _teacherCardToken!);

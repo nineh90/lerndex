@@ -6,6 +6,7 @@ import 'family_dashboard_screen.dart';
 import '../data/auth_repository.dart';
 import '../../parent_dashboard/data/pin_repository.dart';
 import '../../../tutorial_provider.dart';
+import '../../../shared/user_message.dart';
 
 // ============================================================================
 // SETUP DIALOG
@@ -101,7 +102,7 @@ class _SetupDialogState extends ConsumerState<SetupDialog> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
+          SnackBar(content: Text(userMessage(e)), backgroundColor: Colors.red),
         );
         setState(() => _isLoading = false);
       }

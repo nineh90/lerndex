@@ -10,6 +10,8 @@ import '../../../shared/platform_info.dart';
 import '../../auth/presentation/sign_out.dart';
 import '../../school/presentation/school_section.dart';
 import '../data/subscription_service.dart';
+import '../../../shared/user_message.dart';
+import '../../../shared/legal_links.dart';
 
 /// Sucht das RevenueCat-Package zu einem Plan im aktuellen Offering.
 Package? _packageForPlan(Offering offering, SubscriptionPlan plan) {
@@ -99,7 +101,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
             ? _buildWebNoPurchase(hasActivePlan)
             : offeringsAsync.when(
                 loading: () => const Center(child: CircularProgressIndicator()),
-                error: (e, _) => _buildError(e.toString()),
+                error: (e, _) => _buildError(userMessage(e)),
                 data: (offerings) {
                   if (offerings == null || offerings.current == null) {
                     return _buildError(
@@ -317,18 +319,15 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
 
           // Apple 3.1.2: Links zu Datenschutzerklärung und Nutzungsbedingungen
           // müssen direkt auf dem Abo-Screen erreichbar sein.
-          const Row(
-            mainAxisAlignment: MainAxisAlignment.center,
+          const Wrap(
+            alignment: WrapAlignment.center,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              _LegalLink(
-                label: 'Datenschutz',
-                url: 'https://lerndex.de/datenschutz.php',
-              ),
-              Text(
-                '  •  ',
-                style: TextStyle(fontSize: 11, color: Colors.black38),
-              ),
-              _LegalLink(label: 'AGB', url: 'https://lerndex.de/agb.php'),
+              _LegalLink(label: 'Datenschutz', url: LegalLinks.privacy),
+              Text('•', style: TextStyle(fontSize: 13, color: Colors.black54)),
+              _LegalLink(label: 'AGB', url: LegalLinks.terms),
+              Text('•', style: TextStyle(fontSize: 13, color: Colors.black54)),
+              _LegalLink(label: 'Impressum', url: LegalLinks.imprint),
             ],
           ),
           if (!widget.canDismiss) ...[
@@ -433,7 +432,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text(e.toString())));
+        ).showSnackBar(SnackBar(content: Text(userMessage(e))));
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -459,7 +458,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text(e.toString())));
+        ).showSnackBar(SnackBar(content: Text(userMessage(e))));
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -655,19 +654,19 @@ class _LegalLink extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Mindestens 48 dp hoch und gut lesbar (Rechtstexte müssen erreichbar
+    // sein, auch für Menschen mit größerer Schrift).
     return TextButton(
       style: TextButton.styleFrom(
-        padding: EdgeInsets.zero,
-        minimumSize: const Size(0, 32),
-        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        minimumSize: const Size(48, 48),
       ),
-      onPressed: () =>
-          launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication),
+      onPressed: () => openLegalLink(url),
       child: Text(
         label,
         style: const TextStyle(
-          fontSize: 11,
-          color: Colors.black45,
+          fontSize: 13,
+          color: Colors.black87,
           decoration: TextDecoration.underline,
         ),
       ),

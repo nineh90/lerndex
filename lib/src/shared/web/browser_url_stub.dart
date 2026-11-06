@@ -10,3 +10,7 @@ void writeHtmlToTab(Object? tab, String html) {}
 
 /// Nur im Browser: gespeicherte Firebase-Anmeldung löschen (Emulator-Modus).
 Future<void> clearStoredFirebaseLogin() async {}
+
+/// Nur im Browser: Link-Pfad, den web/index.html vor dem Start aus der
+/// Adresszeile genommen hat. Einmalig, danach null.
+String? takeStoredLinkPath() => null;

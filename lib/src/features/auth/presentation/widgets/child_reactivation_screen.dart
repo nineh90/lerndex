@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lerndex/src/features/auth/data/profile_repository.dart';
 import 'package:lerndex/src/features/auth/domain/child_model.dart';
+import '../../../../shared/user_message.dart';
 
 /// Wird nach einem Upgrade angezeigt wenn nicht alle pausierten Kinder
 /// reaktiviert werden können (z.B. Solo → Duo mit 4 Kindern).
@@ -232,11 +233,12 @@ class _ChildReactivationScreenState
       for (final id in _selected) {
         await repo.reactivateChild(id);
       }
-      if (mounted) Navigator.of(context).pop();
+      // Kein pop: eingebettet ins FamilyDashboard, das sich über den
+      // Kinder-Stream neu aufbaut.
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Fehler: $e'), backgroundColor: Colors.red),
+          SnackBar(content: Text(userMessage(e)), backgroundColor: Colors.red),
         );
       }
     } finally {
