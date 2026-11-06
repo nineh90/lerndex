@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,6 +8,8 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../auth/data/auth_repository.dart';
 import '../../auth/data/profile_repository.dart';
 import '../../auth/presentation/account_deleted_screen.dart';
+import '../../auth/presentation/sign_out.dart';
+import '../../../shared/widgets/dispose_controllers.dart';
 import '../data/pin_repository.dart';
 // NEU: Subscription
 import '../../subscription/data/subscription_provider.dart';
@@ -54,10 +57,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ) ??
               false)
             ListTile(
-              leading: const Icon(
-                Icons.lock_outline,
-                color: Colors.deepPurple,
-              ),
+              leading: const Icon(Icons.lock_outline, color: Colors.deepPurple),
               title: const Text('Passwort ändern'),
               subtitle: const Text(
                 'Lege ein neues Anmelde-Passwort fest',
@@ -149,142 +149,153 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     await showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          title: const Row(
-            children: [
-              Icon(Icons.lock_outline, color: Colors.deepPurple),
-              SizedBox(width: 8),
-              Text('Passwort ändern'),
-            ],
-          ),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
+      builder: (context) => DisposeControllers(
+        controllers: [
+          currentPwController,
+          newPwController,
+          confirmPwController,
+        ],
+        child: StatefulBuilder(
+          builder: (context, setDialogState) => AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            title: const Row(
               children: [
-                _buildPasswordField(
-                  controller: currentPwController,
-                  label: 'Aktuelles Passwort',
-                  obscure: obscureCurrent,
-                  onToggle: () =>
-                      setDialogState(() => obscureCurrent = !obscureCurrent),
-                ),
-                const SizedBox(height: 12),
-                _buildPasswordField(
-                  controller: newPwController,
-                  label: 'Neues Passwort',
-                  obscure: obscureNew,
-                  onToggle: () =>
-                      setDialogState(() => obscureNew = !obscureNew),
-                ),
-                const SizedBox(height: 12),
-                _buildPasswordField(
-                  controller: confirmPwController,
-                  label: 'Neues Passwort bestätigen',
-                  obscure: obscureConfirm,
-                  onToggle: () =>
-                      setDialogState(() => obscureConfirm = !obscureConfirm),
-                  errorText: error,
-                ),
+                Icon(Icons.lock_outline, color: Colors.deepPurple),
+                SizedBox(width: 8),
+                Text('Passwort ändern'),
               ],
             ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: loading ? null : () => Navigator.of(context).pop(),
-              child: const Text('Abbrechen'),
-            ),
-            ElevatedButton(
-              onPressed: loading
-                  ? null
-                  : () async {
-                      final current = currentPwController.text.trim();
-                      final newPw = newPwController.text;
-                      final confirm = confirmPwController.text;
-
-                      if (current.isEmpty || newPw.isEmpty || confirm.isEmpty) {
-                        setDialogState(
-                          () => error = 'Bitte alle Felder ausfüllen.',
-                        );
-                        return;
-                      }
-                      if (newPw.length < 6) {
-                        setDialogState(
-                          () => error =
-                              'Neues Passwort muss mind. 6 Zeichen haben.',
-                        );
-                        return;
-                      }
-                      if (newPw != confirm) {
-                        setDialogState(
-                          () => error = 'Passwörter stimmen nicht überein.',
-                        );
-                        return;
-                      }
-
-                      setDialogState(() {
-                        loading = true;
-                        error = null;
-                      });
-
-                      try {
-                        final user = FirebaseAuth.instance.currentUser!;
-                        final cred = EmailAuthProvider.credential(
-                          email: user.email!,
-                          password: current,
-                        );
-                        await user.reauthenticateWithCredential(cred);
-                        await user.updatePassword(newPw);
-
-                        if (context.mounted) {
-                          Navigator.of(context).pop();
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Passwort erfolgreich geändert ✓'),
-                              backgroundColor: Colors.green,
-                            ),
-                          );
-                        }
-                      } on FirebaseAuthException catch (e) {
-                        String msg;
-                        if (e.code == 'wrong-password' ||
-                            e.code == 'invalid-credential') {
-                          msg = 'Aktuelles Passwort ist falsch.';
-                        } else if (e.code == 'too-many-requests') {
-                          msg = 'Zu viele Versuche. Bitte warte kurz.';
-                        } else {
-                          msg = e.message ?? 'Unbekannter Fehler.';
-                        }
-                        setDialogState(() {
-                          error = msg;
-                          loading = false;
-                        });
-                      } catch (e) {
-                        setDialogState(() {
-                          error = userMessage(e);
-                          loading = false;
-                        });
-                      }
-                    },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.deepPurple,
-                foregroundColor: Colors.white,
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _buildPasswordField(
+                    controller: currentPwController,
+                    label: 'Aktuelles Passwort',
+                    obscure: obscureCurrent,
+                    onToggle: () =>
+                        setDialogState(() => obscureCurrent = !obscureCurrent),
+                  ),
+                  const SizedBox(height: 12),
+                  _buildPasswordField(
+                    controller: newPwController,
+                    label: 'Neues Passwort',
+                    obscure: obscureNew,
+                    onToggle: () =>
+                        setDialogState(() => obscureNew = !obscureNew),
+                  ),
+                  const SizedBox(height: 12),
+                  _buildPasswordField(
+                    controller: confirmPwController,
+                    label: 'Neues Passwort bestätigen',
+                    obscure: obscureConfirm,
+                    onToggle: () =>
+                        setDialogState(() => obscureConfirm = !obscureConfirm),
+                    errorText: error,
+                  ),
+                ],
               ),
-              child: loading
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
-                      ),
-                    )
-                  : const Text('Speichern'),
             ),
-          ],
+            actions: [
+              TextButton(
+                onPressed: loading ? null : () => Navigator.of(context).pop(),
+                child: const Text('Abbrechen'),
+              ),
+              ElevatedButton(
+                onPressed: loading
+                    ? null
+                    : () async {
+                        final current = currentPwController.text.trim();
+                        final newPw = newPwController.text;
+                        final confirm = confirmPwController.text;
+
+                        if (current.isEmpty ||
+                            newPw.isEmpty ||
+                            confirm.isEmpty) {
+                          setDialogState(
+                            () => error = 'Bitte alle Felder ausfüllen.',
+                          );
+                          return;
+                        }
+                        if (newPw.length < 6) {
+                          setDialogState(
+                            () => error =
+                                'Neues Passwort muss mind. 6 Zeichen haben.',
+                          );
+                          return;
+                        }
+                        if (newPw != confirm) {
+                          setDialogState(
+                            () => error = 'Passwörter stimmen nicht überein.',
+                          );
+                          return;
+                        }
+
+                        setDialogState(() {
+                          loading = true;
+                          error = null;
+                        });
+
+                        try {
+                          final user = FirebaseAuth.instance.currentUser!;
+                          final cred = EmailAuthProvider.credential(
+                            email: user.email!,
+                            password: current,
+                          );
+                          await user.reauthenticateWithCredential(cred);
+                          await user.updatePassword(newPw);
+
+                          if (context.mounted) {
+                            Navigator.of(context).pop();
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'Passwort erfolgreich geändert ✓',
+                                ),
+                                backgroundColor: Colors.green,
+                              ),
+                            );
+                          }
+                        } on FirebaseAuthException catch (e) {
+                          String msg;
+                          if (e.code == 'wrong-password' ||
+                              e.code == 'invalid-credential') {
+                            msg = 'Aktuelles Passwort ist falsch.';
+                          } else if (e.code == 'too-many-requests') {
+                            msg = 'Zu viele Versuche. Bitte warte kurz.';
+                          } else {
+                            msg = e.message ?? 'Unbekannter Fehler.';
+                          }
+                          setDialogState(() {
+                            error = msg;
+                            loading = false;
+                          });
+                        } catch (e) {
+                          setDialogState(() {
+                            error = userMessage(e);
+                            loading = false;
+                          });
+                        }
+                      },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.deepPurple,
+                  foregroundColor: Colors.white,
+                ),
+                child: loading
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Text('Speichern'),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -323,125 +334,128 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     await showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          title: const Row(
-            children: [
-              Icon(Icons.pin_outlined, color: Colors.deepPurple),
-              SizedBox(width: 8),
-              Text('Eltern-PIN ändern'),
-            ],
-          ),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
+      builder: (context) => DisposeControllers(
+        controllers: [oldPinController, newPinController, confirmPinController],
+        child: StatefulBuilder(
+          builder: (context, setDialogState) => AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            title: const Row(
               children: [
-                _buildPinField(
-                  controller: oldPinController,
-                  label: 'Aktueller PIN',
-                  errorText: error,
-                ),
-                const SizedBox(height: 12),
-                _buildPinField(
-                  controller: newPinController,
-                  label: 'Neuer PIN (4–6 Ziffern)',
-                ),
-                const SizedBox(height: 12),
-                _buildPinField(
-                  controller: confirmPinController,
-                  label: 'Neuer PIN bestätigen',
-                ),
+                Icon(Icons.pin_outlined, color: Colors.deepPurple),
+                SizedBox(width: 8),
+                Text('Eltern-PIN ändern'),
               ],
             ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: loading ? null : () => Navigator.of(context).pop(),
-              child: const Text('Abbrechen'),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _buildPinField(
+                    controller: oldPinController,
+                    label: 'Aktueller PIN',
+                    errorText: error,
+                  ),
+                  const SizedBox(height: 12),
+                  _buildPinField(
+                    controller: newPinController,
+                    label: 'Neuer PIN (4–6 Ziffern)',
+                  ),
+                  const SizedBox(height: 12),
+                  _buildPinField(
+                    controller: confirmPinController,
+                    label: 'Neuer PIN bestätigen',
+                  ),
+                ],
+              ),
             ),
-            ElevatedButton(
-              onPressed: loading
-                  ? null
-                  : () async {
-                      final old = oldPinController.text;
-                      final newPin = newPinController.text;
-                      final confirm = confirmPinController.text;
+            actions: [
+              TextButton(
+                onPressed: loading ? null : () => Navigator.of(context).pop(),
+                child: const Text('Abbrechen'),
+              ),
+              ElevatedButton(
+                onPressed: loading
+                    ? null
+                    : () async {
+                        final old = oldPinController.text;
+                        final newPin = newPinController.text;
+                        final confirm = confirmPinController.text;
 
-                      if (old.isEmpty || newPin.isEmpty || confirm.isEmpty) {
-                        setDialogState(
-                          () => error = 'Bitte alle Felder ausfüllen.',
-                        );
-                        return;
-                      }
-                      if (newPin.length < 4 || newPin.length > 6) {
-                        setDialogState(
-                          () => error = 'Neuer PIN muss 4–6 Ziffern haben.',
-                        );
-                        return;
-                      }
-                      if (newPin != confirm) {
-                        setDialogState(
-                          () => error = 'PINs stimmen nicht überein.',
-                        );
-                        return;
-                      }
-
-                      setDialogState(() {
-                        loading = true;
-                        error = null;
-                      });
-
-                      try {
-                        final user = ref.read(authStateChangesProvider).value;
-                        if (user == null) throw Exception('Nicht eingeloggt');
-
-                        final changed = await ref
-                            .read(pinRepositoryProvider)
-                            .changePin(user.ownerUid, old, newPin);
-
-                        if (!changed) {
-                          setDialogState(() {
-                            error = 'Aktueller PIN ist falsch.';
-                            loading = false;
-                          });
+                        if (old.isEmpty || newPin.isEmpty || confirm.isEmpty) {
+                          setDialogState(
+                            () => error = 'Bitte alle Felder ausfüllen.',
+                          );
+                          return;
+                        }
+                        if (newPin.length < 4 || newPin.length > 6) {
+                          setDialogState(
+                            () => error = 'Neuer PIN muss 4–6 Ziffern haben.',
+                          );
+                          return;
+                        }
+                        if (newPin != confirm) {
+                          setDialogState(
+                            () => error = 'PINs stimmen nicht überein.',
+                          );
                           return;
                         }
 
-                        if (context.mounted) {
-                          Navigator.of(context).pop();
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('PIN erfolgreich geändert ✓'),
-                              backgroundColor: Colors.green,
-                            ),
-                          );
-                        }
-                      } catch (e) {
                         setDialogState(() {
-                          error = userMessage(e);
-                          loading = false;
+                          loading = true;
+                          error = null;
                         });
-                      }
-                    },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.deepPurple,
-                foregroundColor: Colors.white,
+
+                        try {
+                          final user = ref.read(authStateChangesProvider).value;
+                          if (user == null) throw Exception('Nicht eingeloggt');
+
+                          final changed = await ref
+                              .read(pinRepositoryProvider)
+                              .changePin(user.ownerUid, old, newPin);
+
+                          if (!changed) {
+                            setDialogState(() {
+                              error = 'Aktueller PIN ist falsch.';
+                              loading = false;
+                            });
+                            return;
+                          }
+
+                          if (context.mounted) {
+                            Navigator.of(context).pop();
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('PIN erfolgreich geändert ✓'),
+                                backgroundColor: Colors.green,
+                              ),
+                            );
+                          }
+                        } catch (e) {
+                          setDialogState(() {
+                            error = userMessage(e);
+                            loading = false;
+                          });
+                        }
+                      },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.deepPurple,
+                  foregroundColor: Colors.white,
+                ),
+                child: loading
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Text('Speichern'),
               ),
-              child: loading
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
-                      ),
-                    )
-                  : const Text('Speichern'),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -520,7 +534,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) throw Exception('Kein Benutzer angemeldet.');
 
-      await user.reauthenticateWithProvider(provider);
+      // Im Browser gibt es reauthenticateWithProvider nicht – dort per Popup
+      // (wie die Anmeldung mit Google im Browser).
+      if (kIsWeb) {
+        await user.reauthenticateWithPopup(provider);
+      } else {
+        await user.reauthenticateWithProvider(provider);
+      }
       await _wipeDataAndDeleteAuth();
     } on FirebaseAuthException catch (e) {
       _handleDeleteError(_mapDeleteAuthError(e));
@@ -537,51 +557,56 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final password = await showDialog<String>(
       context: context,
       barrierDismissible: false,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          title: const Text('Passwort bestätigen'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                'Bitte gib dein Passwort ein, um das Konto endgültig zu löschen.',
-                style: TextStyle(fontSize: 14),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: passwordController,
-                obscureText: obscure,
-                autofocus: true,
-                decoration: InputDecoration(
-                  labelText: 'Passwort',
-                  border: const OutlineInputBorder(),
-                  suffixIcon: IconButton(
-                    icon: Icon(
-                      obscure ? Icons.visibility : Icons.visibility_off,
+      builder: (context) => DisposeControllers(
+        controllers: [passwordController],
+        child: StatefulBuilder(
+          builder: (context, setDialogState) => AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            scrollable: true,
+            title: const Text('Passwort bestätigen'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'Bitte gib dein Passwort ein, um das Konto endgültig zu löschen.',
+                  style: TextStyle(fontSize: 14),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: passwordController,
+                  obscureText: obscure,
+                  autofocus: true,
+                  decoration: InputDecoration(
+                    labelText: 'Passwort',
+                    border: const OutlineInputBorder(),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        obscure ? Icons.visibility : Icons.visibility_off,
+                      ),
+                      onPressed: () => setDialogState(() => obscure = !obscure),
                     ),
-                    onPressed: () => setDialogState(() => obscure = !obscure),
                   ),
                 ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, null),
+                child: const Text('Abbrechen'),
+              ),
+              ElevatedButton(
+                onPressed: () =>
+                    Navigator.pop(context, passwordController.text),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red,
+                  foregroundColor: Colors.white,
+                ),
+                child: const Text('Konto löschen'),
               ),
             ],
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, null),
-              child: const Text('Abbrechen'),
-            ),
-            ElevatedButton(
-              onPressed: () => Navigator.pop(context, passwordController.text),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red,
-                foregroundColor: Colors.white,
-              ),
-              child: const Text('Konto löschen'),
-            ),
-          ],
         ),
       ),
     );
@@ -628,6 +653,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     // Auth-Account löschen
     await FirebaseAuth.instance.currentUser?.delete();
 
+    // Aufräumen wie beim Abmelden (RevenueCat, gemerkte Codes, Provider)
+    if (mounted) await signOutAccount(ref);
+
     // Zum Übergangs-Screen navigieren und ALLES aus dem Stack werfen
     if (mounted) {
       Navigator.of(context).pushAndRemoveUntil(
@@ -652,7 +680,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       case 'canceled':
         return 'Anmeldung abgebrochen.';
       default:
-        return 'Fehler: ${e.message}';
+        return userMessage(e);
     }
   }
 
@@ -900,7 +928,8 @@ class _SubscriptionTile extends ConsumerWidget {
                           side: BorderSide(color: Colors.grey.shade400),
                           padding: const EdgeInsets.symmetric(vertical: 10),
                         ),
-                        onPressed: () => _openSubscriptionManagement(context, ref),
+                        onPressed: () =>
+                            _openSubscriptionManagement(context, ref),
                       ),
                     ),
                   ],
