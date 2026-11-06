@@ -19,6 +19,13 @@ class SystemRewardsInitializer {
   static const Map<String, String> _renamedTitles = {
     '💪 Fleißige Lernerin!': '💪 Fleißig gelernt!',
     '🔥 Super Lernerin!': '🔥 Super gelernt!',
+    // Deutsch statt „Streak“ in der Kinder-Oberfläche
+    '🔥 7 Tage Streak!': '🔥 7 Tage am Stück!',
+    '⚡ 14 Tage Streak!': '⚡ 14 Tage am Stück!',
+    '🌟 21 Tage Streak!': '🌟 21 Tage am Stück!',
+    '👑 28 Tage Streak!': '👑 28 Tage am Stück!',
+    '💎 35 Tage Streak!': '💎 35 Tage am Stück!',
+    '🏆 42 Tage Streak!': '🏆 42 Tage am Stück!',
   };
 
   /// Vordefinierte System-Belohnungen (rein digital, kein Eltern-OK nötig)
@@ -132,7 +139,7 @@ class SystemRewardsInitializer {
 
     // ========== STREAK-BASIERTE BELOHNUNGEN ==========
     {
-      'title': '🔥 7 Tage Streak!',
+      'title': '🔥 7 Tage am Stück!',
       'description': 'Eine ganze Woche am Stück gelernt – mega!',
       'reward': '+50 Bonus-XP',
       'trigger': 'streak',
@@ -141,10 +148,9 @@ class SystemRewardsInitializer {
       'badgeId': 'badge-streak-7',
     },
     {
-      'title': '⚡ 14 Tage Streak!',
-      'description':
-          'Zwei Wochen Durchhaltevermögen! Du bist ein Streak-Profi!',
-      'reward': '+100 Bonus-XP & exklusiver Streak-Avatar freigeschaltet',
+      'title': '⚡ 14 Tage am Stück!',
+      'description': 'Zwei Wochen Durchhaltevermögen! Du bleibst richtig dran!',
+      'reward': '+100 Bonus-XP & exklusiver Lernserien-Avatar freigeschaltet',
       'trigger': 'streak',
       'requiredStreak': 14,
       'bonusXP': 100,
@@ -152,18 +158,18 @@ class SystemRewardsInitializer {
       'avatarUnlockId': 'avatar-streak-uncommon',
     },
     {
-      'title': '🌟 21 Tage Streak!',
+      'title': '🌟 21 Tage am Stück!',
       'description': 'Drei Wochen! Unglaublich konsequent!',
-      'reward': '+200 Bonus-XP & Titel „Streak-Krieger"',
+      'reward': '+200 Bonus-XP & Titel „Dranbleiber"',
       'trigger': 'streak',
       'requiredStreak': 21,
       'bonusXP': 200,
       'badgeId': 'badge-streak-21',
     },
     {
-      'title': '👑 28 Tage Streak!',
+      'title': '👑 28 Tage am Stück!',
       'description': 'Vier Wochen am Stück – du bist ein echter Champion!',
-      'reward': '+300 Bonus-XP & epischer Streak-Avatar freigeschaltet',
+      'reward': '+300 Bonus-XP & epischer Lernserien-Avatar freigeschaltet',
       'trigger': 'streak',
       'requiredStreak': 28,
       'bonusXP': 300,
@@ -171,7 +177,7 @@ class SystemRewardsInitializer {
       'avatarUnlockId': 'avatar-streak-epic',
     },
     {
-      'title': '💎 35 Tage Streak!',
+      'title': '💎 35 Tage am Stück!',
       'description': 'Fünf Wochen! Du bist eine Lernmaschine!',
       'reward': '+500 Bonus-XP & Titel „Lernmaschine"',
       'trigger': 'streak',
@@ -180,10 +186,10 @@ class SystemRewardsInitializer {
       'badgeId': 'badge-streak-35',
     },
     {
-      'title': '🏆 42 Tage Streak!',
+      'title': '🏆 42 Tage am Stück!',
       'description':
           'Sechs Wochen! Legendär! Der mächtigste Avatar gehört dir!',
-      'reward': '+750 Bonus-XP & legendärer Streak-Avatar freigeschaltet',
+      'reward': '+750 Bonus-XP & legendärer Lernserien-Avatar freigeschaltet',
       'trigger': 'streak',
       'requiredStreak': 42,
       'bonusXP': 750,
@@ -241,6 +247,70 @@ class SystemRewardsInitializer {
     },
   ];
 
+  /// Feste Dokument-ID einer vordefinierten Systembelohnung, z.B.
+  /// `sys_level_2`, `sys_xp_100`, `sys_streak_7`, `sys_quiz_count_10`,
+  /// `sys_perfect_quiz`. Mit fester ID wird jede Systembelohnung höchstens
+  /// einmal angelegt – auch wenn Eltern Titel oder Bedingung ändern.
+  static String systemRewardId(Map<String, dynamic> reward) {
+    final trigger = reward['trigger'] as String;
+    final value =
+        reward['requiredLevel'] ??
+        reward['requiredXP'] ??
+        reward['requiredStreak'] ??
+        reward['requiredQuizCount'];
+    return value == null ? 'sys_$trigger' : 'sys_${trigger}_$value';
+  }
+
+  static final Map<String, String> _idByTitle = {
+    for (final r in _defaultSystemRewards)
+      r['title'] as String: systemRewardId(r),
+  };
+
+  static final Map<String, String> _idByBadge = {
+    for (final r in _defaultSystemRewards)
+      r['badgeId'] as String: systemRewardId(r),
+  };
+
+  static const _copiedFields = [
+    'requiredLevel',
+    'requiredXP',
+    'requiredStars',
+    'requiredStreak',
+    'requiredQuizCount',
+    'bonusXP',
+    'avatarUnlockId',
+    'badgeId',
+  ];
+
+  Map<String, dynamic> _rewardData(
+    Map<String, dynamic> rewardData,
+    String childId,
+  ) {
+    return {
+      'childId': childId,
+      'title': rewardData['title'],
+      'description': rewardData['description'],
+      'reward': rewardData['reward'],
+      'type': 'system',
+      'trigger': rewardData['trigger'],
+      'status': 'pending',
+      'createdAt': FieldValue.serverTimestamp(),
+      'createdBy': 'system',
+      for (final field in _copiedFields)
+        if (rewardData.containsKey(field)) field: rewardData[field],
+    };
+  }
+
+  CollectionReference<Map<String, dynamic>> _rewardsCollection(
+    String userId,
+    String childId,
+  ) => _firestore
+      .collection('users')
+      .doc(userId)
+      .collection('children')
+      .doc(childId)
+      .collection('rewards');
+
   /// Initialisiert alle System-Belohnungen für ein neues Kind
   Future<void> initializeSystemRewards({
     required String userId,
@@ -249,63 +319,22 @@ class SystemRewardsInitializer {
     try {
       debugPrint('🎁 Initialisiere System-Belohnungen für Kind: $childId');
 
+      // Neues Kind: die Dokumente gibt es noch nicht, set() legt sie an.
+      // Aufrufer sind Eltern bzw. Lehrkraft (nie das Kindergerät).
       final batch = _firestore.batch();
-      final rewardsCollection = _firestore
-          .collection('users')
-          .doc(userId)
-          .collection('children')
-          .doc(childId)
-          .collection('rewards');
+      final rewardsCollection = _rewardsCollection(userId, childId);
 
-      int count = 0;
       for (final rewardData in _defaultSystemRewards) {
-        final docRef = rewardsCollection.doc();
-
-        final data = {
-          'childId': childId,
-          'title': rewardData['title'],
-          'description': rewardData['description'],
-          'reward': rewardData['reward'],
-          'type': 'system',
-          'trigger': rewardData['trigger'],
-          'status': 'pending',
-          'createdAt': FieldValue.serverTimestamp(),
-          'createdBy': 'system',
-        };
-
-        // Trigger-Bedingungen
-        if (rewardData.containsKey('requiredLevel')) {
-          data['requiredLevel'] = rewardData['requiredLevel'];
-        }
-        if (rewardData.containsKey('requiredXP')) {
-          data['requiredXP'] = rewardData['requiredXP'];
-        }
-        if (rewardData.containsKey('requiredStars')) {
-          data['requiredStars'] = rewardData['requiredStars'];
-        }
-        if (rewardData.containsKey('requiredStreak')) {
-          data['requiredStreak'] = rewardData['requiredStreak'];
-        }
-        if (rewardData.containsKey('requiredQuizCount')) {
-          data['requiredQuizCount'] = rewardData['requiredQuizCount'];
-        }
-        // In-App-Belohnungs-Metadaten
-        if (rewardData.containsKey('bonusXP')) {
-          data['bonusXP'] = rewardData['bonusXP'];
-        }
-        if (rewardData.containsKey('avatarUnlockId')) {
-          data['avatarUnlockId'] = rewardData['avatarUnlockId'];
-        }
-        if (rewardData.containsKey('badgeId')) {
-          data['badgeId'] = rewardData['badgeId'];
-        }
-
-        batch.set(docRef, data);
-        count++;
+        batch.set(
+          rewardsCollection.doc(systemRewardId(rewardData)),
+          _rewardData(rewardData, childId),
+        );
       }
 
       await batch.commit();
-      debugPrint('✅ $count System-Belohnungen erstellt');
+      debugPrint(
+        '✅ ${_defaultSystemRewards.length} System-Belohnungen erstellt',
+      );
     } catch (e, stackTrace) {
       debugPrint('❌ Fehler beim Initialisieren der System-Belohnungen: $e');
       debugPrint('Stack: $stackTrace');
@@ -318,20 +347,23 @@ class SystemRewardsInitializer {
     required String userId,
     required String childId,
   }) async {
-    final snapshot = await _firestore
-        .collection('users')
-        .doc(userId)
-        .collection('children')
-        .doc(childId)
-        .collection('rewards')
-        .where('type', isEqualTo: 'system')
-        .limit(1)
-        .get();
+    final snapshot = await _rewardsCollection(
+      userId,
+      childId,
+    ).where('type', isEqualTo: 'system').limit(1).get();
 
     return snapshot.docs.isNotEmpty;
   }
 
-  /// Fügt fehlende System-Belohnungen hinzu (für existierende Kinder)
+  /// Fügt fehlende System-Belohnungen hinzu (für existierende Kinder).
+  ///
+  /// Läuft auch auf dem Kindergerät. Vorhanden ist eine Systembelohnung, wenn
+  /// es ihr Dokument mit fester ID gibt oder (ältere Kinder, zufällige IDs)
+  /// eine Belohnung vom System mit ihrem Abzeichen, Titel oder ihrer
+  /// Bedingung – auch wenn die Eltern sie inzwischen bearbeitet haben.
+  /// Angelegt wird nur, was es noch nicht gibt (Transaktion): ein set() auf
+  /// ein vorhandenes Dokument wäre ein Update und scheitert für das
+  /// Kindergerät an den Regeln.
   Future<void> addMissingSystemRewards({
     required String userId,
     required String childId,
@@ -339,28 +371,38 @@ class SystemRewardsInitializer {
     try {
       debugPrint('🔍 Prüfe fehlende System-Belohnungen für Kind: $childId');
 
-      final existingSnapshot = await _firestore
-          .collection('users')
-          .doc(userId)
-          .collection('children')
-          .doc(childId)
-          .collection('rewards')
-          .where('type', isEqualTo: 'system')
-          .get();
+      final rewardsCollection = _rewardsCollection(userId, childId);
+      final existingSnapshot = await rewardsCollection.get();
 
       // Alte Titel auf die neuen umstellen (z.B. „Fleißige Lernerin“ →
       // „Fleißig gelernt“), bevor nach fehlenden gesucht wird.
       final renameBatch = _firestore.batch();
       var renamed = 0;
-      final existingTitles = <String>{};
+      final present = <String>{};
       for (final doc in existingSnapshot.docs) {
-        final title = doc.data()['title'] as String;
+        final data = doc.data();
+        if (doc.id.startsWith('sys_')) present.add(doc.id);
+
+        final isSystemType = data['type'] == 'system';
+        if (!isSystemType && data['createdBy'] != 'system') continue;
+
+        final title = data['title'] as String? ?? '';
         final newTitle = _renamedTitles[title];
-        if (newTitle != null) {
+        // Titel ändern darf das Kindergerät nur bei type == system
+        if (newTitle != null && isSystemType) {
           renameBatch.update(doc.reference, {'title': newTitle});
           renamed++;
         }
-        existingTitles.add(newTitle ?? title);
+
+        final byTitle = _idByTitle[newTitle ?? title];
+        if (byTitle != null) present.add(byTitle);
+        final byBadge = _idByBadge[data['badgeId']];
+        if (byBadge != null) present.add(byBadge);
+        // Bedingung nur bei unveränderten Systembelohnungen: bearbeitete
+        // können inzwischen eine andere Bedingung haben.
+        if (isSystemType && data['trigger'] is String) {
+          present.add(systemRewardId(data));
+        }
       }
       if (renamed > 0) {
         await renameBatch.commit();
@@ -368,7 +410,7 @@ class SystemRewardsInitializer {
       }
 
       final missingRewards = _defaultSystemRewards
-          .where((reward) => !existingTitles.contains(reward['title']))
+          .where((reward) => !present.contains(systemRewardId(reward)))
           .toList();
 
       if (missingRewards.isEmpty) {
@@ -376,61 +418,27 @@ class SystemRewardsInitializer {
         return;
       }
 
-      debugPrint('📝 Füge ${missingRewards.length} fehlende Belohnungen hinzu');
+      final added = await _firestore.runTransaction<int>((tx) async {
+        // Erst alles lesen, dann schreiben (Regel für Transaktionen)
+        final toCreate =
+            <
+              MapEntry<
+                DocumentReference<Map<String, dynamic>>,
+                Map<String, dynamic>
+              >
+            >[];
+        for (final rewardData in missingRewards) {
+          final ref = rewardsCollection.doc(systemRewardId(rewardData));
+          if ((await tx.get(ref)).exists) continue;
+          toCreate.add(MapEntry(ref, _rewardData(rewardData, childId)));
+        }
+        for (final entry in toCreate) {
+          tx.set(entry.key, entry.value);
+        }
+        return toCreate.length;
+      });
 
-      final batch = _firestore.batch();
-      final rewardsCollection = _firestore
-          .collection('users')
-          .doc(userId)
-          .collection('children')
-          .doc(childId)
-          .collection('rewards');
-
-      for (final rewardData in missingRewards) {
-        final docRef = rewardsCollection.doc();
-
-        final data = {
-          'childId': childId,
-          'title': rewardData['title'],
-          'description': rewardData['description'],
-          'reward': rewardData['reward'],
-          'type': 'system',
-          'trigger': rewardData['trigger'],
-          'status': 'pending',
-          'createdAt': FieldValue.serverTimestamp(),
-          'createdBy': 'system',
-        };
-
-        if (rewardData.containsKey('requiredLevel')) {
-          data['requiredLevel'] = rewardData['requiredLevel'];
-        }
-        if (rewardData.containsKey('requiredXP')) {
-          data['requiredXP'] = rewardData['requiredXP'];
-        }
-        if (rewardData.containsKey('requiredStars')) {
-          data['requiredStars'] = rewardData['requiredStars'];
-        }
-        if (rewardData.containsKey('requiredStreak')) {
-          data['requiredStreak'] = rewardData['requiredStreak'];
-        }
-        if (rewardData.containsKey('requiredQuizCount')) {
-          data['requiredQuizCount'] = rewardData['requiredQuizCount'];
-        }
-        if (rewardData.containsKey('bonusXP')) {
-          data['bonusXP'] = rewardData['bonusXP'];
-        }
-        if (rewardData.containsKey('avatarUnlockId')) {
-          data['avatarUnlockId'] = rewardData['avatarUnlockId'];
-        }
-        if (rewardData.containsKey('badgeId')) {
-          data['badgeId'] = rewardData['badgeId'];
-        }
-
-        batch.set(docRef, data);
-      }
-
-      await batch.commit();
-      debugPrint('✅ ${missingRewards.length} Belohnungen hinzugefügt');
+      debugPrint('✅ $added Belohnungen hinzugefügt');
     } catch (e, stackTrace) {
       debugPrint('❌ Fehler beim Hinzufügen fehlender Belohnungen: $e');
       debugPrint('Stack: $stackTrace');
@@ -442,15 +450,10 @@ class SystemRewardsInitializer {
     required String userId,
     required String childId,
   }) async {
-    final snapshot = await _firestore
-        .collection('users')
-        .doc(userId)
-        .collection('children')
-        .doc(childId)
-        .collection('rewards')
-        .where('type', isEqualTo: 'system')
-        .count()
-        .get();
+    final snapshot = await _rewardsCollection(
+      userId,
+      childId,
+    ).where('type', isEqualTo: 'system').count().get();
 
     return snapshot.count ?? 0;
   }

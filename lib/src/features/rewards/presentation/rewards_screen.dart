@@ -44,173 +44,171 @@ class RewardsScreen extends ConsumerWidget {
       return const Center(child: Text('Kein Kind ausgewählt'));
     }
 
-    final rewardsStream = ref
-        .watch(rewardServiceProvider)
-        .getRewardsStream(userId: user.ownerUid, childId: activeChild.id);
+    final rewardsAsync = ref.watch(
+      rewardsStreamProvider((userId: user.ownerUid, childId: activeChild.id)),
+    );
 
     final primary = _primary(context);
     final background = _background(context);
     final onSurface = _onSurface(context);
     final onPrimary = _onPrimary(context);
 
-    return StreamBuilder<List<RewardModel>>(
-      stream: rewardsStream,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return Center(child: CircularProgressIndicator(color: primary));
-        }
-
-        if (snapshot.hasError) {
-          return Center(
+    if (!rewardsAsync.hasValue) {
+      if (rewardsAsync.hasError) {
+        return const Center(
+          child: Padding(
+            padding: EdgeInsets.all(24),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(Icons.error_outline, size: 64, color: Colors.red),
-                const SizedBox(height: 16),
-                Text('Fehler: ${snapshot.error}'),
+                Text('🙈', style: TextStyle(fontSize: 56)),
+                SizedBox(height: 16),
+                Text(
+                  'Deine Belohnungen laden gerade nicht.\n'
+                  'Versuch es gleich noch einmal!',
+                  style: TextStyle(fontSize: 16),
+                  textAlign: TextAlign.center,
+                ),
               ],
             ),
-          );
-        }
-
-        final allRewards = snapshot.data ?? [];
-
-        // Eltern-Belohnungen
-        final parentRewards = allRewards
-            .where((r) => r.type == RewardType.parent)
-            .toList();
-        // "Verfügbar"-Tab: alle noch nicht eingelösten Eltern-Belohnungen.
-        // Freigeschaltete (approved) sind einlösbar, noch gesperrte (pending)
-        // werden mit ihrer Bedingung angezeigt. Einlösbare zuerst.
-        final availableRewards =
-            parentRewards
-                .where((r) => r.status != RewardStatus.claimed)
-                .toList()
-              ..sort((a, b) {
-                if (a.canClaim != b.canClaim) return a.canClaim ? -1 : 1;
-                return b.createdAt.compareTo(a.createdAt);
-              });
-        // Badge zählt nur einlösbare (= sofort erledigbar fürs Kind).
-        final approvedRewards = availableRewards
-            .where((r) => r.canClaim)
-            .toList();
-        final claimedRewards = parentRewards
-            .where((r) => r.status == RewardStatus.claimed)
-            .toList();
-
-        // Achievements (Systembelohnungen)
-        final systemRewards = allRewards
-            .where((r) => r.type == RewardType.system)
-            .toList();
-        final unlockedCount = systemRewards
-            .where((r) => r.status != RewardStatus.pending)
-            .length;
-
-        return DefaultTabController(
-          length: 3,
-          child: Column(
-            children: [
-              // ── Tab-Bar in Primary-Farbe ──────────────────────────────
-              Container(
-                color: primary,
-                child: TabBar(
-                  indicatorColor: onPrimary,
-                  indicatorWeight: 3,
-                  labelColor: onPrimary,
-                  unselectedLabelColor: onPrimary.withValues(alpha: 0.55),
-                  labelStyle: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                  ),
-                  unselectedLabelStyle: const TextStyle(fontSize: 12),
-                  tabs: [
-                    Tab(
-                      iconMargin: const EdgeInsets.only(bottom: 4),
-                      icon: Stack(
-                        clipBehavior: Clip.none,
-                        children: [
-                          const Icon(Icons.card_giftcard, size: 18),
-                          if (approvedRewards.isNotEmpty)
-                            Positioned(
-                              top: -5,
-                              right: -8,
-                              child: Container(
-                                padding: const EdgeInsets.all(3),
-                                constraints: const BoxConstraints(
-                                  minWidth: 15,
-                                  minHeight: 15,
-                                ),
-                                decoration: const BoxDecoration(
-                                  color: Colors.red,
-                                  shape: BoxShape.circle,
-                                ),
-                                child: Text(
-                                  approvedRewards.length > 9
-                                      ? '9+'
-                                      : '${approvedRewards.length}',
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 8,
-                                    fontWeight: FontWeight.bold,
-                                    height: 1,
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
-                      text: 'Verfügbar',
-                    ),
-                    const Tab(
-                      icon: Icon(Icons.history, size: 18),
-                      text: 'Eingelöst',
-                    ),
-                    Tab(
-                      icon: const Icon(Icons.emoji_events, size: 18),
-                      text: '$unlockedCount/${systemRewards.length} 🏆',
-                    ),
-                  ],
-                ),
-              ),
-
-              // ── Tab Views in Background-Farbe ─────────────────────────
-              Expanded(
-                child: Container(
-                  color: background,
-                  child: TabBarView(
-                    children: [
-                      _buildParentRewardTab(
-                        context,
-                        ref,
-                        availableRewards,
-                        user.ownerUid,
-                        activeChild.id,
-                        isAvailable: true,
-                        onSurface: onSurface,
-                        primary: primary,
-                        onPrimary: onPrimary,
-                      ),
-                      _buildParentRewardTab(
-                        context,
-                        ref,
-                        claimedRewards,
-                        user.ownerUid,
-                        activeChild.id,
-                        isAvailable: false,
-                        onSurface: onSurface,
-                        primary: primary,
-                        onPrimary: onPrimary,
-                      ),
-                      AchievementsScreen(theme: theme),
-                    ],
-                  ),
-                ),
-              ),
-            ],
           ),
         );
-      },
+      }
+      return Center(child: CircularProgressIndicator(color: primary));
+    }
+
+    final allRewards = rewardsAsync.value ?? [];
+
+    // Eltern-Belohnungen
+    final parentRewards = allRewards
+        .where((r) => r.type == RewardType.parent)
+        .toList();
+    // "Verfügbar"-Tab: alle noch nicht eingelösten Eltern-Belohnungen.
+    // Freigeschaltete (approved) sind einlösbar, noch gesperrte (pending)
+    // werden mit ihrer Bedingung angezeigt. Einlösbare zuerst.
+    final availableRewards =
+        parentRewards.where((r) => r.status != RewardStatus.claimed).toList()
+          ..sort((a, b) {
+            if (a.canClaim != b.canClaim) return a.canClaim ? -1 : 1;
+            return b.createdAt.compareTo(a.createdAt);
+          });
+    // Badge zählt nur einlösbare (= sofort erledigbar fürs Kind).
+    final approvedRewards = availableRewards.where((r) => r.canClaim).toList();
+    final claimedRewards = parentRewards
+        .where((r) => r.status == RewardStatus.claimed)
+        .toList();
+
+    // Achievements (Systembelohnungen)
+    final systemRewards = allRewards
+        .where((r) => r.type == RewardType.system)
+        .toList();
+    final unlockedCount = systemRewards
+        .where((r) => r.status != RewardStatus.pending)
+        .length;
+
+    return DefaultTabController(
+      length: 3,
+      child: Column(
+        children: [
+          // ── Tab-Bar in Primary-Farbe ──────────────────────────────
+          Container(
+            color: primary,
+            child: TabBar(
+              indicatorColor: onPrimary,
+              indicatorWeight: 3,
+              labelColor: onPrimary,
+              unselectedLabelColor: onPrimary.withValues(alpha: 0.55),
+              labelStyle: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+              ),
+              unselectedLabelStyle: const TextStyle(fontSize: 12),
+              tabs: [
+                Tab(
+                  iconMargin: const EdgeInsets.only(bottom: 4),
+                  icon: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      const Icon(Icons.card_giftcard, size: 18),
+                      if (approvedRewards.isNotEmpty)
+                        Positioned(
+                          top: -5,
+                          right: -8,
+                          child: Container(
+                            padding: const EdgeInsets.all(3),
+                            constraints: const BoxConstraints(
+                              minWidth: 15,
+                              minHeight: 15,
+                            ),
+                            decoration: const BoxDecoration(
+                              color: Colors.red,
+                              shape: BoxShape.circle,
+                            ),
+                            child: Text(
+                              approvedRewards.length > 9
+                                  ? '9+'
+                                  : '${approvedRewards.length}',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 8,
+                                fontWeight: FontWeight.bold,
+                                height: 1,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                  text: 'Verfügbar',
+                ),
+                const Tab(
+                  icon: Icon(Icons.history, size: 18),
+                  text: 'Eingelöst',
+                ),
+                Tab(
+                  icon: const Icon(Icons.emoji_events, size: 18),
+                  text: '$unlockedCount/${systemRewards.length} 🏆',
+                ),
+              ],
+            ),
+          ),
+
+          // ── Tab Views in Background-Farbe ─────────────────────────
+          Expanded(
+            child: Container(
+              color: background,
+              child: TabBarView(
+                children: [
+                  _buildParentRewardTab(
+                    context,
+                    ref,
+                    availableRewards,
+                    user.ownerUid,
+                    activeChild.id,
+                    isAvailable: true,
+                    onSurface: onSurface,
+                    primary: primary,
+                    onPrimary: onPrimary,
+                  ),
+                  _buildParentRewardTab(
+                    context,
+                    ref,
+                    claimedRewards,
+                    user.ownerUid,
+                    activeChild.id,
+                    isAvailable: false,
+                    onSurface: onSurface,
+                    primary: primary,
+                    onPrimary: onPrimary,
+                  ),
+                  AchievementsScreen(theme: theme),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -251,7 +249,7 @@ class RewardsScreen extends ConsumerWidget {
             if (isAvailable) ...[
               const SizedBox(height: 8),
               Text(
-                'Schau ins Achievements-Tab 🏆',
+                'Schau bei deinen Erfolgen 🏆',
                 style: TextStyle(
                   fontSize: 13,
                   color: onSurface.withValues(alpha: 0.35),
@@ -402,7 +400,14 @@ class RewardsScreen extends ConsumerWidget {
       } catch (e) {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Fehler: $e'), backgroundColor: Colors.red),
+            SnackBar(
+              content: Text(
+                e is RewardNotClaimableException
+                    ? 'Diese Belohnung ist gerade gesperrt. Frag deine Eltern!'
+                    : 'Das hat leider nicht geklappt. '
+                          'Versuch es gleich noch einmal!',
+              ),
+            ),
           );
         }
       }

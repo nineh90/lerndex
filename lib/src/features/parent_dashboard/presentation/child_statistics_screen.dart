@@ -27,6 +27,79 @@ const Color _kBrandSoft = Color(0xFFA855F7);
 const Color _kBrandAccent = Color(0xFFC026D3);
 final Color _kBrandTint = const Color(0xFF6B21A8).withValues(alpha: 0.10);
 
+// ─── Daten (von Riverpod zwischengespeichert, nicht bei jedem build() neu) ───
+
+typedef _ChildKey = ({String userId, String childId});
+
+CollectionReference<Map<String, dynamic>> _childCollection(
+  _ChildKey key,
+  String name,
+) => FirebaseFirestore.instance
+    .collection('users')
+    .doc(key.userId)
+    .collection('children')
+    .doc(key.childId)
+    .collection(name);
+
+/// Eingelöste Belohnungen (neueste zuerst, höchstens 5)
+final _claimedRewardsProvider = StreamProvider.autoDispose
+    .family<List<Map<String, dynamic>>, _ChildKey>((ref, key) {
+      return _childCollection(
+        key,
+        'rewards',
+      ).where('status', isEqualTo: 'claimed').snapshots().map((snap) {
+        // Client-seitig sortieren (kein zusammengesetzter Index nötig)
+        int time(Map<String, dynamic> d) =>
+            (d['claimedAt'] as Timestamp?)?.millisecondsSinceEpoch ?? 0;
+        final rewards = snap.docs.map((d) => d.data()).toList()
+          ..sort((a, b) => time(b).compareTo(time(a)));
+        return rewards.take(5).toList();
+      });
+    });
+
+/// Anzahl Lerntage = Anzahl Dokumente in learning_stats (Zählabfrage)
+final _learningDaysProvider = FutureProvider.autoDispose.family<int, _ChildKey>(
+  (ref, key) async {
+    try {
+      final snap = await _childCollection(key, 'learning_stats').count().get();
+      return snap.count ?? 0;
+    } catch (e) {
+      return 0;
+    }
+  },
+);
+
+/// Für die Fächer-Übersicht berücksichtigte Lerntage
+const _subjectDays = 90;
+
+/// Lernzeit pro Fach über die letzten [_subjectDays] Lerntage
+final _subjectSecondsProvider = FutureProvider.autoDispose
+    .family<Map<String, int>, _ChildKey>((ref, key) async {
+      try {
+        final snap = await _childCollection(
+          key,
+          'learning_stats',
+        ).orderBy('date', descending: true).limit(_subjectDays).get();
+
+        final agg = <String, int>{};
+        for (final doc in snap.docs) {
+          final subjects = doc.data()['subjects'];
+          if (subjects is Map) {
+            for (final entry in subjects.entries) {
+              final name = entry.key.toString();
+              final sec = (entry.value is num)
+                  ? (entry.value as num).toInt()
+                  : 0;
+              agg[name] = (agg[name] ?? 0) + sec;
+            }
+          }
+        }
+        return agg;
+      } catch (e) {
+        return {};
+      }
+    });
+
 /// Detail-Statistiken für ein Kind.
 ///
 /// [ownerUid]: Konto, unter dem das Kind liegt (Standard: das eigene). Für
@@ -133,7 +206,8 @@ class ChildStatisticsScreen extends ConsumerWidget {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => TutorHistoryScreen(child: child, ownerUid: ownerUid),
+                      builder: (_) =>
+                          TutorHistoryScreen(child: child, ownerUid: ownerUid),
                     ),
                   );
                 },
@@ -406,7 +480,7 @@ class ChildStatisticsScreen extends ConsumerWidget {
                 Expanded(
                   child: InfoTile(
                     icon: Icons.percent,
-                    label: 'Erfolgsrate',
+                    label: 'Perfekt-Quote',
                     value: '$successRate%',
                     color: _kBrand,
                   ),
@@ -476,7 +550,7 @@ class ChildStatisticsScreen extends ConsumerWidget {
                 Icon(Icons.timeline, color: _kBrand, size: 24),
                 SizedBox(width: 8),
                 Text(
-                  'Aktivität & Streak',
+                  'Aktivität & Lernserie',
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
               ],
@@ -490,7 +564,10 @@ class ChildStatisticsScreen extends ConsumerWidget {
               decoration: BoxDecoration(
                 color: _kBrandTint,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: _kBrand.withValues(alpha: 0.25), width: 1),
+                border: Border.all(
+                  color: _kBrand.withValues(alpha: 0.25),
+                  width: 1,
+                ),
               ),
               child: Row(
                 children: [
@@ -539,8 +616,8 @@ class ChildStatisticsScreen extends ConsumerWidget {
                       const SizedBox(height: 2),
                       Text(
                         streak > 0
-                            ? 'Aktuelle Lern-Streak'
-                            : 'Noch keine Streak',
+                            ? 'Aktuelle Lernserie'
+                            : 'Noch keine Lernserie',
                         style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                       ),
                     ],
@@ -604,47 +681,30 @@ class ChildStatisticsScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 16),
 
-            StreamBuilder<QuerySnapshot>(
-              stream: FirebaseFirestore.instance
-                  .collection('users')
-                  .doc(ownerUid ?? user.ownerUid)
-                  .collection('children')
-                  .doc(child.id)
-                  .collection('rewards')
-                  .where('status', isEqualTo: 'claimed')
-                  .snapshots(),
-              builder: (context, snapshot) {
-                if (snapshot.hasError) {
+            Builder(
+              builder: (context) {
+                final rewardsAsync = ref.watch(
+                  _claimedRewardsProvider((
+                    userId: ownerUid ?? user.ownerUid,
+                    childId: child.id,
+                  )),
+                );
+                if (!rewardsAsync.hasValue && rewardsAsync.hasError) {
                   return Center(
                     child: Padding(
                       padding: const EdgeInsets.all(20),
                       child: Text(
-                        'Fehler beim Laden der Belohnungen',
-                        style: TextStyle(color: Colors.grey[600]),
+                        'Die Belohnungen konnten nicht geladen werden.',
+                        style: TextStyle(color: Colors.grey[700]),
                       ),
                     ),
                   );
                 }
-                if (!snapshot.hasData) {
+                if (!rewardsAsync.hasValue) {
                   return const Center(child: CircularProgressIndicator());
                 }
 
-                // Client-seitig sortieren und limitieren (kein Firestore-Index nötig)
-                final rewards = snapshot.data!.docs.toList()
-                  ..sort((a, b) {
-                    final aData = a.data() as Map<String, dynamic>;
-                    final bData = b.data() as Map<String, dynamic>;
-                    final aTime =
-                        (aData['claimedAt'] as Timestamp?)
-                            ?.millisecondsSinceEpoch ??
-                        0;
-                    final bTime =
-                        (bData['claimedAt'] as Timestamp?)
-                            ?.millisecondsSinceEpoch ??
-                        0;
-                    return bTime.compareTo(aTime);
-                  });
-                final limited = rewards.take(5).toList();
+                final limited = rewardsAsync.value!;
 
                 if (limited.isEmpty) {
                   return Center(
@@ -659,8 +719,7 @@ class ChildStatisticsScreen extends ConsumerWidget {
                 }
 
                 return Column(
-                  children: limited.map((doc) {
-                    final data = doc.data() as Map<String, dynamic>;
+                  children: limited.map((data) {
                     final claimedAt = (data['claimedAt'] as Timestamp?)
                         ?.toDate();
 
@@ -831,58 +890,40 @@ class _AverageRow extends ConsumerWidget {
     final user = ref.watch(authStateChangesProvider).value;
     if (user == null) return const SizedBox.shrink();
 
-    return FutureBuilder<int>(
-      future: _countLearningDays(ownerUid ?? user.ownerUid, child.id),
-      builder: (context, snapshot) {
-        final learningDays = snapshot.data ?? 0;
-        final avgSeconds = learningDays > 0
-            ? child.totalLearningSeconds ~/ learningDays
-            : 0;
-        final avgMinutes = avgSeconds ~/ 60;
-        final avgLabel = learningDays > 0 ? '${avgMinutes}min' : '-';
-
-        return Row(
-          children: [
-            Expanded(
-              child: InfoTile(
-                icon: Icons.today,
-                label: 'Ø pro Lerntag',
-                value: avgLabel,
-                color: _kBrandSoft,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: InfoTile(
-                icon: Icons.calendar_today,
-                label: 'Lerntage',
-                value: snapshot.connectionState == ConnectionState.waiting
-                    ? '…'
-                    : '$learningDays',
-                color: _kBrandSoft,
-              ),
-            ),
-          ],
-        );
-      },
+    final daysAsync = ref.watch(
+      _learningDaysProvider((
+        userId: ownerUid ?? user.ownerUid,
+        childId: child.id,
+      )),
     );
-  }
+    final learningDays = daysAsync.value ?? 0;
+    final avgSeconds = learningDays > 0
+        ? child.totalLearningSeconds ~/ learningDays
+        : 0;
+    final avgMinutes = avgSeconds ~/ 60;
+    final avgLabel = learningDays > 0 ? '${avgMinutes}min' : '-';
 
-  /// Zählt unique Lerntage = Anzahl Dokumente in learning_stats-Subcollection.
-  Future<int> _countLearningDays(String userId, String childId) async {
-    try {
-      final snap = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(userId)
-          .collection('children')
-          .doc(childId)
-          .collection('learning_stats')
-          .count()
-          .get();
-      return snap.count ?? 0;
-    } catch (e) {
-      return 0;
-    }
+    return Row(
+      children: [
+        Expanded(
+          child: InfoTile(
+            icon: Icons.today,
+            label: 'Ø pro Lerntag',
+            value: avgLabel,
+            color: _kBrandSoft,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: InfoTile(
+            icon: Icons.calendar_today,
+            label: 'Lerntage',
+            value: daysAsync.hasValue ? '$learningDays' : '…',
+            color: _kBrandSoft,
+          ),
+        ),
+      ],
+    );
   }
 }
 
@@ -904,10 +945,16 @@ class _SubjectsBreakdownCard extends ConsumerWidget {
     final user = ref.watch(authStateChangesProvider).value;
     if (user == null) return const SizedBox.shrink();
 
-    return FutureBuilder<Map<String, int>>(
-      future: _aggregateSubjectSeconds(ownerUid ?? user.ownerUid, child.id),
-      builder: (context, snapshot) {
-        final data = snapshot.data ?? <String, int>{};
+    final dataAsync = ref.watch(
+      _subjectSecondsProvider((
+        userId: ownerUid ?? user.ownerUid,
+        childId: child.id,
+      )),
+    );
+
+    return Builder(
+      builder: (context) {
+        final data = dataAsync.value ?? <String, int>{};
         final totalSeconds = data.values.fold<int>(0, (a, b) => a + b);
 
         return Card(
@@ -935,11 +982,11 @@ class _SubjectsBreakdownCard extends ConsumerWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Lernzeit pro Fach',
+                  'Lernzeit pro Fach (letzte $_subjectDays Lerntage)',
                   style: TextStyle(fontSize: 13, color: Colors.grey[600]),
                 ),
                 const SizedBox(height: 16),
-                if (snapshot.connectionState == ConnectionState.waiting)
+                if (!dataAsync.hasValue)
                   const Center(child: CircularProgressIndicator())
                 else if (data.isEmpty || totalSeconds == 0)
                   _buildEmptyState()
@@ -958,7 +1005,7 @@ class _SubjectsBreakdownCard extends ConsumerWidget {
       padding: const EdgeInsets.symmetric(vertical: 16),
       child: Row(
         children: [
-          Icon(Icons.info_outline, color: Colors.grey[400], size: 20),
+          Icon(Icons.info_outline, color: Colors.grey[600], size: 20),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
@@ -1012,7 +1059,7 @@ class _SubjectsBreakdownCard extends ConsumerWidget {
                   const SizedBox(width: 6),
                   Text(
                     '(${(pct * 100).round()}%)',
-                    style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                    style: TextStyle(fontSize: 12, color: Colors.grey[700]),
                   ),
                 ],
               ),
@@ -1031,39 +1078,6 @@ class _SubjectsBreakdownCard extends ConsumerWidget {
         );
       }).toList(),
     );
-  }
-
-  /// Aggregiert pro-Fach-Sekunden über alle learning_stats-Dokumente.
-  /// Komplexität: O(n) mit n = Anzahl Lerntage.
-  Future<Map<String, int>> _aggregateSubjectSeconds(
-    String userId,
-    String childId,
-  ) async {
-    try {
-      final snap = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(userId)
-          .collection('children')
-          .doc(childId)
-          .collection('learning_stats')
-          .get();
-
-      final agg = <String, int>{};
-      for (final doc in snap.docs) {
-        final data = doc.data();
-        final subjects = data['subjects'];
-        if (subjects is Map) {
-          for (final entry in subjects.entries) {
-            final name = entry.key.toString();
-            final sec = (entry.value is num) ? (entry.value as num).toInt() : 0;
-            agg[name] = (agg[name] ?? 0) + sec;
-          }
-        }
-      }
-      return agg;
-    } catch (e) {
-      return {};
-    }
   }
 
   /// Konsistente Farbe pro Fach (anstatt Random).

@@ -242,6 +242,40 @@ class RewardManageCard extends StatelessWidget {
                   ),
                 ),
 
+                // Sterne werden nicht mehr vergeben → Bedingung löst nie aus
+                if (!isClaimed && reward.trigger == RewardTrigger.stars) ...[
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.shade50,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.orange.shade200),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.warning_amber_rounded,
+                          color: Colors.orange.shade900,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Sterne gibt es nicht mehr, diese Belohnung wird '
+                            'so nie freigeschaltet. Bitte über „Bearbeiten“ '
+                            'eine andere Bedingung wählen.',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.orange.shade900,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+
                 // Status Info + Aushändigen-Button
                 if (isClaimed) ...[
                   const SizedBox(height: 12),
@@ -301,14 +335,14 @@ class RewardManageCard extends StatelessWidget {
                         Icon(
                           Icons.check_circle,
                           size: 14,
-                          color: Colors.grey[400],
+                          color: Colors.grey[600],
                         ),
                         const SizedBox(width: 6),
                         Text(
                           'Ausgehändigt am ${_formatDate(reward.claimedAt!)}',
                           style: TextStyle(
                             fontSize: 12,
-                            color: Colors.grey[500],
+                            color: Colors.grey[700],
                             fontStyle: FontStyle.italic,
                           ),
                         ),

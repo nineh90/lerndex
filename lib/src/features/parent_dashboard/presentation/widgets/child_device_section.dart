@@ -131,7 +131,12 @@ class ChildDeviceSection extends ConsumerWidget {
       );
     } catch (e) {
       messenger.showSnackBar(
-        SnackBar(content: Text('Abmelden hat nicht geklappt: $e')),
+        const SnackBar(
+          content: Text(
+            'Abmelden hat nicht geklappt. '
+            'Bitte prüfe die Internetverbindung.',
+          ),
+        ),
       );
     }
   }
@@ -180,7 +185,11 @@ class _PairingCodeDialogState extends ConsumerState<PairingCodeDialog> {
       if (mounted) setState(() => _code = code);
     } catch (e) {
       if (mounted) {
-        setState(() => _error = 'Code konnte nicht erstellt werden: $e');
+        setState(
+          () => _error =
+              'Der Code konnte nicht erstellt werden. '
+              'Bitte prüfe die Internetverbindung.',
+        );
       }
     }
   }
@@ -197,7 +206,7 @@ class _PairingCodeDialogState extends ConsumerState<PairingCodeDialog> {
       content: SizedBox(
         width: 300,
         child: _error != null
-            ? Text(_error!, style: const TextStyle(color: Colors.red))
+            ? Text(_error!, style: const TextStyle(color: Color(0xFFD32F2F)))
             : code == null
             ? const SizedBox(
                 height: 200,

@@ -78,7 +78,11 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
     engine.onRewardsUnlocked = (rewards) => _handleRewards(rewards);
     engine.onStreakUpdated = (streak) => _handleStreak(streak);
 
-    await engine.start(userId: user.ownerUid, child: child, subject: widget.subject);
+    await engine.start(
+      userId: user.ownerUid,
+      child: child,
+      subject: widget.subject,
+    );
   }
 
   // ── Engine-Callbacks ───────────────────────────────────────────────────────
@@ -147,7 +151,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
         await showDialog(
           context: context,
           builder: (_) => AlertDialog(
-            title: const Text('🎉 Level Up!'),
+            title: const Text('🎉 Neues Level!'),
             content: Text('Du hast Level $newLevel erreicht!'),
             actions: [
               TextButton(
@@ -246,7 +250,12 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
 
   /// Gibt die Fachfarbe zurück. Für Klasse 5+ wird zusätzlich das
   /// DashboardTheme berücksichtigt (primary-Farbe des gewählten Themes).
-  Color _getSubjectColor() {
+  /// Fachfarbe für Flächen mit weißer Schrift (AppBar, Kopfzeile).
+  /// Wird so weit abgedunkelt, dass Weiß darauf mindestens 4,5:1 Kontrast
+  /// hat – die hellen Fachfarben (Grün, Blau, Rot) lagen bei etwa 3:1.
+  Color _getSubjectColor() => readableOnWhiteText(_baseSubjectColor());
+
+  Color _baseSubjectColor() {
     final child = ref.read(activeChildProvider);
     final user = ref.read(authStateChangesProvider).value;
 
@@ -258,24 +267,24 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
       return themeState.theme.primary;
     }
 
-    // Klasse 3-4: klassische Fachfarben
+    // Klasse 3-4: klassische Fachfarben (dunkle Töne)
     switch (widget.subject.toLowerCase()) {
       case 'mathe':
         return Colors.deepPurple;
       case 'deutsch':
-        return Colors.redAccent;
+        return Colors.red.shade700;
       case 'englisch':
-        return Colors.blue;
+        return Colors.blue.shade800;
       case 'sachkunde':
-        return Colors.green;
+        return Colors.green.shade800;
       case 'biologie':
-        return const Color(0xFF26A69A);
+        return const Color(0xFF00796B);
       case 'chemie':
-        return const Color(0xFFAB47BC);
+        return const Color(0xFF8E24AA);
       case 'physik':
-        return const Color(0xFF5C6BC0);
+        return const Color(0xFF3949AB);
       case 'geschichte':
-        return const Color(0xFF8D6E63);
+        return const Color(0xFF6D4C41);
       default:
         return Colors.deepPurple;
     }
@@ -458,11 +467,23 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              Text(
-                '${quizState.correctAnswers} richtig',
-                style: const TextStyle(
-                  color: Colors.amber,
-                  fontWeight: FontWeight.bold,
+              // Heller Chip mit dunkler Schrift statt Gelb auf Fachfarbe
+              // (Kontrast war nur 1,7–2:1)
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  '${quizState.correctAnswers} richtig',
+                  style: TextStyle(
+                    color: _getSubjectColor(),
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
             ],
@@ -538,8 +559,8 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
       animation: _feedbackController,
       builder: (context, child) {
         return Container(
-          color: (wasCorrect ? Colors.green : Colors.red).withValues(alpha: 
-            _fadeAnimation.value * 0.9,
+          color: (wasCorrect ? Colors.green : Colors.red).withValues(
+            alpha: _fadeAnimation.value * 0.9,
           ),
           child: Center(
             child: Transform.scale(
@@ -813,10 +834,11 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
                                   const SizedBox(width: 6),
                                   Text(
                                     '+$earnedXP XP',
-                                    style: TextStyle(
+                                    style: const TextStyle(
                                       fontSize: 18,
                                       fontWeight: FontWeight.bold,
-                                      color: Colors.amber[700],
+                                      // dunkles Bernstein, auf Weiß lesbar
+                                      color: Color(0xFFB45309),
                                     ),
                                   ),
                                 ],
@@ -1200,4 +1222,16 @@ class _WrongQuestionTileState extends ConsumerState<_WrongQuestionTile> {
       ],
     );
   }
+}
+
+/// Dunkelt [color] ab, bis weiße Schrift darauf mindestens 4,5:1 Kontrast
+/// hat (WCAG AA für normalen Text).
+@visibleForTesting
+Color readableOnWhiteText(Color color) {
+  double contrast(Color c) => 1.05 / (c.computeLuminance() + 0.05);
+  var result = color;
+  for (var i = 0; i < 20 && contrast(result) < 4.5; i++) {
+    result = Color.lerp(result, Colors.black, 0.1)!;
+  }
+  return result;
 }

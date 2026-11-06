@@ -20,6 +20,11 @@ class RewardModel {
   baselineXP; // XP-Stand zum Zeitpunkt der Erstellung (für relative XP-Ziele)
   final String? avatarUnlockId; // Welcher Avatar freigeschaltet wird
   final int? bonusXP; // Bonus-XP die automatisch vergeben werden
+  final String? badgeId; // Abzeichen einer Systembelohnung
+
+  /// Von den Eltern zurückgezogen: bleibt gesperrt, auch wenn die Bedingung
+  /// erfüllt ist, bis die Eltern sie wieder freigeben.
+  final bool withdrawn;
 
   final RewardStatus status;
   final String reward; // Was das Kind bekommt
@@ -45,6 +50,8 @@ class RewardModel {
     this.baselineXP,
     this.avatarUnlockId,
     this.bonusXP,
+    this.badgeId,
+    this.withdrawn = false,
     required this.status,
     required this.reward,
     required this.createdAt,
@@ -73,6 +80,8 @@ class RewardModel {
       baselineXP: data['baselineXP'],
       avatarUnlockId: data['avatarUnlockId'],
       bonusXP: data['bonusXP'],
+      badgeId: data['badgeId'],
+      withdrawn: data['withdrawn'] == true,
       status: RewardStatusExtension.fromFirestore(data['status'] ?? 'pending'),
       reward: data['reward'] ?? '',
       createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
@@ -99,6 +108,8 @@ class RewardModel {
       if (baselineXP != null) 'baselineXP': baselineXP,
       if (avatarUnlockId != null) 'avatarUnlockId': avatarUnlockId,
       if (bonusXP != null) 'bonusXP': bonusXP,
+      if (badgeId != null) 'badgeId': badgeId,
+      if (withdrawn) 'withdrawn': true,
       'status': status.toFirestore(),
       'reward': reward,
       'createdAt': Timestamp.fromDate(createdAt),
@@ -125,6 +136,8 @@ class RewardModel {
     int? baselineXP,
     String? avatarUnlockId,
     int? bonusXP,
+    String? badgeId,
+    bool? withdrawn,
     RewardStatus? status,
     String? reward,
     DateTime? createdAt,
@@ -148,6 +161,8 @@ class RewardModel {
       baselineXP: baselineXP ?? this.baselineXP,
       avatarUnlockId: avatarUnlockId ?? this.avatarUnlockId,
       bonusXP: bonusXP ?? this.bonusXP,
+      badgeId: badgeId ?? this.badgeId,
+      withdrawn: withdrawn ?? this.withdrawn,
       status: status ?? this.status,
       reward: reward ?? this.reward,
       createdAt: createdAt ?? this.createdAt,
@@ -197,7 +212,8 @@ class RewardModel {
       case RewardTrigger.xp:
         return '$requiredXP XP sammeln';
       case RewardTrigger.stars:
-        return '$requiredStars ⭐ Sterne sammeln';
+        // Sterne werden nicht mehr vergeben – diese Bedingung löst nie aus.
+        return '$requiredStars ⭐ Sterne (gibt es nicht mehr)';
       case RewardTrigger.streak:
         return '$requiredStreak Tage am Stück lernen';
       case RewardTrigger.quizCount:

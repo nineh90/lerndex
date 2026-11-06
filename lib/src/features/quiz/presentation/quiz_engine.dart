@@ -114,6 +114,11 @@ class QuizEngine extends StateNotifier<QuizState> {
         questionCount: questionCount,
       );
 
+      // Das Laden kann dauern (KI-Fragen). Hat das Kind den Quiz-Screen
+      // inzwischen verlassen, ist die autoDispose-Engine schon entsorgt –
+      // `state =` würde dann eine Ausnahme werfen.
+      if (!mounted) return;
+
       if (questions.isEmpty) {
         state = const QuizState(
           phase: QuizPhase.error,
@@ -130,6 +135,7 @@ class QuizEngine extends StateNotifier<QuizState> {
       );
     } catch (e) {
       debugPrint('❌ QuizEngine.start Fehler: $e');
+      if (!mounted) return;
       state = const QuizState(
         phase: QuizPhase.error,
         errorMessage: 'Fragen konnten nicht geladen werden.',

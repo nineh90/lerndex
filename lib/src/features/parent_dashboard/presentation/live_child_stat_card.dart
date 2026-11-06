@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -63,7 +65,9 @@ final claimedRewardsCountProvider = StreamProvider.family<int, String>((
       );
 });
 
-/// Provider der prüft ob ein Kind gerade aktiv lernt.
+/// Provider der prüft ob ein Kind gerade aktiv lernt (letzte Aktivität
+/// vor weniger als 5 Minuten). Wird alle 30 Sekunden neu bewertet, sonst
+/// bliebe „LIVE“ stehen, bis zufällig ein neuer Snapshot kommt.
 final childOnlineStatusProvider = StreamProvider.family<bool, String>((
   ref,
   childId,
@@ -71,21 +75,39 @@ final childOnlineStatusProvider = StreamProvider.family<bool, String>((
   final user = ref.watch(authStateChangesProvider).value;
   if (user == null) return Stream.value(false);
 
-  return FirebaseFirestore.instance
+  DateTime? lastActiveAt;
+  final controller = StreamController<bool>();
+  void emit() {
+    if (controller.isClosed) return;
+    final last = lastActiveAt;
+    controller.add(
+      last != null && DateTime.now().difference(last) < _onlineWindow,
+    );
+  }
+
+  final sub = FirebaseFirestore.instance
       .collection('users')
       .doc(user.ownerUid)
       .collection('children')
       .doc(childId)
       .snapshots()
-      .map((snapshot) {
-        if (!snapshot.exists) return false;
-        final data = snapshot.data();
-        if (data == null) return false;
-        final lastActiveAt = (data['lastActiveAt'] as Timestamp?)?.toDate();
-        if (lastActiveAt == null) return false;
-        return DateTime.now().difference(lastActiveAt).inMinutes < 5;
-      });
+      .listen((snapshot) {
+        lastActiveAt = (snapshot.data()?['lastActiveAt'] as Timestamp?)
+            ?.toDate();
+        emit();
+      }, onError: controller.addError);
+  final timer = Timer.periodic(const Duration(seconds: 30), (_) => emit());
+
+  ref.onDispose(() {
+    timer.cancel();
+    sub.cancel();
+    controller.close();
+  });
+
+  return controller.stream.distinct();
 });
+
+const _onlineWindow = Duration(minutes: 5);
 
 // =============================================================================
 // WIDGET
@@ -102,12 +124,13 @@ class LiveChildStatCard extends ConsumerWidget {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
+        scrollable: true,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Row(
           children: [
             Icon(Icons.warning_amber_rounded, color: Colors.red, size: 28),
             SizedBox(width: 8),
-            Text('Kind löschen'),
+            Expanded(child: Text('Kind löschen')),
           ],
         ),
         content: Column(
@@ -152,8 +175,11 @@ class LiveChildStatCard extends ConsumerWidget {
               } catch (e) {
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Fehler beim Löschen: $e'),
+                    const SnackBar(
+                      content: Text(
+                        'Das Kind konnte nicht gelöscht werden. '
+                        'Bitte prüfe die Internetverbindung.',
+                      ),
                       backgroundColor: Colors.red,
                     ),
                   );
@@ -186,10 +212,13 @@ class LiveChildStatCard extends ConsumerWidget {
           child: Center(child: CircularProgressIndicator()),
         ),
       ),
-      error: (e, _) => Card(
+      error: (e, _) => const Card(
         child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Text('Fehler: $e'),
+          padding: EdgeInsets.all(16),
+          child: Text(
+            'Die Daten dieses Kindes konnten nicht geladen werden. '
+            'Bitte prüfe die Internetverbindung.',
+          ),
         ),
       ),
       data: (child) {

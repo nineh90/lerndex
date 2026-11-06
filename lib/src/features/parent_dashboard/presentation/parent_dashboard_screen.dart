@@ -56,6 +56,7 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
+          tooltip: 'Zurück',
           icon: const Icon(Icons.arrow_back_ios),
           onPressed: () => Navigator.of(context).pop(),
         ),
@@ -70,9 +71,7 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
               icon: const Icon(Icons.school),
               onPressed: () => Navigator.push(
                 context,
-                MaterialPageRoute(
-                  builder: (_) => schoolScreenFor(m),
-                ),
+                MaterialPageRoute(builder: (_) => schoolScreenFor(m)),
               ),
             ),
         ],
@@ -99,7 +98,7 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
                       const SizedBox(height: 8),
                       Text(
                         'Tippe unten auf „Kind hinzufügen"',
-                        style: TextStyle(fontSize: 14, color: Colors.grey[400]),
+                        style: TextStyle(fontSize: 14, color: Colors.grey[700]),
                       ),
                       const SizedBox(height: 24),
                       const LinkedSchoolChildrenSection(),
@@ -135,7 +134,16 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
               );
             },
             loading: () => const Center(child: CircularProgressIndicator()),
-            error: (e, st) => Center(child: Text('Fehler: $e')),
+            error: (e, st) => const Center(
+              child: Padding(
+                padding: EdgeInsets.all(24),
+                child: Text(
+                  'Die Kinder konnten nicht geladen werden. '
+                  'Bitte prüfe die Internetverbindung.',
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ),
           ),
 
           // ── Tutorial Overlay ───────────────────────────────────────
@@ -275,7 +283,7 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
                 DropdownButtonFormField<int>(
                   initialValue: selectedGrade,
                   decoration: const InputDecoration(labelText: 'Klasse'),
-                  items: List.generate(8, (i) => i + 1)
+                  items: List.generate(10, (i) => i + 1)
                       .map(
                         (g) => DropdownMenuItem(
                           value: g,
@@ -396,10 +404,14 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
                     } else {
                       if (screenContext.mounted) {
                         ScaffoldMessenger.of(screenContext).showSnackBar(
-                          SnackBar(
-                            content: Text('❌ Fehler: $e'),
+                          const SnackBar(
+                            content: Text(
+                              'Das Kind konnte nicht angelegt werden. '
+                              'Bitte prüfe die Internetverbindung und '
+                              'versuche es noch einmal.',
+                            ),
                             backgroundColor: Colors.red,
-                            duration: const Duration(seconds: 5),
+                            duration: Duration(seconds: 5),
                           ),
                         );
                       }
@@ -535,10 +547,13 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
         Navigator.pop(screenContext); // Loading schließen
         if (!e.toString().contains('abgebrochen')) {
           ScaffoldMessenger.of(screenContext).showSnackBar(
-            SnackBar(
-              content: Text('❌ $e'),
+            const SnackBar(
+              content: Text(
+                'Der Kauf hat nicht geklappt. '
+                'Bitte versuche es später noch einmal.',
+              ),
               backgroundColor: Colors.red,
-              duration: const Duration(seconds: 5),
+              duration: Duration(seconds: 5),
             ),
           );
         }

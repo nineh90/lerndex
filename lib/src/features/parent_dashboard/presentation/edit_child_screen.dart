@@ -38,7 +38,7 @@ class _EditChildScreenState extends ConsumerState<EditChildScreen> {
     _nameController = TextEditingController(text: widget.child.name);
     // Alter auf gültigen Bereich 6-16 klemmen
     _selectedAge = widget.child.age.clamp(6, 16);
-    _selectedGrade = widget.child.grade.clamp(1, 8);
+    _selectedGrade = widget.child.grade.clamp(1, 10);
     _selectedSchoolType = widget.child.schoolType;
     _hiddenSubjects = widget.child.hiddenSubjects.toSet();
   }
@@ -79,10 +79,13 @@ class _EditChildScreenState extends ConsumerState<EditChildScreen> {
       if (mounted) {
         setState(() => _isSaving = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('❌ Fehler beim Speichern: $e'),
+          const SnackBar(
+            content: Text(
+              'Die Änderungen konnten nicht gespeichert werden. '
+              'Bitte prüfe die Internetverbindung und versuche es noch einmal.',
+            ),
             backgroundColor: Colors.red,
-            duration: const Duration(seconds: 5),
+            duration: Duration(seconds: 5),
           ),
         );
       }
@@ -229,7 +232,7 @@ class _EditChildScreenState extends ConsumerState<EditChildScreen> {
                   hint: '',
                   icon: Icons.class_outlined,
                 ),
-                items: List.generate(8, (i) => i + 1)
+                items: List.generate(10, (i) => i + 1)
                     .map(
                       (g) =>
                           DropdownMenuItem(value: g, child: Text('Klasse $g')),
@@ -242,10 +245,7 @@ class _EditChildScreenState extends ConsumerState<EditChildScreen> {
               const SizedBox(height: 32),
 
               // ── Fächer ein-/ausblenden ────────────────────────────────────
-              const _SectionHeader(
-                icon: Icons.tune,
-                title: 'Sichtbare Fächer',
-              ),
+              const _SectionHeader(icon: Icons.tune, title: 'Sichtbare Fächer'),
               const SizedBox(height: 8),
               Text(
                 'Schalte einzelne Fächer für ${widget.child.name} aus, '
@@ -302,7 +302,7 @@ class _EditChildScreenState extends ConsumerState<EditChildScreen> {
                   'Lernfortschritte (XP, Sterne, Level) bleiben erhalten.',
                   style: TextStyle(
                     fontSize: 12,
-                    color: Colors.grey[500],
+                    color: Colors.grey[700],
                     fontStyle: FontStyle.italic,
                   ),
                   textAlign: TextAlign.center,
@@ -378,10 +378,7 @@ class _EditChildScreenState extends ConsumerState<EditChildScreen> {
               });
             },
             activeThumbColor: Colors.deepPurple,
-            secondary: Text(
-              s.emoji,
-              style: const TextStyle(fontSize: 24),
-            ),
+            secondary: Text(s.emoji, style: const TextStyle(fontSize: 24)),
             title: Text(
               s.title,
               style: const TextStyle(fontWeight: FontWeight.w600),

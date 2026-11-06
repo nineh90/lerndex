@@ -14,17 +14,112 @@ class RewardService {
   RewardService(this._firestore);
 
   /// Lazy XPService – vermeidet wiederholte Instanziierung.
-  /// ⚠️ FIX: Vorher stand hier `_xpService ??= _xp` was zu einer endlosen
-  /// Rekursion (StackOverflowError) führte, sobald `addXP` oder `getChild`
-  /// aufgerufen wurde. Das hatte zur Folge, dass `checkAndApproveRewards`
-  /// stillschweigend gefangen wurde und Eltern-Belohnungen mit Trigger
-  /// (Level/XP/Streak) nie auf 'approved' gesetzt wurden — wodurch sie für
-  /// das Kind unsichtbar blieben.
   XPService? _xpService;
   XPService get _xp => _xpService ??= XPService(_firestore);
 
-  /// Erstellt eine System-Belohnung (automatisch approved)
-  Future<RewardModel> createSystemReward({
+  /// Feld am Kind-Dokument: IDs der Belohnungen, deren Bonus-XP schon
+  /// gutgeschrieben wurden. Liegt am Kind (nicht an der Belohnung), weil das
+  /// Kindergerät an Belohnungen nur Status-Felder ändern darf. So gibt es die
+  /// Bonus-XP pro Belohnung nur einmal – auch wenn Eltern sie zurückziehen
+  /// und wieder freigeben oder die Bedingung ändern.
+  static const grantedBonusField = 'grantedBonusRewardIds';
+
+  /// Feste Dokument-ID der Level-Belohnung (wie im SystemRewardsInitializer)
+  static String levelRewardId(int level) => 'sys_level_$level';
+
+  /// Feste Dokument-ID der Belohnung für ein perfektes Quiz
+  static const perfectQuizRewardId = 'sys_perfect_quiz';
+
+  DocumentReference<Map<String, dynamic>> _childRef(
+    String userId,
+    String childId,
+  ) => _firestore
+      .collection('users')
+      .doc(userId)
+      .collection('children')
+      .doc(childId);
+
+  CollectionReference<Map<String, dynamic>> _rewardsCol(
+    String userId,
+    String childId,
+  ) => _childRef(userId, childId).collection('rewards');
+
+  /// Bonus-XP (einmalig) und Avatar einer gerade freigeschalteten Belohnung
+  /// in derselben Transaktion ans Kind schreiben. Gibt zurück, ob Bonus-XP
+  /// gutgeschrieben wurden.
+  bool _applyRewardToChild(
+    Transaction tx,
+    DocumentSnapshot<Map<String, dynamic>> childSnap,
+    RewardModel reward,
+  ) {
+    final childData = childSnap.data();
+    if (childData == null) return false;
+
+    final updates = <String, dynamic>{};
+    var bonusGiven = false;
+
+    final bonus = reward.bonusXP ?? 0;
+    final granted = List<String>.from(
+      childData[grantedBonusField] as List? ?? const [],
+    );
+    if (bonus > 0 && !granted.contains(reward.id)) {
+      updates.addAll(XPService.xpGainFields(childData, bonus).fields);
+      updates[grantedBonusField] = FieldValue.arrayUnion([reward.id]);
+      bonusGiven = true;
+    }
+
+    if (reward.avatarUnlockId != null) {
+      updates['unlockedAvatars'] = FieldValue.arrayUnion([
+        reward.avatarUnlockId!,
+      ]);
+    }
+
+    if (updates.isNotEmpty) tx.update(childSnap.reference, updates);
+    return bonusGiven;
+  }
+
+  /// Schaltet eine Belohnung frei, wenn sie noch `pending` (und nicht von
+  /// den Eltern zurückgezogen) ist – in einer Transaktion, damit zwei Geräte
+  /// gleichzeitig sie nur einmal freischalten. Sonst null.
+  Future<({RewardModel reward, bool bonusGiven})?> _approveIfPending({
+    required String userId,
+    required String childId,
+    required DocumentReference<Map<String, dynamic>> rewardRef,
+  }) {
+    final childRef = _childRef(userId, childId);
+    return _firestore.runTransaction((tx) async {
+      final rewardSnap = await tx.get(rewardRef);
+      final childSnap = await tx.get(childRef);
+      final data = rewardSnap.data();
+      if (data == null) return null;
+
+      final reward = RewardModel.fromFirestore(data, rewardSnap.id);
+      if (reward.status != RewardStatus.pending || reward.withdrawn) {
+        return null;
+      }
+
+      tx.update(rewardRef, {
+        'status': 'approved',
+        'approvedAt': FieldValue.serverTimestamp(),
+      });
+      final bonusGiven = _applyRewardToChild(tx, childSnap, reward);
+
+      return (
+        reward: reward.copyWith(
+          status: RewardStatus.approved,
+          approvedAt: DateTime.now(),
+        ),
+        bonusGiven: bonusGiven,
+      );
+    });
+  }
+
+  /// Erstellt eine System-Belohnung (automatisch approved) und schreibt
+  /// Bonus-XP und Avatar in derselben Transaktion gut.
+  ///
+  /// Mit [docId] (feste ID, z.B. `sys_level_4`) wird nur angelegt, wenn es
+  /// das Dokument noch nicht gibt – sonst null.
+  Future<RewardModel?> createSystemReward({
     required String userId,
     required String childId,
     required String title,
@@ -35,10 +130,15 @@ class RewardService {
     int? bonusXP,
     String? avatarUnlockId,
     String? badgeId,
+    String? docId,
   }) async {
     try {
+      final col = _rewardsCol(userId, childId);
+      final ref = docId != null ? col.doc(docId) : col.doc();
+      final childRef = _childRef(userId, childId);
+
       final rewardData = RewardModel(
-        id: '',
+        id: ref.id,
         childId: childId,
         title: title,
         description: description,
@@ -47,6 +147,7 @@ class RewardService {
         requiredLevel: requiredLevel,
         bonusXP: bonusXP,
         avatarUnlockId: avatarUnlockId,
+        badgeId: badgeId,
         status: RewardStatus.approved,
         reward: reward,
         createdAt: DateTime.now(),
@@ -54,16 +155,17 @@ class RewardService {
         createdBy: 'system',
       );
 
-      final docRef = await _firestore
-          .collection('users')
-          .doc(userId)
-          .collection('children')
-          .doc(childId)
-          .collection('rewards')
-          .add(rewardData.toFirestore());
+      final created = await _firestore.runTransaction<RewardModel?>((tx) async {
+        final childSnap = await tx.get(childRef);
+        if (docId != null && (await tx.get(ref)).exists) return null;
 
-      debugPrint('✅ System-Belohnung erstellt: $title');
-      return rewardData.copyWith(id: docRef.id);
+        tx.set(ref, rewardData.toFirestore());
+        _applyRewardToChild(tx, childSnap, rewardData);
+        return rewardData;
+      });
+
+      if (created != null) debugPrint('✅ System-Belohnung erstellt: $title');
+      return created;
     } catch (e) {
       debugPrint('❌ Fehler beim Erstellen der System-Belohnung: $e');
       rethrow;
@@ -89,14 +191,10 @@ class RewardService {
       ChildModel currentChild = child;
 
       for (int pass = 0; pass < 2; pass++) {
-        final snapshot = await _firestore
-            .collection('users')
-            .doc(userId)
-            .collection('children')
-            .doc(currentChild.id)
-            .collection('rewards')
-            .where('status', isEqualTo: 'pending')
-            .get();
+        final snapshot = await _rewardsCol(
+          userId,
+          currentChild.id,
+        ).where('status', isEqualTo: 'pending').get();
 
         if (snapshot.docs.isEmpty) break;
 
@@ -104,6 +202,7 @@ class RewardService {
 
         for (var doc in snapshot.docs) {
           final reward = RewardModel.fromFirestore(doc.data(), doc.id);
+          if (reward.withdrawn) continue;
 
           final isTriggered = reward.isTriggeredBy(
             currentLevel: currentChild.level,
@@ -113,57 +212,24 @@ class RewardService {
             currentQuizCount: currentChild.totalQuizzes ?? 0,
             isPerfectQuiz: isPerfectQuiz && pass == 0,
           );
+          if (!isTriggered) continue;
 
-          if (isTriggered) {
-            await doc.reference.update({
-              'status': 'approved',
-              'approvedAt': FieldValue.serverTimestamp(),
-            });
+          try {
+            final result = await _approveIfPending(
+              userId: userId,
+              childId: currentChild.id,
+              rewardRef: doc.reference,
+            );
+            if (result == null) continue; // anderes Gerät war schneller
 
             debugPrint('✅ Belohnung freigeschaltet: ${reward.title}');
-
-            // ⚡ Bonus-XP automatisch vergeben
-            if (reward.bonusXP != null && reward.bonusXP! > 0) {
-              try {
-                await _xp.addXP(
-                  userId: userId,
-                  childId: currentChild.id,
-                  xpToAdd: reward.bonusXP!,
-                );
-                debugPrint('⚡ +${reward.bonusXP} Bonus-XP vergeben');
-                bonusXpAwarded = true;
-              } catch (e) {
-                debugPrint('❌ Fehler beim Vergeben von Bonus-XP: $e');
-              }
+            if (result.bonusGiven) {
+              debugPrint('⚡ +${reward.bonusXP} Bonus-XP vergeben');
+              bonusXpAwarded = true;
             }
-
-            // 🎭 Avatar automatisch freischalten
-            if (reward.avatarUnlockId != null) {
-              try {
-                await _firestore
-                    .collection('users')
-                    .doc(userId)
-                    .collection('children')
-                    .doc(currentChild.id)
-                    .update({
-                      'unlockedAvatars': FieldValue.arrayUnion([
-                        reward.avatarUnlockId!,
-                      ]),
-                    });
-                debugPrint(
-                  '🎭 Avatar freigeschaltet: ${reward.avatarUnlockId}',
-                );
-              } catch (e) {
-                debugPrint('❌ Fehler beim Freischalten des Avatars: $e');
-              }
-            }
-
-            allApproved.add(
-              reward.copyWith(
-                status: RewardStatus.approved,
-                approvedAt: DateTime.now(),
-              ),
-            );
+            allApproved.add(result.reward);
+          } catch (e) {
+            debugPrint('❌ Fehler beim Freischalten von ${reward.title}: $e');
           }
         }
 
@@ -191,80 +257,79 @@ class RewardService {
     }
   }
 
+  /// Systembelohnung mit fester ID freischalten oder – wenn es sie noch
+  /// nicht gibt – anlegen. Ältere Kinder haben Systembelohnungen mit
+  /// zufälliger ID; die findet [legacyQuery] (davon zählen nur
+  /// Systembelohnungen, auch wenn die Eltern sie bearbeitet haben).
+  Future<RewardModel?> _approveOrCreateSystemReward({
+    required String userId,
+    required String childId,
+    required String docId,
+    required Query<Map<String, dynamic>> legacyQuery,
+    required Future<RewardModel?> Function() create,
+  }) async {
+    final fixedRef = _rewardsCol(userId, childId).doc(docId);
+    final fixedSnap = await fixedRef.get();
+
+    DocumentReference<Map<String, dynamic>>? existingRef;
+    if (fixedSnap.exists) {
+      existingRef = fixedRef;
+    } else {
+      final legacy = await legacyQuery.get();
+      for (final doc in legacy.docs) {
+        final data = doc.data();
+        if (data['type'] == 'system' || data['createdBy'] == 'system') {
+          existingRef = doc.reference;
+          break;
+        }
+      }
+    }
+
+    if (existingRef != null) {
+      final result = await _approveIfPending(
+        userId: userId,
+        childId: childId,
+        rewardRef: existingRef,
+      );
+      return result?.reward;
+    }
+
+    return create();
+  }
+
   /// Schaltet die Level-Up-Belohnung für ein bestimmtes Level frei.
   ///
   /// • Existiert bereits ein `pending`-Reward → wird direkt approved + zurückgegeben.
   /// • Existiert bereits ein `approved`/`claimed`-Reward → kein Duplikat, null.
   /// • Existiert noch keiner → neuer Reward wird erstellt (Fallback für nicht
   ///   vordefinierte Level wie 4, 6, 8 …).
+  /// Bonus-XP gibt es in jedem Fall nur einmal.
   Future<RewardModel?> createLevelUpReward({
     required String userId,
     required String childId,
     required int level,
   }) async {
     try {
-      final snapshot = await _firestore
-          .collection('users')
-          .doc(userId)
-          .collection('children')
-          .doc(childId)
-          .collection('rewards')
-          .where('type', isEqualTo: 'system')
-          .where('trigger', isEqualTo: 'level')
-          .where('requiredLevel', isEqualTo: level)
-          .limit(1)
-          .get();
-
-      if (snapshot.docs.isNotEmpty) {
-        final doc = snapshot.docs.first;
-        final existing = RewardModel.fromFirestore(doc.data(), doc.id);
-
-        // Bereits approved oder claimed → nichts tun
-        if (existing.status != RewardStatus.pending) {
-          debugPrint('ℹ️ Level-$level-Belohnung bereits freigeschaltet');
-          return null;
-        }
-
-        // Pending → jetzt approven + Bonus-XP vergeben
-        await doc.reference.update({
-          'status': 'approved',
-          'approvedAt': FieldValue.serverTimestamp(),
-        });
-
-        if (existing.bonusXP != null && existing.bonusXP! > 0) {
-          try {
-            await _xp.addXP(
-              userId: userId,
-              childId: childId,
-              xpToAdd: existing.bonusXP!,
-            );
-            debugPrint(
-              '⚡ +${existing.bonusXP} Bonus-XP für Level $level vergeben',
-            );
-          } catch (e) {
-            debugPrint('❌ Fehler beim Vergeben von Bonus-XP: $e');
-          }
-        }
-
-        debugPrint('✅ Level-$level-Belohnung aus pending approved');
-        return existing.copyWith(
-          status: RewardStatus.approved,
-          approvedAt: DateTime.now(),
-        );
-      }
-
-      // Kein Reward vorhanden → dynamisch erstellen (z.B. Level 4, 6, 8 …)
       final xpBonus = _getLevelUpBonusXP(level);
-      return await createSystemReward(
+      return await _approveOrCreateSystemReward(
         userId: userId,
         childId: childId,
-        title: '🎉 Level $level erreicht!',
-        description: 'Du hast Level $level geschafft – weiter so!',
-        reward: '+$xpBonus Bonus-XP',
-        trigger: RewardTrigger.level,
-        requiredLevel: level,
-        bonusXP: xpBonus,
-        badgeId: 'badge-level-$level',
+        docId: levelRewardId(level),
+        legacyQuery: _rewardsCol(userId, childId)
+            .where('trigger', isEqualTo: 'level')
+            .where('requiredLevel', isEqualTo: level),
+        create: () => createSystemReward(
+          userId: userId,
+          childId: childId,
+          title: '🎉 Level $level erreicht!',
+          description: 'Du hast Level $level geschafft – weiter so!',
+          reward: '+$xpBonus Bonus-XP',
+          trigger: RewardTrigger.level,
+          requiredLevel: level,
+          bonusXP: xpBonus,
+          badgeId: 'badge-level-$level',
+          docId: levelRewardId(level),
+        ),
       );
     } catch (e) {
       debugPrint('❌ Fehler beim Freischalten der Level-Up Belohnung: $e');
@@ -272,21 +337,31 @@ class RewardService {
     }
   }
 
-  /// Erstellt eine Perfect-Quiz Systembelohnung (rein digital)
+  /// Schaltet die Perfect-Quiz-Systembelohnung frei (rein digital, einmalig).
   Future<RewardModel?> createPerfectQuizReward({
     required String userId,
     required String childId,
   }) async {
     try {
-      return await createSystemReward(
+      return await _approveOrCreateSystemReward(
         userId: userId,
         childId: childId,
-        title: '⭐ Perfektes Quiz!',
-        description: 'Alle Fragen auf Anhieb richtig beantwortet!',
-        reward: '+40 Bonus-XP & Badge „Perfektionist"',
-        trigger: RewardTrigger.perfectQuiz,
-        bonusXP: 40,
-        badgeId: 'badge-perfect-quiz',
+        docId: perfectQuizRewardId,
+        legacyQuery: _rewardsCol(
+          userId,
+          childId,
+        ).where('trigger', isEqualTo: 'perfect_quiz'),
+        create: () => createSystemReward(
+          userId: userId,
+          childId: childId,
+          title: '⭐ Perfektes Quiz!',
+          description: 'Alle Fragen auf Anhieb richtig beantwortet!',
+          reward: '+40 Bonus-XP & Badge „Perfektionist"',
+          trigger: RewardTrigger.perfectQuiz,
+          bonusXP: 40,
+          badgeId: 'badge-perfect-quiz',
+          docId: perfectQuizRewardId,
+        ),
       );
     } catch (e) {
       debugPrint('❌ Fehler beim Erstellen der Perfect-Quiz Belohnung: $e');
@@ -294,25 +369,27 @@ class RewardService {
     }
   }
 
-  /// Löst eine Eltern-Belohnung ein (setzt parentSeen = false → Eltern werden informiert)
+  /// Löst eine Belohnung ein (setzt parentSeen = false → Eltern werden
+  /// informiert). Nur freigeschaltete (`approved`) Belohnungen sind
+  /// einlösbar, sonst [RewardNotClaimableException].
   Future<void> claimReward({
     required String userId,
     required String childId,
     required String rewardId,
   }) async {
     try {
-      await _firestore
-          .collection('users')
-          .doc(userId)
-          .collection('children')
-          .doc(childId)
-          .collection('rewards')
-          .doc(rewardId)
-          .update({
-            'status': 'claimed',
-            'claimedAt': FieldValue.serverTimestamp(),
-            'parentSeen': false,
-          });
+      final ref = _rewardsCol(userId, childId).doc(rewardId);
+      await _firestore.runTransaction((tx) async {
+        final snap = await tx.get(ref);
+        if (snap.data()?['status'] != 'approved') {
+          throw const RewardNotClaimableException();
+        }
+        tx.update(ref, {
+          'status': 'claimed',
+          'claimedAt': FieldValue.serverTimestamp(),
+          'parentSeen': false,
+        });
+      });
 
       debugPrint('✅ Belohnung eingelöst!');
     } catch (e) {
@@ -327,14 +404,10 @@ class RewardService {
     required String childId,
   }) async {
     try {
-      final snapshot = await _firestore
-          .collection('users')
-          .doc(userId)
-          .collection('children')
-          .doc(childId)
-          .collection('rewards')
-          .where('status', isEqualTo: 'claimed')
-          .get();
+      final snapshot = await _rewardsCol(
+        userId,
+        childId,
+      ).where('status', isEqualTo: 'claimed').get();
 
       final unseen = snapshot.docs
           .where((doc) => doc.data()['parentSeen'] != true)
@@ -359,13 +432,10 @@ class RewardService {
     required String childId,
     RewardStatus? status,
   }) {
-    var query = _firestore
-        .collection('users')
-        .doc(userId)
-        .collection('children')
-        .doc(childId)
-        .collection('rewards')
-        .orderBy('createdAt', descending: true);
+    Query<Map<String, dynamic>> query = _rewardsCol(
+      userId,
+      childId,
+    ).orderBy('createdAt', descending: true);
 
     if (status != null) {
       query = query.where('status', isEqualTo: status.toFirestore());
@@ -436,7 +506,26 @@ class RewardService {
   }
 }
 
+/// Die Belohnung ist (nicht mehr) freigeschaltet, z.B. weil die Eltern sie
+/// zurückgezogen haben oder sie schon eingelöst wurde.
+class RewardNotClaimableException implements Exception {
+  const RewardNotClaimableException();
+
+  @override
+  String toString() => 'Diese Belohnung ist gerade nicht einlösbar.';
+}
+
 /// Provider für Reward Service
 final rewardServiceProvider = Provider<RewardService>((ref) {
   return RewardService(FirebaseFirestore.instance);
 });
+
+/// Belohnungen eines Kindes als Stream, von Riverpod zwischengespeichert:
+/// Widgets bekommen bei jedem build() dieselbe Abfrage statt einer neuen
+/// Anmeldung (kein Flackern, keine doppelten Lesevorgänge).
+final rewardsStreamProvider = StreamProvider.autoDispose
+    .family<List<RewardModel>, ({String userId, String childId})>(
+      (ref, key) => ref
+          .watch(rewardServiceProvider)
+          .getRewardsStream(userId: key.userId, childId: key.childId),
+    );

@@ -5,7 +5,11 @@ import '../data/pin_repository.dart';
 import '../../auth/data/auth_repository.dart';
 import 'package:lerndex/src/features/auth/domain/account.dart';
 
-/// Dialog zum Eingeben des PINs
+/// Dialog zum Eingeben des PINs.
+///
+/// Fehlversuche zählt und sperrt der Server (nach 5 Fehlversuchen für
+/// 5 Minuten, über alle Geräte). Der Dialog zählt deshalb nicht selbst mit,
+/// sondern zeigt die Sperre an, wenn der Server sie meldet.
 class PinInputDialog extends ConsumerStatefulWidget {
   const PinInputDialog({super.key});
 
@@ -17,7 +21,6 @@ class _PinInputDialogState extends ConsumerState<PinInputDialog> {
   final TextEditingController _pinController = TextEditingController();
   bool _isLoading = false;
   String? _errorMessage;
-  int _attempts = 0;
 
   @override
   void dispose() {
@@ -26,10 +29,14 @@ class _PinInputDialogState extends ConsumerState<PinInputDialog> {
   }
 
   Future<void> _verifyPin() async {
+    // Doppeltes Enter oder Tippen während der Prüfung: sonst zählt der
+    // Server zwei Fehlversuche.
+    if (_isLoading) return;
+
     final pin = _pinController.text;
 
     if (pin.length < 4) {
-      setState(() => _errorMessage = 'PIN zu kurz');
+      setState(() => _errorMessage = 'Der PIN hat mindestens 4 Ziffern.');
       return;
     }
 
@@ -38,52 +45,57 @@ class _PinInputDialogState extends ConsumerState<PinInputDialog> {
       _errorMessage = null;
     });
 
+    String? error;
     try {
       final user = ref.read(authStateChangesProvider).value;
-      if (user == null) throw Exception('Nicht eingeloggt');
-
-      final isValid = await ref.read(pinRepositoryProvider).verifyPin(user.ownerUid, pin);
-
-      if (mounted) {
+      if (user == null) {
+        error = 'Du bist nicht mehr angemeldet. Bitte melde dich neu an.';
+      } else {
+        final isValid = await ref
+            .read(pinRepositoryProvider)
+            .verifyPin(user.ownerUid, pin);
+        if (!mounted) return;
         if (isValid) {
           Navigator.of(context).pop(true); // PIN korrekt
-        } else {
-          _attempts++;
-          setState(() {
-            _errorMessage = 'Falscher PIN! (Versuch $_attempts/3)';
-            _isLoading = false;
-          });
-          _pinController.clear();
-
-          if (_attempts >= 3) {
-            Navigator.of(context).pop(false); // Zu viele Versuche
-          }
+          return;
         }
+        error =
+            'Falscher PIN. Nach 5 Fehlversuchen wird der PIN '
+            'für 5 Minuten gesperrt.';
       }
-    } catch (e) {
-      setState(() {
-        _errorMessage = 'Fehler: $e';
-        _isLoading = false;
-      });
+    } on PinLockedException catch (e) {
+      error = e.toString();
+    } catch (_) {
+      error =
+          'Der PIN konnte nicht geprüft werden. '
+          'Bitte prüfe die Internetverbindung.';
     }
+
+    if (!mounted) return;
+    _pinController.clear();
+    setState(() {
+      _errorMessage = error;
+      _isLoading = false;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
+      scrollable: true,
       title: const Row(
         children: [
           Icon(Icons.lock_outline, color: Colors.deepPurple),
           SizedBox(width: 8),
-          Text('Eltern-PIN eingeben'),
+          Expanded(child: Text('Eltern-PIN eingeben')),
         ],
       ),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Text(
+          Text(
             'Gib deinen PIN ein, um das Eltern-Dashboard zu öffnen.',
-            style: TextStyle(color: Colors.grey),
+            style: TextStyle(color: Colors.grey[700]),
           ),
           const SizedBox(height: 20),
 
@@ -95,10 +107,12 @@ class _PinInputDialogState extends ConsumerState<PinInputDialog> {
               prefixIcon: const Icon(Icons.pin),
               border: const OutlineInputBorder(),
               errorText: _errorMessage,
+              errorMaxLines: 3,
             ),
             keyboardType: TextInputType.number,
             obscureText: true,
             maxLength: 6,
+            readOnly: _isLoading,
             inputFormatters: [FilteringTextInputFormatter.digitsOnly],
             autofocus: true,
             onSubmitted: (_) => _verifyPin(),
@@ -118,10 +132,13 @@ class _PinInputDialogState extends ConsumerState<PinInputDialog> {
           ),
           child: _isLoading
               ? const SizedBox(
-            width: 20,
-            height: 20,
-            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-          )
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                )
               : const Text('Entsperren'),
         ),
       ],

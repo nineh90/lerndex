@@ -83,7 +83,7 @@ class _EditRewardDialogState extends ConsumerState<EditRewardDialog> {
       case RewardTrigger.stars:
         return 'Erforderliche Sterne';
       case RewardTrigger.streak:
-        return 'Erforderliche Streak-Tage';
+        return 'Erforderliche Tage am Stück';
       case RewardTrigger.quizCount:
         return 'Erforderliche Quiz-Anzahl';
       default:
@@ -98,7 +98,7 @@ class _EditRewardDialogState extends ConsumerState<EditRewardDialog> {
       case RewardTrigger.xp:
         return 'Aktuell: ${widget.child.xp} XP';
       case RewardTrigger.stars:
-        return 'Aktuell: ${widget.child.stars} Sterne';
+        return 'Sterne werden nicht mehr vergeben';
       case RewardTrigger.streak:
         return 'Aktuell: ${widget.child.streak ?? 0} Tage';
       case RewardTrigger.quizCount:
@@ -210,12 +210,23 @@ class _EditRewardDialogState extends ConsumerState<EditRewardDialog> {
                       .where(
                         (t) =>
                             t != RewardTrigger.manual ||
-                            _selectedTrigger == RewardTrigger.manual,
+                            widget.reward.trigger == RewardTrigger.manual,
+                      )
+                      // Sterne gibt es nicht mehr; nur zeigen, damit eine
+                      // alte Sterne-Belohnung umgestellt werden kann.
+                      .where(
+                        (t) =>
+                            t != RewardTrigger.stars ||
+                            widget.reward.trigger == RewardTrigger.stars,
                       )
                       .map((trigger) {
                         return DropdownMenuItem(
                           value: trigger,
-                          child: Text(trigger.displayName),
+                          child: Text(
+                            trigger == RewardTrigger.stars
+                                ? 'Sterne (gibt es nicht mehr)'
+                                : trigger.displayName,
+                          ),
                         );
                       })
                       .toList(),
@@ -242,6 +253,10 @@ class _EditRewardDialogState extends ConsumerState<EditRewardDialog> {
                     keyboardType: TextInputType.number,
                     inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                     validator: (value) {
+                      if (_selectedTrigger == RewardTrigger.stars) {
+                        return 'Sterne gibt es nicht mehr. '
+                            'Bitte wähle eine andere Bedingung.';
+                      }
                       if (value == null || value.isEmpty) {
                         return 'Bitte Wert eingeben';
                       }
@@ -304,49 +319,15 @@ class _EditRewardDialogState extends ConsumerState<EditRewardDialog> {
     setState(() => _isUpdating = true);
 
     try {
-      // Trigger-Wert-Felder aufbauen
-      final updateData = <String, dynamic>{
-        'title': _titleController.text.trim(),
-        'description': _descriptionController.text.trim(),
-        'reward': _rewardController.text.trim(),
-        'trigger': _selectedTrigger.toFirestore(),
-        // System-Belohnungen werden nach Bearbeitung zu eigenen Belohnungen
-        'type': 'parent',
-        // Status auf pending zurücksetzen wenn Trigger geändert und nicht manual
-        if (_selectedTrigger != RewardTrigger.manual) 'status': 'pending',
-        if (_selectedTrigger == RewardTrigger.manual) 'status': 'approved',
-        if (_selectedTrigger == RewardTrigger.manual)
-          'approvedAt': FieldValue.serverTimestamp(),
-        // Alle trigger-spezifischen Felder löschen/setzen
-        'requiredLevel': FieldValue.delete(),
-        'requiredXP': FieldValue.delete(),
-        'requiredStars': FieldValue.delete(),
-        'requiredStreak': FieldValue.delete(),
-        'requiredQuizCount': FieldValue.delete(),
-      };
-
-      // Aktiven Trigger-Wert setzen
-      if (_triggerValue != null) {
-        switch (_selectedTrigger) {
-          case RewardTrigger.level:
-            updateData['requiredLevel'] = _triggerValue;
-            break;
-          case RewardTrigger.xp:
-            updateData['requiredXP'] = _triggerValue;
-            break;
-          case RewardTrigger.stars:
-            updateData['requiredStars'] = _triggerValue;
-            break;
-          case RewardTrigger.streak:
-            updateData['requiredStreak'] = _triggerValue;
-            break;
-          case RewardTrigger.quizCount:
-            updateData['requiredQuizCount'] = _triggerValue;
-            break;
-          default:
-            break;
-        }
-      }
+      final updateData = buildRewardEditUpdate(
+        original: widget.reward,
+        currentXP: widget.child.xp,
+        title: _titleController.text.trim(),
+        description: _descriptionController.text.trim(),
+        reward: _rewardController.text.trim(),
+        trigger: _selectedTrigger,
+        triggerValue: _triggerValue,
+      );
 
       await FirebaseFirestore.instance
           .collection('users')
@@ -369,7 +350,13 @@ class _EditRewardDialogState extends ConsumerState<EditRewardDialog> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Fehler: $e'), backgroundColor: Colors.red),
+          const SnackBar(
+            content: Text(
+              'Die Belohnung konnte nicht gespeichert werden. '
+              'Bitte prüfe die Internetverbindung und versuche es noch einmal.',
+            ),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     } finally {
@@ -378,4 +365,88 @@ class _EditRewardDialogState extends ConsumerState<EditRewardDialog> {
       }
     }
   }
+}
+
+/// Felder für das Speichern einer bearbeiteten Belohnung.
+///
+/// Status, Bedingung und XP-Startwert ändern sich nur, wenn sich die
+/// Bedingung ändert: Wer nur den Text anpasst, sperrt eine freigeschaltete
+/// oder eingelöste Belohnung nicht wieder. Bei einem neuen XP-Ziel zählt
+/// (wie beim Anlegen) nur, was ab jetzt dazukommt ([currentXP]).
+Map<String, dynamic> buildRewardEditUpdate({
+  required RewardModel original,
+  required int currentXP,
+  required String title,
+  required String description,
+  required String reward,
+  required RewardTrigger trigger,
+  required int? triggerValue,
+}) {
+  final originalValue =
+      original.requiredLevel ??
+      original.requiredXP ??
+      original.requiredStars ??
+      original.requiredStreak ??
+      original.requiredQuizCount;
+  // Status nur zurücksetzen, wenn sich die Bedingung ändert. Sonst würde
+  // jede Textänderung eine freigeschaltete oder eingelöste Belohnung
+  // wieder sperren (und sie neu auslösen).
+  final triggerChanged =
+      trigger != original.trigger ||
+      ((trigger != RewardTrigger.manual &&
+              trigger != RewardTrigger.perfectQuiz) &&
+          triggerValue != originalValue);
+
+  final updateData = <String, dynamic>{
+    'title': title,
+    'description': description,
+    'reward': reward,
+  };
+
+  if (triggerChanged) {
+    updateData.addAll({
+      'trigger': trigger.toFirestore(),
+      if (trigger != RewardTrigger.manual) 'status': 'pending',
+      if (trigger == RewardTrigger.manual) 'status': 'approved',
+      if (trigger == RewardTrigger.manual)
+        'approvedAt': FieldValue.serverTimestamp(),
+      // Neue Bedingung: ein früheres Zurückziehen gilt nicht mehr
+      'withdrawn': FieldValue.delete(),
+      // Alle trigger-spezifischen Felder löschen/setzen
+      'requiredLevel': FieldValue.delete(),
+      'requiredXP': FieldValue.delete(),
+      'requiredStars': FieldValue.delete(),
+      'requiredStreak': FieldValue.delete(),
+      'requiredQuizCount': FieldValue.delete(),
+      // XP-Ziel zählt wie beim Anlegen ab dem aktuellen Stand
+      'baselineXP': trigger == RewardTrigger.xp
+          ? currentXP
+          : FieldValue.delete(),
+    });
+
+    // Aktiven Trigger-Wert setzen
+    if (triggerValue != null) {
+      switch (trigger) {
+        case RewardTrigger.level:
+          updateData['requiredLevel'] = triggerValue;
+          break;
+        case RewardTrigger.xp:
+          updateData['requiredXP'] = triggerValue;
+          break;
+        case RewardTrigger.stars:
+          updateData['requiredStars'] = triggerValue;
+          break;
+        case RewardTrigger.streak:
+          updateData['requiredStreak'] = triggerValue;
+          break;
+        case RewardTrigger.quizCount:
+          updateData['requiredQuizCount'] = triggerValue;
+          break;
+        default:
+          break;
+      }
+    }
+  }
+
+  return updateData;
 }

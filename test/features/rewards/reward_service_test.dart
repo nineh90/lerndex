@@ -96,12 +96,17 @@ void main() {
       final fs = FakeFirebaseFirestore();
       final child = childModel(level: 5);
       await seedChild(fs, child);
-      final rewardId =
-          await addPendingReward(fs, trigger: RewardTrigger.level, requiredLevel: 5);
+      final rewardId = await addPendingReward(
+        fs,
+        trigger: RewardTrigger.level,
+        requiredLevel: 5,
+      );
       final service = RewardService(fs);
 
-      final approved =
-          await service.checkAndApproveRewards(userId: uid, child: child);
+      final approved = await service.checkAndApproveRewards(
+        userId: uid,
+        child: child,
+      );
 
       expect(approved.length, 1);
       expect(approved.first.status, RewardStatus.approved);
@@ -112,69 +117,87 @@ void main() {
       final fs = FakeFirebaseFirestore();
       final child = childModel(level: 5);
       await seedChild(fs, child);
-      final rewardId = await addPendingReward(fs,
-          trigger: RewardTrigger.level, requiredLevel: 10);
+      final rewardId = await addPendingReward(
+        fs,
+        trigger: RewardTrigger.level,
+        requiredLevel: 10,
+      );
       final service = RewardService(fs);
 
-      final approved =
-          await service.checkAndApproveRewards(userId: uid, child: child);
+      final approved = await service.checkAndApproveRewards(
+        userId: uid,
+        child: child,
+      );
 
       expect(approved, isEmpty);
       expect((await rewardData(fs, rewardId))['status'], 'pending');
     });
 
-    test('Zwei-Pass: Bonus-XP schaltet eine weitere XP-Belohnung frei',
-        () async {
-      final fs = FakeFirebaseFirestore();
-      final child = childModel(level: 1, xp: 0);
-      await seedChild(fs, child);
+    test(
+      'Zwei-Pass: Bonus-XP schaltet eine weitere XP-Belohnung frei',
+      () async {
+        final fs = FakeFirebaseFirestore();
+        final child = childModel(level: 1, xp: 0);
+        await seedChild(fs, child);
 
-      // A: perfektes Quiz → +100 Bonus-XP
-      await addPendingReward(fs,
-          trigger: RewardTrigger.perfectQuiz, bonusXP: 100);
-      // B: ab 100 XP (wird erst nach Bonus-XP aus A erfüllt)
-      await addPendingReward(fs,
-          trigger: RewardTrigger.xp, requiredXP: 100, baselineXP: 0);
+        // A: perfektes Quiz → +100 Bonus-XP
+        await addPendingReward(
+          fs,
+          trigger: RewardTrigger.perfectQuiz,
+          bonusXP: 100,
+        );
+        // B: ab 100 XP (wird erst nach Bonus-XP aus A erfüllt)
+        await addPendingReward(
+          fs,
+          trigger: RewardTrigger.xp,
+          requiredXP: 100,
+          baselineXP: 0,
+        );
 
-      final service = RewardService(fs);
-      final approved = await service.checkAndApproveRewards(
-        userId: uid,
-        child: child,
-        isPerfectQuiz: true,
-      );
+        final service = RewardService(fs);
+        final approved = await service.checkAndApproveRewards(
+          userId: uid,
+          child: child,
+          isPerfectQuiz: true,
+        );
 
-      // Beide Belohnungen müssen freigeschaltet sein
-      expect(approved.length, 2);
-      // Kind hat die Bonus-XP erhalten
-      final stored = (await fs
-              .collection('users')
-              .doc(uid)
-              .collection('children')
-              .doc(cid)
-              .get())
-          .data()!;
-      expect(stored['xp'], 100);
-    });
+        // Beide Belohnungen müssen freigeschaltet sein
+        expect(approved.length, 2);
+        // Kind hat die Bonus-XP erhalten
+        final stored =
+            (await fs
+                    .collection('users')
+                    .doc(uid)
+                    .collection('children')
+                    .doc(cid)
+                    .get())
+                .data()!;
+        expect(stored['xp'], 100);
+      },
+    );
 
     test('Avatar-Belohnung schaltet Avatar am Kind frei', () async {
       final fs = FakeFirebaseFirestore();
       final child = childModel(level: 5);
       await seedChild(fs, child);
-      await addPendingReward(fs,
-          trigger: RewardTrigger.level,
-          requiredLevel: 5,
-          avatarUnlockId: 'avatar-rare');
+      await addPendingReward(
+        fs,
+        trigger: RewardTrigger.level,
+        requiredLevel: 5,
+        avatarUnlockId: 'avatar-rare',
+      );
       final service = RewardService(fs);
 
       await service.checkAndApproveRewards(userId: uid, child: child);
 
-      final stored = (await fs
-              .collection('users')
-              .doc(uid)
-              .collection('children')
-              .doc(cid)
-              .get())
-          .data()!;
+      final stored =
+          (await fs
+                  .collection('users')
+                  .doc(uid)
+                  .collection('children')
+                  .doc(cid)
+                  .get())
+              .data()!;
       expect(
         List<String>.from(stored['unlockedAvatars'] ?? []),
         contains('avatar-rare'),
@@ -185,12 +208,16 @@ void main() {
       final fs = FakeFirebaseFirestore();
       final child = childModel(level: 50, xp: 99999);
       await seedChild(fs, child);
-      final rewardId =
-          await addPendingReward(fs, trigger: RewardTrigger.manual);
+      final rewardId = await addPendingReward(
+        fs,
+        trigger: RewardTrigger.manual,
+      );
       final service = RewardService(fs);
 
-      final approved =
-          await service.checkAndApproveRewards(userId: uid, child: child);
+      final approved = await service.checkAndApproveRewards(
+        userId: uid,
+        child: child,
+      );
 
       expect(approved, isEmpty);
       expect((await rewardData(fs, rewardId))['status'], 'pending');
@@ -205,21 +232,30 @@ void main() {
       expect(
         service
             .validateParentReward(
-                child: child, trigger: RewardTrigger.level, requiredLevel: null)
+              child: child,
+              trigger: RewardTrigger.level,
+              requiredLevel: null,
+            )
             .isValid,
         isFalse,
       );
       expect(
         service
             .validateParentReward(
-                child: child, trigger: RewardTrigger.level, requiredLevel: 5)
+              child: child,
+              trigger: RewardTrigger.level,
+              requiredLevel: 5,
+            )
             .isValid,
         isFalse,
       );
       expect(
         service
             .validateParentReward(
-                child: child, trigger: RewardTrigger.level, requiredLevel: 6)
+              child: child,
+              trigger: RewardTrigger.level,
+              requiredLevel: 6,
+            )
             .isValid,
         isTrue,
       );
@@ -229,21 +265,30 @@ void main() {
       expect(
         service
             .validateParentReward(
-                child: child, trigger: RewardTrigger.xp, requiredXP: null)
+              child: child,
+              trigger: RewardTrigger.xp,
+              requiredXP: null,
+            )
             .isValid,
         isFalse,
       );
       expect(
         service
             .validateParentReward(
-                child: child, trigger: RewardTrigger.xp, requiredXP: 0)
+              child: child,
+              trigger: RewardTrigger.xp,
+              requiredXP: 0,
+            )
             .isValid,
         isFalse,
       );
       expect(
         service
             .validateParentReward(
-                child: child, trigger: RewardTrigger.xp, requiredXP: 100)
+              child: child,
+              trigger: RewardTrigger.xp,
+              requiredXP: 100,
+            )
             .isValid,
         isTrue,
       );
@@ -253,14 +298,20 @@ void main() {
       expect(
         service
             .validateParentReward(
-                child: child, trigger: RewardTrigger.stars, requiredStars: 3)
+              child: child,
+              trigger: RewardTrigger.stars,
+              requiredStars: 3,
+            )
             .isValid,
         isFalse,
       );
       expect(
         service
             .validateParentReward(
-                child: child, trigger: RewardTrigger.stars, requiredStars: 5)
+              child: child,
+              trigger: RewardTrigger.stars,
+              requiredStars: 5,
+            )
             .isValid,
         isTrue,
       );
@@ -281,7 +332,7 @@ void main() {
       final fs = FakeFirebaseFirestore();
       final service = RewardService(fs);
 
-      final reward = await service.createSystemReward(
+      final reward = (await service.createSystemReward(
         userId: uid,
         childId: cid,
         title: 'Titel',
@@ -289,7 +340,7 @@ void main() {
         reward: 'Badge',
         trigger: RewardTrigger.perfectQuiz,
         bonusXP: 40,
-      );
+      ))!;
 
       expect(reward.id, isNotEmpty);
       expect(reward.status, RewardStatus.approved);
@@ -298,33 +349,41 @@ void main() {
   });
 
   group('createLevelUpReward', () {
-    test('approved bestehende pending Belohnung und vergibt Bonus-XP',
-        () async {
-      final fs = FakeFirebaseFirestore();
-      await seedChild(fs, childModel(level: 5, xp: 200));
-      final rewardId = await addPendingReward(fs,
+    test(
+      'approved bestehende pending Belohnung und vergibt Bonus-XP',
+      () async {
+        final fs = FakeFirebaseFirestore();
+        await seedChild(fs, childModel(level: 5, xp: 200));
+        final rewardId = await addPendingReward(
+          fs,
           trigger: RewardTrigger.level,
           requiredLevel: 5,
           bonusXP: 50,
-          type: RewardType.system);
-      final service = RewardService(fs);
+          type: RewardType.system,
+        );
+        final service = RewardService(fs);
 
-      final result = await service.createLevelUpReward(
-          userId: uid, childId: cid, level: 5);
+        final result = await service.createLevelUpReward(
+          userId: uid,
+          childId: cid,
+          level: 5,
+        );
 
-      expect(result, isNotNull);
-      expect(result!.status, RewardStatus.approved);
-      expect((await rewardData(fs, rewardId))['status'], 'approved');
-      // Bonus-XP wurde dem Kind gutgeschrieben
-      final stored = (await fs
-              .collection('users')
-              .doc(uid)
-              .collection('children')
-              .doc(cid)
-              .get())
-          .data()!;
-      expect(stored['xp'], 250);
-    });
+        expect(result, isNotNull);
+        expect(result!.status, RewardStatus.approved);
+        expect((await rewardData(fs, rewardId))['status'], 'approved');
+        // Bonus-XP wurde dem Kind gutgeschrieben
+        final stored =
+            (await fs
+                    .collection('users')
+                    .doc(uid)
+                    .collection('children')
+                    .doc(cid)
+                    .get())
+                .data()!;
+        expect(stored['xp'], 250);
+      },
+    );
 
     test('kein Duplikat bei bereits freigeschalteter Belohnung', () async {
       final fs = FakeFirebaseFirestore();
@@ -353,7 +412,10 @@ void main() {
       final service = RewardService(fs);
 
       final result = await service.createLevelUpReward(
-          userId: uid, childId: cid, level: 5);
+        userId: uid,
+        childId: cid,
+        level: 5,
+      );
       expect(result, isNull);
     });
 
@@ -363,7 +425,10 @@ void main() {
       final service = RewardService(fs);
 
       final result = await service.createLevelUpReward(
-          userId: uid, childId: cid, level: 4);
+        userId: uid,
+        childId: cid,
+        level: 4,
+      );
 
       expect(result, isNotNull);
       expect(result!.trigger, RewardTrigger.level);
@@ -376,8 +441,18 @@ void main() {
     test('setzt Status claimed und parentSeen=false', () async {
       final fs = FakeFirebaseFirestore();
       await seedChild(fs, childModel());
-      final rewardId =
-          await addPendingReward(fs, trigger: RewardTrigger.manual);
+      final rewardId = await addPendingReward(
+        fs,
+        trigger: RewardTrigger.manual,
+      );
+      await fs
+          .collection('users')
+          .doc(uid)
+          .collection('children')
+          .doc(cid)
+          .collection('rewards')
+          .doc(rewardId)
+          .update({'status': 'approved'});
       final service = RewardService(fs);
 
       await service.claimReward(userId: uid, childId: cid, rewardId: rewardId);

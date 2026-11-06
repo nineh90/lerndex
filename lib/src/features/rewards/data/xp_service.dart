@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -92,6 +94,37 @@ class XPService {
   // XP HINZUFÜGEN
   // =========================================================================
 
+  /// Felder für das Kind-Dokument, wenn [xpToAdd] XP dazukommen, und das
+  /// Ergebnis. Für Transaktionen, die XP zusammen mit anderen Änderungen
+  /// schreiben (z.B. Bonus-XP einer Belohnung).
+  static ({Map<String, dynamic> fields, XPResult result}) xpGainFields(
+    Map<String, dynamic> childData,
+    int xpToAdd,
+  ) {
+    final currentXP = (childData['xp'] as num?)?.toInt() ?? 0;
+    final currentLevel = (childData['level'] as num?)?.toInt() ?? 1;
+
+    final newXP = currentXP + xpToAdd;
+    final newLevel = calculateLevelFromXP(newXP);
+    final xpToNext = calculateXPToNextLevel(newXP, newLevel);
+
+    return (
+      fields: {
+        'xp': newXP,
+        'level': newLevel,
+        'xpToNextLevel': xpToNext,
+        'lastXPGain': FieldValue.serverTimestamp(),
+      },
+      result: XPResult(
+        newXP: newXP,
+        newLevel: newLevel,
+        leveledUp: newLevel > currentLevel,
+        xpGained: xpToAdd,
+        xpToNextLevel: xpToNext,
+      ),
+    );
+  }
+
   /// Fügt XP hinzu und gibt Ergebnis zurück
   Future<XPResult> addXP({
     required String userId,
@@ -114,29 +147,9 @@ class XPService {
           throw Exception('Kind nicht gefunden');
         }
 
-        final data = snapshot.data()!;
-        final currentXP = data['xp'] ?? 0;
-        final currentLevel = data['level'] ?? 1;
-
-        final newXP = currentXP + xpToAdd;
-        final newLevel = calculateLevelFromXP(newXP);
-        final leveledUp = newLevel > currentLevel;
-        final xpToNext = calculateXPToNextLevel(newXP, newLevel);
-
-        transaction.update(docRef, {
-          'xp': newXP,
-          'level': newLevel,
-          'xpToNextLevel': xpToNext,
-          'lastXPGain': FieldValue.serverTimestamp(),
-        });
-
-        return XPResult(
-          newXP: newXP,
-          newLevel: newLevel,
-          leveledUp: leveledUp,
-          xpGained: xpToAdd,
-          xpToNextLevel: xpToNext,
-        );
+        final (:fields, :result) = xpGainFields(snapshot.data()!, xpToAdd);
+        transaction.update(docRef, fields);
+        return result;
       });
 
       debugPrint(
@@ -147,6 +160,85 @@ class XPService {
       debugPrint('❌ Fehler beim Hinzufügen von XP: $e');
       rethrow;
     }
+  }
+
+  // =========================================================================
+  // TAGESZÄHLER (z.B. Malspiel: XP und KI-Prüfungen pro Tag begrenzen)
+  // =========================================================================
+
+  /// Heutiger Stand eines Tageszählers am Kind ([counterField] mit Datum in
+  /// [dateField]); an einem neuen Tag 0.
+  static int _todayCount(
+    Map<String, dynamic> data,
+    String counterField,
+    String dateField,
+  ) {
+    final last = (data[dateField] as Timestamp?)?.toDate();
+    if (last == null || !_isSameDay(last, DateTime.now())) return 0;
+    return (data[counterField] as num?)?.toInt() ?? 0;
+  }
+
+  /// Gibt XP mit Tageslimit pro Quelle (Transaktion). Gibt null zurück, wenn
+  /// das Limit für heute erreicht ist; sonst höchstens den Rest bis zum
+  /// Limit.
+  Future<XPResult?> addDailyCappedXP({
+    required String userId,
+    required String childId,
+    required int xpToAdd,
+    required String counterField,
+    required String dateField,
+    required int maxXpPerDay,
+  }) {
+    final docRef = _firestore
+        .collection('users')
+        .doc(userId)
+        .collection('children')
+        .doc(childId);
+
+    return _firestore.runTransaction<XPResult?>((tx) async {
+      final snapshot = await tx.get(docRef);
+      final data = snapshot.data();
+      if (data == null) return null;
+
+      final today = _todayCount(data, counterField, dateField);
+      final actual = min(xpToAdd, maxXpPerDay - today);
+      if (actual <= 0) return null;
+
+      final (:fields, :result) = xpGainFields(data, actual);
+      tx.update(docRef, {
+        ...fields,
+        counterField: today + actual,
+        dateField: Timestamp.now(),
+      });
+      return result;
+    });
+  }
+
+  /// Zählt einen Tageszähler um 1 hoch, wenn [maxPerDay] noch nicht erreicht
+  /// ist (Transaktion). false = Limit für heute erreicht.
+  Future<bool> reserveDailyQuota({
+    required String userId,
+    required String childId,
+    required String counterField,
+    required String dateField,
+    required int maxPerDay,
+  }) {
+    final docRef = _firestore
+        .collection('users')
+        .doc(userId)
+        .collection('children')
+        .doc(childId);
+
+    return _firestore.runTransaction<bool>((tx) async {
+      final snapshot = await tx.get(docRef);
+      final data = snapshot.data();
+      if (data == null) return false;
+
+      final today = _todayCount(data, counterField, dateField);
+      if (today >= maxPerDay) return false;
+      tx.update(docRef, {counterField: today + 1, dateField: Timestamp.now()});
+      return true;
+    });
   }
 
   // =========================================================================

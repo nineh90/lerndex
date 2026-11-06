@@ -76,7 +76,7 @@ class RewardCard extends StatelessWidget {
                           style: TextStyle(
                             fontSize: 14,
                             color: muted
-                                ? Colors.grey.shade500
+                                ? Colors.grey.shade700
                                 : textColor.withValues(alpha: 0.6),
                           ),
                         ),
@@ -86,7 +86,11 @@ class RewardCard extends StatelessWidget {
                 if (isClaimed)
                   const Icon(Icons.check_circle, color: Colors.green, size: 32)
                 else if (isPending)
-                  Icon(Icons.lock_outline, color: Colors.grey.shade400, size: 28),
+                  Icon(
+                    Icons.lock_outline,
+                    color: Colors.grey.shade400,
+                    size: 28,
+                  ),
               ],
             ),
             const SizedBox(height: 12),
@@ -120,7 +124,11 @@ class RewardCard extends StatelessWidget {
               const SizedBox(height: 12),
               Row(
                 children: [
-                  Icon(Icons.lock_outline, size: 18, color: Colors.grey.shade600),
+                  Icon(
+                    Icons.lock_outline,
+                    size: 18,
+                    color: Colors.grey.shade600,
+                  ),
                   const SizedBox(width: 6),
                   Expanded(
                     child: Text(

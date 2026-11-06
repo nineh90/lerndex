@@ -258,7 +258,7 @@ class _StudentNotificationPopupState extends State<StudentNotificationPopup>
           gradientColors: [const Color(0xFFFF8F00), const Color(0xFFFF6F00)],
           glowColor: const Color(0xFFFFB300),
           emoji: '🏆',
-          title: 'Achievement!',
+          title: 'Neuer Erfolg!',
           subtitle: widget.reward?.title ?? 'Ziel erreicht!',
           detail: widget.reward?.description,
         );
@@ -278,8 +278,9 @@ class _StudentNotificationPopupState extends State<StudentNotificationPopup>
           gradientColors: [const Color(0xFFE64A19), const Color(0xFFBF360C)],
           glowColor: const Color(0xFFFF6D00),
           emoji: '🔥',
-          title: 'Streak!',
-          subtitle: widget.reward?.title ?? 'Streak-Meilenstein erreicht!',
+          title: 'Lernserie!',
+          subtitle:
+              widget.reward?.title ?? 'Neuer Rekord bei deiner Lernserie!',
           detail: widget.reward?.description,
         );
     }
@@ -493,7 +494,10 @@ class _StudentNotificationPopupState extends State<StudentNotificationPopup>
         decoration: BoxDecoration(
           color: Colors.white.withValues(alpha: 0.2),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.4), width: 1.5),
+          border: Border.all(
+            color: Colors.white.withValues(alpha: 0.4),
+            width: 1.5,
+          ),
         ),
         child: Text(
           label,

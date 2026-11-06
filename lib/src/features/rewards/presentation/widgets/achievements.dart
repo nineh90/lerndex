@@ -81,7 +81,7 @@ class AchievementsScreen extends ConsumerWidget {
     final categories = [
       _AchievementCategory(
         icon: '⭐',
-        title: 'Level-Achievements',
+        title: 'Level-Erfolge',
         color: const Color(0xFFFFB300),
         trigger: RewardTrigger.level,
         progressLabel: 'Level ${child.level}',
@@ -97,7 +97,7 @@ class AchievementsScreen extends ConsumerWidget {
       ),
       _AchievementCategory(
         icon: '🔥',
-        title: 'Streak-Rekorde',
+        title: 'Lernserien',
         color: const Color(0xFFFF5722),
         trigger: RewardTrigger.streak,
         progressLabel: '${child.streak ?? 0} Tage',
@@ -113,7 +113,7 @@ class AchievementsScreen extends ConsumerWidget {
       ),
       const _AchievementCategory(
         icon: '💎',
-        title: 'Spezial-Achievements',
+        title: 'Besondere Erfolge',
         color: Color(0xFF1E88E5),
         trigger: RewardTrigger.perfectQuiz,
         progressLabel: '',
@@ -198,7 +198,7 @@ class _AchievementHeader extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      'Meine Achievements',
+                      'Meine Erfolge',
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 18,
@@ -255,7 +255,7 @@ class _AchievementHeader extends StatelessWidget {
               _HeaderStat(label: 'Level', value: '${child.level}', icon: '⭐'),
               _HeaderStat(label: 'XP', value: '${child.xp}', icon: '⚡'),
               _HeaderStat(
-                label: 'Streak',
+                label: 'Lernserie',
                 value: '${child.streak ?? 0}🔥',
                 icon: '',
               ),
@@ -297,7 +297,10 @@ class _HeaderStat extends StatelessWidget {
         ),
         Text(
           label,
-          style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 11),
+          style: TextStyle(
+            color: Colors.white.withValues(alpha: 0.7),
+            fontSize: 11,
+          ),
         ),
       ],
     );
@@ -336,7 +339,7 @@ class _AvatarShowcase extends StatelessWidget {
                 const SizedBox(width: 8),
                 Text(
                   '${rewardAvatars.where((a) => child.unlockedAvatars.contains(a.id)).length}/${rewardAvatars.length}',
-                  style: TextStyle(fontSize: 13, color: Colors.grey[500]),
+                  style: TextStyle(fontSize: 13, color: Colors.grey[700]),
                 ),
               ],
             ),
@@ -433,7 +436,7 @@ class _AvatarChip extends StatelessWidget {
               style: TextStyle(
                 fontSize: 8,
                 fontWeight: FontWeight.bold,
-                color: isUnlocked ? avatar.color : Colors.grey.shade500,
+                color: isUnlocked ? avatar.color : Colors.grey.shade700,
               ),
               textAlign: TextAlign.center,
               maxLines: 1,
@@ -524,7 +527,7 @@ class _CategorySection extends StatelessWidget {
                   category.progressLabel,
                   style: TextStyle(
                     fontSize: 12,
-                    color: Colors.grey[500],
+                    color: Colors.grey[700],
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -628,7 +631,9 @@ class _AchievementTile extends StatelessWidget {
               : Colors.grey.shade200,
           width: _isUnlocked ? 1.5 : 1,
         ),
-        color: _isUnlocked ? categoryColor.withValues(alpha: 0.05) : Colors.white,
+        color: _isUnlocked
+            ? categoryColor.withValues(alpha: 0.05)
+            : Colors.white,
         boxShadow: _isUnlocked
             ? [
                 BoxShadow(
@@ -689,7 +694,7 @@ class _AchievementTile extends StatelessWidget {
                         reward.description,
                         style: TextStyle(
                           fontSize: 12,
-                          color: Colors.grey.shade500,
+                          color: Colors.grey.shade700,
                         ),
                       ),
                     ],
@@ -715,7 +720,7 @@ class _AchievementTile extends StatelessWidget {
                         fontWeight: FontWeight.bold,
                         color: _isUnlocked
                             ? const Color(0xFF7C4DFF)
-                            : Colors.grey.shade400,
+                            : Colors.grey.shade700,
                       ),
                     ),
                   ),
@@ -742,7 +747,7 @@ class _AchievementTile extends StatelessWidget {
                     fontSize: 11,
                     color: _isUnlocked
                         ? Colors.deepPurple.shade400
-                        : Colors.grey.shade400,
+                        : Colors.grey.shade700,
                   ),
                 ),
               ),
@@ -774,7 +779,7 @@ class _AchievementTile extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
-                      color: _isUnlocked ? categoryColor : Colors.grey.shade500,
+                      color: _isUnlocked ? categoryColor : Colors.grey.shade700,
                     ),
                   ),
                 ],

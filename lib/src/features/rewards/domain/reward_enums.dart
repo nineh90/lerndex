@@ -129,7 +129,7 @@ extension RewardTriggerExtension on RewardTrigger {
       case RewardTrigger.stars:
         return 'Sterne sammeln';
       case RewardTrigger.streak:
-        return 'Lern-Streak';
+        return 'Lernserie (Tage am Stück)';
       case RewardTrigger.perfectQuiz:
         return 'Perfektes Quiz';
       case RewardTrigger.quizCount:

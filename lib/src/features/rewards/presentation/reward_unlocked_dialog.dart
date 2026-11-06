@@ -134,7 +134,7 @@ class _RewardUnlockedDialogState extends State<RewardUnlockedDialog>
 
                           // Titel
                           Text(
-                            widget.isLevelUp ? 'Level Up!' : 'Belohnung!',
+                            widget.isLevelUp ? 'Neues Level!' : 'Belohnung!',
                             style: const TextStyle(
                               fontSize: 30,
                               fontWeight: FontWeight.w900,
@@ -249,7 +249,10 @@ class _LevelBadge extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.18),
         borderRadius: BorderRadius.circular(50),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.4), width: 1.5),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.4),
+          width: 1.5,
+        ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -298,7 +301,10 @@ class _CompactRewardRow extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.13),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.25), width: 1),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.25),
+          width: 1,
+        ),
       ),
       child: Row(
         children: [

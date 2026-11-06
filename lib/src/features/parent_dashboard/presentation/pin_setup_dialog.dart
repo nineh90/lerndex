@@ -27,6 +27,7 @@ class _PinSetupDialogState extends ConsumerState<PinSetupDialog> {
   }
 
   Future<void> _setupPin() async {
+    if (_isLoading) return; // kein doppeltes Speichern
     final pin = _pinController.text;
     final confirm = _confirmController.text;
 
@@ -56,8 +57,11 @@ class _PinSetupDialogState extends ConsumerState<PinSetupDialog> {
         Navigator.of(context).pop(true); // Erfolgreich
       }
     } catch (e) {
+      if (!mounted) return;
       setState(() {
-        _errorMessage = 'Fehler beim Speichern: $e';
+        _errorMessage =
+            'Der PIN konnte nicht gespeichert werden. '
+            'Bitte prüfe die Internetverbindung.';
         _isLoading = false;
       });
     }
@@ -70,7 +74,7 @@ class _PinSetupDialogState extends ConsumerState<PinSetupDialog> {
         children: [
           Icon(Icons.lock, color: Colors.deepPurple),
           SizedBox(width: 8),
-          Text('Eltern-PIN erstellen'),
+          Expanded(child: Text('Eltern-PIN erstellen')),
         ],
       ),
       content: SingleChildScrollView(
@@ -78,9 +82,9 @@ class _PinSetupDialogState extends ConsumerState<PinSetupDialog> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               'Erstelle einen PIN, um das Eltern-Dashboard zu schützen.',
-              style: TextStyle(color: Colors.grey),
+              style: TextStyle(color: Colors.grey[700]),
             ),
             const SizedBox(height: 20),
 
@@ -92,6 +96,7 @@ class _PinSetupDialogState extends ConsumerState<PinSetupDialog> {
                 prefixIcon: const Icon(Icons.pin),
                 border: const OutlineInputBorder(),
                 errorText: _errorMessage,
+                errorMaxLines: 3,
               ),
               keyboardType: TextInputType.number,
               obscureText: true,
@@ -129,10 +134,13 @@ class _PinSetupDialogState extends ConsumerState<PinSetupDialog> {
           ),
           child: _isLoading
               ? const SizedBox(
-            width: 20,
-            height: 20,
-            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-          )
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                )
               : const Text('PIN speichern'),
         ),
       ],

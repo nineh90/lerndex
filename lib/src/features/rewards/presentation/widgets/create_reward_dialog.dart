@@ -387,6 +387,8 @@ class _CreateRewardDialogState extends ConsumerState<CreateRewardDialog> {
                 ),
                 items: RewardTrigger.values
                     .where((t) => t != RewardTrigger.avatarUnlock)
+                    // Sterne werden nicht mehr vergeben → würde nie auslösen
+                    .where((t) => t != RewardTrigger.stars)
                     // 'manual' = sofort verfügbar ohne Bedingung – das Kind
                     // sieht die Belohnung direkt als einlösbar im Dashboard.
                     .map((trigger) {
@@ -527,7 +529,7 @@ class _CreateRewardDialogState extends ConsumerState<CreateRewardDialog> {
       case RewardTrigger.stars:
         return 'Erforderliche Sterne';
       case RewardTrigger.streak:
-        return 'Erforderliche Streak-Tage';
+        return 'Erforderliche Tage am Stück';
       case RewardTrigger.quizCount:
         return 'Erforderliche Quiz-Anzahl';
       default:
@@ -608,7 +610,13 @@ class _CreateRewardDialogState extends ConsumerState<CreateRewardDialog> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Fehler: $e'), backgroundColor: Colors.red),
+          const SnackBar(
+            content: Text(
+              'Die Belohnung konnte nicht erstellt werden. '
+              'Bitte prüfe die Internetverbindung und versuche es noch einmal.',
+            ),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     } finally {

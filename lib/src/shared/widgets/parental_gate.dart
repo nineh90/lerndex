@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../features/auth/data/auth_repository.dart';
@@ -14,8 +15,8 @@ import '../../features/auth/presentation/sign_out.dart';
 /// Erwachsenen-Schranke stehen.
 ///
 /// - Ist ein Eltern-PIN gesetzt → PIN-Abfrage.
-/// - Ist (noch) kein PIN gesetzt → Rechenaufgabe, die kleine Kinder
-///   nicht lösen können (zufällige Multiplikation, keine feste Antwort).
+/// - Ist (noch) kein PIN gesetzt → Rechenaufgabe, die Kinder nicht im Kopf
+///   lösen (zweistellig × zweistellig, zufällig, keine feste Antwort).
 Future<bool> showParentalGate(BuildContext context, WidgetRef ref) async {
   final user = ref.read(authStateChangesProvider).value;
 
@@ -53,6 +54,21 @@ Future<bool> showAdultGateDialog(BuildContext context) async {
   return result == true;
 }
 
+/// Aufgabe der Erwachsenen-Schranke: zwei Faktoren von 13 bis 49, ohne
+/// Zehner und Schnapszahlen (20, 33 …), damit keine leichten Aufgaben
+/// entstehen. Die frühere „12–29 × 3–9“ rechnen Kinder ab Klasse 5 im Kopf.
+@visibleForTesting
+({int a, int b}) adultGateTask(Random random) {
+  int factor() {
+    while (true) {
+      final n = 13 + random.nextInt(37); // 13–49
+      if (n % 10 != 0 && n % 11 != 0) return n;
+    }
+  }
+
+  return (a: factor(), b: factor());
+}
+
 class _AdultGateDialog extends StatefulWidget {
   const _AdultGateDialog();
 
@@ -73,9 +89,9 @@ class _AdultGateDialogState extends State<_AdultGateDialog> {
   }
 
   void _newTask() {
-    final random = Random();
-    _a = 12 + random.nextInt(18); // 12–29
-    _b = 3 + random.nextInt(7); // 3–9
+    final task = adultGateTask(Random());
+    _a = task.a;
+    _b = task.b;
   }
 
   @override
@@ -99,6 +115,7 @@ class _AdultGateDialogState extends State<_AdultGateDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
+      scrollable: true,
       title: const Text('Frag deine Eltern'),
       content: Column(
         mainAxisSize: MainAxisSize.min,
@@ -116,6 +133,7 @@ class _AdultGateDialogState extends State<_AdultGateDialog> {
           TextField(
             controller: _controller,
             keyboardType: TextInputType.number,
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
             autofocus: true,
             textAlign: TextAlign.center,
             decoration: InputDecoration(
