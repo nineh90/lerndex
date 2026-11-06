@@ -108,7 +108,7 @@ const _emojiData = [
   {'emoji': '🐊', 'anlaut': 'A', 'wort': 'ALLIGATOR'},
   // B – 7 Einträge
   {'emoji': '🐝', 'anlaut': 'B', 'wort': 'BIENE'},
-  {'emoji': '🐻', 'anlaut': 'B', 'wort': 'BAER'},
+  {'emoji': '🐻', 'anlaut': 'B', 'wort': 'BÄR'},
   {'emoji': '🌸', 'anlaut': 'B', 'wort': 'BLUME'},
   {'emoji': '🍌', 'anlaut': 'B', 'wort': 'BANANE'},
   {'emoji': '🍐', 'anlaut': 'B', 'wort': 'BIRNE'},
@@ -147,20 +147,20 @@ const _emojiData = [
   {'emoji': '🏝️', 'anlaut': 'I', 'wort': 'INSEL'},
   // K – 7 Einträge
   {'emoji': '🐱', 'anlaut': 'K', 'wort': 'KATZE'},
-  {'emoji': '🦘', 'anlaut': 'K', 'wort': 'KAENGURU'},
+  {'emoji': '🦘', 'anlaut': 'K', 'wort': 'KÄNGURU'},
   {'emoji': '🐄', 'anlaut': 'K', 'wort': 'KUH'},
   {'emoji': '🍒', 'anlaut': 'K', 'wort': 'KIRSCHE'},
   {'emoji': '👑', 'anlaut': 'K', 'wort': 'KRONE'},
-  {'emoji': '🧀', 'anlaut': 'K', 'wort': 'KAESE'},
+  {'emoji': '🧀', 'anlaut': 'K', 'wort': 'KÄSE'},
   {'emoji': '🐊', 'anlaut': 'K', 'wort': 'KROKODIL'},
   // L – 3 Einträge
-  {'emoji': '🦁', 'anlaut': 'L', 'wort': 'LOEWE'},
+  {'emoji': '🦁', 'anlaut': 'L', 'wort': 'LÖWE'},
   {'emoji': '🚂', 'anlaut': 'L', 'wort': 'LOKOMOTIVE'},
-  {'emoji': '🌼', 'anlaut': 'L', 'wort': 'LOEWENZAHN'},
+  {'emoji': '🌼', 'anlaut': 'L', 'wort': 'LÖWENZAHN'},
   // M – 5 Einträge
   {'emoji': '🐭', 'anlaut': 'M', 'wort': 'MAUS'},
   {'emoji': '🌙', 'anlaut': 'M', 'wort': 'MOND'},
-  {'emoji': '🦟', 'anlaut': 'M', 'wort': 'MUECKE'},
+  {'emoji': '🦟', 'anlaut': 'M', 'wort': 'MÜCKE'},
   {'emoji': '🥛', 'anlaut': 'M', 'wort': 'MILCH'},
   {'emoji': '🐒', 'anlaut': 'M', 'wort': 'MEERKATZE'},
   // N – 3 Einträge
@@ -186,7 +186,7 @@ const _emojiData = [
   {'emoji': '🐍', 'anlaut': 'S', 'wort': 'SCHLANGE'},
   {'emoji': '⭐', 'anlaut': 'S', 'wort': 'STERN'},
   {'emoji': '🌞', 'anlaut': 'S', 'wort': 'SONNE'},
-  {'emoji': '🐢', 'anlaut': 'S', 'wort': 'SCHILDKROETE'},
+  {'emoji': '🐢', 'anlaut': 'S', 'wort': 'SCHILDKRÖTE'},
   {'emoji': '🕷️', 'anlaut': 'S', 'wort': 'SPINNE'},
   {'emoji': '🦢', 'anlaut': 'S', 'wort': 'SCHWAN'},
   {'emoji': '🐖', 'anlaut': 'S', 'wort': 'SCHWEIN'},
@@ -208,7 +208,7 @@ const _emojiData = [
   {'emoji': '🪱', 'anlaut': 'W', 'wort': 'WURM'},
   // Z – 3 Einträge
   {'emoji': '🦓', 'anlaut': 'Z', 'wort': 'ZEBRA'},
-  {'emoji': '🪥', 'anlaut': 'Z', 'wort': 'ZAHNBUERSTE'},
+  {'emoji': '🪥', 'anlaut': 'Z', 'wort': 'ZAHNBÜRSTE'},
   {'emoji': '🎯', 'anlaut': 'Z', 'wort': 'ZIEL'},
 ];
 
@@ -414,7 +414,7 @@ const _reimPaare = [
   {
     'wort': 'Rot',
     'reimt': 'Brot',
-    'falsch': ['Blau', 'Gruen', 'Ball'],
+    'falsch': ['Blau', 'Grün', 'Ball'],
   },
   {
     'wort': 'Boot',
@@ -506,7 +506,7 @@ const _wortPaare = [
   // 2 vs 7+
   {'kurz': 'Ei', 'lang': 'Elefant'},
   {'kurz': 'Ei', 'lang': 'Erdbeere'},
-  {'kurz': 'Ei', 'lang': 'Eisbaer'},
+  {'kurz': 'Ei', 'lang': 'Eisbär'},
   // 2-3 vs 6+
   {'kurz': 'Hut', 'lang': 'Hamster'},
   {'kurz': 'Hut', 'lang': 'Hubschrauber'},
@@ -516,9 +516,9 @@ const _wortPaare = [
   {'kurz': 'Arm', 'lang': 'Alligator'},
   {'kurz': 'Aas', 'lang': 'Apfelsaft'},
   {'kurz': 'See', 'lang': 'Seehund'},
-  {'kurz': 'Eis', 'lang': 'Eiswuerfel'},
-  {'kurz': 'Eis', 'lang': 'Eichhornchen'},
-  {'kurz': 'Zug', 'lang': 'Zahnbuerste'},
+  {'kurz': 'Eis', 'lang': 'Eiswürfel'},
+  {'kurz': 'Eis', 'lang': 'Eichhörnchen'},
+  {'kurz': 'Zug', 'lang': 'Zahnbürste'},
   {'kurz': 'Hund', 'lang': 'Hamster'},
   {'kurz': 'Hund', 'lang': 'Hubschrauber'},
   {'kurz': 'Brot', 'lang': 'Banane'},
@@ -526,32 +526,33 @@ const _wortPaare = [
   {'kurz': 'Wald', 'lang': 'Wasserfall'},
   {'kurz': 'Ball', 'lang': 'Ballon'},
   {'kurz': 'Ball', 'lang': 'Banane'},
-  {'kurz': 'Baer', 'lang': 'Blaubeere'},
-  {'kurz': 'Baer', 'lang': 'Brombeer'},
+  {'kurz': 'Bär', 'lang': 'Blaubeere'},
+  {'kurz': 'Bär', 'lang': 'Brombeere'},
   {'kurz': 'Fisch', 'lang': 'Flamingo'},
   {'kurz': 'Fisch', 'lang': 'Frosch'},
   {'kurz': 'Gras', 'lang': 'Giraffe'},
   {'kurz': 'Hase', 'lang': 'Hamster'},
   {'kurz': 'Hase', 'lang': 'Hubschrauber'},
   {'kurz': 'Igel', 'lang': 'Indianer'},
-  {'kurz': 'Katze', 'lang': 'Kaenguru'},
-  {'kurz': 'Loewe', 'lang': 'Lokomotive'},
+  {'kurz': 'Katze', 'lang': 'Känguru'},
+  {'kurz': 'Löwe', 'lang': 'Lokomotive'},
   {'kurz': 'Maus', 'lang': 'Murmeltier'},
-  {'kurz': 'Maus', 'lang': 'Marienkaefer'},
+  {'kurz': 'Maus', 'lang': 'Marienkäfer'},
   {'kurz': 'Nase', 'lang': 'Nashorn'},
   {'kurz': 'Pferd', 'lang': 'Pinguin'},
   {'kurz': 'Rose', 'lang': 'Rentier'},
   {'kurz': 'Rose', 'lang': 'Regenbogen'},
   {'kurz': 'Schuh', 'lang': 'Schlange'},
-  {'kurz': 'Schuh', 'lang': 'Schildkroete'},
+  {'kurz': 'Schuh', 'lang': 'Schildkröte'},
   {'kurz': 'Stern', 'lang': 'Stieglitz'},
   {'kurz': 'Tier', 'lang': 'Tintenfisch'},
   {'kurz': 'Vogel', 'lang': 'Vulkan'},
   {'kurz': 'Wolf', 'lang': 'Wassermelone'},
-  {'kurz': 'Zebra', 'lang': 'Zahnbuerste'},
+  {'kurz': 'Zebra', 'lang': 'Zahnbürste'},
 ];
 
-/// Alle Großbuchstaben (ohne Umlaute für Klasse 1–2)
+/// Alle Großbuchstaben (ohne Umlaute für Klasse 1–2). Umlaute kommen nur
+/// in Wörtern vor (BÄR, KÄSE …) und dort auch als richtige Antwort.
 const _letters = [
   'A',
   'B',
@@ -592,7 +593,6 @@ const _feedbacksCorrect = [
   '🥳 Genau richtig!',
   '💪 Stark!',
 ];
-
 
 // ── Engine ────────────────────────────────────────────────────────────────────
 
@@ -757,7 +757,7 @@ class LetterTaskEngine {
     // Lücke: zufälligen Vokal bevorzugen (damit lösbar), sonst random
     final vowelIndices = <int>[];
     for (int i = 0; i < word.length; i++) {
-      if ('AEIOU'.contains(word[i])) vowelIndices.add(i);
+      if ('AEIOUÄÖÜ'.contains(word[i])) vowelIndices.add(i);
     }
     final missingIdx = vowelIndices.isNotEmpty
         ? vowelIndices[_rng.nextInt(vowelIndices.length)]

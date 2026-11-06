@@ -799,60 +799,58 @@ class _LetterQuizScreenState extends ConsumerState<LetterQuizScreen>
       children: [
         Text(task.emoji ?? '❓', style: const TextStyle(fontSize: 72)),
         const SizedBox(height: 16),
-        // Wort mit Lücke als Buchstaben-Bubbles
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: word.characters.toList().asMap().entries.map((e) {
-            final isBlank = e.key == missingIdx;
-            return Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 3),
-              child: isBlank
-                  ? Container(
-                      width: 38,
-                      height: 44,
-                      decoration: BoxDecoration(
-                        color: widget.subjectColors.first.withValues(
-                          alpha: 0.08,
-                        ),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(
-                          color: widget.subjectColors.first,
-                          width: 2.5,
-                        ),
-                      ),
-                      child: Center(
-                        child: Text(
-                          '?',
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w900,
-                            color: widget.subjectColors.first.withValues(
-                              alpha: 0.4,
-                            ),
-                          ),
-                        ),
-                      ),
-                    )
-                  : Container(
-                      width: 38,
-                      height: 44,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF0F0F0),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Center(
-                        child: Text(
-                          e.value,
-                          style: const TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w900,
-                            color: Color(0xFF1A1A2E),
-                          ),
+        // Wort mit Lücke als Buchstaben-Kästchen. Größe aus der verfügbaren
+        // Breite: 7 Buchstaben à 38 dp passen auf 360-dp-Geräten nicht.
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final letters = word.characters.toList();
+            const gap = 6.0;
+            final boxW =
+                ((constraints.maxWidth - letters.length * gap) / letters.length)
+                    .clamp(22.0, 38.0);
+            final boxH = boxW * 44 / 38;
+            final fontSize = boxW * 20 / 38;
+            return Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: letters.asMap().entries.map((e) {
+                final isBlank = e.key == missingIdx;
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: gap / 2),
+                  child: Container(
+                    width: boxW,
+                    height: boxH,
+                    decoration: BoxDecoration(
+                      color: isBlank
+                          ? widget.subjectColors.first.withValues(alpha: 0.08)
+                          : const Color(0xFFF0F0F0),
+                      borderRadius: BorderRadius.circular(10),
+                      border: isBlank
+                          ? Border.all(
+                              color: widget.subjectColors.first,
+                              width: 2.5,
+                            )
+                          : null,
+                    ),
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        isBlank ? '?' : e.value,
+                        style: TextStyle(
+                          fontSize: fontSize,
+                          fontWeight: FontWeight.w900,
+                          color: isBlank
+                              ? widget.subjectColors.first.withValues(
+                                  alpha: 0.4,
+                                )
+                              : const Color(0xFF1A1A2E),
                         ),
                       ),
                     ),
+                  ),
+                );
+              }).toList(),
             );
-          }).toList(),
+          },
         ),
         const SizedBox(height: 12),
         Text(

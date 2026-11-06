@@ -580,9 +580,13 @@ class MathTaskEngine {
     // Ziel-Zahl zufällig im erlaubten Bereich
     final target = _rng.nextInt(diff.maxNumber) + 1;
 
-    // Strahl-Bereich: startet immer bei 0, endet bei einem runden Wert
-    // der etwas größer als der Zielwert ist (für sinnvolle Darstellung)
-    final lineMax = ((target / 5).ceil() * 5).clamp(5, diff.maxNumber);
+    // Strahl-Bereich: startet bei 0, endet bei einem Fünfer-Wert. Nicht
+    // immer direkt über dem Ziel (sonst läge das Ziel stets im letzten
+    // Fünferblock): bis zu zwei Fünferblöcke Luft, höchstens bis zum
+    // Zahlenraum der Stufe.
+    final rangeMax = max(5, (diff.maxNumber / 5).ceil() * 5);
+    final minLineMax = max(5, (target / 5).ceil() * 5);
+    final lineMax = min(minLineMax + 5 * _rng.nextInt(3), rangeMax);
     const lineMin = 0;
 
     final options = _buildNumericOptions(target, lineMin, lineMax + 1, diff);
@@ -648,13 +652,16 @@ class MathTaskEngine {
   MathTask _genDrawAnswer(_Difficulty diff) {
     final isAddition = !diff.allowSubtraction || _rng.nextBool();
     int a, b, result;
+    // Ergebnis wird von Hand gemalt: höchstens zweistellig und klein
+    // (Klasse 1 bis 10, Klasse 2 bis 20), auch wenn die Stufe bis 100 geht.
+    final maxResult = max(4, min(diff.maxNumber, grade <= 1 ? 10 : 20));
 
     if (isAddition) {
-      a = _rng.nextInt(diff.maxNumber ~/ 2) + 1;
-      b = _rng.nextInt(diff.maxNumber - a) + 1;
+      a = _rng.nextInt(maxResult ~/ 2) + 1;
+      b = _rng.nextInt(maxResult - a) + 1;
       result = a + b;
     } else {
-      result = _rng.nextInt(diff.maxNumber ~/ 3) + 1;
+      result = _rng.nextInt(maxResult ~/ 3) + 1;
       b = _rng.nextInt(result) + 1;
       a = result + b;
     }

@@ -106,7 +106,7 @@ const _colors = [
   _ColorData(
     name: 'Blau',
     emoji: '🔵',
-    objects: ['🫐', '🌊', '💙', '🧢', '🐳', '💎', '🫐'],
+    objects: ['🫐', '🌊', '💙', '🧢', '🐳', '💎', '💧'],
   ),
   _ColorData(
     name: 'Gelb',
@@ -163,42 +163,42 @@ const _shapes = [
     name: 'Kreis',
     emoji: '⭕',
     ecken: 0,
-    objects: ['🌕', '🍕', '🎱', '🌍', '🍩', '⚽', '🌶️'],
+    objects: ['🌕', '🍪', '🎱', '🌍', '🍩', '⚽', '🏀'],
     description: 'runde Form ohne Ecken',
   ),
   _ShapeData(
     name: 'Dreieck',
     emoji: '🔺',
     ecken: 3,
-    objects: ['⛰️', '🔔', '🏔️', '📐', '⚠️', '🎄', '🍕'],
+    objects: ['⛰️', '⛺', '🏔️', '📐', '⚠️', '🎄', '🍕'],
     description: 'Form mit 3 Ecken',
   ),
   _ShapeData(
     name: 'Quadrat',
     emoji: '🟦',
     ecken: 4,
-    objects: ['📦', '🧊', '🪟', '🎲', '📱', '🖥️', '🎁'],
+    objects: ['📦', '🧊', '🪟', '🎲', '🎁', '🔲', '🧇'],
     description: 'Form mit 4 gleichen Seiten',
   ),
   _ShapeData(
     name: 'Rechteck',
     emoji: '▬',
     ecken: 4,
-    objects: ['📄', '🚪', '🖼️', '📺', '🏠', '📏', '📋'],
+    objects: ['📄', '🚪', '🖼️', '📺', '📏', '📋', '💵'],
     description: 'Form mit 4 Seiten, zwei länger',
   ),
   _ShapeData(
     name: 'Stern',
     emoji: '⭐',
     ecken: 5,
-    objects: ['🌟', '✨', '💫', '🌠', '⭐', '🌃', '🎇'],
+    objects: ['🌟', '✨', '💫', '🌠', '🎇', '🌃'],
     description: 'Form mit 5 Zacken',
   ),
   _ShapeData(
     name: 'Raute',
     emoji: '🔷',
     ecken: 4,
-    objects: ['💎', '♦️', '🃏', '🔷', '🔹', '🎯', '🃏'],
+    objects: ['💎', '♦️', '🔹', '🔶', '🔸', '🪁'],
     description: 'Form mit 4 gleichen Seiten, spitz',
   ),
 ];
@@ -500,7 +500,6 @@ const _feedbacksCorrect = [
   '💪 Stark!',
 ];
 
-
 // ── Engine ────────────────────────────────────────────────────────────────────
 
 class ColorShapeTaskEngine {
@@ -748,10 +747,11 @@ class ColorShapeTaskEngine {
     final correctObjs = List<String>.from(shape.objects)..shuffle(_rng);
     final correct = correctObjs.first;
 
-    // Distraktoren aus anderen Formen
+    // Distraktoren aus Formen mit anderer Eckenzahl (ein Quadrat ist auch
+    // ein Rechteck – sonst wären mehrere Antworten richtig)
     final wrongPool =
         _shapes
-            .where((s) => s.name != shape.name)
+            .where((s) => s.ecken != shape.ecken)
             .expand((s) => s.objects)
             .toSet()
             .where((o) => !shape.objects.contains(o))
@@ -859,15 +859,27 @@ class ColorShapeTaskEngine {
   // ── Odd One Out Form ─────────────────────────────────────────────────────
 
   ColorShapeTask _genOddOneOutForm(Set<String> used) {
-    final pool = _shapes.where((s) => s.objects.length >= 3).toList();
-    final shape = pool[_rng.nextInt(pool.length)];
+    final pool = _shapes
+        .where((s) => s.objects.length >= 3 && !used.contains(s.name))
+        .toList();
+    final shape = pool.isEmpty
+        ? _shapes[_rng.nextInt(_shapes.length)]
+        : pool[_rng.nextInt(pool.length)];
 
     final shapeObjs = List<String>.from(shape.objects)..shuffle(_rng);
     final three = shapeObjs.take(3).toList();
 
-    // Das "odd one out": Objekt einer anderen Form
-    final otherShape = _shapes.firstWhere((s) => s.name != shape.name);
-    final odd = otherShape.objects[_rng.nextInt(otherShape.objects.length)];
+    // Das "odd one out": Objekt einer Form mit anderer Eckenzahl, das nicht
+    // auch zur gesuchten Form gehört
+    final oddPool =
+        _shapes
+            .where((s) => s.ecken != shape.ecken)
+            .expand((s) => s.objects)
+            .where((o) => !shape.objects.contains(o))
+            .toSet()
+            .toList()
+          ..shuffle(_rng);
+    final odd = oddPool.first;
 
     final opts = [...three, odd]..shuffle(_rng);
 

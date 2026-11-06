@@ -1270,12 +1270,6 @@ class _MathQuizScreenState extends ConsumerState<MathQuizScreen>
   Widget _buildSliderAnswer(MathTask task) {
     final min = (task.lineMin ?? 0).toDouble();
     final max = (task.lineMax ?? 10).toDouble();
-    if (!_sliderMoved) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) setState(() => _sliderValue = min);
-      });
-    }
-
     return Column(
       children: [
         // Slider
