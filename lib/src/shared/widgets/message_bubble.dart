@@ -180,7 +180,8 @@ class MessageBubble extends StatelessWidget {
     return IconButton(
       onPressed: onSpeak,
       tooltip: isSpeaking ? 'Vorlesen stoppen' : 'Vorlesen',
-      visualDensity: VisualDensity.compact,
+      // Volle 48 × 48 dp Trefferfläche (Kinderhände, Barrierefreiheit)
+      constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
       iconSize: 22,
       color: Colors.deepPurple,
       icon: Icon(
@@ -357,7 +358,8 @@ class MessageBubble extends StatelessWidget {
                 padding: const EdgeInsets.only(top: 3),
                 child: Text(
                   '${message.timestamp.hour.toString().padLeft(2, '0')}:${message.timestamp.minute.toString().padLeft(2, '0')}',
-                  style: TextStyle(fontSize: 10, color: Colors.grey[400]),
+                  // grey[700] auf Weiß: Kontrast über 4,5 : 1
+                  style: TextStyle(fontSize: 11, color: Colors.grey[700]),
                 ),
               ),
           ],

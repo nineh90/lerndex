@@ -40,6 +40,31 @@ class _TutorHistoryScreenState extends ConsumerState<TutorHistoryScreen> {
   // Heute verdiente Tutor-XP – direkt aus dem Child-Dokument geladen
   int _todayXp = 0;
 
+  /// Gespräche werden seitenweise geladen (neueste zuerst).
+  static const _pageSize = 50;
+  int _limit = _pageSize;
+
+  /// Einmal angelegter Stream – nicht bei jedem build neu abonnieren.
+  Stream<QuerySnapshot>? _sessions;
+  String? _sessionsKey;
+
+  Stream<QuerySnapshot> _sessionsStream(String userId) {
+    final key = '$userId|$_limit';
+    if (_sessions == null || _sessionsKey != key) {
+      _sessionsKey = key;
+      _sessions = FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .collection('children')
+          .doc(widget.child.id)
+          .collection('tutor_sessions')
+          .orderBy('startedAt', descending: true)
+          .limit(_limit)
+          .snapshots();
+    }
+    return _sessions!;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -89,14 +114,17 @@ class _TutorHistoryScreenState extends ConsumerState<TutorHistoryScreen> {
           IconButton(
             icon: const Icon(Icons.delete_sweep),
             tooltip: 'Alle Gespräche löschen',
-            onPressed: () => _confirmDeleteAll(context, (widget.ownerUid ?? user.ownerUid)),
+            onPressed: () =>
+                _confirmDeleteAll(context, (widget.ownerUid ?? user.ownerUid)),
           ),
         ],
       ),
       body: Column(
         children: [
           _buildFilterBar(),
-          Expanded(child: _buildSessionList((widget.ownerUid ?? user.ownerUid))),
+          Expanded(
+            child: _buildSessionList((widget.ownerUid ?? user.ownerUid)),
+          ),
         ],
       ),
     );
@@ -216,18 +244,14 @@ class _TutorHistoryScreenState extends ConsumerState<TutorHistoryScreen> {
 
   Widget _buildSessionList(String userId) {
     return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance
-          .collection('users')
-          .doc(userId)
-          .collection('children')
-          .doc(widget.child.id)
-          .collection('tutor_sessions')
-          .orderBy('startedAt', descending: true)
-          .snapshots(),
+      stream: _sessionsStream(userId),
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
+        if (snapshot.connectionState == ConnectionState.waiting &&
+            !snapshot.hasData) {
           return const Center(child: CircularProgressIndicator());
         }
+        // Volle Seite geladen → es gibt vermutlich ältere Gespräche
+        final hasMore = (snapshot.data?.docs.length ?? 0) >= _limit;
 
         // Leere Sessions ausblenden + lokal gelöschte sofort ausfiltern
         final allDocs = (snapshot.data?.docs ?? []).where((doc) {
@@ -314,12 +338,16 @@ class _TutorHistoryScreenState extends ConsumerState<TutorHistoryScreen> {
           );
         }
 
-        return _buildGroupedList(filteredDocs, userId);
+        return _buildGroupedList(filteredDocs, userId, hasMore: hasMore);
       },
     );
   }
 
-  Widget _buildGroupedList(List<QueryDocumentSnapshot> docs, String userId) {
+  Widget _buildGroupedList(
+    List<QueryDocumentSnapshot> docs,
+    String userId, {
+    required bool hasMore,
+  }) {
     final Map<String, List<QueryDocumentSnapshot>> grouped = {};
 
     for (final doc in docs) {
@@ -331,128 +359,138 @@ class _TutorHistoryScreenState extends ConsumerState<TutorHistoryScreen> {
 
     return ListView(
       padding: const EdgeInsets.only(bottom: 24),
-      children: grouped.entries.map((entry) {
-        // Tutor-XP für diesen Tag ermitteln:
-        // → Heute: direkt aus tutorXpToday im Child-Dokument (zuverlässig,
-        //          unabhängig davon ob xpEarned in den Sessions gesetzt ist)
-        // → Vergangene Tage: xpEarned aus den Sessions summieren
-        final isToday = entry.key == 'Heute';
-        final dailyXp = isToday
-            ? _todayXp
-            : entry.value.fold<int>(0, (acc, doc) {
-                final data = doc.data() as Map<String, dynamic>;
-                return acc + ((data['xpEarned'] as int?) ?? 0);
-              });
-        const kMaxXpPerDay = 50;
-        final xpCapped = dailyXp.clamp(0, kMaxXpPerDay);
+      children: <Widget>[
+        ...grouped.entries.map((entry) {
+          // Tutor-XP für diesen Tag ermitteln:
+          // → Heute: direkt aus tutorXpToday im Child-Dokument (zuverlässig,
+          //          unabhängig davon ob xpEarned in den Sessions gesetzt ist)
+          // → Vergangene Tage: xpEarned aus den Sessions summieren
+          final isToday = entry.key == 'Heute';
+          final dailyXp = isToday
+              ? _todayXp
+              : entry.value.fold<int>(0, (acc, doc) {
+                  final data = doc.data() as Map<String, dynamic>;
+                  return acc + ((data['xpEarned'] as int?) ?? 0);
+                });
+          const kMaxXpPerDay = 50;
+          final xpCapped = dailyXp.clamp(0, kMaxXpPerDay);
 
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
-              child: Row(
-                children: [
-                  Container(
-                    width: 4,
-                    height: 16,
-                    decoration: BoxDecoration(
-                      color: Colors.deepPurple,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    entry.key,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.deepPurple,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    '${entry.value.length} ${entry.value.length == 1 ? 'Gespräch' : 'Gespräche'}',
-                    style: TextStyle(fontSize: 12, color: Colors.grey[500]),
-                  ),
-                  const Spacer(),
-                  // ⚡ Tutor-XP Badge für diesen Tag
-                  if (dailyXp > 0)
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
+                child: Row(
+                  children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 3,
-                      ),
+                      width: 4,
+                      height: 16,
                       decoration: BoxDecoration(
-                        color: xpCapped >= kMaxXpPerDay
-                            ? Colors.orange.shade100
-                            : Colors.deepPurple.shade50,
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
+                        color: Colors.deepPurple,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      entry.key,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.deepPurple,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      '${entry.value.length} ${entry.value.length == 1 ? 'Gespräch' : 'Gespräche'}',
+                      style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                    ),
+                    const Spacer(),
+                    // ⚡ Tutor-XP Badge für diesen Tag
+                    if (dailyXp > 0)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
                           color: xpCapped >= kMaxXpPerDay
-                              ? Colors.orange.shade400
-                              : Colors.deepPurple.shade200,
-                          width: 1,
+                              ? Colors.orange.shade100
+                              : Colors.deepPurple.shade50,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: xpCapped >= kMaxXpPerDay
+                                ? Colors.orange.shade400
+                                : Colors.deepPurple.shade200,
+                            width: 1,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              xpCapped >= kMaxXpPerDay ? '🏆' : '⚡',
+                              style: const TextStyle(fontSize: 11),
+                            ),
+                            const SizedBox(width: 3),
+                            Text(
+                              '$xpCapped / $kMaxXpPerDay XP',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color: xpCapped >= kMaxXpPerDay
+                                    ? Colors.orange.shade800
+                                    : Colors.deepPurple.shade700,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            xpCapped >= kMaxXpPerDay ? '🏆' : '⚡',
-                            style: const TextStyle(fontSize: 11),
-                          ),
-                          const SizedBox(width: 3),
-                          Text(
-                            '$xpCapped / $kMaxXpPerDay XP',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                              color: xpCapped >= kMaxXpPerDay
-                                  ? Colors.orange.shade800
-                                  : Colors.deepPurple.shade700,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                ],
+                  ],
+                ),
               ),
+              ...entry.value.map((doc) {
+                return Dismissible(
+                  key: Key(doc.id),
+                  direction: DismissDirection.endToStart,
+                  background: Container(
+                    margin: const EdgeInsets.only(
+                      bottom: 12,
+                      left: 16,
+                      right: 16,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.red,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    alignment: Alignment.centerRight,
+                    padding: const EdgeInsets.only(right: 20),
+                    child: const Icon(Icons.delete, color: Colors.white),
+                  ),
+                  confirmDismiss: (_) => _confirmDelete(context),
+                  onDismissed: (_) {
+                    setState(() => _deletedIds.add(doc.id));
+                    _deleteSession(userId: userId, sessionId: doc.id);
+                  },
+                  child: SessionCard(
+                    sessionId: doc.id,
+                    data: doc.data() as Map<String, dynamic>,
+                    child: widget.child,
+                    userId: userId,
+                  ),
+                );
+              }),
+            ],
+          );
+        }),
+        if (hasMore)
+          Center(
+            child: TextButton.icon(
+              onPressed: () => setState(() => _limit += _pageSize),
+              icon: const Icon(Icons.expand_more),
+              label: const Text('Ältere Gespräche laden'),
             ),
-            ...entry.value.map((doc) {
-              return Dismissible(
-                key: Key(doc.id),
-                direction: DismissDirection.endToStart,
-                background: Container(
-                  margin: const EdgeInsets.only(
-                    bottom: 12,
-                    left: 16,
-                    right: 16,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.red,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  alignment: Alignment.centerRight,
-                  padding: const EdgeInsets.only(right: 20),
-                  child: const Icon(Icons.delete, color: Colors.white),
-                ),
-                confirmDismiss: (_) => _confirmDelete(context),
-                onDismissed: (_) {
-                  setState(() => _deletedIds.add(doc.id));
-                  _deleteSession(userId: userId, sessionId: doc.id);
-                },
-                child: SessionCard(
-                  sessionId: doc.id,
-                  data: doc.data() as Map<String, dynamic>,
-                  child: widget.child,
-                  userId: userId,
-                ),
-              );
-            }),
-          ],
-        );
-      }).toList(),
+          ),
+      ],
     );
   }
 
@@ -538,11 +576,18 @@ class _TutorHistoryScreenState extends ConsumerState<TutorHistoryScreen> {
       );
       if (context.mounted) Navigator.pop(context);
     } catch (e) {
+      debugPrint('❌ Fehler beim Löschen aller Sessions: $e');
       if (context.mounted) {
         Navigator.pop(context);
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Fehler beim Löschen: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Nicht alle Gespräche konnten gelöscht werden. Bitte später '
+              'noch einmal versuchen.',
+            ),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     }
   }
@@ -560,6 +605,18 @@ class _TutorHistoryScreenState extends ConsumerState<TutorHistoryScreen> {
       );
     } catch (e) {
       debugPrint('❌ Fehler beim Löschen der Session: $e');
+      if (!mounted) return;
+      // Gespräch wieder einblenden – es ist ja noch da
+      setState(() => _deletedIds.remove(sessionId));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Das Gespräch konnte nicht gelöscht werden. Bitte später noch '
+            'einmal versuchen.',
+          ),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 

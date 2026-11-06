@@ -460,6 +460,7 @@ void main() {
         child: _mia,
         userId: 'livecheck',
         subject: Subject.mathe,
+        uploadImage: false,
       );
       sw.stop();
       _record(
@@ -469,6 +470,32 @@ void main() {
         '| success ${r.success}, ${r.questions.length}/5 Aufgaben'
             '${r.errorMessage != null ? ' | ${r.errorMessage}' : ''}'
             '${r.questions.isEmpty ? '' : ' | z.B. "${_short(r.questions.first.question, 90)}"'}',
+      );
+    });
+
+    // Höchstzahl (Lehrkräfte wählen 10): alle mit Lösung – prüft Token-Limit
+    // (16384) und Timeout (60 s).
+    _liveTest('Mathe-Arbeitsblatt Kl. 3 → 10 Aufgaben', () async {
+      final sw = Stopwatch()..start();
+      final r = await service.generateTasksFromImage(
+        imageFile: XFile('$_fixtures/worksheet.jpg'),
+        child: _mia,
+        userId: 'livecheck',
+        subject: Subject.mathe,
+        numberOfTasks: 10,
+        uploadImage: false,
+      );
+      sw.stop();
+      final withSolution = r.questions
+          .where((q) => (q.solution ?? '').trim().isNotEmpty)
+          .length;
+      _record(
+        'Aufgaben aus Foto (10)',
+        sw,
+        r.success && r.questions.length == 10 && withSolution == 10,
+        '| success ${r.success}, ${r.questions.length}/10 Aufgaben, '
+            '$withSolution mit Lösung'
+            '${r.errorMessage != null ? ' | ${r.errorMessage}' : ''}',
       );
     });
   });

@@ -167,6 +167,18 @@ class CurriculumData {
     }
   }
 
+  /// Lehrplanstufe: alles, was der Quiz-Prompt aus Schulform, Klasse und
+  /// Level macht (effektives Niveau, Klasse, Kompetenzstufe). Ändert sich
+  /// das nicht, passen die vorhandenen Quiz-Fragen weiter – ein Levelaufstieg
+  /// innerhalb derselben Stufe braucht keine neuen.
+  static String curriculumStage({
+    required String schoolType,
+    required int grade,
+    required int level,
+  }) =>
+      '${_resolveSchoolType(schoolType, level)}|$grade|'
+      '${getCompetencyLevel(level).name}';
+
   /// Löst Gesamtschule in ein effektives Schulform-Niveau auf
   static String _resolveSchoolType(String schoolType, int level) {
     if (schoolType == 'Gesamtschule') {

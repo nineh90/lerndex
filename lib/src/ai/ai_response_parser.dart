@@ -68,6 +68,42 @@ class AiResponseParser {
         .trim();
   }
 
+  // ── Antwortoptionen ─────────────────────────────────────────────────────────
+
+  /// JSON-Wert als getrimmter Text. Zahlen und Wahrheitswerte („answer": 15)
+  /// werden zu Text, null und Listen/Objekte zu ''.
+  static String text(Object? value) {
+    if (value is String) return value.trim();
+    if (value is num || value is bool) return value.toString();
+    return '';
+  }
+
+  /// Prüft die Antwortoptionen einer Multiple-Choice-Aufgabe: genau [count]
+  /// nicht leere, verschiedene Optionen (Groß-/Kleinschreibung egal) und die
+  /// richtige Antwort ist eine davon. Zahlen gelten als Text. Weicht die
+  /// Antwort nur in Leerzeichen oder Schreibweise ab, zählt die Option.
+  /// Gibt null zurück, wenn die Aufgabe so nicht brauchbar ist.
+  static ({List<String> options, String answer})? normalizeChoices(
+    Object? rawOptions,
+    Object? rawAnswer, {
+    int count = 4,
+  }) {
+    if (rawOptions is! List || rawOptions.length != count) return null;
+    final options = rawOptions.map(text).toList();
+    if (options.any((o) => o.isEmpty)) return null;
+    final normalized = options.map((o) => o.toLowerCase()).toSet();
+    if (normalized.length != options.length) return null;
+
+    final answer = text(rawAnswer);
+    if (answer.isEmpty) return null;
+    if (options.contains(answer)) return (options: options, answer: answer);
+    final lower = answer.toLowerCase();
+    for (final o in options) {
+      if (o.toLowerCase() == lower) return (options: options, answer: o);
+    }
+    return null;
+  }
+
   // ── Bild-Platzhalter ────────────────────────────────────────────────────────
 
   /// Entfernt Klammer-Platzhalter wie "(Bild eines Apfels)", "[Bild: Hund]"

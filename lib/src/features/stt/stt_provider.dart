@@ -1,6 +1,9 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
+import 'package:speech_to_text/speech_recognition_error.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 
 // ============================================================================
@@ -18,10 +21,49 @@ import 'package:speech_to_text/speech_to_text.dart' as stt;
 //   bis der User explizit auf Stop tippt.
 //
 // Datenschutz:
-//   Native STT (iOS Speech Framework / Android SpeechRecognizer).
-//   Lerndex speichert keine Audio-Daten — nur den erkannten Text als
+//   Die Spracherkennung des Systems schickt die Aufnahme sonst an einen
+//   Online-Dienst (Android: Google, im Browser: Chrome → Google, Safari →
+//   Apple). Deshalb nur auf dem Gerät erkennen (`onDevice: true`):
+//   • Android: nur wenn das System eine Erkennung auf dem Gerät hat
+//     (SpeechRecognizer.isOnDeviceRecognitionAvailable, Android 12+). Sonst
+//     fällt das Plugin still auf die Online-Erkennung zurück – darum ist das
+//     Mikrofon dann ausgeblendet ([sttAvailableProvider]).
+//   • iOS: requiresOnDeviceRecognition, scheitert ohne Gerät-Modell.
+//   • Browser: Web Speech API erkennt immer online → keine Spracheingabe.
+//   Lerndex selbst speichert keine Audio-Daten — nur den erkannten Text als
 //   normale Chat-Nachricht (sofern abgeschickt).
 // ============================================================================
+
+/// Kanal zur App (MainActivity): fragt, ob Android Sprache auf dem Gerät
+/// erkennen kann. Ohne Antwort (älterer App-Stand, anderes System) gilt:
+/// nicht verfügbar.
+const _speechChannel = MethodChannel('de.nilsdigital.lerndex/speech');
+
+/// Spracheingabe nur, wenn sie ohne Online-Dienst läuft (siehe oben).
+Future<bool> isOnDeviceSpeechAvailable() async {
+  if (kIsWeb) return false;
+  switch (defaultTargetPlatform) {
+    case TargetPlatform.iOS:
+      return true;
+    case TargetPlatform.android:
+      try {
+        return await _speechChannel.invokeMethod<bool>(
+              'isOnDeviceRecognitionAvailable',
+            ) ??
+            false;
+      } catch (_) {
+        // MissingPluginException / PlatformException
+        return false;
+      }
+    default:
+      return false;
+  }
+}
+
+/// Ob der Mikrofon-Knopf erscheinen darf.
+final sttAvailableProvider = FutureProvider<bool>(
+  (ref) => isOnDeviceSpeechAvailable(),
+);
 
 class SttState {
   final bool isListening;
@@ -74,48 +116,51 @@ class SttController extends StateNotifier<SttState> {
   /// schießen (kann passieren wenn onStatus mehrfach hintereinander feuert).
   bool _restartInProgress = false;
 
+  void _onError(SpeechRecognitionError err) {
+    final msg = err.errorMsg;
+    debugPrint('🎙️ STT Error: $msg (perm=${err.permanent})');
+    // "no_match" / "no speech" / "speech_timeout" sind KEINE harten
+    // Fehler — bedeutet nur "in dieser Session nichts erkannt".
+    // Solange der User noch aufnimmt, wird die Session neugestartet
+    // (siehe onStatus-Handler).
+    if (_isSoftError(msg)) return;
+    // Echter Fehler: stoppe alles
+    _userWantsListening = false;
+    if (mounted) {
+      state = state.copyWith(isListening: false, error: _humanizeError(msg));
+    }
+  }
+
+  void _onStatus(String status) {
+    debugPrint('🎙️ STT Status: $status');
+    if (!mounted) return;
+
+    if (status == 'notListening' || status == 'done') {
+      if (_userWantsListening) {
+        _restartInternal();
+      } else {
+        state = state.copyWith(isListening: false, soundLevel: 0);
+      }
+    } else if (status == 'listening') {
+      state = state.copyWith(isListening: true, clearError: true);
+    }
+  }
+
   Future<bool> _ensureInitialized() async {
     if (_initialized) return state.isAvailable;
 
     try {
       final available = await _speech.initialize(
-        onError: (err) {
-          debugPrint('🎙️ STT Error: ${err.errorMsg} (perm=${err.permanent})');
-          // "no_match" / "no speech" / "speech_timeout" sind KEINE harten
-          // Fehler — bedeutet nur "in dieser Session nichts erkannt".
-          // Solange der User noch aufnimmt, wird die Session neugestartet
-          // (siehe onStatus-Handler).
-          if (_isSoftError(err.errorMsg)) {
-            return;
-          }
-          // Echter Fehler: stoppe alles
-          _userWantsListening = false;
-          if (mounted) {
-            state = state.copyWith(
-              isListening: false,
-              error: _humanizeError(err.errorMsg),
-            );
-          }
-        },
-        onStatus: (status) {
-          debugPrint('🎙️ STT Status: $status');
-
-          if (status == 'notListening' || status == 'done') {
-            if (_userWantsListening) {
-              _restartInternal();
-            } else {
-              if (mounted) {
-                state = state.copyWith(isListening: false, soundLevel: 0);
-              }
-            }
-          } else if (status == 'listening') {
-            if (mounted) {
-              state = state.copyWith(isListening: true, clearError: true);
-            }
-          }
-        },
+        onError: _onError,
+        onStatus: _onStatus,
         debugLogging: kDebugMode,
       );
+      // SpeechToText ist ein Singleton und übernimmt die Listener nur beim
+      // allerersten initialize(). Nach dem Schließen des Tutors gibt es aber
+      // einen neuen Controller – ohne Umhängen meldete der Recognizer weiter
+      // an den alten (entsorgten).
+      _speech.errorListener = _onError;
+      _speech.statusListener = _onStatus;
       _initialized = true;
       state = state.copyWith(isAvailable: available, clearError: true);
       return available;
@@ -150,8 +195,16 @@ class SttController extends StateNotifier<SttState> {
     required void Function(String text) onResult,
     String initialText = '',
   }) async {
+    if (!await isOnDeviceSpeechAvailable()) {
+      if (mounted) {
+        state = state.copyWith(
+          error: 'Spracheingabe gibt es auf diesem Gerät leider nicht',
+        );
+      }
+      return false;
+    }
     final ok = await _ensureInitialized();
-    if (!ok) return false;
+    if (!ok || !mounted) return false;
 
     _userWantsListening = true;
     _onPartialResult = onResult;
@@ -188,6 +241,8 @@ class SttController extends StateNotifier<SttState> {
           listenFor: const Duration(minutes: 5),
           pauseFor: const Duration(seconds: 30),
           localeId: 'de_DE',
+          // Nur auf dem Gerät erkennen – nichts an Google/Apple schicken.
+          onDevice: true,
         ),
         onSoundLevelChange: (level) {
           final normalized = ((level + 2) / 12).clamp(0.0, 1.0);
@@ -224,7 +279,7 @@ class SttController extends StateNotifier<SttState> {
     _restartInProgress = true;
     try {
       await Future.delayed(const Duration(milliseconds: 300));
-      if (!_userWantsListening) return;
+      if (!_userWantsListening || !mounted) return;
       if (_speech.isListening) return;
       debugPrint('🎙️ STT Auto-Restart (User noch aktiv)');
       await _startNativeSession();
@@ -281,13 +336,17 @@ class SttController extends StateNotifier<SttState> {
 
   @override
   void dispose() {
-    cancel();
+    // Mikrofon sofort aus – sonst startete onStatus die Aufnahme neu.
+    _userWantsListening = false;
+    _onPartialResult = null;
+    unawaited(cancel());
     super.dispose();
   }
 }
 
-final sttControllerProvider = StateNotifierProvider<SttController, SttState>((
-  ref,
-) {
-  return SttController();
-});
+/// autoDispose: Verlässt das Kind den Tutor, wird der Controller entsorgt
+/// und das Mikrofon ausgeschaltet.
+final sttControllerProvider =
+    StateNotifierProvider.autoDispose<SttController, SttState>((ref) {
+      return SttController();
+    });

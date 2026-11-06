@@ -1,6 +1,5 @@
 import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lerndex/src/ai/vertex_ai_service.dart';
 import 'package:lerndex/src/features/auth/domain/child_model.dart';
 import 'package:lerndex/src/features/quiz/data/ai_question_cache_repository.dart';
@@ -22,6 +21,12 @@ import 'package:lerndex/src/features/student_dashboard/presentation/subject_conf
 ///   - _sessionPrefetchDone (In-Memory): merkt sich pro childId+subject ob
 ///     dieser App-Start bereits einen erfolgreichen Prefetch abgeschlossen hat
 ///     → verhindert Doppel-Calls wenn Dashboard + Splash beide prefetchen
+///
+/// [cache]: bitte immer die App-Instanz übergeben
+/// (`ref.read(aiQuestionCacheRepositoryProvider)`), damit dasselbe
+/// KI-Modell genutzt wird. Ohne Übergabe gibt es eine gemeinsame
+/// Ersatz-Instanz ([_fallbackCache]); den Schutz gegen Doppelaufrufe teilen
+/// sich ohnehin alle Instanzen.
 class QuizPrefetchService {
   // Maximale parallele Vertex-AI-Anfragen pro Kind.
   static const int _subjectConcurrency = 3;
@@ -31,6 +36,11 @@ class QuizPrefetchService {
   /// Wird NIE persistiert — reset bei App-Neustart ist gewünscht, da
   /// ein Neustart oft bedeutet dass Zeit vergangen ist.
   static final Set<String> _sessionPrefetchDone = {};
+
+  /// Nur für Aufrufer ohne Riverpod (eine Instanz statt einer pro Aufruf).
+  static AiQuestionCacheRepository? _fallback;
+  static AiQuestionCacheRepository get _fallbackCache => _fallback ??=
+      AiQuestionCacheRepository(FirebaseFirestore.instance, VertexAIService());
 
   // ============================================================
   // HILFSMETHODEN
@@ -72,12 +82,7 @@ class QuizPrefetchService {
   }) async {
     if (children.isEmpty) return;
 
-    final effectiveCache =
-        cache ??
-        AiQuestionCacheRepository(
-          FirebaseFirestore.instance,
-          VertexAIService(),
-        );
+    final effectiveCache = cache ?? _fallbackCache;
 
     debugPrint(
       '🚀 Splash-Prefetch: Starte für ${children.length} Kinder parallel...',
@@ -149,12 +154,7 @@ class QuizPrefetchService {
     required ChildModel child,
     AiQuestionCacheRepository? cache,
   }) async {
-    final effectiveCache =
-        cache ??
-        AiQuestionCacheRepository(
-          FirebaseFirestore.instance,
-          VertexAIService(),
-        );
+    final effectiveCache = cache ?? _fallbackCache;
 
     await _prefetchChildParallel(
       userId: userId,
@@ -178,7 +178,3 @@ class QuizPrefetchService {
     );
   }
 }
-
-final quizPrefetchServiceProvider = Provider<QuizPrefetchService>((ref) {
-  return QuizPrefetchService();
-});
