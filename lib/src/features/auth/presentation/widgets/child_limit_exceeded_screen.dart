@@ -203,10 +203,8 @@ class _ChildLimitExceededScreenState
         await repo.deactivateChild(child.id);
       }
 
-      if (mounted) {
-        // Screen schließen — FamilyDashboard baut sich neu
-        Navigator.of(context).pop();
-      }
+      // Kein pop: Der Screen ist ins FamilyDashboard eingebettet (keine
+      // eigene Route). Das Dashboard baut sich über den Kinder-Stream neu.
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(

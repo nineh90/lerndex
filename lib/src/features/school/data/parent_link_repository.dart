@@ -86,6 +86,45 @@ class ParentLetter {
       '${parentCode.substring(0, 4)}-${parentCode.substring(4)}';
 }
 
+/// Eltern-Code aus einem gescannten Elternbrief, gemerkt bis zur Anmeldung.
+/// Gilt einen Tag; danach (und beim Abmelden) ist er vergessen, damit er
+/// nicht Tage später einem ganz anderen Konto zugeordnet wird.
+abstract final class PendingParentCode {
+  static const _key = 'pending_parent_link';
+  static const maxAge = Duration(days: 1);
+
+  static Future<void> remember(String code, {DateTime? now}) async {
+    final savedAt = (now ?? DateTime.now()).millisecondsSinceEpoch;
+    await (await SharedPreferences.getInstance()).setString(
+      _key,
+      '$savedAt|$code',
+    );
+  }
+
+  /// Code, wenn er nicht älter als [maxAge] ist. Abgelaufene (und alte
+  /// Einträge ohne Zeitstempel) werden gelöscht.
+  static Future<String?> read({DateTime? now}) async {
+    final prefs = await SharedPreferences.getInstance();
+    final value = prefs.getString(_key);
+    if (value == null) return null;
+    final parts = value.split('|');
+    final savedAt = parts.length == 2 ? int.tryParse(parts[0]) : null;
+    final age = savedAt == null
+        ? null
+        : (now ?? DateTime.now()).difference(
+            DateTime.fromMillisecondsSinceEpoch(savedAt),
+          );
+    if (age == null || age.isNegative || age > maxAge || parts[1].isEmpty) {
+      await prefs.remove(_key);
+      return null;
+    }
+    return parts[1];
+  }
+
+  static Future<void> clear() async =>
+      (await SharedPreferences.getInstance()).remove(_key);
+}
+
 class ParentLinkRepository {
   ParentLinkRepository(this._functions, this._firestore, this._auth);
 
@@ -93,33 +132,40 @@ class ParentLinkRepository {
   final FirebaseFirestore _firestore;
   final FirebaseAuth _auth;
 
-  static const _pendingKey = 'pending_parent_link';
-
   Future<Map<String, dynamic>> _call(String name, Object data) async {
     final result = await _functions.httpsCallable(name).call(data);
     return Map<String, dynamic>.from(result.data as Map);
   }
 
-  /// Lehrkraft: Elternbriefe für Schüler (alte Codes werden ungültig).
+  /// Lehrkraft: Elternbriefe für Schüler. Alte Eltern-Codes und Heimkarten
+  /// der Kinder werden ungültig – die neuen Briefe müssen also wirklich bei
+  /// den Eltern ankommen.
   Future<List<ParentLetter>> createLetters(
     List<ChildModel> students, {
     required String className,
     required String schoolName,
   }) async {
-    final data = await _call('createParentLetters', {
-      'studentIds': students.map((s) => s.id).toList(),
-    });
-    final names = {for (final s in students) s.id: s.name};
-    return [
-      for (final l in (data['letters'] as List).cast<Map>())
-        ParentLetter(
-          studentName: names[l['studentId']] ?? '',
-          className: className,
-          schoolName: schoolName,
-          parentCode: l['parentCode'] as String,
-          homeLink: Uri.parse('${webAppOrigin()}/s/${l['homeToken']}'),
-        ),
-    ];
+    final letters = <ParentLetter>[];
+    // Die Function nimmt höchstens 60 Schüler pro Aufruf (wie bei den Karten)
+    for (var i = 0; i < students.length; i += 60) {
+      final chunk = students.skip(i).take(60).toList();
+      final data = await _call('createParentLetters', {
+        'studentIds': chunk.map((s) => s.id).toList(),
+      });
+      final names = {for (final s in chunk) s.id: s.name};
+      for (final l in (data['letters'] as List).cast<Map>()) {
+        letters.add(
+          ParentLetter(
+            studentName: names[l['studentId']] ?? '',
+            className: className,
+            schoolName: schoolName,
+            parentCode: l['parentCode'] as String,
+            homeLink: Uri.parse('${webAppOrigin()}/s/${l['homeToken']}'),
+          ),
+        );
+      }
+    }
+    return letters;
   }
 
   /// Eltern: mit dem Code aus dem Elternbrief verbinden. Gibt den Namen des
@@ -135,19 +181,13 @@ class ParentLinkRepository {
   });
 
   /// Code aus einem gescannten Link merken, bis ein Elternteil angemeldet ist.
-  Future<void> rememberPending(String code) async =>
-      (await SharedPreferences.getInstance()).setString(_pendingKey, code);
+  Future<void> rememberPending(String code) => PendingParentCode.remember(code);
 
-  /// Gemerkten Code einlösen (nach der Anmeldung). Gibt den Namen des Kindes
-  /// zurück oder null, wenn nichts offen war. Wirft bei ungültigem Code
-  /// (der Code ist dann vergessen).
-  Future<String?> redeemPending() async {
-    final prefs = await SharedPreferences.getInstance();
-    final code = prefs.getString(_pendingKey);
-    if (code == null) return null;
-    await prefs.remove(_pendingKey);
-    return link(code);
-  }
+  /// Gemerkter Code (höchstens einen Tag alt) oder null.
+  Future<String?> pendingCode() => PendingParentCode.read();
+
+  /// Gemerkten Code vergessen (eingelöst, abgelehnt oder abgemeldet).
+  Future<void> clearPending() => PendingParentCode.clear();
 
   Stream<List<SchoolChildLink>> watchLinks() {
     final user = _auth.currentUser;
@@ -160,8 +200,9 @@ class ParentLinkRepository {
         .collection('linkedChildren')
         .snapshots()
         .map(
-          (s) => s.docs.map((d) => SchoolChildLink.fromMap(d.data())).toList()
-            ..sort((a, b) => a.name.compareTo(b.name)),
+          (s) =>
+              s.docs.map((d) => SchoolChildLink.fromMap(d.data())).toList()
+                ..sort((a, b) => a.name.compareTo(b.name)),
         );
   }
 
@@ -184,13 +225,14 @@ final parentLinkRepositoryProvider = Provider<ParentLinkRepository>((ref) {
 });
 
 /// Mit dem eigenen Konto verbundene Schulkinder.
-final schoolChildLinksProvider = StreamProvider<List<SchoolChildLink>>((ref) {
-  ref.watch(authStateChangesProvider);
-  return ref.watch(parentLinkRepositoryProvider).watchLinks();
-});
+final schoolChildLinksProvider =
+    StreamProvider.autoDispose<List<SchoolChildLink>>((ref) {
+      ref.watch(authStateChangesProvider);
+      return ref.watch(parentLinkRepositoryProvider).watchLinks();
+    });
 
 /// Profil eines verbundenen Schulkindes (live).
-final linkedSchoolChildProvider =
-    StreamProvider.family<ChildModel?, SchoolChildLink>((ref, link) {
+final linkedSchoolChildProvider = StreamProvider.autoDispose
+    .family<ChildModel?, SchoolChildLink>((ref, link) {
       return ref.watch(parentLinkRepositoryProvider).watchChild(link);
     });

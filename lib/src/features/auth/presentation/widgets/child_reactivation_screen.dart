@@ -233,7 +233,8 @@ class _ChildReactivationScreenState
       for (final id in _selected) {
         await repo.reactivateChild(id);
       }
-      if (mounted) Navigator.of(context).pop();
+      // Kein pop: eingebettet ins FamilyDashboard, das sich über den
+      // Kinder-Stream neu aufbaut.
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
