@@ -249,7 +249,7 @@ class RewardsScreen extends ConsumerWidget {
             if (isAvailable) ...[
               const SizedBox(height: 8),
               Text(
-                'Schau ins Achievements-Tab 🏆',
+                'Schau bei deinen Erfolgen 🏆',
                 style: TextStyle(
                   fontSize: 13,
                   color: onSurface.withValues(alpha: 0.35),

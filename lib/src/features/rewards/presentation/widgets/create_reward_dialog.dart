@@ -529,7 +529,7 @@ class _CreateRewardDialogState extends ConsumerState<CreateRewardDialog> {
       case RewardTrigger.stars:
         return 'Erforderliche Sterne';
       case RewardTrigger.streak:
-        return 'Erforderliche Streak-Tage';
+        return 'Erforderliche Tage am Stück';
       case RewardTrigger.quizCount:
         return 'Erforderliche Quiz-Anzahl';
       default:

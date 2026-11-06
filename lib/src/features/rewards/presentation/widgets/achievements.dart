@@ -81,7 +81,7 @@ class AchievementsScreen extends ConsumerWidget {
     final categories = [
       _AchievementCategory(
         icon: '⭐',
-        title: 'Level-Achievements',
+        title: 'Level-Erfolge',
         color: const Color(0xFFFFB300),
         trigger: RewardTrigger.level,
         progressLabel: 'Level ${child.level}',
@@ -97,7 +97,7 @@ class AchievementsScreen extends ConsumerWidget {
       ),
       _AchievementCategory(
         icon: '🔥',
-        title: 'Streak-Rekorde',
+        title: 'Lernserien',
         color: const Color(0xFFFF5722),
         trigger: RewardTrigger.streak,
         progressLabel: '${child.streak ?? 0} Tage',
@@ -113,7 +113,7 @@ class AchievementsScreen extends ConsumerWidget {
       ),
       const _AchievementCategory(
         icon: '💎',
-        title: 'Spezial-Achievements',
+        title: 'Besondere Erfolge',
         color: Color(0xFF1E88E5),
         trigger: RewardTrigger.perfectQuiz,
         progressLabel: '',
@@ -198,7 +198,7 @@ class _AchievementHeader extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      'Meine Achievements',
+                      'Meine Erfolge',
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 18,
@@ -255,7 +255,7 @@ class _AchievementHeader extends StatelessWidget {
               _HeaderStat(label: 'Level', value: '${child.level}', icon: '⭐'),
               _HeaderStat(label: 'XP', value: '${child.xp}', icon: '⚡'),
               _HeaderStat(
-                label: 'Streak',
+                label: 'Lernserie',
                 value: '${child.streak ?? 0}🔥',
                 icon: '',
               ),
@@ -297,7 +297,10 @@ class _HeaderStat extends StatelessWidget {
         ),
         Text(
           label,
-          style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 11),
+          style: TextStyle(
+            color: Colors.white.withValues(alpha: 0.7),
+            fontSize: 11,
+          ),
         ),
       ],
     );
@@ -628,7 +631,9 @@ class _AchievementTile extends StatelessWidget {
               : Colors.grey.shade200,
           width: _isUnlocked ? 1.5 : 1,
         ),
-        color: _isUnlocked ? categoryColor.withValues(alpha: 0.05) : Colors.white,
+        color: _isUnlocked
+            ? categoryColor.withValues(alpha: 0.05)
+            : Colors.white,
         boxShadow: _isUnlocked
             ? [
                 BoxShadow(

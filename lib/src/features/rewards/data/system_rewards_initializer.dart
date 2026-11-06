@@ -19,6 +19,13 @@ class SystemRewardsInitializer {
   static const Map<String, String> _renamedTitles = {
     '💪 Fleißige Lernerin!': '💪 Fleißig gelernt!',
     '🔥 Super Lernerin!': '🔥 Super gelernt!',
+    // Deutsch statt „Streak“ in der Kinder-Oberfläche
+    '🔥 7 Tage Streak!': '🔥 7 Tage am Stück!',
+    '⚡ 14 Tage Streak!': '⚡ 14 Tage am Stück!',
+    '🌟 21 Tage Streak!': '🌟 21 Tage am Stück!',
+    '👑 28 Tage Streak!': '👑 28 Tage am Stück!',
+    '💎 35 Tage Streak!': '💎 35 Tage am Stück!',
+    '🏆 42 Tage Streak!': '🏆 42 Tage am Stück!',
   };
 
   /// Vordefinierte System-Belohnungen (rein digital, kein Eltern-OK nötig)
@@ -132,7 +139,7 @@ class SystemRewardsInitializer {
 
     // ========== STREAK-BASIERTE BELOHNUNGEN ==========
     {
-      'title': '🔥 7 Tage Streak!',
+      'title': '🔥 7 Tage am Stück!',
       'description': 'Eine ganze Woche am Stück gelernt – mega!',
       'reward': '+50 Bonus-XP',
       'trigger': 'streak',
@@ -141,10 +148,9 @@ class SystemRewardsInitializer {
       'badgeId': 'badge-streak-7',
     },
     {
-      'title': '⚡ 14 Tage Streak!',
-      'description':
-          'Zwei Wochen Durchhaltevermögen! Du bist ein Streak-Profi!',
-      'reward': '+100 Bonus-XP & exklusiver Streak-Avatar freigeschaltet',
+      'title': '⚡ 14 Tage am Stück!',
+      'description': 'Zwei Wochen Durchhaltevermögen! Du bleibst richtig dran!',
+      'reward': '+100 Bonus-XP & exklusiver Lernserien-Avatar freigeschaltet',
       'trigger': 'streak',
       'requiredStreak': 14,
       'bonusXP': 100,
@@ -152,18 +158,18 @@ class SystemRewardsInitializer {
       'avatarUnlockId': 'avatar-streak-uncommon',
     },
     {
-      'title': '🌟 21 Tage Streak!',
+      'title': '🌟 21 Tage am Stück!',
       'description': 'Drei Wochen! Unglaublich konsequent!',
-      'reward': '+200 Bonus-XP & Titel „Streak-Krieger"',
+      'reward': '+200 Bonus-XP & Titel „Dranbleiber"',
       'trigger': 'streak',
       'requiredStreak': 21,
       'bonusXP': 200,
       'badgeId': 'badge-streak-21',
     },
     {
-      'title': '👑 28 Tage Streak!',
+      'title': '👑 28 Tage am Stück!',
       'description': 'Vier Wochen am Stück – du bist ein echter Champion!',
-      'reward': '+300 Bonus-XP & epischer Streak-Avatar freigeschaltet',
+      'reward': '+300 Bonus-XP & epischer Lernserien-Avatar freigeschaltet',
       'trigger': 'streak',
       'requiredStreak': 28,
       'bonusXP': 300,
@@ -171,7 +177,7 @@ class SystemRewardsInitializer {
       'avatarUnlockId': 'avatar-streak-epic',
     },
     {
-      'title': '💎 35 Tage Streak!',
+      'title': '💎 35 Tage am Stück!',
       'description': 'Fünf Wochen! Du bist eine Lernmaschine!',
       'reward': '+500 Bonus-XP & Titel „Lernmaschine"',
       'trigger': 'streak',
@@ -180,10 +186,10 @@ class SystemRewardsInitializer {
       'badgeId': 'badge-streak-35',
     },
     {
-      'title': '🏆 42 Tage Streak!',
+      'title': '🏆 42 Tage am Stück!',
       'description':
           'Sechs Wochen! Legendär! Der mächtigste Avatar gehört dir!',
-      'reward': '+750 Bonus-XP & legendärer Streak-Avatar freigeschaltet',
+      'reward': '+750 Bonus-XP & legendärer Lernserien-Avatar freigeschaltet',
       'trigger': 'streak',
       'requiredStreak': 42,
       'bonusXP': 750,
