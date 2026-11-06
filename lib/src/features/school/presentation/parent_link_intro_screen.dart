@@ -34,7 +34,11 @@ class ParentLinkIntroScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const Text('👨‍👩‍👧', style: TextStyle(fontSize: 52), textAlign: TextAlign.center),
+                  const Text(
+                    '👨‍👩‍👧',
+                    style: TextStyle(fontSize: 52),
+                    textAlign: TextAlign.center,
+                  ),
                   const SizedBox(height: 12),
                   const Text(
                     'Mit Ihrem Kind verbinden',

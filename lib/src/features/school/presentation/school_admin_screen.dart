@@ -357,7 +357,8 @@ class TeacherCardDialog extends StatelessWidget {
       actions: [
         if (kIsWeb)
           TextButton.icon(
-            onPressed: () => writeHtmlToTab(openBlankTab(), teacherCardHtml(card)),
+            onPressed: () =>
+                writeHtmlToTab(openBlankTab(), teacherCardHtml(card)),
             icon: const Icon(Icons.print_outlined),
             label: const Text('Drucken'),
           ),

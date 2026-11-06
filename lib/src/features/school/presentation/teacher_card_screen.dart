@@ -83,7 +83,8 @@ class _TeacherCardScreenState extends ConsumerState<TeacherCardScreen> {
         final seconds =
             (e.details as Map?)?['retryAfterSeconds'] as int? ?? 900;
         final minutes = (seconds / 60).ceil();
-        error = 'Zu viele falsche Versuche. Die Karte ist für $minutes '
+        error =
+            'Zu viele falsche Versuche. Die Karte ist für $minutes '
             '${minutes == 1 ? 'Minute' : 'Minuten'} gesperrt.';
       } else if (e.code == 'already-exists') {
         // Ein anderes Gerät hat die PIN gerade festgelegt
@@ -159,7 +160,11 @@ class _TeacherCardScreenState extends ConsumerState<TeacherCardScreen> {
   Widget _signedIn(String email) => Column(
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
-      const Text('🧑‍🏫', style: TextStyle(fontSize: 52), textAlign: TextAlign.center),
+      const Text(
+        '🧑‍🏫',
+        style: TextStyle(fontSize: 52),
+        textAlign: TextAlign.center,
+      ),
       const SizedBox(height: 12),
       Text(
         'Auf diesem Gerät ist gerade $email angemeldet. Zum Anmelden mit '
@@ -189,7 +194,11 @@ class _TeacherCardScreenState extends ConsumerState<TeacherCardScreen> {
     children: [
       const Text('🔒', style: TextStyle(fontSize: 52)),
       const SizedBox(height: 12),
-      Text(text, textAlign: TextAlign.center, style: const TextStyle(fontSize: 16)),
+      Text(
+        text,
+        textAlign: TextAlign.center,
+        style: const TextStyle(fontSize: 16),
+      ),
     ],
   );
 
@@ -198,7 +207,11 @@ class _TeacherCardScreenState extends ConsumerState<TeacherCardScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Text('🧑‍🏫', style: TextStyle(fontSize: 52), textAlign: TextAlign.center),
+        const Text(
+          '🧑‍🏫',
+          style: TextStyle(fontSize: 52),
+          textAlign: TextAlign.center,
+        ),
         const SizedBox(height: 8),
         Text(
           info.name.isEmpty ? 'Willkommen' : 'Hallo ${info.name}',
@@ -216,16 +229,27 @@ class _TeacherCardScreenState extends ConsumerState<TeacherCardScreen> {
           style: TextStyle(color: Colors.grey[800], fontSize: 15),
         ),
         const SizedBox(height: 20),
-        _pinField(_pin, firstPin ? 'Neue PIN' : 'PIN', autofocus: true,
-            onSubmitted: firstPin ? null : () => _submit(firstPin: false)),
+        _pinField(
+          _pin,
+          firstPin ? 'Neue PIN' : 'PIN',
+          autofocus: true,
+          onSubmitted: firstPin ? null : () => _submit(firstPin: false),
+        ),
         if (firstPin) ...[
           const SizedBox(height: 12),
-          _pinField(_pinRepeat, 'PIN wiederholen',
-              onSubmitted: () => _submit(firstPin: true)),
+          _pinField(
+            _pinRepeat,
+            'PIN wiederholen',
+            onSubmitted: () => _submit(firstPin: true),
+          ),
         ],
         if (_error != null) ...[
           const SizedBox(height: 12),
-          Text(_error!, style: const TextStyle(color: Colors.red), textAlign: TextAlign.center),
+          Text(
+            _error!,
+            style: const TextStyle(color: Colors.red),
+            textAlign: TextAlign.center,
+          ),
         ],
         const SizedBox(height: 20),
         FilledButton(
@@ -238,7 +262,10 @@ class _TeacherCardScreenState extends ConsumerState<TeacherCardScreen> {
               ? const SizedBox(
                   width: 20,
                   height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
                 )
               : Text(firstPin ? 'PIN festlegen und anmelden' : 'Anmelden'),
         ),

@@ -100,7 +100,7 @@ String studentCardsHtml(List<StudentCard> cards, {required String schoolName}) {
     header, .info { display: none; }
     main { max-width: none; padding: 0; }
     .grid { grid-template-columns: 1fr 1fr; gap: 6mm; }
-    .card { flex-direction: row; text-align: left; height: 58mm; padding: 5mm;
+    .card { flex-direction: row; text-align: left; min-height: 58mm; padding: 5mm;
             border: 0.4mm dashed #999; border-radius: 3mm; }
     .school { font-size: 8pt; }
     .name { font-size: 16pt; margin: 2mm 0 1mm; }
@@ -132,7 +132,8 @@ $items
 
 /// Druckseite für die QR-Karte einer Lehrkraft: Karte zum Ausschneiden und
 /// darunter die Anleitung (PIN beim ersten Scannen).
-String teacherCardHtml(TeacherCard card) => '''<!DOCTYPE html>
+String teacherCardHtml(TeacherCard card) =>
+    '''<!DOCTYPE html>
 <html lang="de">
 <head>
 <meta charset="utf-8">
@@ -268,3 +269,32 @@ $pages
 </body>
 </html>''';
 }
+
+/// Text eines Elternbriefs zum Weitergeben (Nachricht, E-Mail), wenn nicht
+/// gedruckt wird.
+String parentLetterText(ParentLetter l) =>
+    '''Lerndex für ${l.studentName} (Klasse ${l.className}, ${l.schoolName})
+1. Eltern verbinden (Statistik, Belohnungen, kostenlos): ${l.parentLink}
+   Oder in der App unter „Kind aus der Schule verbinden“ den Code ${l.displayCode} eingeben.
+2. Zu Hause lernen: diesen Link auf dem Handy oder Tablet des Kindes öffnen:
+   ${l.homeLink}
+Bitte nicht weitergeben – die Links gehören nur zu Ihrem Kind.''';
+
+/// Seite für den schon geöffneten Druck-Tab, wenn das Erstellen scheitert.
+String printErrorHtml(String message) =>
+    '''<!DOCTYPE html>
+<html lang="de">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lerndex – nicht geklappt</title>
+<style>
+  body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+         background: #F5F3FF; color: #222; }
+  main { max-width: 520px; margin: 48px auto; padding: 24px; background: #fff; border-radius: 14px; }
+  h1 { font-size: 20px; margin: 0 0 12px; color: #6B21A8; }
+</style></head>
+<body><main>
+  <h1>Das hat nicht geklappt</h1>
+  <p>${_escape(message)}</p>
+  <p>Diesen Tab schließen und in Lerndex noch einmal versuchen.</p>
+</main></body>
+</html>''';

@@ -54,6 +54,7 @@ Future<void> connectSchoolChild(BuildContext context, WidgetRef ref) async {
   final code = await showDialog<String>(
     context: context,
     builder: (ctx) => AlertDialog(
+      scrollable: true,
       title: const Text('Kind aus der Schule verbinden'),
       content: Column(
         mainAxisSize: MainAxisSize.min,
@@ -99,7 +100,9 @@ Future<void> connectSchoolChild(BuildContext context, WidgetRef ref) async {
   final messenger = ScaffoldMessenger.of(context);
   try {
     final name = await ref.read(parentLinkRepositoryProvider).link(code);
-    messenger.showSnackBar(SnackBar(content: Text('$name ist jetzt verbunden.')));
+    messenger.showSnackBar(
+      SnackBar(content: Text('$name ist jetzt verbunden.')),
+    );
   } catch (e) {
     messenger.showSnackBar(
       SnackBar(content: Text(userMessage(e)), backgroundColor: Colors.red),
@@ -183,7 +186,10 @@ class _LinkedChildCard extends ConsumerWidget {
                   TextButton.icon(
                     onPressed: () => _push(
                       context,
-                      ChildStatisticsScreen(child: child, ownerUid: link.ownerUid),
+                      ChildStatisticsScreen(
+                        child: child,
+                        ownerUid: link.ownerUid,
+                      ),
                     ),
                     icon: const Icon(Icons.bar_chart, size: 18),
                     label: const Text('Statistik'),
@@ -191,7 +197,10 @@ class _LinkedChildCard extends ConsumerWidget {
                   TextButton.icon(
                     onPressed: () => _push(
                       context,
-                      ManageRewardsScreen(child: child, ownerUid: link.ownerUid),
+                      ManageRewardsScreen(
+                        child: child,
+                        ownerUid: link.ownerUid,
+                      ),
                     ),
                     icon: const Icon(Icons.card_giftcard, size: 18),
                     label: const Text('Belohnungen'),
