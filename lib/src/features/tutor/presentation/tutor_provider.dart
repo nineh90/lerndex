@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/legacy.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:lerndex/src/ai/vertex_ai_service.dart';
 import '../domain/chat_message.dart';
+import '../data/chat_message_firestore.dart';
 import '../data/tutor_session_model.dart';
 import '../../auth/presentation/active_child_provider.dart';
 import '../../auth/data/auth_repository.dart';
@@ -16,264 +17,283 @@ import '../../generated_tasks/data/generated_task_models.dart'
     show Subject, SubjectExtension;
 import 'package:lerndex/src/features/auth/domain/account.dart';
 
+/// Chat mit Lexi für ein Kind.
+///
+/// Firestore: `users/{uid}/children/{childId}/tutor_sessions/{sessionId}`
+/// mit Unterkollektion `messages`. Werte der Session (Fach, erste Frage,
+/// Inhalts-Flag) und die Tages-XP hält der Notifier selbst, statt sie bei
+/// jeder Nachricht neu zu lesen.
 class TutorNotifier extends StateNotifier<List<ChatMessage>> {
   TutorNotifier(this._aiService, this._ref, this._childId, this._userId)
     : super([]) {
-    _initializeWithWelcome();
+    _ready = _initialize();
   }
 
   final VertexAIService _aiService;
   final Ref _ref;
   final String _childId;
   final String _userId;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
+  /// Läuft beim Öffnen: Verlauf laden bzw. alte Sessions schließen. Senden
+  /// und Session-Anlage warten darauf.
+  late final Future<void> _ready;
+
   bool _isAIInitialized = false;
-  bool _isLoadingHistory = false;
-  String? _currentSessionId;
   bool _hasUserSentMessage = false;
+
+  /// Solange eine Nachricht auf Lexis Antwort wartet: kein zweites Senden.
+  bool _sending = false;
+
+  /// Aktuelle Session. [_sessionFuture] ist gesetzt, sobald sie angelegt
+  /// wird – so entsteht bei schnellen Nachrichten keine zweite Session.
+  String? _currentSessionId;
+  Future<String>? _sessionFuture;
+
+  /// Zählt hoch, wenn die Session abgeschlossen wird. Eine danach fertig
+  /// werdende Anlage wird nicht mehr zur aktuellen Session.
+  int _sessionGeneration = 0;
+
+  // Werte der aktuellen Session (statt sie bei jeder Nachricht zu lesen)
+  String? _sessionTopic;
+  bool _sessionHasFirstQuestion = false;
+  String? _sessionContentFlag;
 
   /// Verhindert, dass pro Tutor-Session mehr als einmal Quiz-Aufgaben aus dem
   /// Gespräch generiert werden (ein zusätzlicher KI-Aufruf reicht pro Session).
   bool _quizInjectedThisSession = false;
 
+  // Heute verdiente Tutor-XP (Vorprüfung; das Limit prüft die Transaktion)
+  int _dailyXp = 0;
+  DateTime? _dailyXpDay;
+
   static const int maxXpPerDay = 50;
 
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  /// True, solange Lexi an einer Antwort arbeitet.
+  bool get isWaitingForAnswer => _sending;
 
-  void _initializeWithWelcome() {
+  CollectionReference<Map<String, dynamic>> get _sessions => _firestore
+      .collection('users')
+      .doc(_userId)
+      .collection('children')
+      .doc(_childId)
+      .collection('tutor_sessions');
+
+  // --------------------------------------------------------------------------
+  // START
+  // --------------------------------------------------------------------------
+
+  Future<void> _initialize() async {
     final child = _ref.read(activeChildProvider);
     if (child == null) return;
 
     // Wenn eine Session reaktiviert werden soll, KEINE Welcome-Message setzen –
     // der State bleibt leer bis die Nachrichten geladen sind (verhindert Flash).
     final resumeId = _ref.read(tutorResumeSessionIdProvider);
-    if (resumeId == null) {
-      final welcomeMessage = ChatMessage.tutor(
-        VertexAIService.buildWelcomeMessage(child),
-      );
-      state = [welcomeMessage];
-    }
+    final isFreshChat = _ref.read(tutorFreshChatProvider);
+    if (resumeId == null) state = [_welcome(child)];
 
-    _loadDailyXpAndHistory();
+    // Andere Provider erst nach dem Aufbau dieses Providers ändern.
+    await Future<void>.delayed(Duration.zero);
+    if (!mounted) return;
+    if (resumeId != null) {
+      _ref.read(tutorResumeSessionIdProvider.notifier).state = null;
+    }
+    if (isFreshChat) _ref.read(tutorFreshChatProvider.notifier).state = false;
+
+    unawaited(_loadDailyXp());
+
+    try {
+      if (resumeId != null) {
+        await _activateSession(resumeId);
+      } else if (isFreshChat) {
+        await _closeAllActiveSessions();
+      } else {
+        await _loadActiveSession();
+      }
+    } catch (e) {
+      debugPrint('⚠️ Tutor: Verlauf konnte nicht geladen werden: $e');
+    }
   }
 
-  /// Lädt die heutigen Tutor-XP aus Firestore und befüllt den Provider,
-  /// dann wird die Chat-Historie geladen.
-  Future<void> _loadDailyXpAndHistory() async {
+  static ChatMessage _welcome(ChildModel child) => ChatMessage.tutor(
+    VertexAIService.buildWelcomeMessage(child),
+    excludeFromAi: true,
+  );
+
+  /// Lädt die heutigen Tutor-XP und befüllt den Banner.
+  Future<void> _loadDailyXp() async {
     try {
-      final xpService = _ref.read(xpServiceProvider);
-      final xpToday = await xpService.getTutorXpToday(
-        userId: _userId,
-        childId: _childId,
-      );
-      // Provider mit dem bereits heute verdienten XP-Stand befüllen
-      _ref.read(tutorSessionXpProvider(_childId).notifier).state = xpToday;
-      debugPrint('📊 Tutor: Heutige XP geladen → $xpToday / $maxXpPerDay');
+      final xpToday = await _ref
+          .read(xpServiceProvider)
+          .getTutorXpToday(userId: _userId, childId: _childId);
+      if (!mounted) return;
+      _setDailyXp(xpToday);
     } catch (e) {
       debugPrint('⚠️ Tutor: Fehler beim Laden der Tages-XP: $e');
     }
-    _loadChatHistoryInBackground();
   }
 
-  Future<void> _loadChatHistoryInBackground() async {
-    if (_isLoadingHistory) return;
-    _isLoadingHistory = true;
+  void _setDailyXp(int xp) {
+    _dailyXp = xp;
+    _dailyXpDay = _today();
+    _ref.read(tutorSessionXpProvider(_childId).notifier).state = xp;
+  }
 
-    try {
-      // Prüfen ob eine Session reaktiviert werden soll
-      final resumeId = _ref.read(tutorResumeSessionIdProvider);
-      if (resumeId != null) {
-        // Resume-ID sofort synchron löschen (vor jedem await) damit kein zweiter
-        // Build-Zyklus sie nochmals liest und doppelt verarbeitet.
-        _ref.read(tutorResumeSessionIdProvider.notifier).state = null;
+  static DateTime _today() {
+    final now = DateTime.now();
+    return DateTime(now.year, now.month, now.day);
+  }
 
-        // Session in Firestore auf 'active' setzen
-        await _firestore
-            .collection('users')
-            .doc(_userId)
-            .collection('children')
-            .doc(_childId)
-            .collection('tutor_sessions')
-            .doc(resumeId)
-            .update({'status': 'active', 'endedAt': FieldValue.delete()});
+  /// Gespräch aus dem Verlauf fortsetzen (Schülerdashboard).
+  Future<void> _activateSession(String sessionId) async {
+    final ref = _sessions.doc(sessionId);
+    await ref.update({'status': 'active', 'endedAt': FieldValue.delete()});
+    final snapshot = await ref.get();
+    final messages = await _loadMessages(sessionId);
+    if (!mounted) return;
+    _useSession(sessionId, snapshot.data());
+    _hasUserSentMessage = true;
+    if (messages.isNotEmpty) state = messages;
+  }
 
-        _currentSessionId = resumeId;
-        _hasUserSentMessage = true;
-        // Nachrichten laden
-        final messagesSnapshot = await _firestore
-            .collection('users')
-            .doc(_userId)
-            .collection('children')
-            .doc(_childId)
-            .collection('tutor_sessions')
-            .doc(resumeId)
-            .collection('messages')
-            .orderBy('timestamp', descending: false)
-            // limitToLast: beim Fortsetzen die NEUESTEN 50 Nachrichten laden.
-            .limitToLast(50)
-            .get();
+  /// Normaler Start: eine noch aktive Session weiterführen.
+  Future<void> _loadActiveSession() async {
+    final snapshot = await _sessions
+        .where('status', isEqualTo: 'active')
+        .limit(1)
+        .get();
+    if (snapshot.docs.isEmpty || !mounted) return;
 
-        final messages = messagesSnapshot.docs.map((doc) {
-          final data = doc.data();
-          return ChatMessage(
-            id: doc.id,
-            text: data['text'] ?? '',
-            isUser: data['isUser'] ?? false,
-            timestamp:
-                (data['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now(),
-            imageUrl: data['imageUrl'] as String?,
-          );
-        }).toList();
-
-        if (messages.isNotEmpty) {
-          state = messages;
-        }
-        return;
-      }
-      final isFreshChat = _ref.read(tutorFreshChatProvider);
-      if (isFreshChat) {
-        Future.microtask(() {
-          _ref.read(tutorFreshChatProvider.notifier).state = false;
-        });
-        await _closeAllActiveSessions();
-        return;
-      }
-
-      // Normaler Pfad: aktive Session suchen
-      final sessionSnapshot = await _firestore
-          .collection('users')
-          .doc(_userId)
-          .collection('children')
-          .doc(_childId)
-          .collection('tutor_sessions')
-          .where('status', isEqualTo: 'active')
-          .limit(1)
-          .get();
-
-      if (sessionSnapshot.docs.isEmpty) {
-        return;
-      }
-
-      _currentSessionId = sessionSnapshot.docs.first.id;
-
-      final messagesSnapshot = await _firestore
-          .collection('users')
-          .doc(_userId)
-          .collection('children')
-          .doc(_childId)
-          .collection('tutor_sessions')
-          .doc(_currentSessionId)
-          .collection('messages')
-          .orderBy('timestamp', descending: false)
-          // limitToLast: beim Fortsetzen die NEUESTEN 50 Nachrichten laden.
-          .limitToLast(50)
-          .get();
-
-      if (messagesSnapshot.docs.isEmpty) {
-        return;
-      }
-
-      final messages = messagesSnapshot.docs.map((doc) {
-        final data = doc.data();
-        return ChatMessage(
-          id: doc.id,
-          text: data['text'] ?? '',
-          isUser: data['isUser'] ?? false,
-          timestamp:
-              (data['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now(),
-          imageUrl: data['imageUrl'] as String?,
-        );
-      }).toList();
-
-      if (messages.length > 1) {
-        state = messages;
-        _hasUserSentMessage = true;
-      }
-    } catch (e) {
-      // ⚠️ Fehler beim Laden der Historie: $e
-    } finally {
-      _isLoadingHistory = false;
+    final doc = snapshot.docs.first;
+    final messages = await _loadMessages(doc.id);
+    if (!mounted) return;
+    _useSession(doc.id, doc.data());
+    if (messages.length > 1) {
+      state = messages;
+      _hasUserSentMessage = true;
     }
+  }
+
+  /// Die neuesten 50 Nachrichten einer Session.
+  Future<List<ChatMessage>> _loadMessages(String sessionId) async {
+    final snapshot = await _sessions
+        .doc(sessionId)
+        .collection('messages')
+        .orderBy('timestamp', descending: false)
+        .limitToLast(50)
+        .get();
+    return [
+      for (final doc in snapshot.docs)
+        chatMessageFromFirestore(doc.id, doc.data()),
+    ];
+  }
+
+  void _useSession(String sessionId, Map<String, dynamic>? data) {
+    _currentSessionId = sessionId;
+    _sessionFuture = Future.value(sessionId);
+    final topic = data?['detectedTopic'] as String?;
+    _sessionTopic = topic != null && isSchoolSubject(topic) ? topic : null;
+    _sessionHasFirstQuestion = data?['firstQuestion'] != null;
+    _sessionContentFlag = data?['contentFlag'] as String?;
+    _quizInjectedThisSession = false;
   }
 
   Future<void> _ensureAIInitialized() async {
     if (_isAIInitialized) return;
-
-    try {
-      await _aiService.initialize();
-      _isAIInitialized = true;
-    } catch (e) {
-      // ❌ Fehler bei AI-Initialisierung: $e
-      rethrow;
-    }
+    await _aiService.initialize();
+    _isAIInitialized = true;
   }
 
-  Future<String> _getOrCreateSession() async {
-    if (_currentSessionId != null) {
-      return _currentSessionId!;
-    }
+  // --------------------------------------------------------------------------
+  // SESSION
+  // --------------------------------------------------------------------------
 
-    try {
-      final sessionSnapshot = await _firestore
-          .collection('users')
-          .doc(_userId)
-          .collection('children')
-          .doc(_childId)
-          .collection('tutor_sessions')
-          .where('status', isEqualTo: 'active')
-          .limit(1)
-          .get();
-
-      if (sessionSnapshot.docs.isNotEmpty) {
-        _currentSessionId = sessionSnapshot.docs.first.id;
-        // ✅ Aktive Session gefunden: $_currentSessionId
-      } else {
-        final sessionDoc = await _firestore
-            .collection('users')
-            .doc(_userId)
-            .collection('children')
-            .doc(_childId)
-            .collection('tutor_sessions')
-            .add({
-              'childId': _childId,
-              'startedAt': Timestamp.fromDate(DateTime.now()),
-              'status': 'active',
-              'messageCount': 0,
-            });
-        _currentSessionId = sessionDoc.id;
-        // ✅ Neue Session erstellt: $_currentSessionId
-      }
-
-      return _currentSessionId!;
-    } catch (e) {
-      // ❌ Fehler bei Session-Erstellung: $e
-      rethrow;
-    }
+  /// ID der aktuellen Session; legt sie beim ersten Mal an. Mehrere Aufrufe
+  /// teilen sich dieselbe Anlage.
+  Future<String> _getOrCreateSession() {
+    return _sessionFuture ??= _createSession().catchError((Object e) {
+      _sessionFuture = null;
+      throw e;
+    });
   }
+
+  Future<String> _createSession() async {
+    // Erst fertig laden: beim frischen Chat schließt _initialize die alten
+    // Sessions, beim normalen Start übernimmt es die aktive.
+    await _ready;
+    final existing = _currentSessionId;
+    if (existing != null) return existing;
+
+    final generation = _sessionGeneration;
+    final doc = await _sessions.add({
+      'childId': _childId,
+      'startedAt': Timestamp.fromDate(DateTime.now()),
+      'status': 'active',
+      'messageCount': 0,
+    });
+    if (generation == _sessionGeneration) {
+      _currentSessionId = doc.id;
+      _sessionTopic = null;
+      _sessionHasFirstQuestion = false;
+      _sessionContentFlag = null;
+      _quizInjectedThisSession = false;
+    }
+    return doc.id;
+  }
+
+  // --------------------------------------------------------------------------
+  // SENDEN
+  // --------------------------------------------------------------------------
 
   Future<void> sendMessage(String text, {XFile? imageFile}) async {
     // Mit Foto ist ein leerer Begleittext erlaubt.
     if (text.trim().isEmpty && imageFile == null) return;
+    // Lexi antwortet noch: parallele KI-Aufrufe würden sich die Ladeanzeige
+    // gegenseitig wegnehmen.
+    if (_sending) return;
 
     final child = _ref.read(activeChildProvider);
     if (child == null) return;
 
-    if (!_isAIInitialized) {
-      try {
-        await _ensureAIInitialized();
-      } catch (e) {
-        final errorMessage = ChatMessage.tutor(
-          'Entschuldigung, ich hatte Probleme beim Starten. Versuch es gleich nochmal! 😊',
-        );
-        state = [...state, errorMessage];
-        return;
-      }
+    _sending = true;
+    try {
+      await _send(child, text, imageFile);
+    } finally {
+      _sending = false;
     }
+  }
+
+  Future<void> _send(ChildModel child, String text, XFile? imageFile) async {
+    await _ready;
+    if (!mounted) return;
+
+    try {
+      await _ensureAIInitialized();
+    } catch (e) {
+      if (mounted) {
+        state = [
+          ...state,
+          ChatMessage.tutor(
+            'Entschuldigung, ich hatte Probleme beim Starten. Versuch es gleich nochmal! 😊',
+            excludeFromAi: true,
+          ),
+        ];
+      }
+      return;
+    }
+    if (!mounted) return;
 
     _hasUserSentMessage = true;
 
+    // Verlauf für die KI: alles VOR der neuen Nachricht.
+    final history = state.where((m) => !m.isLoading).toList();
+
     // User-Nachricht sofort anzeigen (mit lokaler Bild-Vorschau falls Foto).
     final userMessage = ChatMessage.user(text, localImagePath: imageFile?.path);
-    state = [...state, userMessage];
+    state = [...state, userMessage, ChatMessage.loading()];
+
+    final sessionFuture = _getOrCreateSession();
 
     // Foto in Firebase Storage hochladen → URL persistieren (Eltern-Ansicht).
     String? imageUrl;
@@ -288,186 +308,145 @@ class TutorNotifier extends StateNotifier<List<ChatMessage>> {
         debugPrint('⚠️ Tutor-Aufgabenblatt-Upload fehlgeschlagen: $e');
       }
     }
-    _saveChatMessage(userMessage.copyWith(imageUrl: imageUrl));
 
-    // History für KI: State VOR der aktuellen userMessage (ohne loading).
-    // Die userMessage wird separat via chat.sendMessage() übergeben.
-    final historyBeforeCurrentMessage =
-        state.where((m) => !m.isLoading).toList()
-          ..removeLast(); // entfernt die soeben hinzugefügte userMessage
-
-    state = [...state, ChatMessage.loading()];
-
+    // Session vom Sendezeitpunkt: die Antwort landet in derselben Session,
+    // auch wenn das Kind den Chat schon verlassen hat.
+    String? sessionId;
     try {
-      final tutorResponse = await _aiService.sendTutorMessage(
+      sessionId = await sessionFuture;
+    } catch (e) {
+      debugPrint('⚠️ Tutor: Session konnte nicht angelegt werden: $e');
+    }
+    final userSaved = sessionId == null
+        ? Future<DocumentReference<Map<String, dynamic>>?>.value()
+        : _saveChatMessage(sessionId, userMessage.copyWith(imageUrl: imageUrl));
+
+    TutorResponse response;
+    try {
+      response = await _aiService.sendTutorMessage(
         child: child,
         userMessage: text,
-        conversationHistory: historyBeforeCurrentMessage,
+        conversationHistory: history,
         imageFile: imageFile,
       );
-
-      final tutorMessage = ChatMessage.tutor(tutorResponse.text);
-
-      state = [...state.where((m) => !m.isLoading), tutorMessage];
-
-      _saveChatMessage(tutorMessage);
-
-      // Abweisung, Hilfe-Antwort oder Fehler kamen von der App selbst: keine
-      // XP und keine Quiz-Fragen aus diesem Text.
-      if (tutorResponse.isLocal) return;
-
-      // XP vergeben wenn KI ein Schulfach erkannt hat.
-      // Priorität 1: KI-Tag aus der Antwort (zuverlässigste Quelle)
-      // Priorität 2: Bereits gespeichertes Fach der Session (einmal korrekt → beibehalten)
-      // Priorität 3: Keyword-Matching auf User-Text (nur wenn noch gar nichts bekannt)
-      String detectedSubject = tutorResponse.subject;
-
-      // Gespeichertes Session-Fach vorab laden (einmalig, für alle Fälle)
-      String? savedSessionTopic;
-      if (_currentSessionId != null) {
-        try {
-          final sessionDoc = await _firestore
-              .collection('users')
-              .doc(_userId)
-              .collection('children')
-              .doc(_childId)
-              .collection('tutor_sessions')
-              .doc(_currentSessionId)
-              .get();
-          final t = sessionDoc.data()?['detectedTopic'] as String?;
-          if (t != null && TutorNotifier.isSchoolSubject(t)) {
-            savedSessionTopic = t;
-          }
-        } catch (_) {}
-      }
-
-      if (!tutorResponse.isSchoolSubject) {
-        if (savedSessionTopic != null) {
-          // Fach wurde früher korrekt erkannt → beibehalten, nicht überschreiben
-          detectedSubject = savedSessionTopic;
-          debugPrint('🔄 Fach beibehalten (Session): $detectedSubject');
-        } else {
-          // Noch kein Fach bekannt → Keyword-Matching als letzter Fallback
-          final fromUserText = TutorNotifier.detectTopic(text);
-          if (TutorNotifier.isSchoolSubject(fromUserText)) {
-            detectedSubject = fromUserText;
-            debugPrint('🔄 Fach-Fallback (Keyword): $detectedSubject');
-          }
-        }
-      }
-
-      final isSchool = TutorNotifier.isSchoolSubject(detectedSubject);
-      // Fach nur in Firestore schreiben wenn es noch nicht gesetzt wurde
-      final topicNeedsUpdate = savedSessionTopic == null && isSchool;
-      debugPrint(
-        '🔍 XP-Check: subject="$detectedSubject" isSchool=$isSchool isCorrect=${tutorResponse.isCorrect} dailyXP=${_ref.read(tutorSessionXpProvider(_childId))} topicNeedsUpdate=$topicNeedsUpdate',
-      );
-      if (isSchool) {
-        // Topic nur beim ersten Mal setzen – verhindert Überschreiben mit falschem Fach
-        if (topicNeedsUpdate) unawaited(_setSessionTopic(detectedSubject));
-
-        // XP gibt es, sobald über ein Schulthema geredet wird – nicht nur bei
-        // einer korrekt beantworteten Aufgabe. Korrekte Antworten geben Bonus.
-        await _awardTutorXP(isCorrect: tutorResponse.isCorrect);
-
-        // Einmal pro Session: passende Quiz-Aufgaben aus dem Gespräch ableiten
-        // und in den Quiz-Cache des Fachs einspeisen (Hintergrund).
-        _maybeInjectQuizQuestions(child, detectedSubject, text);
-      } else {
-        debugPrint(
-          '⛔ Kein XP: Kein Schulfach erkannt (subject=$detectedSubject)',
-        );
-      }
     } catch (e) {
-      // ❌ Fehler beim Senden der Nachricht: $e
-
-      final errorMessage = ChatMessage.tutor(
+      debugPrint('❌ Tutor: Fehler beim Senden: $e');
+      response = const TutorResponse.local(
         'Ups, geht dein Internet? 😅 Frag mich nochmal!',
       );
-
-      state = [...state.where((m) => !m.isLoading), errorMessage];
-
-      _saveChatMessage(errorMessage);
     }
+
+    final tutorMessage = ChatMessage.tutor(
+      response.text,
+      excludeFromAi: response.isLocal,
+    );
+
+    // Erst die Frage, dann die Antwort speichern (Reihenfolge, erste Frage).
+    final userRef = await userSaved;
+    if (sessionId != null) {
+      // Abgewiesene Fragen gehen nicht wieder an die KI (Verlauf).
+      if (response.isLocal && userRef != null) {
+        unawaited(
+          userRef.update({'excludeFromAi': true}).catchError((Object e) {
+            debugPrint('⚠️ Tutor: Markierung nicht gespeichert: $e');
+          }),
+        );
+      }
+      unawaited(_saveChatMessage(sessionId, tutorMessage));
+    }
+
+    // Hat das Kind den Chat verlassen, ist hier Schluss (kein State, keine XP).
+    if (!mounted) return;
+    state = [
+      for (final m in state)
+        if (!m.isLoading)
+          response.isLocal && identical(m, userMessage)
+              ? m.copyWith(excludeFromAi: true)
+              : m,
+      tutorMessage,
+    ];
+
+    // Abweisung, Hilfe-Antwort oder Fehler kamen von der App selbst: keine
+    // XP und keine Quiz-Fragen aus diesem Text.
+    if (response.isLocal || sessionId == null) return;
+
+    // XP gibt es, sobald über ein Schulthema geredet wird. Fach: Tag der KI,
+    // sonst das bereits erkannte Fach der Session. Kein Raten aus dem Text –
+    // das brachte XP für Smalltalk.
+    final subject =
+        response.isSchoolSubject && isSchoolSubject(response.subject)
+        ? response.subject
+        : _sessionTopic;
+    if (subject == null) {
+      debugPrint('⛔ Kein XP: Kein Schulfach erkannt (${response.subject})');
+      return;
+    }
+
+    if (_sessionTopic == null && sessionId == _currentSessionId) {
+      // Fach nur beim ersten Mal setzen – kein Überschreiben mit falschem Fach
+      _sessionTopic = subject;
+      unawaited(_setSessionTopic(sessionId, subject));
+    }
+
+    // Korrekte Antworten geben Bonus.
+    await _awardTutorXP(sessionId, isCorrect: response.isCorrect);
+    if (!mounted) return;
+
+    // Einmal pro Session: passende Quiz-Aufgaben aus dem Gespräch ableiten
+    // und in den Quiz-Cache des Fachs einspeisen (Hintergrund).
+    _maybeInjectQuizQuestions(child, subject, text);
   }
 
-  Future<void> _saveChatMessage(ChatMessage message) async {
-    if (message.isLoading) return;
+  /// Speichert eine Nachricht samt Zähler (und bei der Frage des Kindes
+  /// erste Frage und Inhalts-Flag) in einem Schreibvorgang.
+  Future<DocumentReference<Map<String, dynamic>>?> _saveChatMessage(
+    String sessionId,
+    ChatMessage message,
+  ) async {
+    if (message.isLoading) return null;
 
     try {
-      final messageData = {
-        'text': message.text,
-        'isUser': message.isUser,
-        'timestamp': Timestamp.fromDate(DateTime.now()),
-        if (message.imageUrl != null) 'imageUrl': message.imageUrl,
+      final sessionRef = _sessions.doc(sessionId);
+      final messageRef = sessionRef.collection('messages').doc();
+      final updates = <String, dynamic>{
+        'messageCount': FieldValue.increment(1),
       };
 
-      final sessionId = await _getOrCreateSession();
-
-      await _firestore
-          .collection('users')
-          .doc(_userId)
-          .collection('children')
-          .doc(_childId)
-          .collection('tutor_sessions')
-          .doc(sessionId)
-          .collection('messages')
-          .add(messageData);
-
-      await _firestore
-          .collection('users')
-          .doc(_userId)
-          .collection('children')
-          .doc(_childId)
-          .collection('tutor_sessions')
-          .doc(sessionId)
-          .update({'messageCount': FieldValue.increment(1)});
-
-      if (message.isUser) {
-        final sessionDoc = await _firestore
-            .collection('users')
-            .doc(_userId)
-            .collection('children')
-            .doc(_childId)
-            .collection('tutor_sessions')
-            .doc(sessionId)
-            .get();
-
-        final sessionData = sessionDoc.data();
-        final hasFirstQuestion = sessionData?['firstQuestion'] != null;
-        final alreadyCritical = sessionData?['contentFlag'] == 'critical';
-
-        final updates = <String, dynamic>{};
-
+      if (message.isUser && sessionId == _currentSessionId) {
         // firstQuestion + detectedTopic nur beim ersten Mal setzen
-        if (!hasFirstQuestion) {
+        if (!_sessionHasFirstQuestion) {
           updates['firstQuestion'] = message.text;
-          updates['detectedTopic'] = 'Allgemein';
+          if (_sessionTopic == null) updates['detectedTopic'] = 'Allgemein';
+          _sessionHasFirstQuestion = true;
         }
-
-        // contentFlag bei JEDER Nachricht prüfen –
-        // aber 'critical' nie durch schwächeres Flag überschreiben
-        if (!alreadyCritical) {
-          final newFlag = TutorSession.detectContentFlag(message.text);
-          if (newFlag != null) {
-            updates['contentFlag'] = newFlag;
+        // contentFlag bei JEDER Nachricht prüfen – aber 'critical' nie durch
+        // ein schwächeres Flag überschreiben
+        if (_sessionContentFlag != 'critical') {
+          final flag = TutorSession.detectContentFlag(message.text);
+          if (flag != null && flag != _sessionContentFlag) {
+            updates['contentFlag'] = flag;
+            _sessionContentFlag = flag;
           }
         }
-
-        if (updates.isNotEmpty) {
-          await _firestore
-              .collection('users')
-              .doc(_userId)
-              .collection('children')
-              .doc(_childId)
-              .collection('tutor_sessions')
-              .doc(sessionId)
-              .update(updates);
-        }
-        // Topic-Update erfolgt einmalig über _setSessionTopic nach KI-Antwort
       }
+
+      final batch = _firestore.batch()
+        ..set(messageRef, chatMessageToFirestore(message))
+        ..update(sessionRef, updates);
+      await batch.commit();
+      return messageRef;
+    } on FirebaseException catch (e) {
+      debugPrint('⚠️ Tutor: Nachricht nicht gespeichert: $e');
+      // Session wurde gelöscht (z.B. von den Eltern): nächste Nachricht
+      // beginnt eine neue.
+      if (e.code == 'not-found' && sessionId == _currentSessionId) {
+        _currentSessionId = null;
+        _sessionFuture = null;
+      }
+      return null;
     } catch (e) {
-      // ⚠️ Fehler beim Speichern: $e
+      debugPrint('⚠️ Tutor: Nachricht nicht gespeichert: $e');
+      return null;
     }
   }
 
@@ -499,61 +478,45 @@ class TutorNotifier extends StateNotifier<List<ChatMessage>> {
     return schoolSubjects.contains(topic);
   }
 
-  /// Vergib XP via XPService und updated den reaktiven Tages-XP-Provider.
+  /// Vergibt XP via XPService und aktualisiert den Tages-XP-Banner.
   /// Beschäftigung mit einem Schulthema gibt Basis-XP; eine korrekt
-  /// beantwortete Aufgabe gibt einen kleinen Bonus.
-  Future<void> _awardTutorXP({bool isCorrect = false}) async {
-    final xpService = _ref.read(xpServiceProvider);
-    // Immer frisch aus Firestore lesen damit kein veralteter lokaler State
-    // das Tageslimit fälschlicherweise blockiert (z.B. nach Resume).
-    final currentDailyXP = await xpService.getTutorXpToday(
-      userId: _userId,
-      childId: _childId,
-    );
-    // Lokalen Provider-State synchronisieren
-    _ref.read(tutorSessionXpProvider(_childId).notifier).state = currentDailyXP;
-
-    debugPrint(
-      '💰 _awardTutorXP: currentDailyXP=$currentDailyXP, maxXpPerDay=$maxXpPerDay, limit=${currentDailyXP >= maxXpPerDay}',
-    );
+  /// beantwortete Aufgabe gibt einen kleinen Bonus. Den Tagesstand hält der
+  /// Notifier; die Transaktion in addTutorXP liest ihn ohnehin frisch und
+  /// begrenzt auf das Tageslimit.
+  Future<void> _awardTutorXP(String sessionId, {bool isCorrect = false}) async {
+    if (_dailyXpDay != _today()) _dailyXp = 0; // neuer Tag
+    if (_dailyXp >= maxXpPerDay) {
+      debugPrint('⏸️ Tutor XP: Tageslimit erreicht ($_dailyXp/$maxXpPerDay)');
+      return;
+    }
 
     try {
-      final result = await xpService.addTutorXP(
-        userId: _userId,
-        childId: _childId,
-        dailyXpSoFar: currentDailyXP,
-        xpPerMessage: isCorrect ? 5 : 2,
-      );
+      final result = await _ref
+          .read(xpServiceProvider)
+          .addTutorXP(
+            userId: _userId,
+            childId: _childId,
+            dailyXpSoFar: _dailyXp,
+            xpPerMessage: isCorrect ? 5 : 2,
+          );
 
       if (result != null && result.xpGained > 0) {
-        _ref.read(tutorSessionXpProvider(_childId).notifier).state =
-            currentDailyXP + result.xpGained;
+        // xpEarned der Session → im Elterndashboard pro Tag summiert
+        unawaited(
+          _sessions
+              .doc(sessionId)
+              .update({'xpEarned': FieldValue.increment(result.xpGained)})
+              .catchError((Object e) {
+                debugPrint('⚠️ Konnte xpEarned nicht speichern: $e');
+              }),
+        );
+        if (!mounted) return;
+        _setDailyXp(_dailyXp + result.xpGained);
         _ref.read(tutorXpGainProvider(_childId).notifier).state =
             result.xpGained;
-        debugPrint(
-          '✨ Tutor XP: +${result.xpGained} (Heute: ${currentDailyXP + result.xpGained}/$maxXpPerDay)',
-        );
-
-        // xpEarned in der aktuellen Session in Firestore inkrementieren
-        // → wird im Elterndashboard pro Tag summiert angezeigt
-        if (_currentSessionId != null) {
-          try {
-            await _firestore
-                .collection('users')
-                .doc(_userId)
-                .collection('children')
-                .doc(_childId)
-                .collection('tutor_sessions')
-                .doc(_currentSessionId)
-                .update({'xpEarned': FieldValue.increment(result.xpGained)});
-          } catch (e) {
-            debugPrint('⚠️ Konnte xpEarned nicht in Session speichern: $e');
-          }
-        }
-      } else {
-        debugPrint(
-          '⏸️ Tutor XP: Tageslimit erreicht (Heute: $currentDailyXP/$maxXpPerDay)',
-        );
+      } else if (mounted) {
+        // Laut Transaktion ist das Tageslimit schon erreicht.
+        _setDailyXp(maxXpPerDay);
       }
     } catch (e) {
       debugPrint('❌ _awardTutorXP: Netzwerkfehler, XP nicht vergeben: $e');
@@ -581,9 +544,6 @@ class TutorNotifier extends StateNotifier<List<ChatMessage>> {
     _quizInjectedThisSession = true;
     final hint = focusText.trim().isNotEmpty ? focusText.trim() : germanSubject;
     final repo = _ref.read(aiQuestionCacheRepositoryProvider);
-    debugPrint(
-      '🎓 Speise Tutor-Thema in Quiz ein: Fach=${subject.value}, Fokus="$hint"',
-    );
     unawaited(
       repo.injectTutorQuestions(
         userId: _userId,
@@ -632,7 +592,7 @@ class TutorNotifier extends StateNotifier<List<ChatMessage>> {
 
     if (s.isAvailableForGrade(grade)) return s;
 
-    // detectTopic liefert für Grundschüler manchmal 'Biologie' (Pflanze/Tier),
+    // Die KI ordnet bei Grundschülern Pflanzen/Tiere manchmal 'Biologie' zu,
     // wo im Lehrplan 'Sachkunde' das passende Fach ist.
     if (s == Subject.biologie && Subject.sachkunde.isAvailableForGrade(grade)) {
       return Subject.sachkunde;
@@ -640,1619 +600,94 @@ class TutorNotifier extends StateNotifier<List<ChatMessage>> {
     return null;
   }
 
-  /// Erkennt das Schulfach aus dem Text.
-  static String detectTopic(String text) {
-    final q = text.toLowerCase().trim();
-
-    // ════════════════════════════════════════════════════════════════════════
-    // MATHEMATIK
-    // ════════════════════════════════════════════════════════════════════════
-    if (q.contains('mathe') || q.contains('mathematik')) return 'Mathematik';
-    // Mathematische Konzeptfragen (warum, wie, was ist ...)
-    if (q.contains('durch 0') ||
-        q.contains('durch null') ||
-        q.contains('division durch') ||
-        q.contains('dividieren durch')) {
-      return 'Mathematik';
-    }
-    if (q.contains('unendlich') &&
-        (q.contains('zahl') ||
-            q.contains('rechnen') ||
-            q.contains('teilen') ||
-            q.contains('teilt'))) {
-      return 'Mathematik';
-    }
-    if ((q.contains('warum') || q.contains('wieso') || q.contains('weshalb')) &&
-        (q.contains('teilen') ||
-            q.contains('rechnen') ||
-            q.contains('zahl') ||
-            q.contains('bruch') ||
-            q.contains('gleichung') ||
-            q.contains('minus') ||
-            q.contains('plus') ||
-            q.contains('addieren') ||
-            q.contains('subtrahieren') ||
-            q.contains('multiplizieren') ||
-            q.contains('dividieren') ||
-            q.contains('potenz') ||
-            q.contains('wurzel') ||
-            q.contains('prozent') ||
-            q.contains('vektor') ||
-            q.contains('integral') ||
-            q.contains('ableitung'))) {
-      return 'Mathematik';
-    }
-    // Rechenoperationen mit Zahlen
-    if (RegExp(r'\d+\s*[\+\-\*\/×÷]\s*\d+').hasMatch(q)) return 'Mathematik';
-    if (RegExp(r'\d+\s*(mal|durch|plus|minus|geteilt)\s*\d+').hasMatch(q)) {
-      return 'Mathematik';
-    }
-    if (RegExp(r'wie viel[e]? (ist|sind|macht|ergibt|gibt)').hasMatch(q) &&
-        RegExp(r'\d').hasMatch(q)) {
-      return 'Mathematik';
-    }
-    // Grundrechenarten & Arithmetik
-    if (q.contains('rechnen') ||
-        q.contains('berechne') ||
-        q.contains('ausrechnen') ||
-        q.contains('berechnen')) {
-      return 'Mathematik';
-    }
-    if (q.contains('addition') ||
-        q.contains('subtraktion') ||
-        q.contains('multiplikation') ||
-        q.contains('division')) {
-      return 'Mathematik';
-    }
-    if (q.contains('plus') ||
-        q.contains('minus') ||
-        q.contains(' mal ') ||
-        q.contains('geteilt') ||
-        q.contains('dividier') ||
-        q.contains('multiplizier')) {
-      return 'Mathematik';
-    }
-    if (q.contains('einmaleins') ||
-        q.contains('dreisatz') ||
-        q.contains('kopfrechnen') ||
-        q.contains('schriftlich')) {
-      return 'Mathematik';
-    }
-    if (q.contains('ergebnis') && RegExp(r'\d').hasMatch(q)) {
-      return 'Mathematik';
-    }
-    // Brüche, Prozente, Dezimalzahlen
-    if (q.contains('bruch') ||
-        q.contains('nenner') ||
-        q.contains('zähler') ||
-        q.contains('gemischte zahl')) {
-      return 'Mathematik';
-    }
-    if (q.contains('prozent') ||
-        q.contains('dezimal') ||
-        q.contains('kommazahl') ||
-        q.contains('promille')) {
-      return 'Mathematik';
-    }
-    if (q.contains('kürzen') ||
-        q.contains('erweitern') && q.contains('bruch') ||
-        q.contains('gleichnamig')) {
-      return 'Mathematik';
-    }
-    // Algebra & Gleichungen
-    if (q.contains('gleichung') ||
-        q.contains('ungleichung') ||
-        q.contains('löse') && RegExp(r'[x-z]').hasMatch(q)) {
-      return 'Mathematik';
-    }
-    if (q.contains('variable') && !q.contains('programmier') ||
-        q.contains('term') &&
-            (q.contains('vereinfach') || q.contains('lösung'))) {
-      return 'Mathematik';
-    }
-    if (q.contains('lineares') ||
-        q.contains('quadratische gleichung') ||
-        q.contains('lgs') ||
-        q.contains('gleichungssystem')) {
-      return 'Mathematik';
-    }
-    // Geometrie
-    if (q.contains('geometrie') || q.contains('geometrisch')) {
-      return 'Mathematik';
-    }
-    if (q.contains('dreieck') ||
-        q.contains('viereck') ||
-        q.contains('quadrat') ||
-        q.contains('rechteck') ||
-        q.contains('raute')) {
-      return 'Mathematik';
-    }
-    if (q.contains('kreis') &&
-        (q.contains('fläche') ||
-            q.contains('umfang') ||
-            q.contains('radius') ||
-            q.contains('durchmesser'))) {
-      return 'Mathematik';
-    }
-    if (q.contains('fläche') ||
-        q.contains('umfang') ||
-        q.contains('flächeninhalt') ||
-        q.contains('volumen')) {
-      return 'Mathematik';
-    }
-    if (q.contains('trapez') ||
-        q.contains('parallelogramm') ||
-        q.contains('rhombus') ||
-        q.contains('polygon') ||
-        q.contains('sechseck')) {
-      return 'Mathematik';
-    }
-    if (q.contains('kegel') ||
-        q.contains('zylinder') ||
-        q.contains('kugel') &&
-            (q.contains('volumen') || q.contains('oberfläche')) ||
-        q.contains('prisma') ||
-        q.contains('pyramide') && !q.contains('ägypten')) {
-      return 'Mathematik';
-    }
-    if (q.contains('koordinatensystem') ||
-        q.contains('x-achse') ||
-        q.contains('y-achse') ||
-        q.contains('achse') && q.contains('punkt')) {
-      return 'Mathematik';
-    }
-    if (q.contains('winkel') ||
-        q.contains('grad') &&
-            (q.contains('winkel') ||
-                q.contains('kreis') ||
-                q.contains('dreieck'))) {
-      return 'Mathematik';
-    }
-    if (q.contains('symmetrie') ||
-        q.contains('spiegelachse') ||
-        q.contains('kongruenz') ||
-        q.contains('ähnlichkeit')) {
-      return 'Mathematik';
-    }
-    // Potenzen & Wurzeln
-    if (q.contains('wurzel') ||
-        q.contains('quadratwurzel') ||
-        q.contains('kubikwurzel')) {
-      return 'Mathematik';
-    }
-    if (q.contains('potenz') ||
-        q.contains('hoch ') ||
-        q.contains('quadriert') ||
-        q.contains('kubiert')) {
-      return 'Mathematik';
-    }
-    // Pythagoras & Trigonometrie
-    if (q.contains('pythagoras') ||
-        q.contains('hypotenuse') ||
-        q.contains('kathete')) {
-      return 'Mathematik';
-    }
-    if (q.contains('trigonometrie') ||
-        q.contains('sinus') ||
-        q.contains('kosinus') ||
-        q.contains('tangens') ||
-        q.contains('sin(') ||
-        q.contains('cos(')) {
-      return 'Mathematik';
-    }
-    // Statistik & Wahrscheinlichkeit
-    if (q.contains('wahrscheinlichkeit') ||
-        q.contains('stochastik') ||
-        q.contains('zufallsexperiment') ||
-        q.contains('laplace')) {
-      return 'Mathematik';
-    }
-    if (q.contains('statistik') ||
-        q.contains('diagramm') ||
-        q.contains('balkendiagramm') ||
-        q.contains('kreisdiagramm') ||
-        q.contains('histogramm')) {
-      return 'Mathematik';
-    }
-    if (q.contains('mittelwert') ||
-        q.contains('median') ||
-        q.contains('modus') ||
-        q.contains('durchschnitt') && RegExp(r'\d').hasMatch(q)) {
-      return 'Mathematik';
-    }
-    if (q.contains('kombinatorik') ||
-        q.contains('permutation') ||
-        q.contains('binomialkoeffizient') ||
-        q.contains('fakultät') && RegExp(r'\d').hasMatch(q)) {
-      return 'Mathematik';
-    }
-    // Analysis (Oberstufe)
-    if (q.contains('integral') ||
-        q.contains('integrieren') ||
-        q.contains('integration') ||
-        q.contains('stammfunktion')) {
-      return 'Mathematik';
-    }
-    if (q.contains('ableitung') ||
-        q.contains('ableiten') ||
-        q.contains('differenzieren') ||
-        q.contains('differentialrechnung')) {
-      return 'Mathematik';
-    }
-    if (q.contains('differential') &&
-        !q.contains('gleichung') &&
-        !q.contains('diagnose')) {
-      return 'Mathematik';
-    }
-    if (q.contains('grenzwert') ||
-        q.contains('limes') ||
-        q.contains('stetigkeit') ||
-        q.contains('konvergenz')) {
-      return 'Mathematik';
-    }
-    if (q.contains('kurvendiskussion') ||
-        q.contains('extrempunkt') ||
-        q.contains('wendepunkt') ||
-        q.contains('nullstelle')) {
-      return 'Mathematik';
-    }
-    if (q.contains('monoton') ||
-        q.contains('krümmung') ||
-        q.contains('tangente') && q.contains('funktion')) {
-      return 'Mathematik';
-    }
-    if (q.contains('funktion') &&
-        (q.contains('steigung') ||
-            q.contains('graph') ||
-            q.contains('ableitung') ||
-            q.contains('wert') ||
-            q.contains('definitionsbereich') ||
-            q.contains('wertebereich'))) {
-      return 'Mathematik';
-    }
-    if (q.contains('logarithmus') ||
-        q.contains('log ') ||
-        q.contains('ln ') ||
-        q.contains('log(')) {
-      return 'Mathematik';
-    }
-    if (q.contains('exponential') ||
-        q.contains('e-funktion') ||
-        q.contains('e^') ||
-        q.contains('e hoch')) {
-      return 'Mathematik';
-    }
-    if (q.contains('wachstumsfunktion') ||
-        q.contains('zerfallsfunktion') ||
-        q.contains('exponentielles wachstum')) {
-      return 'Mathematik';
-    }
-    // Vektoren & Lineare Algebra
-    if (q.contains('vektor') ||
-        q.contains('skalarprodukt') ||
-        q.contains('kreuzprodukt')) {
-      return 'Mathematik';
-    }
-    if (q.contains('matrix') ||
-        q.contains('determinante') ||
-        q.contains('lineare algebra') ||
-        q.contains('gauss')) {
-      return 'Mathematik';
-    }
-    // Folgen & Reihen
-    if (q.contains('folge') &&
-        (q.contains('arithmetisch') ||
-            q.contains('geometrisch') ||
-            q.contains('rekursiv') ||
-            q.contains('glied'))) {
-      return 'Mathematik';
-    }
-    if (q.contains('reihe') &&
-        (q.contains('konvergenz') ||
-            q.contains('summe') ||
-            q.contains('geometrisch'))) {
-      return 'Mathematik';
-    }
-    // Polynome & Kurven
-    if (q.contains('polynom') ||
-        q.contains('parabel') ||
-        q.contains('hyperbel') ||
-        q.contains('ellipse')) {
-      return 'Mathematik';
-    }
-    // Mengenlehre
-    if (q.contains('menge') &&
-        (q.contains('schnitt') ||
-            q.contains('vereinigung') ||
-            q.contains('teilmenge') ||
-            q.contains('element'))) {
-      return 'Mathematik';
-    }
-    // Finanzmathematik
-    if (q.contains('zinsrechnung') ||
-        q.contains('zinsen') && !q.contains('stadt') ||
-        q.contains('zinseszins') ||
-        q.contains('rendite')) {
-      return 'Mathematik';
-    }
-    if (q.contains('rabatt') ||
-        q.contains('mehrwertsteuer') ||
-        q.contains('mwst') ||
-        q.contains('grundwert') && q.contains('prozent')) {
-      return 'Mathematik';
-    }
-
-    // ════════════════════════════════════════════════════════════════════════
-    // PHYSIK
-    // ════════════════════════════════════════════════════════════════════════
-    if (q.contains('physik')) return 'Physik';
-    // Mechanik
-    if (q.contains('kraft') &&
-        (q.contains('newton') ||
-            q.contains('masse') ||
-            q.contains('beschleunig') ||
-            q.contains('gewicht'))) {
-      return 'Physik';
-    }
-    if (q.contains('geschwindigkeit') ||
-        q.contains('beschleunigung') ||
-        q.contains('trägheit') ||
-        q.contains('reibung')) {
-      return 'Physik';
-    }
-    if (q.contains('gravitation') ||
-        q.contains('gravitationsgesetz') ||
-        q.contains('schwerkraft') ||
-        q.contains('freier fall')) {
-      return 'Physik';
-    }
-    if (q.contains('hebelgesetz') ||
-        q.contains('hebel') && q.contains('kraft') ||
-        q.contains('drehmoment')) {
-      return 'Physik';
-    }
-    if (q.contains('druck') &&
-        (q.contains('pascal') ||
-            q.contains('gas') ||
-            q.contains('flüssig') ||
-            q.contains('atmo') ||
-            q.contains('luftdruck'))) {
-      return 'Physik';
-    }
-    if (q.contains('auftrieb') ||
-        q.contains('archimedisches') ||
-        q.contains('dichte') &&
-            (q.contains('stoff') ||
-                q.contains('körper') ||
-                q.contains('wasser'))) {
-      return 'Physik';
-    }
-    if (q.contains('impuls') ||
-        q.contains('stoß') &&
-            (q.contains('elastisch') || q.contains('unelastisch')) ||
-        q.contains('impulserhaltung')) {
-      return 'Physik';
-    }
-    // Energie & Arbeit
-    if (q.contains('energie') &&
-        (q.contains('kinetisch') ||
-            q.contains('potenziel') ||
-            q.contains('arbeit') ||
-            q.contains('leistung') ||
-            q.contains('joule') ||
-            q.contains('erhalten'))) {
-      return 'Physik';
-    }
-    if (q.contains('arbeit') &&
-        (q.contains('joule') || q.contains('kraft') || q.contains('weg'))) {
-      return 'Physik';
-    }
-    if (q.contains('leistung') &&
-        (q.contains('watt') || q.contains('energie') || q.contains('zeit'))) {
-      return 'Physik';
-    }
-    if (q.contains('wirkungsgrad') || q.contains('energieerhaltung')) {
-      return 'Physik';
-    }
-    // Elektrizität
-    if (q.contains('elektrizität') ||
-        q.contains('elektrisch') ||
-        q.contains('elektro')) {
-      return 'Physik';
-    }
-    if (q.contains('strom') &&
-        (q.contains('volt') ||
-            q.contains('ampere') ||
-            q.contains('widerstand') ||
-            q.contains('spannung') ||
-            q.contains('schaltkreis'))) {
-      return 'Physik';
-    }
-    if (q.contains('widerstand') &&
-        (q.contains('ohm') ||
-            q.contains('schaltung') ||
-            q.contains('reihenschaltung') ||
-            q.contains('parallelschaltung'))) {
-      return 'Physik';
-    }
-    if (q.contains('kondensator') ||
-        q.contains('spule') ||
-        q.contains('transformator') ||
-        q.contains('generator') && q.contains('strom')) {
-      return 'Physik';
-    }
-    if (q.contains('ohmsches gesetz') || q.contains('kirchhoff')) {
-      return 'Physik';
-    }
-    // Magnetismus
-    if (q.contains('magnetismus') ||
-        q.contains('magnetfeld') ||
-        q.contains('elektromagnet') ||
-        q.contains('permanentmagnet')) {
-      return 'Physik';
-    }
-    if (q.contains('induktion') &&
-        (q.contains('strom') ||
-            q.contains('magnetfeld') ||
-            q.contains('spule'))) {
-      return 'Physik';
-    }
-    // Wärmelehre
-    if (q.contains('wärme') &&
-        (q.contains('temperatur') ||
-            q.contains('ausdehnung') ||
-            q.contains('leitung') ||
-            q.contains('strahlung') ||
-            q.contains('konvektion'))) {
-      return 'Physik';
-    }
-    if (q.contains('thermodynamik') ||
-        q.contains('wärmekapazität') ||
-        q.contains('spezifische wärme') ||
-        q.contains('schmelzwärme')) {
-      return 'Physik';
-    }
-    if (q.contains('aggregatzustand') &&
-        (q.contains('physik') ||
-            q.contains('wärme') ||
-            q.contains('temperatur'))) {
-      return 'Physik';
-    }
-    // Optik
-    if (q.contains('optik') ||
-        q.contains('linse') ||
-        q.contains('prisma') && q.contains('licht')) {
-      return 'Physik';
-    }
-    if (q.contains('licht') &&
-        (q.contains('brechung') ||
-            q.contains('reflexion') ||
-            q.contains('welle') ||
-            q.contains('spektrum') ||
-            q.contains('geschwindigkeit'))) {
-      return 'Physik';
-    }
-    if (q.contains('spiegel') &&
-        (q.contains('licht') ||
-            q.contains('bild') ||
-            q.contains('brennpunkt'))) {
-      return 'Physik';
-    }
-    // Akustik & Schwingungen
-    if (q.contains('schall') ||
-        q.contains('schallwelle') ||
-        q.contains('schallgeschwindigkeit')) {
-      return 'Physik';
-    }
-    if (q.contains('frequenz') &&
-        (q.contains('schwingung') ||
-            q.contains('welle') ||
-            q.contains('hertz') ||
-            q.contains('ton'))) {
-      return 'Physik';
-    }
-    if (q.contains('schwingung') ||
-        q.contains('pendel') ||
-        q.contains('amplitude') ||
-        q.contains('wellenlänge')) {
-      return 'Physik';
-    }
-    // Atomphysik & Kernphysik
-    if (q.contains('atom') &&
-        (q.contains('kern') ||
-            q.contains('elektron') ||
-            q.contains('proton') ||
-            q.contains('neutron') ||
-            q.contains('bohr'))) {
-      return 'Physik';
-    }
-    if (q.contains('radioaktiv') ||
-        q.contains('kernspaltung') ||
-        q.contains('kernfusion') ||
-        q.contains('halbwertszeit')) {
-      return 'Physik';
-    }
-    if (q.contains('strahlung') &&
-        (q.contains('alpha') ||
-            q.contains('beta') ||
-            q.contains('gamma') ||
-            q.contains('radioaktiv'))) {
-      return 'Physik';
-    }
-    // Einheiten typisch Physik
-    if (q.contains('newton') &&
-            !q.contains('isaac newton') &&
-            !q.contains('geschichte') ||
-        q.contains('joule') && !q.contains('chemie') ||
-        q.contains('watt') && q.contains('einheit')) {
-      return 'Physik';
-    }
-
-    // ════════════════════════════════════════════════════════════════════════
-    // CHEMIE
-    // ════════════════════════════════════════════════════════════════════════
-    if (q.contains('chemie') ||
-        q.contains('chemisch') ||
-        q.contains('chemiker')) {
-      return 'Chemie';
-    }
-    // Atome & Moleküle
-    if (q.contains('atom') &&
-        (q.contains('bindung') ||
-            q.contains('molekül') ||
-            q.contains('reaktion') ||
-            q.contains('orbital') ||
-            q.contains('schale'))) {
-      return 'Chemie';
-    }
-    if (q.contains('molekül') ||
-        q.contains('verbindung') && q.contains('stoff') ||
-        q.contains('formel') && q.contains('stoff')) {
-      return 'Chemie';
-    }
-    // Periodensystem
-    if (q.contains('periodensystem') || q.contains('pse')) return 'Chemie';
-    if (q.contains('element') &&
-        (q.contains('periodensystem') ||
-            q.contains('symbol') ||
-            q.contains('metall') ||
-            q.contains('nichtmetall'))) {
-      return 'Chemie';
-    }
-    // Reaktionen
-    if (q.contains('chemische reaktion') ||
-        q.contains('reaktionsgleichung') ||
-        q.contains('stöchiometrie')) {
-      return 'Chemie';
-    }
-    if (q.contains('reaktion') &&
-        (q.contains('exotherm') ||
-            q.contains('endotherm') ||
-            q.contains('aktivierungsenergie'))) {
-      return 'Chemie';
-    }
-    if (q.contains('oxidation') ||
-        q.contains('reduktion') ||
-        q.contains('redoxreaktion') ||
-        q.contains('redox')) {
-      return 'Chemie';
-    }
-    if (q.contains('verbrennung') &&
-        (q.contains('sauerstoff') ||
-            q.contains('reaktion') ||
-            q.contains('kohlenstoff'))) {
-      return 'Chemie';
-    }
-    if (q.contains('katalysator') ||
-        q.contains('enzym') && q.contains('reaktion')) {
-      return 'Chemie';
-    }
-    // Säuren & Basen
-    if (q.contains('säure') ||
-        q.contains('ph-wert') ||
-        q.contains('ph ') && q.contains('messung')) {
-      return 'Chemie';
-    }
-    if (q.contains('base') &&
-        (q.contains('ph') || q.contains('lauge') || q.contains('hydroxid'))) {
-      return 'Chemie';
-    }
-    if (q.contains('neutralisation') ||
-        q.contains('titration') ||
-        q.contains('indikator') && q.contains('säure')) {
-      return 'Chemie';
-    }
-    // Aggregatzustände & Stoffe
-    if (q.contains('aggregatzustand') && !q.contains('physik') ||
-        q.contains('siedepunkt') ||
-        q.contains('schmelzpunkt')) {
-      return 'Chemie';
-    }
-    if (q.contains('gemisch') ||
-        q.contains('löslichkeit') ||
-        q.contains('lösung') && q.contains('stoff')) {
-      return 'Chemie';
-    }
-    if (q.contains('destillation') ||
-        q.contains('filtration') ||
-        q.contains('chromatographie') ||
-        q.contains('kristallisation')) {
-      return 'Chemie';
-    }
-    // Elemente
-    if (q.contains('kohlenstoff') ||
-        q.contains('sauerstoff') ||
-        q.contains('wasserstoff') ||
-        q.contains('stickstoff')) {
-      return 'Chemie';
-    }
-    if (q.contains('chlor') ||
-        q.contains('natrium') ||
-        q.contains('kalium') ||
-        q.contains('calcium') ||
-        q.contains('eisen') && q.contains('chemie')) {
-      return 'Chemie';
-    }
-    if (q.contains('kupfer') &&
-            (q.contains('ion') ||
-                q.contains('reaktion') ||
-                q.contains('oxid')) ||
-        q.contains('schwefel') && q.contains('chemie')) {
-      return 'Chemie';
-    }
-    // Bindungen
-    if (q.contains('ionen') ||
-        q.contains('ionenbindung') ||
-        q.contains('ionengitter')) {
-      return 'Chemie';
-    }
-    if (q.contains('kovalente') ||
-        q.contains('elektronenpaarbindung') ||
-        q.contains('atombindung')) {
-      return 'Chemie';
-    }
-    if (q.contains('metallbindung') ||
-        q.contains('van-der-waals') ||
-        q.contains('wasserstoffbrücke')) {
-      return 'Chemie';
-    }
-    // Organische Chemie
-    if (q.contains('organisch') ||
-        q.contains('kohlenwasserstoff') ||
-        q.contains('alkohol') && q.contains('stoff')) {
-      return 'Chemie';
-    }
-    if (q.contains('alkan') ||
-        q.contains('alken') ||
-        q.contains('alkin') ||
-        q.contains('aromat') ||
-        q.contains('benzol')) {
-      return 'Chemie';
-    }
-    if (q.contains('polymer') ||
-        q.contains('kunststoff') && q.contains('chemie') ||
-        q.contains('polymerisation')) {
-      return 'Chemie';
-    }
-
-    // ════════════════════════════════════════════════════════════════════════
-    // BIOLOGIE
-    // ════════════════════════════════════════════════════════════════════════
-    if (q.contains('biologie') || q.contains('biologisch')) return 'Biologie';
-    // Zellen & Genetik
-    if (q.contains('zelle') &&
-        (q.contains('kern') ||
-            q.contains('membran') ||
-            q.contains('teilung') ||
-            q.contains('organell') ||
-            q.contains('chloroplast') ||
-            q.contains('mitochondr'))) {
-      return 'Biologie';
-    }
-    if (q.contains('dna') ||
-        q.contains('rna') ||
-        q.contains('erbgut') ||
-        q.contains('chromosom') ||
-        q.contains('genetik') ||
-        q.contains('gen') && q.contains('vererbung')) {
-      return 'Biologie';
-    }
-    if (q.contains('mitose') ||
-        q.contains('meiose') ||
-        q.contains('zellteilung') ||
-        q.contains('zellzyklus')) {
-      return 'Biologie';
-    }
-    if (q.contains('erbgang') ||
-        q.contains('dominant') && q.contains('rezessiv') ||
-        q.contains('mendel') ||
-        q.contains('mutation') && q.contains('gen')) {
-      return 'Biologie';
-    }
-    if (q.contains('genotyp') ||
-        q.contains('phänotyp') ||
-        q.contains('allel') ||
-        q.contains('homozygot') ||
-        q.contains('heterozygot')) {
-      return 'Biologie';
-    }
-    // Evolution
-    if (q.contains('evolution') ||
-        q.contains('darwin') ||
-        q.contains('natürliche selektion') ||
-        q.contains('artbildung')) {
-      return 'Biologie';
-    }
-    if (q.contains('anpassung') &&
-        (q.contains('art') ||
-            q.contains('tier') ||
-            q.contains('pflanze') ||
-            q.contains('lebewesen'))) {
-      return 'Biologie';
-    }
-    // Ökologie
-    if (q.contains('ökosystem') ||
-        q.contains('nahrungskette') ||
-        q.contains('nahrungsnetz') ||
-        q.contains('ökologie')) {
-      return 'Biologie';
-    }
-    if (q.contains('lebensraum') ||
-        q.contains('biotop') ||
-        q.contains('biozönose') ||
-        q.contains('population') && q.contains('tier')) {
-      return 'Biologie';
-    }
-    if (q.contains('räuber') && q.contains('beute') ||
-        q.contains('parasit') ||
-        q.contains('symbiose') ||
-        q.contains('konkurrenz') && q.contains('art')) {
-      return 'Biologie';
-    }
-    if (q.contains('artenschutz') ||
-        q.contains('aussterben') && q.contains('art') ||
-        q.contains('biodiversität')) {
-      return 'Biologie';
-    }
-    // Photosynthese & Stoffwechsel
-    if (q.contains('fotosynthese') ||
-        q.contains('photosynthese') ||
-        q.contains('chlorophyll') ||
-        q.contains('chloroplast')) {
-      return 'Biologie';
-    }
-    if (q.contains('zellatmung') ||
-        q.contains('atmung') &&
-            (q.contains('zelle') ||
-                q.contains('sauerstoff') ||
-                q.contains('atp'))) {
-      return 'Biologie';
-    }
-    if (q.contains('stoffwechsel') ||
-        q.contains('metabolismus') ||
-        q.contains('atp') && q.contains('energie')) {
-      return 'Biologie';
-    }
-    // Mikroorganismen
-    if (q.contains('virus') ||
-        q.contains('bakterie') ||
-        q.contains('mikroorganism')) {
-      return 'Biologie';
-    }
-    if (q.contains('pilz') &&
-        (q.contains('lebewesen') ||
-            q.contains('art') ||
-            q.contains('schimmel') ||
-            q.contains('spore'))) {
-      return 'Biologie';
-    }
-    // Immunsystem
-    if (q.contains('immunsystem') ||
-        q.contains('antikörper') ||
-        q.contains('antigen') ||
-        q.contains('lymphozyt')) {
-      return 'Biologie';
-    }
-    if (q.contains('impfung') &&
-        (q.contains('körper') ||
-            q.contains('immunsystem') ||
-            q.contains('schutz'))) {
-      return 'Biologie';
-    }
-    // Organe & Körper
-    if (q.contains('organ') &&
-        (q.contains('leber') ||
-            q.contains('niere') ||
-            q.contains('herz') ||
-            q.contains('lunge') ||
-            q.contains('magen') ||
-            q.contains('darm') ||
-            q.contains('milz'))) {
-      return 'Biologie';
-    }
-    if (q.contains('nervensystem') ||
-        q.contains('neuron') ||
-        q.contains('synapse') ||
-        q.contains('gehirn') &&
-            (q.contains('funktion') || q.contains('aufbau'))) {
-      return 'Biologie';
-    }
-    if (q.contains('hormon') &&
-        (q.contains('drüse') ||
-            q.contains('körper') ||
-            q.contains('regulation') ||
-            q.contains('insulin'))) {
-      return 'Biologie';
-    }
-    if (q.contains('blut') &&
-        (q.contains('zelle') ||
-            q.contains('kreislauf') ||
-            q.contains('sauerstoff') ||
-            q.contains('gefäß') ||
-            q.contains('plasma'))) {
-      return 'Biologie';
-    }
-    if (q.contains('verdauung') ||
-        q.contains('darm') &&
-            (q.contains('funktion') || q.contains('aufbau')) ||
-        q.contains('nährstoffaufnahme')) {
-      return 'Biologie';
-    }
-    if (q.contains('muskel') &&
-        (q.contains('funktion') ||
-            q.contains('aufbau') ||
-            q.contains('kontraktion'))) {
-      return 'Biologie';
-    }
-    if (q.contains('knochen') &&
-        (q.contains('aufbau') ||
-            q.contains('funktion') ||
-            q.contains('skelett'))) {
-      return 'Biologie';
-    }
-    if (q.contains('skelett') || q.contains('gelenk') && q.contains('körper')) {
-      return 'Biologie';
-    }
-    // Pflanzen
-    if (q.contains('blüte') ||
-        q.contains('bestäubung') ||
-        q.contains('pollen') ||
-        q.contains('keimung')) {
-      return 'Biologie';
-    }
-    if (q.contains('pflanze') &&
-        (q.contains('wächst') ||
-            q.contains('blatt') ||
-            q.contains('wurzel') ||
-            q.contains('stengel') ||
-            q.contains('fotosynthese') ||
-            q.contains('nährstoff') ||
-            q.contains('art') ||
-            q.contains('warum') ||
-            q.contains('wie') ||
-            q.contains('aufbau'))) {
-      return 'Biologie';
-    }
-    if (q.contains('samen') &&
-        (q.contains('pflanze') ||
-            q.contains('keimung') ||
-            q.contains('frucht'))) {
-      return 'Biologie';
-    }
-    if (q.contains('monokoltyled') ||
-        q.contains('dikotylede') ||
-        q.contains('angiosperm') ||
-        q.contains('gymnosperm')) {
-      return 'Biologie';
-    }
-    // Tiere (Biologie)
-    if (q.contains('wirbeltier') ||
-        q.contains('wirbellos') ||
-        q.contains('reptil') ||
-        q.contains('amphibie')) {
-      return 'Biologie';
-    }
-    if (q.contains('säugetier') &&
-        (q.contains('merkmal') || q.contains('klasse') || q.contains('art'))) {
-      return 'Biologie';
-    }
-    if (q.contains('tier') &&
-        (q.contains('art') ||
-            q.contains('klasse') ||
-            q.contains('wirbel') ||
-            q.contains('merkmal') ||
-            q.contains('warum') ||
-            q.contains('wie') ||
-            q.contains('aufbau'))) {
-      return 'Biologie';
-    }
-    if (q.contains('insekt') &&
-        (q.contains('aufbau') ||
-            q.contains('metamorphose') ||
-            q.contains('art') ||
-            q.contains('merkmal'))) {
-      return 'Biologie';
-    }
-    // Proteine & Enzyme
-    if (q.contains('protein') &&
-        (q.contains('körper') ||
-            q.contains('funktion') ||
-            q.contains('struktur') ||
-            q.contains('aminosäure'))) {
-      return 'Biologie';
-    }
-    if (q.contains('enzym') &&
-        (q.contains('reaktion') ||
-            q.contains('substrat') ||
-            q.contains('katalysator') ||
-            q.contains('verdauung'))) {
-      return 'Biologie';
-    }
-
-    // ════════════════════════════════════════════════════════════════════════
-    // ENGLISCH
-    // ════════════════════════════════════════════════════════════════════════
-    if (q.contains('englisch') || q.contains('english')) return 'Englisch';
-    if (q.contains('übersetze') ||
-        q.contains('übersetzung') ||
-        q.contains('auf englisch') ||
-        q.contains('ins englische')) {
-      return 'Englisch';
-    }
-    // Grammatik (englisch)
-    if (q.contains('past tense') ||
-        q.contains('present tense') ||
-        q.contains('future tense')) {
-      return 'Englisch';
-    }
-    if (q.contains('simple past') ||
-        q.contains('present perfect') ||
-        q.contains('past perfect') ||
-        q.contains('past continuous')) {
-      return 'Englisch';
-    }
-    if (q.contains('present simple') ||
-        q.contains('present continuous') ||
-        q.contains('will future') ||
-        q.contains('going to')) {
-      return 'Englisch';
-    }
-    if (q.contains('conditional') ||
-        q.contains('if clause') ||
-        q.contains('reported speech') ||
-        q.contains('passive voice')) {
-      return 'Englisch';
-    }
-    if (q.contains('irregular verb') ||
-        q.contains('irregular') && q.contains('verb')) {
-      return 'Englisch';
-    }
-    if (q.contains('gerund') ||
-        q.contains('infinitive') ||
-        q.contains('participle') ||
-        q.contains('relative clause')) {
-      return 'Englisch';
-    }
-    if (q.contains('adjective') ||
-        q.contains('adverb') ||
-        q.contains('preposition') ||
-        q.contains('conjunction') ||
-        q.contains('pronoun')) {
-      return 'Englisch';
-    }
-    // Vokabeln
-    if (q.contains('vokabel') ||
-        q.contains('vokabeln') ||
-        q.contains('vocabulary') ||
-        q.contains('word') && q.contains('bedeutung')) {
-      return 'Englisch';
-    }
-    if (q.contains('was bedeutet') &&
-        (q.contains('englisch') ||
-            RegExp(
-              r'\b[a-z]{3,}\b',
-            ).hasMatch(q.replaceAll(RegExp(r'[äöüß\s]'), '')))) {
-      return 'Englisch';
-    }
-    // Englischsprachige Fragen erkennen
-    if (q.split(' ').length >= 4 &&
-        RegExp(
-          r'\b(what|how|why|when|where|who|which|the |is |are |was |were |have |has |had |will |would |can |could |should |do |does |did )\b',
-        ).hasMatch(q)) {
-      return 'Englisch';
-    }
-    // Typisch englische Themen
-    if (q.contains('essay') && q.contains('english') ||
-        q.contains('text') && q.contains('english')) {
-      return 'Englisch';
-    }
-    if (q.contains('listening') ||
-        q.contains('reading comprehension') ||
-        q.contains('writing') && q.contains('english')) {
-      return 'Englisch';
-    }
-
-    // ════════════════════════════════════════════════════════════════════════
-    // DEUTSCH
-    // ════════════════════════════════════════════════════════════════════════
-    if (q.contains('deutschstunde') ||
-        q.contains('im deutschen') ||
-        q.contains('auf deutsch')) {
-      return 'Deutsch';
-    }
-    if (q.contains('grammatik') ||
-        q.contains('rechtschreibung') ||
-        q.contains('zeichensetzung')) {
-      return 'Deutsch';
-    }
-    // Wortarten
-    if (q.contains('nomen') ||
-        q.contains('substantiv') ||
-        q.contains('adjektiv') ||
-        q.contains('adverb')) {
-      return 'Deutsch';
-    }
-    if (q.contains('pronomen') ||
-        q.contains('präposition') ||
-        q.contains('konjunktion') ||
-        q.contains('artikel') && q.contains('deutsch')) {
-      return 'Deutsch';
-    }
-    if (q.contains('verb') &&
-        !q.contains('englisch') &&
-        !q.contains('english') &&
-        !q.contains('tense') &&
-        !q.contains('irregular') &&
-        !q.contains('latein')) {
-      return 'Deutsch';
-    }
-    if (q.contains('wortart') ||
-        q.contains('interjektion') ||
-        q.contains('partikel') && q.contains('wort')) {
-      return 'Deutsch';
-    }
-    // Grammatikformen
-    if (q.contains('konjugier') ||
-        q.contains('konjugation') ||
-        q.contains('zeitform') ||
-        q.contains('tempus')) {
-      return 'Deutsch';
-    }
-    if (q.contains('präteritum') ||
-        q.contains('plusquamperfekt') ||
-        q.contains('perfekt') && !q.contains('present perfect') ||
-        q.contains('futur') && !q.contains('future')) {
-      return 'Deutsch';
-    }
-    if (q.contains('nominativ') ||
-        q.contains('genitiv') ||
-        q.contains('dativ') ||
-        q.contains('akkusativ')) {
-      return 'Deutsch';
-    }
-    if (q.contains('kasus') ||
-        q.contains('fall') &&
-            (q.contains('wessen') || q.contains('wem') || q.contains('wen'))) {
-      return 'Deutsch';
-    }
-    if (q.contains('komparativ') ||
-        q.contains('superlativ') ||
-        q.contains('steigerung') && q.contains('adjektiv')) {
-      return 'Deutsch';
-    }
-    if (q.contains('aktiv') &&
-        (q.contains('passiv') || q.contains('umwandeln')) &&
-        !q.contains('sport')) {
-      return 'Deutsch';
-    }
-    if (q.contains('konjunktiv') ||
-        q.contains('indikativ') ||
-        q.contains('imperativ') && q.contains('verb')) {
-      return 'Deutsch';
-    }
-    // Satzlehre
-    if (q.contains('hauptsatz') ||
-        q.contains('nebensatz') ||
-        q.contains('satzgefüge') ||
-        q.contains('satzreihe')) {
-      return 'Deutsch';
-    }
-    if (q.contains('satzzeichen') ||
-        q.contains('interpunktion') ||
-        q.contains('komma') && (q.contains('satz') || q.contains('regel'))) {
-      return 'Deutsch';
-    }
-    if (q.contains(' satz') &&
-        !q.contains('dreisatz') &&
-        !q.contains('pythagoras') &&
-        !q.contains('physik')) {
-      return 'Deutsch';
-    }
-    if (q.contains('subjekt') ||
-        q.contains('prädikat') ||
-        q.contains('objekt') && !q.contains('programmier')) {
-      return 'Deutsch';
-    }
-    // Rechtschreibung
-    if (q.contains('großschreib') ||
-        q.contains('kleinschreib') ||
-        q.contains('getrenntschreib') ||
-        q.contains('zusammenschreib')) {
-      return 'Deutsch';
-    }
-    if (q.contains('silbe') ||
-        q.contains('vorsilbe') ||
-        q.contains('nachsilbe') ||
-        q.contains('wortstamm')) {
-      return 'Deutsch';
-    }
-    if (q.contains('dehnung') &&
-            (q.contains('vokal') || q.contains('ie') || q.contains('ee')) ||
-        q.contains('schärfung') && q.contains('konsonant')) {
-      return 'Deutsch';
-    }
-    // Textsorten & Literatur
-    if (q.contains('aufsatz') ||
-        q.contains('erörterung') ||
-        q.contains('inhaltsangabe') ||
-        q.contains('charakterisierung')) {
-      return 'Deutsch';
-    }
-    if (q.contains('gedicht') ||
-        q.contains('strophe') ||
-        q.contains('reim') ||
-        q.contains('vers') && !q.contains('versuch')) {
-      return 'Deutsch';
-    }
-    if (q.contains('metapher') ||
-        q.contains('vergleich') && q.contains('stilmittel') ||
-        q.contains('stilmittel') ||
-        q.contains('rhetorisch')) {
-      return 'Deutsch';
-    }
-    if (q.contains('erzählung') ||
-        q.contains('roman') &&
-            (q.contains('analyse') || q.contains('deutsch')) ||
-        q.contains('kurzgeschichte') && !q.contains('englisch')) {
-      return 'Deutsch';
-    }
-    if (q.contains('literatur') &&
-        !q.contains('englisch') &&
-        !q.contains('french') &&
-        !q.contains('spanisch')) {
-      return 'Deutsch';
-    }
-    if (q.contains('fabel') ||
-        q.contains('märchen') &&
-            (q.contains('merkmale') || q.contains('aufbau')) ||
-        q.contains('ballade')) {
-      return 'Deutsch';
-    }
-    if (q.contains('textanalyse') ||
-        q.contains('interpretation') &&
-            (q.contains('text') || q.contains('gedicht'))) {
-      return 'Deutsch';
-    }
-
-    // ════════════════════════════════════════════════════════════════════════
-    // GESCHICHTE
-    // ════════════════════════════════════════════════════════════════════════
-    if (q.contains('geschichte') &&
-        !q.contains('lebensgeschichte') &&
-        !q.contains('eigengeschichte')) {
-      return 'Geschichte';
-    }
-    // Weltkriege
-    if (q.contains('weltkrieg') ||
-        q.contains('erster weltkrieg') ||
-        q.contains('zweiter weltkrieg') ||
-        q.contains('ww1') ||
-        q.contains('ww2')) {
-      return 'Geschichte';
-    }
-    if (q.contains('nationalsozialismu') ||
-        q.contains('ns-zeit') ||
-        q.contains('nazi') ||
-        q.contains('hitler') ||
-        q.contains('drittes reich')) {
-      return 'Geschichte';
-    }
-    if (q.contains('holocaust') ||
-        q.contains('konzentrationslager') ||
-        q.contains('weimarer republik')) {
-      return 'Geschichte';
-    }
-    // Antike
-    if (q.contains('römer') ||
-        q.contains('römisch') ||
-        q.contains('römisches reich') ||
-        q.contains('antike')) {
-      return 'Geschichte';
-    }
-    if (q.contains('julius caesar') ||
-        q.contains('kolosseum') ||
-        q.contains('senator') && q.contains('rom')) {
-      return 'Geschichte';
-    }
-    if (q.contains('griechisch') &&
-        (q.contains('antik') ||
-            q.contains('polis') ||
-            q.contains('demokratie') ||
-            q.contains('sparta') ||
-            q.contains('athen'))) {
-      return 'Geschichte';
-    }
-    if (q.contains('olympia') && q.contains('antike') ||
-        q.contains('sokrates') ||
-        q.contains('aristoteles') ||
-        q.contains('platon') && q.contains('geschichte')) {
-      return 'Geschichte';
-    }
-    if (q.contains('pharao') ||
-        q.contains('altes ägypten') ||
-        q.contains('hieroglyphe') ||
-        q.contains('pyramide') && q.contains('ägypten')) {
-      return 'Geschichte';
-    }
-    if (q.contains('mesopotamien') ||
-        q.contains('babylon') ||
-        q.contains('sumer') ||
-        q.contains('alexander der große')) {
-      return 'Geschichte';
-    }
-    // Mittelalter
-    if (q.contains('mittelalter') ||
-        q.contains('kreuzzug') ||
-        q.contains('ritter') &&
-            (q.contains('burg') ||
-                q.contains('mittelalter') ||
-                q.contains('historisch'))) {
-      return 'Geschichte';
-    }
-    if (q.contains('feudalsystem') ||
-        q.contains('lehnswesen') ||
-        q.contains('leibeigenschaft') ||
-        q.contains('minnesänger')) {
-      return 'Geschichte';
-    }
-    if (q.contains('schwarzer tod') ||
-        q.contains('pest') && q.contains('mittelalter') ||
-        q.contains('kreuzzug')) {
-      return 'Geschichte';
-    }
-    // Frühe Neuzeit
-    if (q.contains('reformation') ||
-        q.contains('luther') && q.contains('kirch') ||
-        q.contains('ablasshandel')) {
-      return 'Geschichte';
-    }
-    if (q.contains('französische revolution') ||
-        q.contains('französisch') && q.contains('revolution') ||
-        q.contains('bastille')) {
-      return 'Geschichte';
-    }
-    if (q.contains('kolonie') ||
-        q.contains('kolonialismus') ||
-        q.contains('imperialismus') && q.contains('historisch')) {
-      return 'Geschichte';
-    }
-    if (q.contains('industrie') && q.contains('revolution') ||
-        q.contains('industrialisierung')) {
-      return 'Geschichte';
-    }
-    // Neuere Geschichte
-    if (q.contains('bismarck') ||
-        q.contains('wilhelmin') ||
-        q.contains('kaiserreich') && q.contains('deutsch')) {
-      return 'Geschichte';
-    }
-    if (q.contains('kalter krieg') ||
-        q.contains('mauerfall') ||
-        q.contains('deutsche teilung') ||
-        q.contains('wiedervereinigung') && q.contains('deutsch')) {
-      return 'Geschichte';
-    }
-    if (q.contains('ddr') ||
-        q.contains('brd') ||
-        q.contains('berliner mauer') ||
-        q.contains('ostblock')) {
-      return 'Geschichte';
-    }
-    if (q.contains('amerikanische revolution') ||
-        q.contains('unabhängigkeit') &&
-            q.contains('usa') &&
-            q.contains('historisch')) {
-      return 'Geschichte';
-    }
-    if (q.contains('french revolution') ||
-        q.contains('napoleon') ||
-        q.contains('napoleon') && q.contains('krieg')) {
-      return 'Geschichte';
-    }
-    if (q.contains('historisch') &&
-        (q.contains('wann') ||
-            q.contains('warum') ||
-            q.contains('ursache') ||
-            q.contains('folge'))) {
-      return 'Geschichte';
-    }
-    if (q.contains('wann wurde') ||
-        q.contains('wann war') ||
-        q.contains('wann fand') &&
-            (q.contains('krieg') ||
-                q.contains('revolution') ||
-                q.contains('ereignis'))) {
-      return 'Geschichte';
-    }
-
-    // ════════════════════════════════════════════════════════════════════════
-    // SACHKUNDE (Grundschule)
-    // ════════════════════════════════════════════════════════════════════════
-    if (q.contains('sachkunde') || q.contains('sachunterricht')) {
-      return 'Sachkunde';
-    }
-    // Pflanzen & Tiere (einfach, Grundschulniveau)
-    if (q.contains('pflanze') ||
-        q.contains('blume') ||
-        q.contains('baum') ||
-        q.contains('strauch')) {
-      return 'Biologie';
-    }
-    if (q.contains('tier') ||
-        q.contains('tiere') ||
-        q.contains('tierart') ||
-        q.contains('haustier') ||
-        q.contains('wildtier')) {
-      return 'Biologie';
-    }
-    if (q.contains('insekt') ||
-        q.contains('schmetterling') ||
-        q.contains('biene') ||
-        q.contains('käfer') ||
-        q.contains('ameise')) {
-      return 'Biologie';
-    }
-    if (q.contains('vogel') ||
-        q.contains('fisch') ||
-        q.contains('frosch') ||
-        q.contains('schlange') && !q.contains('spiel')) {
-      return 'Biologie';
-    }
-    // Sachkunde-spezifisch
-    if (q.contains('jahreszeit') ||
-        q.contains('frühling') ||
-        q.contains('herbst') && !q.contains('olymp') ||
-        q.contains('winter') && !q.contains('sport')) {
-      return 'Sachkunde';
-    }
-    if (q.contains('körper') &&
-        (q.contains('organ') ||
-            q.contains('wie funktioniert') ||
-            q.contains('herzschlag') ||
-            q.contains('knochen'))) {
-      return 'Sachkunde';
-    }
-    if (q.contains('blutkreislauf') ||
-        q.contains('verdauung') && !q.contains('biologie')) {
-      return 'Sachkunde';
-    }
-    if (q.contains('umwelt') ||
-        q.contains('recycling') ||
-        q.contains('naturschutz') ||
-        q.contains('mülltrennung')) {
-      return 'Sachkunde';
-    }
-    if (q.contains('planet') ||
-        q.contains('sonnensystem') ||
-        q.contains('weltall') ||
-        q.contains('galaxie') ||
-        q.contains('sterne') && q.contains('astronomie')) {
-      return 'Sachkunde';
-    }
-    if (q.contains('magnet') ||
-        q.contains('elektrizität') &&
-            !q.contains('physik') &&
-            !q.contains('chemie')) {
-      return 'Sachkunde';
-    }
-    if (q.contains('verkehr') ||
-        q.contains('ampel') ||
-        q.contains('verkehrszeichen') ||
-        q.contains('straßenverkehr')) {
-      return 'Sachkunde';
-    }
-    if (q.contains('gesund') && !q.contains('rechnung') ||
-        q.contains('ernährung') ||
-        q.contains('vitamin') ||
-        q.contains('nährstoff') && !q.contains('biologie')) {
-      return 'Sachkunde';
-    }
-    if (q.contains('beruf') ||
-        q.contains('feuerwehr') ||
-        q.contains('polizei') && q.contains('beruf') ||
-        q.contains('arzt') && q.contains('beruf')) {
-      return 'Sachkunde';
-    }
-    if (q.contains('wasser') &&
-        (q.contains('kreislauf') ||
-            q.contains('regen') ||
-            q.contains('fluss') && !q.contains('geographie'))) {
-      return 'Sachkunde';
-    }
-    if (q.contains('luft') &&
-        (q.contains('bestandteil') ||
-            q.contains('sauerstoff') ||
-            q.contains('stickstoff') ||
-            q.contains('zusammensetzung'))) {
-      return 'Sachkunde';
-    }
-
-    return 'Allgemein';
-  }
-
   /// Setzt das Session-Topic einmalig auf das von der KI erkannte Schulfach.
-  Future<void> _setSessionTopic(String subject) async {
-    if (_currentSessionId == null) return;
+  Future<void> _setSessionTopic(String sessionId, String subject) async {
     try {
-      await _firestore
-          .collection('users')
-          .doc(_userId)
-          .collection('children')
-          .doc(_childId)
-          .collection('tutor_sessions')
-          .doc(_currentSessionId)
-          .update({'detectedTopic': subject});
+      await _sessions.doc(sessionId).update({'detectedTopic': subject});
     } catch (e) {
-      // ⚠️ Fehler beim Topic-Setzen: $e
+      debugPrint('⚠️ Fehler beim Topic-Setzen: $e');
     }
   }
 
-  /// Schließt alle noch offenen aktiven Sessions (Bereinigung bei frischem Chat-Start).
-  Future<void> _closeAllActiveSessions() async {
-    try {
-      final snapshot = await _firestore
-          .collection('users')
-          .doc(_userId)
-          .collection('children')
-          .doc(_childId)
-          .collection('tutor_sessions')
-          .where('status', isEqualTo: 'active')
-          .get();
+  // --------------------------------------------------------------------------
+  // ABSCHLIESSEN
+  // --------------------------------------------------------------------------
 
-      for (final doc in snapshot.docs) {
-        final msgCount = (doc.data()['messageCount'] as int?) ?? 0;
-        if (msgCount <= 1) {
-          await doc.reference.delete();
+  /// Löscht eine Session samt Nachrichten (leere Sessions).
+  Future<void> _deleteSessionWithMessages(
+    DocumentReference<Map<String, dynamic>> sessionRef,
+  ) async {
+    final messages = await sessionRef.collection('messages').limit(450).get();
+    final batch = _firestore.batch();
+    for (final m in messages.docs) {
+      batch.delete(m.reference);
+    }
+    batch.delete(sessionRef);
+    await batch.commit();
+  }
+
+  /// Schließt alle noch offenen aktiven Sessions (frischer Chat-Start).
+  /// Sessions ohne Gespräch (höchstens eine Nachricht, kein Inhalts-Flag)
+  /// werden samt Nachrichten gelöscht.
+  Future<void> _closeAllActiveSessions() async {
+    final snapshot = await _sessions.where('status', isEqualTo: 'active').get();
+    for (final doc in snapshot.docs) {
+      final data = doc.data();
+      final msgCount = (data['messageCount'] as int?) ?? 0;
+      try {
+        if (msgCount <= 1 && data['contentFlag'] == null) {
+          await _deleteSessionWithMessages(doc.reference);
         } else {
           await doc.reference.update({
             'status': 'completed',
             'endedAt': Timestamp.fromDate(DateTime.now()),
           });
         }
+      } catch (e) {
+        debugPrint('⚠️ Session ${doc.id} nicht geschlossen: $e');
       }
-    } catch (e) {
-      // ⚠️ Fehler beim Bereinigen: $e
     }
   }
 
+  /// Schließt die aktuelle Session ab (Chat verlassen). Ohne Nachricht des
+  /// Kindes und ohne Inhalts-Flag wird sie gelöscht. Läuft auch, wenn der
+  /// Notifier schon entsorgt ist (keine State-Änderung).
   Future<void> completeCurrentSession() async {
-    if (_currentSessionId == null) return;
+    final pending = _sessionFuture;
+    var sessionId = _currentSessionId;
+    final hadMessage = _hasUserSentMessage;
+    final flagged = _sessionContentFlag != null;
 
-    try {
-      if (!_hasUserSentMessage) {
-        final sessionDoc = await _firestore
-            .collection('users')
-            .doc(_userId)
-            .collection('children')
-            .doc(_childId)
-            .collection('tutor_sessions')
-            .doc(_currentSessionId)
-            .get();
+    _sessionGeneration++;
+    _currentSessionId = null;
+    _sessionFuture = null;
+    _hasUserSentMessage = false;
+    _sessionTopic = null;
+    _sessionHasFirstQuestion = false;
+    _sessionContentFlag = null;
+    _quizInjectedThisSession = false;
 
-        final hasFlag = sessionDoc.data()?['contentFlag'] != null;
-
-        if (!hasFlag) {
-          await _firestore
-              .collection('users')
-              .doc(_userId)
-              .collection('children')
-              .doc(_childId)
-              .collection('tutor_sessions')
-              .doc(_currentSessionId)
-              .delete();
-          _currentSessionId = null;
-          return;
-        }
+    if (sessionId == null && pending != null) {
+      try {
+        sessionId = await pending;
+      } catch (_) {
+        return;
       }
-
-      await _firestore
-          .collection('users')
-          .doc(_userId)
-          .collection('children')
-          .doc(_childId)
-          .collection('tutor_sessions')
-          .doc(_currentSessionId)
-          .update({
-            'status': 'completed',
-            'endedAt': Timestamp.fromDate(DateTime.now()),
-          });
-
-      _currentSessionId = null;
-    } catch (e) {
-      // ❌ Fehler beim Abschließen der Session: $e');
     }
-  }
-
-  Future<void> clearChat() async {
-    final child = _ref.read(activeChildProvider);
-    if (child == null) return;
+    if (sessionId == null) return;
 
     try {
-      await completeCurrentSession();
-
-      _hasUserSentMessage = false;
-      _quizInjectedThisSession = false;
-
-      final welcomeMessage = ChatMessage.tutor(
-        VertexAIService.buildWelcomeMessage(child),
-      );
-
-      state = [welcomeMessage];
-    } catch (e) {
-      // ❌ Fehler beim Session-Reset: $e');
-    }
-  }
-
-  /// Reaktiviert eine abgeschlossene Session aus dem Verlauf
-  Future<void> resumeSession(String sessionId) async {
-    try {
-      // Aktuelle Session abschließen (falls vorhanden)
-      await completeCurrentSession();
-
-      // Session in Firestore auf 'active' zurücksetzen
-      await _firestore
-          .collection('users')
-          .doc(_userId)
-          .collection('children')
-          .doc(_childId)
-          .collection('tutor_sessions')
-          .doc(sessionId)
-          .update({'status': 'active', 'endedAt': FieldValue.delete()});
-
-      _currentSessionId = sessionId;
-      _hasUserSentMessage = true;
-      _quizInjectedThisSession = false;
-      // Nachrichten laden
-      final messagesSnapshot = await _firestore
-          .collection('users')
-          .doc(_userId)
-          .collection('children')
-          .doc(_childId)
-          .collection('tutor_sessions')
-          .doc(sessionId)
-          .collection('messages')
-          .orderBy('timestamp', descending: false)
-          // limitToLast: beim Fortsetzen die NEUESTEN 50 Nachrichten laden.
-          .limitToLast(50)
-          .get();
-
-      final messages = messagesSnapshot.docs.map((doc) {
-        final data = doc.data();
-        return ChatMessage(
-          id: doc.id,
-          text: data['text'] ?? '',
-          isUser: data['isUser'] ?? false,
-          timestamp:
-              (data['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now(),
-          imageUrl: data['imageUrl'] as String?,
-        );
-      }).toList();
-
-      if (messages.isNotEmpty) {
-        state = messages;
+      final ref = _sessions.doc(sessionId);
+      if (!hadMessage && !flagged) {
+        await _deleteSessionWithMessages(ref);
+        return;
       }
+      await ref.update({
+        'status': 'completed',
+        'endedAt': Timestamp.fromDate(DateTime.now()),
+      });
     } catch (e) {
-      // ❌ Fehler beim Reaktivieren der Session: $e
+      debugPrint('❌ Fehler beim Abschließen der Session: $e');
     }
   }
 }
@@ -2283,12 +718,12 @@ final tutorFreshChatProvider = StateProvider<bool>((ref) => false);
 // PROVIDER
 // ============================================================================
 
-/// 🎯 FAMILY PROVIDER - Ein Chat pro Kind!
-final tutorProviderFamily =
-    StateNotifierProvider.family<TutorNotifier, List<ChatMessage>, String>((
-      ref,
-      childId,
-    ) {
+/// Ein Chat pro Kind. autoDispose: Verlässt das Kind den Tutor, schließt der
+/// Bildschirm die Session ab und der Notifier wird entsorgt. Beim nächsten
+/// Öffnen lädt ein neuer Notifier den passenden Stand – kein alter Verlauf
+/// über einer neuen Session.
+final tutorProviderFamily = StateNotifierProvider.autoDispose
+    .family<TutorNotifier, List<ChatMessage>, String>((ref, childId) {
       final service = ref.watch(vertexAIServiceProvider);
       final user = ref.watch(authStateChangesProvider).value;
 

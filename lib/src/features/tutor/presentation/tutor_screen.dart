@@ -1,8 +1,10 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:lerndex/src/ai/vertex_ai_service.dart';
 import 'package:lerndex/src/shared/widgets/message_bubble.dart';
 import 'package:lerndex/src/shared/widgets/picked_image.dart';
 import '../domain/chat_message.dart';
@@ -45,6 +47,7 @@ class _TutorScreenState extends ConsumerState<TutorScreen> {
   TutorNotifier? _tutorNotifier;
   ActiveChildNotifier? _activeChildNotifier;
   TtsController? _tts;
+  SttController? _stt;
   ChildModel? _child;
   String? _userId;
 
@@ -65,6 +68,10 @@ class _TutorScreenState extends ConsumerState<TutorScreen> {
       _rewardService = ref.read(rewardServiceProvider);
       _activeChildNotifier = ref.read(activeChildProvider.notifier);
       _tts = ref.read(ttsControllerProvider.notifier);
+      // Mikrofon-Controller für die Dauer des Bildschirms festhalten, damit
+      // dispose genau diesen stoppen kann.
+      ref.listenManual(sttControllerProvider, (_, _) {});
+      _stt = ref.read(sttControllerProvider.notifier);
 
       final providerInstance = ref.read(tutorProvider);
       if (providerInstance != null) {
@@ -158,6 +165,8 @@ class _TutorScreenState extends ConsumerState<TutorScreen> {
   @override
   void dispose() {
     _tts?.stop(); // Lexi verstummt, wenn das Kind den Chat verlässt
+    // Mikrofon aus: sonst startete die Spracherkennung nach jeder Pause neu.
+    _stt?.cancel();
     _xpOverlay?.remove();
     _messageController.dispose();
     _scrollController.dispose();
@@ -170,6 +179,11 @@ class _TutorScreenState extends ConsumerState<TutorScreen> {
     final notifier = _tutorNotifier;
     final activeChildNotifier = _activeChildNotifier;
     final tracker = _timeTracker;
+
+    // Session sofort abschließen (nicht erst nach dem Speichern der
+    // Lernzeit): öffnet das Kind den Chat gleich wieder, soll es nicht die
+    // alte, noch „aktive“ Session erwischen.
+    notifier?.completeCurrentSession();
 
     if (tracker != null) {
       tracker.stopTracking();
@@ -213,10 +227,7 @@ class _TutorScreenState extends ConsumerState<TutorScreen> {
           debugPrint('❌ Fehler beim Speichern der Tutor-Lernzeit: $e');
         }
         tracker.dispose();
-        notifier?.completeCurrentSession();
       });
-    } else {
-      notifier?.completeCurrentSession();
     }
 
     super.dispose();
@@ -228,9 +239,13 @@ class _TutorScreenState extends ConsumerState<TutorScreen> {
     if (text.isEmpty && image == null) return;
 
     final providerInstance = ref.read(tutorProvider);
-    if (providerInstance != null) {
-      ref.read(providerInstance.notifier).sendMessage(text, imageFile: image);
-    }
+    if (providerInstance == null) return;
+    final notifier = ref.read(providerInstance.notifier);
+    // Solange Lexi antwortet, bleibt der Text im Feld.
+    if (notifier.isWaitingForAnswer) return;
+    // Spracheingabe beenden, sonst schriebe sie ins geleerte Feld weiter.
+    _stt?.stop();
+    notifier.sendMessage(text, imageFile: image);
     // Safari spricht nur nach einem Tipp – Lexis Antwort kommt aber später.
     final child = ref.read(activeChildProvider);
     if (child != null && ref.read(tutorAutoReadProvider(child.id))) {
@@ -332,9 +347,12 @@ class _TutorScreenState extends ConsumerState<TutorScreen> {
       }
     } catch (e) {
       if (mounted) {
+        debugPrint('⚠️ Tutor: Foto konnte nicht geladen werden: $e');
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Fehler beim Laden des Bildes: $e'),
+          const SnackBar(
+            content: Text(
+              'Das Foto hat leider nicht geklappt. Versuch es noch einmal! 📷',
+            ),
             backgroundColor: Colors.red,
           ),
         );
@@ -353,6 +371,11 @@ class _TutorScreenState extends ConsumerState<TutorScreen> {
     if (child == null) {
       return const Scaffold(body: Center(child: Text('Kein Kind ausgewählt')));
     }
+
+    // Lexi antwortet gerade → Senden gesperrt
+    final isWaiting = messages.any((m) => m.isLoading);
+    // Spracheingabe nur mit Erkennung auf dem Gerät (sonst ausgeblendet)
+    final sttAvailable = ref.watch(sttAvailableProvider).value ?? false;
 
     // ✅ XP-Gain Listener → Animation + Reward-Check
     ref.listen(tutorXpGainProvider(child.id), (previous, gained) {
@@ -373,6 +396,8 @@ class _TutorScreenState extends ConsumerState<TutorScreen> {
     // Laden des bisherigen Verlaufs)
     final autoRead = ref.watch(tutorAutoReadProvider(child.id));
     final ttsState = ref.watch(ttsControllerProvider);
+    // Ohne erlaubte Stimme (im Browser nur lokale) kein Vorlesen
+    final canRead = ttsState.isAvailable;
     if (providerInstance != null) {
       ref.listen(providerInstance, (previous, next) {
         final answered =
@@ -380,7 +405,9 @@ class _TutorScreenState extends ConsumerState<TutorScreen> {
             next.isNotEmpty &&
             !next.last.isUser &&
             !next.last.isLoading;
-        if (answered && ref.read(tutorAutoReadProvider(child.id))) {
+        if (answered &&
+            ref.read(ttsControllerProvider).isAvailable &&
+            ref.read(tutorAutoReadProvider(child.id))) {
           _tts?.speakTutor(next.last.text, id: next.last.id);
         }
       });
@@ -411,13 +438,14 @@ class _TutorScreenState extends ConsumerState<TutorScreen> {
         backgroundColor: Colors.deepPurple,
         foregroundColor: Colors.white,
         actions: [
-          IconButton(
-            tooltip: autoRead
-                ? 'Automatisch vorlesen: an'
-                : 'Automatisch vorlesen: aus',
-            icon: Icon(autoRead ? Icons.volume_up : Icons.volume_off),
-            onPressed: () => _toggleAutoRead(child.id, autoRead),
-          ),
+          if (canRead)
+            IconButton(
+              tooltip: autoRead
+                  ? 'Automatisch vorlesen: an'
+                  : 'Automatisch vorlesen: aus',
+              icon: Icon(autoRead ? Icons.volume_up : Icons.volume_off),
+              onPressed: () => _toggleAutoRead(child.id, autoRead),
+            ),
         ],
       ),
       body: Column(
@@ -460,7 +488,8 @@ class _TutorScreenState extends ConsumerState<TutorScreen> {
                     itemCount: messages.length,
                     itemBuilder: (context, index) {
                       final message = messages[index];
-                      final canSpeak = !message.isUser && !message.isLoading;
+                      final canSpeak =
+                          canRead && !message.isUser && !message.isLoading;
                       return MessageBubble(
                         message: message,
                         childName: child.name,
@@ -500,24 +529,35 @@ class _TutorScreenState extends ConsumerState<TutorScreen> {
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       // Foto-Button: Aufgabenblatt fotografieren/hochladen
-                      _AttachButton(onTap: _showImageSourceSheet),
-                      const SizedBox(width: 4),
+                      _AttachButton(
+                        onTap: isWaiting ? null : _showImageSourceSheet,
+                      ),
                       // Mikrofon-Button (Tap-Toggle)
                       // 1x tippen → Aufnahme START, nochmal tippen → STOP.
                       // Bei erneutem Start wird an bestehenden Text angehängt,
                       // damit das Kind in Etappen sprechen und tippen kann.
-                      _MicButton(
-                        getCurrentText: () => _messageController.text,
-                        onPartialResult: (text) {
-                          // Text live ins Eingabefeld schreiben.
-                          _messageController.text = text;
-                          _messageController.selection =
-                              TextSelection.fromPosition(
-                                TextPosition(offset: text.length),
-                              );
-                        },
-                      ),
-                      const SizedBox(width: 6),
+                      if (sttAvailable)
+                        _MicButton(
+                          getCurrentText: () => _messageController.text,
+                          onPartialResult: (text) {
+                            // Text live ins Eingabefeld schreiben (höchstens
+                            // so viel, wie Lexi annimmt).
+                            final limited =
+                                text.length >
+                                    VertexAIService.maxTutorMessageLength
+                                ? text.substring(
+                                    0,
+                                    VertexAIService.maxTutorMessageLength,
+                                  )
+                                : text;
+                            _messageController.text = limited;
+                            _messageController.selection =
+                                TextSelection.fromPosition(
+                                  TextPosition(offset: limited.length),
+                                );
+                          },
+                        ),
+                      const SizedBox(width: 4),
                       Expanded(
                         // FIX 2: maxLines: null + keyboardType multiline → Zeilenumbruch
                         child: ConstrainedBox(
@@ -539,6 +579,20 @@ class _TutorScreenState extends ConsumerState<TutorScreen> {
                             ),
                             maxLines: null,
                             minLines: 1,
+                            maxLength: VertexAIService.maxTutorMessageLength,
+                            maxLengthEnforcement: MaxLengthEnforcement.enforced,
+                            // Zähler erst kurz vor der Grenze zeigen
+                            buildCounter:
+                                (
+                                  context, {
+                                  required currentLength,
+                                  required isFocused,
+                                  required maxLength,
+                                }) =>
+                                    maxLength != null &&
+                                        currentLength > maxLength - 50
+                                    ? Text('$currentLength / $maxLength')
+                                    : null,
                             keyboardType: TextInputType.multiline,
                             textInputAction: TextInputAction.newline,
                             textCapitalization: TextCapitalization.sentences,
@@ -550,8 +604,13 @@ class _TutorScreenState extends ConsumerState<TutorScreen> {
                       Padding(
                         padding: const EdgeInsets.only(bottom: 2),
                         child: FloatingActionButton(
-                          onPressed: _sendMessage,
-                          backgroundColor: Colors.deepPurple,
+                          onPressed: isWaiting ? null : _sendMessage,
+                          tooltip: isWaiting
+                              ? 'Lexi antwortet gerade …'
+                              : 'Senden',
+                          backgroundColor: isWaiting
+                              ? Colors.grey.shade400
+                              : Colors.deepPurple,
                           mini: true,
                           child: const Icon(
                             Icons.send,
@@ -621,6 +680,7 @@ class _TutorScreenState extends ConsumerState<TutorScreen> {
           ),
           IconButton(
             icon: const Icon(Icons.close, size: 20),
+            tooltip: 'Foto entfernen',
             color: Colors.grey,
             onPressed: () => setState(() => _selectedImage = null),
           ),
@@ -692,35 +752,51 @@ class _MicButtonState extends ConsumerState<_MicButton> {
     // Größen-Animation: 1.0 normal, 1.0..1.25 abhängig von Lautstärke
     final scale = listening ? (1.0 + state.soundLevel * 0.25) : 1.0;
 
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 2),
-      child: GestureDetector(
-        onTap: _onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 80),
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: listening ? Colors.red.shade400 : Colors.deepPurple,
-            boxShadow: listening
-                ? [
-                    BoxShadow(
-                      color: Colors.red.withValues(alpha: 0.4),
-                      blurRadius: 12,
-                      spreadRadius: 2,
-                    ),
-                  ]
-                : null,
+    final label = listening ? 'Aufnahme stoppen' : 'Spracheingabe starten';
+    return Tooltip(
+      message: label,
+      child: Semantics(
+        button: true,
+        label: label,
+        excludeSemantics: true,
+        child: InkResponse(
+          onTap: _onTap,
+          radius: 26,
+          // 48 × 48 Trefferfläche, Kreis darin wie bisher 40 dp
+          child: SizedBox(
+            width: 48,
+            height: 48,
+            child: Center(child: _circle(listening, scale)),
           ),
-          child: Transform.scale(
-            scale: scale,
-            child: Icon(
-              listening ? Icons.stop : Icons.mic,
-              color: Colors.white,
-              size: 20,
-            ),
-          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _circle(bool listening, double scale) {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 80),
+      width: 40,
+      height: 40,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: listening ? Colors.red.shade400 : Colors.deepPurple,
+        boxShadow: listening
+            ? [
+                BoxShadow(
+                  color: Colors.red.withValues(alpha: 0.4),
+                  blurRadius: 12,
+                  spreadRadius: 2,
+                ),
+              ]
+            : null,
+      ),
+      child: Transform.scale(
+        scale: scale,
+        child: Icon(
+          listening ? Icons.stop : Icons.mic,
+          color: Colors.white,
+          size: 20,
         ),
       ),
     );
@@ -732,27 +808,44 @@ class _MicButtonState extends ConsumerState<_MicButton> {
 // ============================================================================
 
 class _AttachButton extends StatelessWidget {
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
   const _AttachButton({required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 2),
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: Colors.deepPurple.shade50,
-            border: Border.all(color: Colors.deepPurple.shade200),
-          ),
-          child: const Icon(
-            Icons.add_a_photo_outlined,
-            color: Colors.deepPurple,
-            size: 20,
+    const label = 'Foto vom Aufgabenblatt';
+    return Tooltip(
+      message: label,
+      child: Semantics(
+        button: true,
+        enabled: onTap != null,
+        label: label,
+        excludeSemantics: true,
+        child: InkResponse(
+          onTap: onTap,
+          radius: 26,
+          // 48 × 48 Trefferfläche, Kreis darin wie bisher 40 dp
+          child: SizedBox(
+            width: 48,
+            height: 48,
+            child: Center(
+              child: Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.deepPurple.shade50,
+                  border: Border.all(color: Colors.deepPurple.shade200),
+                ),
+                child: Icon(
+                  Icons.add_a_photo_outlined,
+                  color: onTap == null
+                      ? Colors.deepPurple.shade200
+                      : Colors.deepPurple,
+                  size: 20,
+                ),
+              ),
+            ),
           ),
         ),
       ),
