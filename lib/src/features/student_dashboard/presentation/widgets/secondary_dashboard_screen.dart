@@ -97,8 +97,7 @@ class _SecondaryDashboardScreenState
     final themeIds = (userId: user.ownerUid, childId: widget.child.id);
     final themeState = ref.watch(dashboardThemeProvider(themeIds));
     final theme = themeState.theme;
-    final rewardsCount =
-        ref.watch(availableRewardsCountProvider).value ?? 0;
+    final rewardsCount = ref.watch(availableRewardsCountProvider).value ?? 0;
 
     // Auf Navigation-Signal vom Quiz lauschen
     ref.listen<bool>(navigateToRewardsTabProvider, (_, shouldNavigate) {
@@ -148,23 +147,21 @@ class _SecondaryDashboardScreenState
       automaticallyImplyLeading: false,
       // Kindergerät: das Dashboard ist die Startseite, dahinter gibt es nichts
       leading: _currentTab == 0 && ref.watch(isChildDeviceProvider)
-          ? DeviceLogoutButton(
-              color: theme.onPrimary.withValues(alpha: 0.9),
-            )
+          ? DeviceLogoutButton(color: theme.onPrimary.withValues(alpha: 0.9))
           : IconButton(
-        icon: Icon(
-          Icons.arrow_back_ios_rounded,
-          color: theme.onPrimary.withValues(alpha: 0.9),
-          size: 20,
-        ),
-        onPressed: () {
-          if (_currentTab != 0) {
-            setState(() => _currentTab = 0);
-          } else {
-            Navigator.of(context).pop();
-          }
-        },
-      ),
+              icon: Icon(
+                Icons.arrow_back_ios_rounded,
+                color: theme.onPrimary.withValues(alpha: 0.9),
+                size: 20,
+              ),
+              onPressed: () {
+                if (_currentTab != 0) {
+                  setState(() => _currentTab = 0);
+                } else {
+                  Navigator.of(context).pop();
+                }
+              },
+            ),
       title: Text(
         _appBarTitle(),
         style: TextStyle(
@@ -293,7 +290,7 @@ class _SecondaryDashboardScreenState
         backgroundColor: isLocked ? Colors.grey.shade400 : theme.primary,
         elevation: 8,
         shape: const CircleBorder(),
-        tooltip: isLocked ? 'Tutor ab Level 2 verfügbar' : 'KI-Tutor',
+        tooltip: isLocked ? 'Lexi ab Level 2' : 'Mit Lexi sprechen',
         child: isLocked
             ? const Icon(Icons.lock_rounded, color: Colors.white, size: 26)
             : ClipOval(
@@ -320,7 +317,10 @@ class _SecondaryDashboardScreenState
       decoration: BoxDecoration(
         color: theme.surface,
         border: Border(
-          top: BorderSide(color: theme.primary.withValues(alpha: 0.15), width: 1),
+          top: BorderSide(
+            color: theme.primary.withValues(alpha: 0.15),
+            width: 1,
+          ),
         ),
       ),
       child: BottomAppBar(
@@ -383,7 +383,7 @@ class _SecondaryDashboardScreenState
       case 1:
         return 'Belohnungen';
       case 2:
-        return 'Tutor-Verlauf';
+        return 'Lexi-Verlauf';
       case 3:
         return 'Statistiken';
       default:
@@ -476,7 +476,7 @@ class _SecondaryDashboardScreenState
               ),
               const SizedBox(height: 16),
               Text(
-                'Tutor noch gesperrt',
+                'Lexi noch gesperrt',
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
@@ -485,7 +485,7 @@ class _SecondaryDashboardScreenState
               ),
               const SizedBox(height: 10),
               Text(
-                'Erreiche Level 2, um den KI-Tutor freizuschalten. Noch $xpNeeded XP! 🚀',
+                'Erreiche Level 2, dann kannst du mit Lexi sprechen. Noch $xpNeeded XP! 🚀',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 15,
@@ -566,7 +566,11 @@ class _SecondaryHomeTab extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // ── Hero Header ───────────────────────────────────────────────
-          _SecondaryHeroHeader(child: child, theme: theme, userId: user?.ownerUid),
+          _SecondaryHeroHeader(
+            child: child,
+            theme: theme,
+            userId: user?.ownerUid,
+          ),
           const SizedBox(height: 24),
 
           // ── Schnellstats ──────────────────────────────────────────────

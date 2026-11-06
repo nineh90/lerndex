@@ -7,7 +7,9 @@ import 'package:lerndex/src/features/student_dashboard/presentation/widgets/rewa
 import 'package:lerndex/src/features/student_dashboard/presentation/widgets/secondary_dashboard_screen.dart';
 import 'package:lerndex/src/features/student_dashboard/presentation/widgets/secondary_onboarding_screen.dart';
 import '../../auth/presentation/active_child_provider.dart';
+import '../../subscription/data/subscription_model.dart';
 import '../../subscription/data/subscription_provider.dart';
+import 'device_access.dart';
 import '../../auth/data/auth_repository.dart';
 import '../../auth/domain/child_model.dart';
 import '../../rewards/presentation/rewards_screen.dart';
@@ -51,6 +53,11 @@ class _StudentDashboardScreenState
   bool _onboardingChecked = false;
   // Letzter bekannter Mode – erkennt Klassenwechsel
   DashboardMode? _lastMode;
+
+  /// Zuletzt erfolgreich geladener Abo-/Lizenz-Status je Konto (Eltern- bzw.
+  /// Schul-UID). Gilt für die laufende App-Sitzung: ein kurzer Netzfehler
+  /// sperrt das Kind nicht aus.
+  static final Map<String, SubscriptionStatus> _lastKnownStatus = {};
 
   @override
   void initState() {
@@ -120,20 +127,22 @@ class _StudentDashboardScreenState
     }
   }
 
-  void _handleGradeTransition(ChildModel child, DashboardMode newMode) {
-    // Klassenübergang von Grundschule → weiterführend
-    if (_lastMode != null &&
-        _lastMode != DashboardMode.secondaryLearner &&
-        newMode == DashboardMode.secondaryLearner) {
-      _lastMode = newMode;
-      // Onboarding-Flag zurücksetzen damit neues Dashboard gezeigt wird
-      SharedPreferences.getInstance().then((prefs) {
-        prefs.remove('secondary_onboarding_seen_${child.id}');
-      });
-      setState(() => _showOnboarding = true);
+  /// Klassenübergang Grundschule → weiterführend (z.B. Eltern ändern die
+  /// Klasse, während das Dashboard offen ist): Onboarding neu zeigen.
+  void _handleGradeTransition(
+    ChildModel child,
+    DashboardMode oldMode,
+    DashboardMode newMode,
+  ) {
+    if (oldMode == DashboardMode.secondaryLearner ||
+        newMode != DashboardMode.secondaryLearner) {
       return;
     }
-    _lastMode = newMode;
+    // Onboarding-Flag zurücksetzen damit neues Dashboard gezeigt wird
+    SharedPreferences.getInstance().then((prefs) {
+      prefs.remove('secondary_onboarding_seen_${child.id}');
+    });
+    setState(() => _showOnboarding = true);
   }
 
   @override
@@ -145,15 +154,28 @@ class _StudentDashboardScreenState
     // der Schule. Zu Hause am Elterngerät prüft das schon das Familien-
     // Dashboard vorher.
     if (ref.watch(isChildDeviceProvider)) {
-      final hasAccess = ref
-          .watch(subscriptionStatusProvider)
-          .when(
-            data: (s) => s.hasAccess,
-            loading: () => true,
-            error: (_, _) => true,
+      final status = ref.watch(subscriptionStatusProvider);
+      final accountId = ref.watch(authStateChangesProvider).value?.ownerUid;
+      if (accountId != null && status.hasValue && !status.hasError) {
+        _lastKnownStatus[accountId] = status.value!;
+      }
+      final access = resolveDeviceAccess(
+        status,
+        lastKnown: accountId == null ? null : _lastKnownStatus[accountId],
+      );
+      switch (access) {
+        case DeviceAccess.granted:
+          break;
+        case DeviceAccess.checking:
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
           );
-      if (!hasAccess) {
-        return _NoAccessScreen(isSchool: ref.watch(isSchoolDeviceProvider));
+        case DeviceAccess.denied:
+        case DeviceAccess.failed:
+          return _NoAccessScreen(
+            isSchool: ref.watch(isSchoolDeviceProvider),
+            checkFailed: access == DeviceAccess.failed,
+          );
       }
     }
 
@@ -163,13 +185,14 @@ class _StudentDashboardScreenState
 
     final mode = getDashboardMode(activeChild.grade);
 
-    // Klassenübergang prüfen
-    if (_lastMode != null && _lastMode != mode) {
+    // Klassenübergang prüfen (alten Mode merken, BEVOR er überschrieben wird)
+    final previousMode = _lastMode;
+    _lastMode = mode;
+    if (previousMode != null && previousMode != mode) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        _handleGradeTransition(activeChild, mode);
+        if (mounted) _handleGradeTransition(activeChild, previousMode, mode);
       });
     }
-    _lastMode = mode;
 
     // Onboarding für Klasse 5+ (einmalig)
     if (_showOnboarding && mode == DashboardMode.secondaryLearner) {
@@ -259,16 +282,16 @@ class _PrimaryDashboardScreenState
           leading: _currentTab == 0 && ref.watch(isChildDeviceProvider)
               ? const DeviceLogoutButton()
               : IconButton(
-            icon: const Icon(Icons.arrow_back),
-            onPressed: () {
-              if (_currentTab != 0) {
-                setState(() => _currentTab = 0);
-              } else {
-                Navigator.of(context).pop();
-              }
-            },
-            tooltip: _currentTab != 0 ? 'Zurück zum Home' : 'Abmelden',
-          ),
+                  icon: const Icon(Icons.arrow_back),
+                  onPressed: () {
+                    if (_currentTab != 0) {
+                      setState(() => _currentTab = 0);
+                    } else {
+                      Navigator.of(context).pop();
+                    }
+                  },
+                  tooltip: _currentTab != 0 ? 'Zurück zum Home' : 'Abmelden',
+                ),
           actions: [
             Padding(
               padding: const EdgeInsets.only(right: 12),
@@ -368,7 +391,7 @@ class _PrimaryDashboardScreenState
       case 1:
         return '🎁 Meine Belohnungen';
       case 2:
-        return '💬 Tutor-Verlauf';
+        return '💬 Lexi-Verlauf';
       case 3:
         return '📊 Meine Statistiken';
       default:
@@ -400,7 +423,7 @@ class _PrimaryDashboardScreenState
             : Colors.deepPurple.shade200,
         elevation: 6,
         shape: const CircleBorder(),
-        tooltip: isLocked ? 'Tutor ab Level 2 verfügbar' : 'KI-Tutor öffnen',
+        tooltip: isLocked ? 'Lexi ab Level 2' : 'Mit Lexi sprechen',
         child: isLocked
             ? const Icon(Icons.lock_rounded, color: Colors.white, size: 28)
             : ClipOval(
@@ -455,7 +478,7 @@ class _PrimaryDashboardScreenState
               ),
               const SizedBox(height: 16),
               const Text(
-                'Tutor noch gesperrt',
+                'Lexi noch gesperrt',
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
@@ -464,7 +487,7 @@ class _PrimaryDashboardScreenState
               ),
               const SizedBox(height: 10),
               Text(
-                'Mach noch $xpForLevel2 XP und erreiche Level 2 – dann schaltest du den KI-Tutor frei! 🚀',
+                'Mach noch $xpForLevel2 XP und erreiche Level 2 – dann kannst du mit Lexi sprechen! 🚀',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 15,
@@ -525,12 +548,14 @@ class _PrimaryDashboardScreenState
   }
 }
 
-
 /// Kindergerät ohne gültiges Abo der Eltern bzw. ohne Schullizenz.
 class _NoAccessScreen extends ConsumerWidget {
-  const _NoAccessScreen({required this.isSchool});
+  const _NoAccessScreen({required this.isSchool, this.checkFailed = false});
 
   final bool isSchool;
+
+  /// Status konnte nicht geladen werden (z.B. offline beim ersten Start).
+  final bool checkFailed;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -549,10 +574,15 @@ class _NoAccessScreen extends ConsumerWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text('🔒', style: TextStyle(fontSize: 56)),
+              Text(
+                checkFailed ? '📡' : '🔒',
+                style: const TextStyle(fontSize: 56),
+              ),
               const SizedBox(height: 16),
               Text(
-                isSchool
+                checkFailed
+                    ? 'Ich kann gerade nicht nachschauen, ob Lerndex freigeschaltet ist.'
+                    : isSchool
                     ? 'Lerndex ist für deine Schule gerade nicht freigeschaltet.'
                     : 'Lerndex ist gerade nicht freigeschaltet.',
                 textAlign: TextAlign.center,
@@ -563,7 +593,9 @@ class _NoAccessScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 8),
               Text(
-                isSchool
+                checkFailed
+                    ? 'Ist das Internet an? Dann tippe auf „Nochmal prüfen“.'
+                    : isSchool
                     ? 'Sag bitte deiner Lehrerin oder deinem Lehrer Bescheid.'
                     : 'Sag bitte deinen Eltern Bescheid.',
                 textAlign: TextAlign.center,

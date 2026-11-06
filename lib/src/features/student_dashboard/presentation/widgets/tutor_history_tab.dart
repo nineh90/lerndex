@@ -60,7 +60,7 @@ class TutorHistoryTab extends ConsumerWidget {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Starte ein Gespräch mit dem Tutor!',
+                  'Starte ein Gespräch mit Lexi!',
                   style: TextStyle(fontSize: 14, color: Colors.grey[500]),
                 ),
               ],
