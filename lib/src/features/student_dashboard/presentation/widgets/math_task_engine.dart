@@ -1,5 +1,7 @@
 import 'dart:math';
 
+import 'early_quiz/early_quiz_widgets.dart';
+
 // ============================================================================
 // MATH TASK ENGINE – Algorithmischer Generator für Klasse 1 & 2
 //
@@ -39,19 +41,25 @@ enum MathTaskType {
 
 // ── Aufgaben-Modell ───────────────────────────────────────────────────────────
 
-class MathTask {
+class MathTask implements EarlyTask {
   final MathTaskType type;
+  @override
   final String questionText;
   final String? countEmoji;
   final int? countAmount;
   final int? compareLeft;
   final int? compareRight;
+  @override
   final List<String> options;
+  @override
   final String correctAnswer;
+  @override
   final String feedbackCorrect;
+  @override
   final String feedbackWrong;
 
   /// Schwierigkeitsstufe (1–5) – für optionales Badge im Header
+  @override
   final int difficultyLevel;
 
   /// Für numberLine: Minimum, Maximum und Zielwert auf dem Strahl

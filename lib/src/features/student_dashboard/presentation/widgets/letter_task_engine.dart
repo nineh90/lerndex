@@ -2,6 +2,8 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 
+import 'early_quiz/early_quiz_widgets.dart';
+
 // ============================================================================
 // LETTER TASK ENGINE – Algorithmischer Generator für Klasse 1 & 2 (Buchstaben)
 //
@@ -38,26 +40,32 @@ enum LetterTaskType {
 
 // ── Aufgaben-Modell ───────────────────────────────────────────────────────────
 
-class LetterTask {
+class LetterTask implements EarlyTask {
   final LetterTaskType type;
 
   /// Haupt-Fragetext (auch für TTS)
+  @override
   final String questionText;
 
   /// Emoji/Bild das zur Frage gehört (für anlaut, bildWort)
   final String? emoji;
 
   /// Antwortoptionen
+  @override
   final List<String> options;
 
   /// Korrekte Antwort
+  @override
   final String correctAnswer;
 
   /// Feedback
+  @override
   final String feedbackCorrect;
+  @override
   final String feedbackWrong;
 
   /// Schwierigkeitsstufe (1–5)
+  @override
   final int difficultyLevel;
 
   /// Für bildWort: Das vollständige Wort und der Index des fehlenden Buchstabens

@@ -1,23 +1,8 @@
-import 'dart:async';
-import 'dart:convert';
-import 'dart:math';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:confetti/confetti.dart';
-import 'package:firebase_ai/firebase_ai.dart';
-import 'package:lerndex/src/features/auth/data/auth_repository.dart';
-import 'package:lerndex/src/features/auth/presentation/active_child_provider.dart';
-import 'package:lerndex/src/features/learning_time/learning_time_tracker.dart';
-import 'package:lerndex/src/features/tts/tts_provider.dart';
-import 'package:lerndex/src/features/student_dashboard/presentation/widgets/avatar_progress_bar.dart';
-import 'package:lerndex/src/features/student_dashboard/presentation/widgets/treasure_chest_overlay.dart';
-import 'early_quiz/draw_canvas.dart';
-import 'early_quiz/early_quiz_session.dart';
+import 'early_quiz/early_quiz_state_mixin.dart';
+import 'early_quiz/early_quiz_widgets.dart';
 import 'letter_task_engine.dart';
-import 'package:lerndex/src/ai/vertex_ai_service.dart';
-import 'package:lerndex/src/ai/ai_model.dart';
-import 'package:lerndex/src/features/auth/domain/account.dart';
 
 // ============================================================================
 // LETTER QUIZ SCREEN – Klasse 1 & 2 (Buchstaben)
@@ -47,154 +32,35 @@ class LetterQuizScreen extends ConsumerStatefulWidget {
 }
 
 class _LetterQuizScreenState extends ConsumerState<LetterQuizScreen>
-    with TickerProviderStateMixin {
-  static const int _questionCount = 5;
-
-  List<LetterTask> _tasks = [];
-  int _currentIndex = 0;
-  EarlyQuizScore _score = EarlyQuizScore(0);
-  int get _correctAnswers => _score.correctCount;
-  List<bool?> get _stepResults => _score.stepResults;
-  bool _isFinished = false;
-  bool _showFeedback = false;
-  bool _wasCorrect = false;
-  bool _showRetryChoice = false;
-  String _feedbackText = '';
-  bool _showTreasureChest = false;
-
-  // Für buchstabeMalen
-  final DrawingController _drawing = DrawingController();
-  bool _isEvaluating = false;
-  int _drawAttempts = 0;
-  // Prüfung nicht erreichbar (offline, KI gestört) – ab 2 Mal „Weiter“
-  int _drawCheckFailures = 0;
-  static const int _maxDrawAttempts = 3;
-  AiModel? _aiModel;
-
-  // Animation
-  late AnimationController _feedbackController;
-  late AnimationController _bounceController;
-  late Animation<double> _bounceAnim;
-  late AnimationController _shakeController;
-  late Animation<double> _shakeAnim;
-
-  // Konfetti
-  late ConfettiController _confettiController;
-  late ConfettiController _finishConfettiController;
-
-  // Tracking
-  LearningTimeTracker? _timeTracker;
-  EarlyQuizFinish? _finish;
-  String? _childId;
-  late final TtsController _tts;
+    with
+        TickerProviderStateMixin,
+        EarlyQuizStateMixin<LetterQuizScreen, LetterTask> {
+  @override
+  String get subject => 'Buchstaben';
 
   @override
-  void initState() {
-    super.initState();
-    final child = ref.read(activeChildProvider);
-    final user = ref.read(authStateChangesProvider).value;
-    _childId = child?.id;
-    _tts = ref.read(ttsControllerProvider.notifier);
-
-    if (child != null && user != null) {
-      _timeTracker = LearningTimeTracker(
-        userId: user.ownerUid,
-        childId: child.id,
-        subject: 'Buchstaben',
-      );
-      _timeTracker!.startTracking();
-      _finish = EarlyQuizFinish(
-        userId: user.ownerUid,
-        childId: child.id,
-        timeTracker: _timeTracker,
-      );
-    }
-
-    _feedbackController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 700),
-    );
-    _bounceController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 500),
-    );
-    _bounceAnim = Tween<double>(begin: 1.0, end: 1.15).animate(
-      CurvedAnimation(parent: _bounceController, curve: Curves.elasticOut),
-    );
-    _shakeController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 400),
-    );
-    _shakeAnim = Tween<double>(begin: 0, end: 1).animate(
-      CurvedAnimation(parent: _shakeController, curve: Curves.elasticOut),
-    );
-    _confettiController = ConfettiController(
-      duration: const Duration(seconds: 2),
-    );
-    _finishConfettiController = ConfettiController(
-      duration: const Duration(seconds: 5),
-    );
-
-    _generateTasks();
-    _initAI();
-  }
-
-  void _generateTasks() {
-    final child = ref.read(activeChildProvider);
-    final engine = LetterTaskEngine(
-      grade: widget.grade,
-      level: child?.level ?? 1,
-    );
-    final tasks = engine.generate(_questionCount);
-    setState(() {
-      _tasks = tasks;
-      _score = EarlyQuizScore(tasks.length);
-    });
-    Future.delayed(const Duration(milliseconds: 600), () {
-      if (mounted) _speakCurrentQuestion();
-    });
-  }
-
-  Future<void> _initAI() async {
-    try {
-      _aiModel = VertexAIService.drawingCheckModel(
-        responseSchema: VertexAIService.drawingCheckSchema,
-      );
-    } catch (e) {
-      debugPrint('LetterQuiz: AI init failed: $e');
-    }
-  }
+  String get logTag => 'LetterQuiz';
 
   @override
-  void dispose() {
-    _feedbackController.dispose();
-    _bounceController.dispose();
-    _shakeController.dispose();
-    _confettiController.dispose();
-    _finishConfettiController.dispose();
-    _drawing.dispose();
-    // Abbruch mitten im Quiz: XP und Lernzeit retten. Quiz fertig: der
-    // Abschluss läuft ohne diesen Bildschirm zu Ende.
-    _finish?.onDispose(pendingXP: _score.earnedXP);
-    _tts.stop();
-    super.dispose();
-  }
+  List<Color> get subjectColors => widget.subjectColors;
 
-  // ── TTS ───────────────────────────────────────────────────────────────────
+  @override
+  List<LetterTask> generateTasks({required int level}) => LetterTaskEngine(
+    grade: widget.grade,
+    level: level,
+  ).generate(EarlyQuizStateMixin.questionCount);
 
-  bool get _ttsEnabled {
-    if (_childId == null) return false;
-    return ref.read(ttsSettingsProvider(_childId!));
-  }
+  @override
+  String stageName(int stage) => LetterTaskEngine.stageName(stage);
 
-  void _speakCurrentQuestion() {
-    if (!_ttsEnabled || _tasks.isEmpty) return;
-    final task = _tasks[_currentIndex];
-    _tts.speakQuestion(_buildTtsText(task));
-  }
+  @override
+  String stageEmoji(int stage) => LetterTaskEngine.stageEmoji(stage);
+
+  // ── Sprachausgabe ─────────────────────────────────────────────────────────
 
   /// Baut TTS-freundlichen Text – keine Unterstriche, keine Sonderzeichen.
-  String _buildTtsText(LetterTask task) {
+  @override
+  String ttsTextFor(LetterTask task) {
     switch (task.type) {
       case LetterTaskType.bildWort:
         // Vollständiges Wort vorlesen statt Display-Text mit Lücke
@@ -217,488 +83,10 @@ class _LetterQuizScreenState extends ConsumerState<LetterQuizScreen>
     }
   }
 
-  void _speakFeedback(String text) {
-    if (!_ttsEnabled) return;
-    _tts.speakFeedback(text);
-  }
-
-  void _speakResult() {
-    if (!_ttsEnabled) return;
-    _tts.speakResult(correct: _correctAnswers, total: _tasks.length);
-  }
-
-  // ── Antwort-Logik ─────────────────────────────────────────────────────────
-
-  Future<void> _checkAnswer(String selected) async {
-    if (_showFeedback) return;
-    final task = _tasks[_currentIndex];
-    final correct = selected == task.correctAnswer;
-
-    setState(() {
-      _showFeedback = true;
-      _wasCorrect = correct;
-      _feedbackText = correct ? task.feedbackCorrect : task.feedbackWrong;
-      _score.record(_currentIndex, correct: correct);
-    });
-
-    if (correct) {
-      HapticFeedback.lightImpact();
-      _bounceController.forward().then((_) => _bounceController.reverse());
-      _confettiController.play();
-    } else {
-      HapticFeedback.heavyImpact();
-      _shakeController.forward().then((_) => _shakeController.reset());
-    }
-
-    if (!mounted) return;
-    _speakFeedback(_feedbackText);
-    _feedbackController.forward().then((_) => _feedbackController.reverse());
-
-    if (correct) {
-      await Future.delayed(const Duration(milliseconds: 1800));
-      if (!mounted) return;
-      await _waitForSpeechEnd();
-      if (!mounted) return;
-      setState(() => _showFeedback = false);
-      _advanceToNext();
-    } else {
-      await Future.delayed(const Duration(milliseconds: 1400));
-      if (!mounted) return;
-      setState(() => _showRetryChoice = true);
-    }
-  }
-
-  /// Wartet (höchstens 4 s), bis die Sprachausgabe fertig ist.
-  Future<void> _waitForSpeechEnd() async {
-    if (!_ttsEnabled || !ref.read(ttsControllerProvider).isSpeaking) return;
-    try {
-      await _tts.stream
-          .firstWhere((s) => !s.isSpeaking)
-          .timeout(const Duration(seconds: 4));
-    } catch (_) {
-      // Timeout oder Controller weg – einfach weiter
-    }
-  }
-
-  void _advanceToNext() {
-    setState(() {
-      _showFeedback = false;
-      _showRetryChoice = false;
-      _drawing.clear();
-      _isEvaluating = false;
-      _drawAttempts = 0;
-      _drawCheckFailures = 0;
-    });
-    if (_currentIndex < _tasks.length - 1) {
-      setState(() => _currentIndex++);
-      Future.delayed(const Duration(milliseconds: 400), () {
-        if (mounted) _speakCurrentQuestion();
-      });
-    } else {
-      // Abschluss sofort starten – nicht erst nach der Schatzkiste.
-      _startFinish();
-      if (_score.earnsTreasure) {
-        setState(() => _showTreasureChest = true);
-      } else {
-        setState(() => _isFinished = true);
-        _presentFinish();
-        Future.delayed(const Duration(milliseconds: 500), () {
-          if (mounted) _speakResult();
-        });
-      }
-    }
-  }
-
-  void _retryCurrentQuestion() {
-    setState(() {
-      _showFeedback = false;
-      _showRetryChoice = false;
-      _drawing.clear();
-      _isEvaluating = false;
-      _drawAttempts = 0;
-      _drawCheckFailures = 0;
-      _score.retry(_currentIndex);
-    });
-    Future.delayed(const Duration(milliseconds: 300), () {
-      if (mounted) _speakCurrentQuestion();
-    });
-  }
-
-  void _startFinish() {
-    _timeTracker?.stopTracking();
-    _finish?.start(ref, isPerfect: _score.isPerfect, earnedXP: _score.earnedXP);
-  }
-
-  /// Popups (Belohnung, Streak) erst, wenn der Abschluss-Bildschirm steht.
-  void _presentFinish() => _finish?.present(() => mounted ? context : null);
-
-  // ── Vertex AI Buchstaben-Erkennung ────────────────────────────────────────
-
-  Future<void> _submitDrawing(LetterTask task) async {
-    if (_isEvaluating) return;
-    HapticFeedback.mediumImpact();
-    setState(() => _isEvaluating = true);
-
-    final letter = task.correctAnswer;
-    // null = nicht prüfbar (kein Modell/Bild, offline, Timeout, KI-Fehler,
-    // ungültiges JSON) → weder richtig noch falsch werten.
-    bool? isCorrect;
-    String recognized = '';
-    try {
-      final imageBytes = await _drawing.capturePng();
-      if (imageBytes != null && _aiModel != null) {
-        // Bekannte Verwechslungspaare explizit ansprechen
-        final confusables = {
-          'B':
-              'B has TWO bumps on the RIGHT. A mirrored B or the letter D is WRONG.',
-          'D': 'D has the bump on the RIGHT. A mirrored D is WRONG.',
-          'P': 'P has the bump on the RIGHT side top. A mirrored P is WRONG.',
-          'Q':
-              'Q is like O with a small tail at bottom-right. A mirrored Q is WRONG.',
-          'S': 'S curves right at top, left at bottom. A reversed S is WRONG.',
-          'Z':
-              'Z goes top-right to bottom-left diagonally. A reversed Z is WRONG.',
-          'N': 'N diagonal goes DOWN-RIGHT. A mirrored N is WRONG.',
-          'J': 'J hooks to the LEFT at the bottom. A mirrored J is WRONG.',
-          'L': 'L has horizontal going RIGHT at bottom. A mirrored L is WRONG.',
-          'F': 'F has horizontals going RIGHT. A mirrored F is WRONG.',
-          'E': 'E has horizontals going RIGHT. A mirrored E is WRONG.',
-          'K': 'K diagonals go RIGHT. A mirrored K is WRONG.',
-          'R': 'R leg goes RIGHT. A mirrored R is WRONG.',
-          'G': 'G opens LEFT with an inward bar. A mirrored G is WRONG.',
-        };
-        final hint = confusables[letter] ?? '';
-
-        final prompt =
-            'This is a handwritten letter drawn by a young child (age 6-8). '
-            'Does this drawing clearly show the uppercase letter "$letter"? '
-            'STRICT RULES: '
-            '1. Orientation must be correct. ${hint.isNotEmpty ? hint : ""} '
-            '2. Allow for typical child handwriting wobble and imperfect strokes. '
-            '3. The letter must be clearly recognizable as "$letter" and not another letter. '
-            '4. If the canvas looks empty or has only random scribbles, answer false. '
-            'Answer ONLY with JSON: {"correct": true} or {"correct": false, "recognized": "<what letter you see>"}';
-
-        final response = await _aiModel!
-            .generateContent([
-              Content.multi([
-                TextPart(prompt),
-                InlineDataPart('image/png', imageBytes),
-              ]),
-            ])
-            .timeout(const Duration(seconds: 12));
-
-        final json = (response.text ?? '')
-            .replaceAll('```json', '')
-            .replaceAll('```', '')
-            .trim();
-        final parsed = jsonDecode(json) as Map<String, dynamic>;
-        final correct = parsed['correct'];
-        if (correct is bool) {
-          isCorrect = correct;
-          recognized = parsed['recognized']?.toString().trim() ?? '';
-        }
-      }
-    } catch (e) {
-      debugPrint('LetterQuiz: Draw error: $e');
-    }
-
-    if (!mounted) return;
-    setState(() => _isEvaluating = false);
-
-    if (isCorrect == null) {
-      // Kein Versuch verbraucht, Zeichnung bleibt → Kind kann neu abschicken.
-      // Klappt die Prüfung wiederholt nicht, darf es überspringen (Weiter).
-      HapticFeedback.heavyImpact();
-      setState(() => _drawCheckFailures++);
-      final msg = _drawCheckFailures >= 2
-          ? 'Ich kann gerade nicht nachschauen. Tippe auf Weiter!'
-          : 'Ups, das hat gerade nicht geklappt. Versuch es gleich nochmal!';
-      _showDrawHint(msg);
-      _speakFeedback(msg);
-      return;
-    }
-
-    if (isCorrect) {
-      await _checkAnswer(letter);
-    } else {
-      _drawAttempts++;
-      _score.markFailedAttempt(_currentIndex);
-      if (_drawAttempts >= _maxDrawAttempts) {
-        await _checkAnswer('__WRONG__');
-      } else {
-        HapticFeedback.heavyImpact();
-        // `recognized` ist englischer Freitext der KI – nur anzeigen, wenn
-        // es wirklich nur ein Buchstabe ist.
-        final msg =
-            recognized.isNotEmpty &&
-                recognized.length <= 3 &&
-                recognized.toUpperCase() != letter.toUpperCase()
-            ? 'Das sieht aus wie ein $recognized – versuch nochmal!'
-            : 'Ich kann den Buchstaben nicht lesen – nochmal!';
-        setState(() {
-          _drawing.clear();
-        });
-        _showDrawHint(msg);
-      }
-    }
-  }
-
-  /// Malprüfung nicht erreichbar: Aufgabe ohne Wertung überspringen.
-  void _skipDrawTask() {
-    _score.skip(_currentIndex);
-    _advanceToNext();
-  }
-
-  void _showDrawHint(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(msg, style: const TextStyle(fontWeight: FontWeight.w700)),
-        backgroundColor: Colors.orange.shade600,
-        duration: const Duration(seconds: 2),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      ),
-    );
-  }
-
-  // ── Build ─────────────────────────────────────────────────────────────────
-
-  @override
-  Widget build(BuildContext context) {
-    if (_tasks.isEmpty) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    }
-    if (_isFinished) return _buildFinishScreen();
-    if (_showTreasureChest) {
-      return Scaffold(
-        body: TreasureChestOverlay(
-          earnedStars: _score.earnedXP,
-          isPerfect: _score.isPerfect,
-          onDismiss: () {
-            setState(() {
-              _showTreasureChest = false;
-              _isFinished = true;
-            });
-            _presentFinish();
-            Future.delayed(const Duration(milliseconds: 300), () {
-              if (mounted) {
-                _speakResult();
-                _finishConfettiController.play();
-              }
-            });
-          },
-        ),
-      );
-    }
-
-    final task = _tasks[_currentIndex];
-
-    return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [widget.subjectColors.first, widget.subjectColors.last],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-        ),
-        child: SafeArea(
-          child: Stack(
-            children: [
-              Column(
-                children: [
-                  _buildHeader(),
-                  const SizedBox(height: 12),
-                  Expanded(child: _buildTaskArea(task)),
-                ],
-              ),
-              if (_showFeedback || _showRetryChoice) _buildFeedbackOverlay(),
-              Align(
-                alignment: Alignment.topCenter,
-                child: ConfettiWidget(
-                  confettiController: _confettiController,
-                  blastDirectionality: BlastDirectionality.explosive,
-                  shouldLoop: false,
-                  numberOfParticles: 15,
-                  maxBlastForce: 20,
-                  minBlastForce: 8,
-                  emissionFrequency: 0.05,
-                  gravity: 0.2,
-                  colors: const [
-                    Color(0xFFFFD700),
-                    Color(0xFFFFA500),
-                    Color(0xFFFF6B6B),
-                    Color(0xFF4ECDC4),
-                    Color(0xFFFFE66D),
-                    Color(0xFFFF69B4),
-                  ],
-                  createParticlePath: _starPath,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  // ── Header ────────────────────────────────────────────────────────────────
-
-  Widget _buildHeader() {
-    final child = ref.watch(activeChildProvider);
-    final ttsState = ref.watch(ttsControllerProvider);
-    final stage = _tasks.isNotEmpty ? _tasks.first.difficultyLevel : 1;
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
-            children: [
-              GestureDetector(
-                onTap: () {
-                  _tts.stop();
-                  Navigator.pop(context);
-                },
-                child: Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.25),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.arrow_back_rounded,
-                    color: Colors.white,
-                    size: 24,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: AvatarProgressBar(
-                  totalSteps: _tasks.length,
-                  currentStep: _currentIndex,
-                  stepResults: _stepResults,
-                  avatarId: child?.selectedAvatar,
-                  childName: child?.name ?? '',
-                  subjectColor: widget.subjectColors.first,
-                ),
-              ),
-              const SizedBox(width: 8),
-              GestureDetector(
-                onTap: () {
-                  HapticFeedback.selectionClick();
-                  _speakCurrentQuestion();
-                },
-                child: Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.25),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    ttsState.isSpeaking
-                        ? Icons.volume_up_rounded
-                        : Icons.volume_up_outlined,
-                    color: Colors.white,
-                    size: 24,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  LetterTaskEngine.stageEmoji(stage),
-                  style: const TextStyle(fontSize: 14),
-                ),
-                const SizedBox(width: 5),
-                Text(
-                  'Level ${child?.level ?? 1} · ${LetterTaskEngine.stageName(stage)}',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ── Task Area ─────────────────────────────────────────────────────────────
-
-  Widget _buildTaskArea(LetterTask task) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: LayoutBuilder(
-        builder: (context, constraints) => SingleChildScrollView(
-          physics: const ClampingScrollPhysics(),
-          child: ConstrainedBox(
-            constraints: BoxConstraints(minHeight: constraints.maxHeight),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const SizedBox(height: 8),
-                AnimatedBuilder(
-                  animation: _shakeAnim,
-                  builder: (_, child) {
-                    final offset = sin(_shakeAnim.value * pi * 3) * 8;
-                    return Transform.translate(
-                      offset: Offset(_wasCorrect ? 0 : offset, 0),
-                      child: child,
-                    );
-                  },
-                  child: Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 24,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(32),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.15),
-                          blurRadius: 24,
-                          offset: const Offset(0, 8),
-                        ),
-                      ],
-                    ),
-                    child: _buildQuestionWidget(task),
-                  ),
-                ),
-                const SizedBox(height: 20),
-                _buildAnswerArea(task),
-                const SizedBox(height: 20),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
   // ── Frage-Widgets ─────────────────────────────────────────────────────────
 
-  Widget _buildQuestionWidget(LetterTask task) {
+  @override
+  Widget buildQuestionWidget(LetterTask task) {
     switch (task.type) {
       case LetterTaskType.anlaut:
         return _buildAnlautQuestion(task);
@@ -722,9 +110,9 @@ class _LetterQuizScreenState extends ConsumerState<LetterQuizScreen>
     return Column(
       children: [
         AnimatedBuilder(
-          animation: _bounceAnim,
+          animation: bounceAnim,
           builder: (_, child) =>
-              Transform.scale(scale: _bounceAnim.value, child: child),
+              Transform.scale(scale: bounceAnim.value, child: child),
           child: Text(task.emoji ?? '❓', style: const TextStyle(fontSize: 80)),
         ),
         const SizedBox(height: 16),
@@ -748,9 +136,9 @@ class _LetterQuizScreenState extends ConsumerState<LetterQuizScreen>
         const Text('🔠', style: TextStyle(fontSize: 36)),
         const SizedBox(height: 8),
         AnimatedBuilder(
-          animation: _bounceAnim,
+          animation: bounceAnim,
           builder: (_, child) =>
-              Transform.scale(scale: _bounceAnim.value, child: child),
+              Transform.scale(scale: bounceAnim.value, child: child),
           child: Container(
             width: 100,
             height: 100,
@@ -870,9 +258,9 @@ class _LetterQuizScreenState extends ConsumerState<LetterQuizScreen>
         const Text('✏️', style: TextStyle(fontSize: 36)),
         const SizedBox(height: 8),
         AnimatedBuilder(
-          animation: _bounceAnim,
+          animation: bounceAnim,
           builder: (_, child) =>
-              Transform.scale(scale: _bounceAnim.value, child: child),
+              Transform.scale(scale: bounceAnim.value, child: child),
           child: Text(
             'Male den Buchstaben\n${task.letterToDraw ?? task.correctAnswer}!',
             textAlign: TextAlign.center,
@@ -884,11 +272,12 @@ class _LetterQuizScreenState extends ConsumerState<LetterQuizScreen>
             ),
           ),
         ),
-        if (_drawAttempts > 0 && _drawAttempts < _maxDrawAttempts)
+        if (drawAttempts > 0 &&
+            drawAttempts < EarlyQuizStateMixin.maxDrawAttempts)
           Padding(
             padding: const EdgeInsets.only(top: 8),
             child: Text(
-              'Versuch ${_drawAttempts + 1} von $_maxDrawAttempts',
+              'Versuch ${drawAttempts + 1} von $EarlyQuizStateMixin.maxDrawAttempts',
               style: TextStyle(
                 fontSize: 13,
                 color: Colors.orange.shade700,
@@ -1004,9 +393,9 @@ class _LetterQuizScreenState extends ConsumerState<LetterQuizScreen>
         const Text('🎵', style: TextStyle(fontSize: 40)),
         const SizedBox(height: 12),
         AnimatedBuilder(
-          animation: _bounceAnim,
+          animation: bounceAnim,
           builder: (_, child) =>
-              Transform.scale(scale: _bounceAnim.value, child: child),
+              Transform.scale(scale: bounceAnim.value, child: child),
           child: Text(
             task.questionText,
             textAlign: TextAlign.center,
@@ -1052,592 +441,75 @@ class _LetterQuizScreenState extends ConsumerState<LetterQuizScreen>
 
   // ── Antwort-Bereich ───────────────────────────────────────────────────────
 
-  Widget _buildAnswerArea(LetterTask task) {
+  @override
+  Widget buildAnswerArea(LetterTask task) {
     if (task.type == LetterTaskType.buchstabeMalen) {
-      return _buildDrawCanvas(task);
+      return buildDrawCanvas(onSubmit: () => _submitDrawing(task));
     }
     if (task.type == LetterTaskType.wortlaenge) {
-      return _buildTwoWordButtons(task);
+      // 2 Wort-Buttons nebeneinander
+      return EarlyAnswerRow(
+        options: task.options,
+        colors: widget.subjectColors,
+        enabled: !showFeedback,
+        fontSize: 20,
+        onSelect: checkAnswer,
+      );
     }
-    return _buildLetterButtons(task);
-  }
-
-  /// 4 Buchstaben-Buttons (2×2)
-  Widget _buildLetterButtons(LetterTask task) {
-    final enabled = !_showFeedback;
-    return GridView.count(
-      crossAxisCount: 2,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      mainAxisSpacing: 12,
-      crossAxisSpacing: 12,
-      childAspectRatio: 2.2,
-      children: task.options
-          .map(
-            (opt) => _LetterAnswerButton(
-              label: opt,
-              colors: widget.subjectColors,
-              enabled: enabled,
-              onTap: () => _checkAnswer(opt),
-            ),
-          )
-          .toList(),
+    // 4 Buchstaben-Buttons (2×2)
+    return EarlyAnswerGrid(
+      options: task.options,
+      colors: widget.subjectColors,
+      enabled: !showFeedback,
+      onSelect: checkAnswer,
     );
   }
 
-  /// 2 Wort-Buttons nebeneinander (für wortlaenge)
-  Widget _buildTwoWordButtons(LetterTask task) {
-    final enabled = !_showFeedback;
-    return Row(
-      children: task.options
-          .map(
-            (opt) => Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 6),
-                child: _LetterAnswerButton(
-                  label: opt,
-                  colors: widget.subjectColors,
-                  enabled: enabled,
-                  fontSize: 20,
-                  onTap: () => _checkAnswer(opt),
-                ),
-              ),
-            ),
-          )
-          .toList(),
-    );
-  }
+  // ── Malprüfung (KI) ───────────────────────────────────────────────────────
 
-  /// Zeichenfläche für buchstabeMalen
-  Widget _buildDrawCanvas(LetterTask task) {
-    return DrawCanvas(
-      controller: _drawing,
-      accentColor: widget.subjectColors.first,
-      enabled: !_showFeedback,
-      isEvaluating: _isEvaluating,
-      onSubmit: () => _submitDrawing(task),
-      onSkip: _drawCheckFailures >= 2 ? _skipDrawTask : null,
-    );
-  }
+  void _submitDrawing(LetterTask task) {
+    final letter = task.correctAnswer;
+    // Bekannte Verwechslungspaare explizit ansprechen
+    final confusables = {
+      'B':
+          'B has TWO bumps on the RIGHT. A mirrored B or the letter D is WRONG.',
+      'D': 'D has the bump on the RIGHT. A mirrored D is WRONG.',
+      'P': 'P has the bump on the RIGHT side top. A mirrored P is WRONG.',
+      'Q':
+          'Q is like O with a small tail at bottom-right. A mirrored Q is WRONG.',
+      'S': 'S curves right at top, left at bottom. A reversed S is WRONG.',
+      'Z': 'Z goes top-right to bottom-left diagonally. A reversed Z is WRONG.',
+      'N': 'N diagonal goes DOWN-RIGHT. A mirrored N is WRONG.',
+      'J': 'J hooks to the LEFT at the bottom. A mirrored J is WRONG.',
+      'L': 'L has horizontal going RIGHT at bottom. A mirrored L is WRONG.',
+      'F': 'F has horizontals going RIGHT. A mirrored F is WRONG.',
+      'E': 'E has horizontals going RIGHT. A mirrored E is WRONG.',
+      'K': 'K diagonals go RIGHT. A mirrored K is WRONG.',
+      'R': 'R leg goes RIGHT. A mirrored R is WRONG.',
+      'G': 'G opens LEFT with an inward bar. A mirrored G is WRONG.',
+    };
+    final hint = confusables[letter] ?? '';
 
-  // ── Feedback Overlay ──────────────────────────────────────────────────────
-
-  Widget _buildFeedbackOverlay() {
-    return Positioned.fill(
-      child: AnimatedOpacity(
-        opacity: (_showFeedback || _showRetryChoice) ? 1.0 : 0.0,
-        duration: const Duration(milliseconds: 200),
-        child: Container(
-          decoration: BoxDecoration(
-            color: (_wasCorrect ? Colors.green.shade400 : Colors.red.shade400)
-                .withValues(alpha: 0.92),
-          ),
-          child: Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                AnimatedBuilder(
-                  animation: _feedbackController,
-                  builder: (_, _) {
-                    final scale =
-                        1.0 + sin(_feedbackController.value * pi) * 0.3;
-                    return Transform.scale(
-                      scale: scale,
-                      child: Text(
-                        _wasCorrect ? '✅' : '❌',
-                        style: const TextStyle(fontSize: 72),
-                      ),
-                    );
-                  },
-                ),
-                const SizedBox(height: 16),
-                Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 40),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 28,
-                    vertical: 16,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(24),
-                  ),
-                  child: Text(
-                    _feedbackText,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w800,
-                      color: Color(0xFF1A1A2E),
-                    ),
-                  ),
-                ),
-                if (_showRetryChoice) ...[
-                  const SizedBox(height: 28),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      _RetryBtn(
-                        emoji: '🔄',
-                        label: 'Nochmal',
-                        onTap: _retryCurrentQuestion,
-                      ),
-                      const SizedBox(width: 16),
-                      _RetryBtn(
-                        emoji: '➡️',
-                        label: 'Weiter',
-                        onTap: _advanceToNext,
-                      ),
-                    ],
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  // ── Finish Screen ─────────────────────────────────────────────────────────
-
-  Widget _buildFinishScreen() {
-    final allCorrect = _score.isPerfect;
-    final earnedXP = _score.earnedXP;
-    final showConfetti = _score.earnsTreasure;
-
-    final wrongTasks = <LetterTask>[];
-    for (int i = 0; i < _tasks.length; i++) {
-      if (_stepResults[i] == false) wrongTasks.add(_tasks[i]);
-    }
-
-    return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [widget.subjectColors.first, widget.subjectColors.last],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-        ),
-        child: SafeArea(
-          child: Stack(
-            children: [
-              SingleChildScrollView(
-                padding: const EdgeInsets.all(28),
-                child: Column(
-                  children: [
-                    const SizedBox(height: 16),
-                    TweenAnimationBuilder<double>(
-                      tween: Tween(begin: 0.0, end: 1.0),
-                      duration: const Duration(milliseconds: 600),
-                      curve: Curves.elasticOut,
-                      builder: (_, v, _) => Transform.scale(
-                        scale: v,
-                        child: Text(
-                          allCorrect ? '🏆' : '🌟',
-                          style: const TextStyle(fontSize: 100),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      allCorrect ? 'Perfekt!' : 'Super gemacht!',
-                      style: const TextStyle(
-                        fontSize: 36,
-                        fontWeight: FontWeight.w900,
-                        color: Colors.white,
-                        shadows: [Shadow(color: Colors.black26, blurRadius: 6)],
-                      ),
-                    ),
-                    const SizedBox(height: 28),
-                    Container(
-                      padding: const EdgeInsets.all(28),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(32),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.15),
-                            blurRadius: 24,
-                            offset: const Offset(0, 8),
-                          ),
-                        ],
-                      ),
-                      child: Column(
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: List.generate(
-                              _tasks.length,
-                              (i) => Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 4,
-                                ),
-                                child: TweenAnimationBuilder<double>(
-                                  tween: Tween(begin: 0.0, end: 1.0),
-                                  duration: Duration(
-                                    milliseconds: 400 + i * 150,
-                                  ),
-                                  curve: Curves.elasticOut,
-                                  builder: (_, v, _) => Transform.scale(
-                                    scale: v,
-                                    child: Text(
-                                      i < _correctAnswers ? '⭐' : '☆',
-                                      style: TextStyle(
-                                        fontSize: 36,
-                                        color: i < _correctAnswers
-                                            ? Colors.amber
-                                            : Colors.grey.shade300,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 20),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 20,
-                              vertical: 10,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.amber.shade50,
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Text('⭐', style: TextStyle(fontSize: 28)),
-                                const SizedBox(width: 8),
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      '+$earnedXP',
-                                      style: const TextStyle(
-                                        fontSize: 28,
-                                        fontWeight: FontWeight.w900,
-                                        color: Color(0xFFFF8C00),
-                                      ),
-                                    ),
-                                    Text(
-                                      'in diesem Quiz',
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        color: Colors.amber.shade700,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    if (wrongTasks.isNotEmpty) ...[
-                      const SizedBox(height: 20),
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(20),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(24),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              '🔁 Diese Aufgaben nochmal üben:',
-                              style: TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.white,
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            ...wrongTasks.map(
-                              (t) => Padding(
-                                padding: const EdgeInsets.only(bottom: 8),
-                                child: Row(
-                                  children: [
-                                    const Text(
-                                      '❌',
-                                      style: TextStyle(fontSize: 18),
-                                    ),
-                                    const SizedBox(width: 10),
-                                    Expanded(
-                                      child: Text(
-                                        t.questionText,
-                                        style: const TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.w700,
-                                          color: Colors.white,
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 10,
-                                        vertical: 4,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: Colors.white.withValues(
-                                          alpha: 0.25,
-                                        ),
-                                        borderRadius: BorderRadius.circular(10),
-                                      ),
-                                      child: Text(
-                                        '→ ${t.correctAnswer}',
-                                        style: const TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.w900,
-                                          color: Colors.white,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                    const SizedBox(height: 36),
-                    GestureDetector(
-                      onTap: () {
-                        _tts.stop();
-                        Navigator.pop(context);
-                      },
-                      child: Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(vertical: 22),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(32),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.18),
-                              blurRadius: 20,
-                              offset: const Offset(0, 8),
-                            ),
-                          ],
-                        ),
-                        child: Icon(
-                          Icons.home_rounded,
-                          color: widget.subjectColors.first,
-                          size: 44,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                  ],
-                ),
-              ),
-              if (showConfetti)
-                Align(
-                  alignment: Alignment.topCenter,
-                  child: ConfettiWidget(
-                    confettiController: _finishConfettiController,
-                    blastDirectionality: BlastDirectionality.explosive,
-                    shouldLoop: false,
-                    numberOfParticles: 30,
-                    maxBlastForce: 25,
-                    minBlastForce: 10,
-                    emissionFrequency: 0.04,
-                    gravity: 0.15,
-                    colors: const [
-                      Color(0xFFFFD700),
-                      Color(0xFFFFA500),
-                      Color(0xFFFF6B6B),
-                      Color(0xFF4ECDC4),
-                      Color(0xFFFFE66D),
-                      Color(0xFFFF69B4),
-                      Color(0xFF7C4DFF),
-                    ],
-                    createParticlePath: _starPath,
-                  ),
-                ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Path _starPath(Size size) {
-    final path = Path();
-    final cx = size.width / 2;
-    final cy = size.height / 2;
-    final outerR = size.width / 2;
-    final innerR = size.width / 4;
-    for (int i = 0; i < 5; i++) {
-      final outerAngle = (i * 72 - 90) * pi / 180;
-      final innerAngle = ((i * 72) + 36 - 90) * pi / 180;
-      if (i == 0) {
-        path.moveTo(
-          cx + outerR * cos(outerAngle),
-          cy + outerR * sin(outerAngle),
-        );
-      } else {
-        path.lineTo(
-          cx + outerR * cos(outerAngle),
-          cy + outerR * sin(outerAngle),
-        );
-      }
-      path.lineTo(cx + innerR * cos(innerAngle), cy + innerR * sin(innerAngle));
-    }
-    path.close();
-    return path;
-  }
-}
-
-// ============================================================================
-// HELPER WIDGETS
-// ============================================================================
-
-class _LetterAnswerButton extends StatefulWidget {
-  final String label;
-  final List<Color> colors;
-  final VoidCallback onTap;
-  final bool enabled;
-  final double fontSize;
-
-  const _LetterAnswerButton({
-    required this.label,
-    required this.colors,
-    required this.onTap,
-    this.enabled = true,
-    this.fontSize = 26,
-  });
-
-  @override
-  State<_LetterAnswerButton> createState() => _LetterAnswerButtonState();
-}
-
-class _LetterAnswerButtonState extends State<_LetterAnswerButton>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _ctrl;
-  late Animation<double> _scale;
-
-  @override
-  void initState() {
-    super.initState();
-    _ctrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 100),
-    );
-    _scale = Tween(
-      begin: 1.0,
-      end: 0.92,
-    ).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
-  }
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTapDown: widget.enabled ? (_) => _ctrl.forward() : null,
-      onTapUp: widget.enabled
-          ? (_) {
-              _ctrl.reverse();
-              HapticFeedback.selectionClick();
-              widget.onTap();
-            }
-          : null,
-      onTapCancel: () => _ctrl.reverse(),
-      child: AnimatedBuilder(
-        animation: _scale,
-        builder: (_, child) =>
-            Transform.scale(scale: _scale.value, child: child),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 18),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: widget.colors.first.withValues(alpha: 0.3),
-              width: 2,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.12),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Center(
-            child: Text(
-              widget.label,
-              style: TextStyle(
-                fontSize: widget.fontSize,
-                fontWeight: FontWeight.w900,
-                color: widget.colors.first,
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _RetryBtn extends StatelessWidget {
-  final String emoji;
-  final String label;
-  final VoidCallback onTap;
-
-  const _RetryBtn({
-    required this.emoji,
-    required this.label,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () {
-        HapticFeedback.mediumImpact();
-        onTap();
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(24),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.2),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(emoji, style: const TextStyle(fontSize: 32)),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w800,
-                color: Color(0xFF1A1A2E),
-              ),
-            ),
-          ],
-        ),
-      ),
+    final prompt =
+        'This is a handwritten letter drawn by a young child (age 6-8). '
+        'Does this drawing clearly show the uppercase letter "$letter"? '
+        'STRICT RULES: '
+        '1. Orientation must be correct. ${hint.isNotEmpty ? hint : ""} '
+        '2. Allow for typical child handwriting wobble and imperfect strokes. '
+        '3. The letter must be clearly recognizable as "$letter" and not another letter. '
+        '4. If the canvas looks empty or has only random scribbles, answer false. '
+        'Answer ONLY with JSON: {"correct": true} or {"correct": false, "recognized": "<what letter you see>"}';
+    submitDrawing(
+      expected: letter,
+      prompt: prompt,
+      // `recognized` ist englischer Freitext der KI – nur anzeigen, wenn es
+      // wirklich nur ein Buchstabe ist.
+      wrongMessage: (recognized) =>
+          recognized.isNotEmpty &&
+              recognized.length <= 3 &&
+              recognized.toUpperCase() != letter.toUpperCase()
+          ? 'Das sieht aus wie ein $recognized – versuch nochmal!'
+          : 'Ich kann den Buchstaben nicht lesen – nochmal!',
     );
   }
 }

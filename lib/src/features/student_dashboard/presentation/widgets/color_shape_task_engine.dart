@@ -1,5 +1,7 @@
 import 'dart:math';
 
+import 'early_quiz/early_quiz_widgets.dart';
+
 // ============================================================================
 // COLOR SHAPE TASK ENGINE – Algorithmischer Generator für Klasse 1 & 2
 //
@@ -42,18 +44,24 @@ enum ColorShapeTaskType {
 
 // ── Aufgaben-Modell ───────────────────────────────────────────────────────────
 
-class ColorShapeTask {
+class ColorShapeTask implements EarlyTask {
   final ColorShapeTaskType type;
+  @override
   final String questionText;
 
   /// Haupt-Emoji/Symbol der Frage
   final String? questionEmoji;
 
   /// Antwortoptionen (Text oder Emoji)
+  @override
   final List<String> options;
+  @override
   final String correctAnswer;
+  @override
   final String feedbackCorrect;
+  @override
   final String feedbackWrong;
+  @override
   final int difficultyLevel;
 
   /// Für farbMuster: die vollständige Sequenz
