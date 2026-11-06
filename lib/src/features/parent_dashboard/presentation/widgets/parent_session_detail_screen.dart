@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../../services/tutor_chat_cleanup_service.dart';
 import '../../../../shared/widgets/message_bubble.dart';
-import '../../../tutor/domain/chat_message.dart';
+import '../../../tutor/data/chat_message_firestore.dart';
 import 'content_flag_banner.dart';
 
 // ============================================================================
@@ -92,20 +92,9 @@ class ParentSessionDetailScreen extends StatelessWidget {
                   itemCount: docs.length,
                   itemBuilder: (context, i) {
                     final msg = docs[i].data() as Map<String, dynamic>;
-                    final isUser = msg['isUser'] as bool? ?? false;
-                    final text = msg['text'] as String? ?? '';
-                    final timestamp =
-                        (msg['timestamp'] as Timestamp?)?.toDate() ??
-                        DateTime.now();
 
                     return MessageBubble(
-                      message: ChatMessage(
-                        id: docs[i].id,
-                        text: text,
-                        isUser: isUser,
-                        timestamp: timestamp,
-                        imageUrl: msg['imageUrl'] as String?,
-                      ),
+                      message: chatMessageFromFirestore(docs[i].id, msg),
                       childName: childName,
                       topicColor: Colors.deepPurple,
                     );
@@ -151,12 +140,27 @@ class ParentSessionDetailScreen extends StatelessWidget {
 
     if (confirmed != true || !context.mounted) return;
 
-    final tutorChatCleanupService = TutorChatCleanupService();
-    await tutorChatCleanupService.deleteSession(
-      userId: userId,
-      childId: childId,
-      sessionId: sessionId,
-    );
+    try {
+      await TutorChatCleanupService().deleteSession(
+        userId: userId,
+        childId: childId,
+        sessionId: sessionId,
+      );
+    } catch (e) {
+      debugPrint('❌ Fehler beim Löschen der Session: $e');
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Das Gespräch konnte nicht gelöscht werden. Bitte später noch '
+              'einmal versuchen.',
+            ),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      return;
+    }
 
     if (context.mounted) Navigator.pop(context);
   }

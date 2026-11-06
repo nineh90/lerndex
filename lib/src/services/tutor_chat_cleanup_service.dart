@@ -1,73 +1,74 @@
 import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 /// 🗑️ TUTOR CHAT CLEANUP SERVICE
 ///
-/// Zuständigkeiten:
-/// 1. Löscht manuell eine einzelne Session (inkl. Sub-Collection messages)
-/// 2. Löscht automatisch alle Sessions älter als 14 Tage
-///    → wird beim App-Start ausgeführt, max. einmal pro Tag
-///
-/// Löscht immer vollständig:
+/// Löscht Lexi-Gespräche, die Eltern im Verlauf entfernen:
 ///   users/{uid}/children/{childId}/tutor_sessions/{sessionId}/messages/*
 ///   users/{uid}/children/{childId}/tutor_sessions/{sessionId}
-///   users/{uid}/children/{childId}/active_tutor_chat/*  (falls Session aktiv)
-
+///   users/{uid}/children/{childId}/active_tutor_chat/*  (nur wenn die
+///   gelöschte Session die aktive war)
+///
+/// Gespräche und Arbeitsblatt-Fotos älter als 14 Tage löscht eine geplante
+/// Cloud Function für alle Konten (auch Schulen) – das macht die App nicht
+/// mehr selbst.
+///
+/// Verbundene Eltern eines Schulkinds (`users/school_<id>/…`) dürfen laut
+/// firestore.rules nur lesen und löschen, nicht ändern – deshalb wird hier
+/// nichts vorher aktualisiert. Fotos von Schulkindern löschen sie nicht
+/// (storage.rules), die räumt der Server ab.
 class TutorChatCleanupService {
   final FirebaseFirestore _firestore;
+  final FirebaseStorage? _storageOverride;
 
-  TutorChatCleanupService({FirebaseFirestore? firestore})
-    : _firestore = firestore ?? FirebaseFirestore.instance;
+  TutorChatCleanupService({
+    FirebaseFirestore? firestore,
+    FirebaseStorage? storage,
+  }) : _firestore = firestore ?? FirebaseFirestore.instance,
+       _storageOverride = storage;
 
-  // ──────────────────────────────────────────────────────────────────────────
-  // MANUELLES LÖSCHEN
-  // ──────────────────────────────────────────────────────────────────────────
+  FirebaseStorage get _storage => _storageOverride ?? FirebaseStorage.instance;
 
-  /// Löscht eine einzelne Session inkl. aller Nachrichten.
-  /// Markiert die Session zusätzlich als 'deleted' BEVOR sie gelöscht wird,
-  /// damit das Schülerdashboard sie sofort ausfiltert – auch bei Offline-Cache.
+  /// Löscht eine einzelne Session inkl. aller Nachrichten. Fehler (z.B.
+  /// fehlende Rechte) werden weitergegeben, damit die Oberfläche sie zeigt.
   Future<void> deleteSession({
     required String userId,
     required String childId,
     required String sessionId,
   }) async {
-    debugPrint('🗑️ Lösche Session $sessionId...');
-
-    // 1. Session sofort als 'deleted' markieren → Schülerdashboard filtert sie
-    //    sofort aus, auch wenn der Delete noch läuft oder gecacht ist.
-    //    set+merge statt update: wirft nicht, falls das Dokument bereits
-    //    gelöscht wurde (z.B. durch parallelen Auto-Cleanup).
-    await _firestore
+    final sessionRef = _firestore
         .collection('users')
         .doc(userId)
         .collection('children')
         .doc(childId)
         .collection('tutor_sessions')
-        .doc(sessionId)
-        .set({'status': 'deleted'}, SetOptions(merge: true));
+        .doc(sessionId);
 
-    // 2. Alle messages der Session löschen (Batch)
+    final snapshot = await sessionRef.get();
+    final wasActive = snapshot.data()?['status'] == 'active';
+
+    // 1. Alle Nachrichten der Session löschen (Batch)
     await _deleteSubCollection(
       path:
           'users/$userId/children/$childId/tutor_sessions/$sessionId/messages',
+      deleteImages: !_isSchoolAccount(userId),
     );
 
-    // 3. Session-Dokument selbst löschen
-    await _firestore
-        .collection('users')
-        .doc(userId)
-        .collection('children')
-        .doc(childId)
-        .collection('tutor_sessions')
-        .doc(sessionId)
-        .delete();
+    // 2. Session-Dokument selbst löschen
+    await sessionRef.delete();
 
-    // 4. active_tutor_chat leeren (falls diese Session die aktive war)
-    await _clearActiveTutorChat(userId: userId, childId: childId);
-
-    debugPrint('✅ Session $sessionId gelöscht');
+    // 3. active_tutor_chat leeren – nur wenn diese Session die aktive war
+    if (wasActive) {
+      try {
+        await _deleteSubCollection(
+          path: 'users/$userId/children/$childId/active_tutor_chat',
+          deleteImages: false,
+        );
+      } catch (e) {
+        debugPrint('⚠️ active_tutor_chat nicht geleert: $e');
+      }
+    }
   }
 
   /// Löscht alle Sessions eines Kindes.
@@ -75,8 +76,6 @@ class TutorChatCleanupService {
     required String userId,
     required String childId,
   }) async {
-    debugPrint('🗑️ Lösche alle Sessions für Kind $childId...');
-
     final sessionsSnapshot = await _firestore
         .collection('users')
         .doc(userId)
@@ -88,109 +87,21 @@ class TutorChatCleanupService {
     for (final doc in sessionsSnapshot.docs) {
       await deleteSession(userId: userId, childId: childId, sessionId: doc.id);
     }
-
-    debugPrint('✅ Alle Sessions für Kind $childId gelöscht');
-  }
-
-  // ──────────────────────────────────────────────────────────────────────────
-  // AUTOMATISCHER 14-TAGE-CLEANUP
-  // ──────────────────────────────────────────────────────────────────────────
-
-  static const int _retentionDays = 14;
-  static const String _lastCleanupKey = 'tutor_last_cleanup';
-
-  /// Führt Cleanup aus – aber maximal einmal alle 24 Stunden.
-  /// Wird beim App-Start aufgerufen.
-  Future<void> runAutoCleanupIfNeeded({required String userId}) async {
-    final prefs = await SharedPreferences.getInstance();
-    final lastCleanupMs = prefs.getInt(_lastCleanupKey) ?? 0;
-    final lastCleanup = DateTime.fromMillisecondsSinceEpoch(lastCleanupMs);
-    final now = DateTime.now();
-
-    // Nur einmal pro Tag ausführen
-    if (now.difference(lastCleanup).inHours < 24) {
-      debugPrint('⏭️ Chat-Cleanup: Heute schon gelaufen, überspringe');
-      return;
-    }
-
-    debugPrint('🧹 Starte automatischen 14-Tage Chat-Cleanup...');
-    await runAutoCleanup(userId: userId);
-
-    // Zeitstempel speichern
-    await prefs.setInt(_lastCleanupKey, now.millisecondsSinceEpoch);
-    debugPrint('✅ Auto-Cleanup abgeschlossen, nächster in 24h');
-  }
-
-  /// Löscht alle abgeschlossenen Sessions aller Kinder, die älter als 14 Tage sind.
-  Future<void> runAutoCleanup({required String userId}) async {
-    final cutoff = DateTime.now().subtract(
-      const Duration(days: _retentionDays),
-    );
-    final cutoffTimestamp = Timestamp.fromDate(cutoff);
-
-    debugPrint(
-      '🧹 Lösche Sessions älter als ${cutoff.day}.${cutoff.month}.${cutoff.year}...',
-    );
-
-    // Alle Kinder des Users
-    final childrenSnapshot = await _firestore
-        .collection('users')
-        .doc(userId)
-        .collection('children')
-        .get();
-
-    int totalDeleted = 0;
-
-    for (final childDoc in childrenSnapshot.docs) {
-      final childId = childDoc.id;
-
-      // ✅ FIX (DSGVO-Retention): Vorher wurden NUR Sessions mit
-      // status == 'completed' gelöscht. Sessions, die nie sauber beendet
-      // wurden (App gekillt, Absturz, status == 'active'), blieben für
-      // immer in Firestore liegen – inklusive aller Chat-Nachrichten.
-      // Jetzt werden ALLE Sessions gelöscht, deren Start länger als
-      // 14 Tage zurückliegt – egal welcher Status. Eine Session, die vor
-      // über 14 Tagen gestartet wurde, ist nie mehr "aktiv".
-      final oldSessionsSnapshot = await _firestore
-          .collection('users')
-          .doc(userId)
-          .collection('children')
-          .doc(childId)
-          .collection('tutor_sessions')
-          .where('startedAt', isLessThan: cutoffTimestamp)
-          .get();
-
-      if (oldSessionsSnapshot.docs.isEmpty) {
-        debugPrint('   Kind $childId: Keine alten Sessions');
-        continue;
-      }
-
-      debugPrint(
-        '   Kind $childId: ${oldSessionsSnapshot.docs.length} alte Sessions werden gelöscht',
-      );
-
-      for (final sessionDoc in oldSessionsSnapshot.docs) {
-        await deleteSession(
-          userId: userId,
-          childId: childId,
-          sessionId: sessionDoc.id,
-        );
-        totalDeleted++;
-      }
-    }
-
-    debugPrint('✅ Auto-Cleanup: $totalDeleted Sessions gelöscht');
   }
 
   // ──────────────────────────────────────────────────────────────────────────
   // HILFSMETHODEN
   // ──────────────────────────────────────────────────────────────────────────
 
-  /// Löscht eine Firestore Sub-Collection in Batches (max 500 pro Batch).
-  /// Nachrichten mit Foto-Anhang (imageUrl): das Bild in Firebase Storage
-  /// wird mitgelöscht, sonst bleiben die vom Kind hochgeladenen
-  /// Aufgabenblätter nach Ablauf der 14 Tage verwaist liegen (DSGVO).
-  Future<void> _deleteSubCollection({required String path}) async {
+  static bool _isSchoolAccount(String userId) => userId.startsWith('school_');
+
+  /// Löscht eine Firestore Sub-Collection in Batches (max. 400 pro Batch).
+  /// Mit [deleteImages] wird das Foto einer Nachricht (imageUrl) in Storage
+  /// mitgelöscht, sonst bliebe das Aufgabenblatt verwaist liegen (DSGVO).
+  Future<void> _deleteSubCollection({
+    required String path,
+    required bool deleteImages,
+  }) async {
     const batchSize = 400;
 
     while (true) {
@@ -200,7 +111,7 @@ class TutorChatCleanupService {
 
       final batch = _firestore.batch();
       for (final doc in snapshot.docs) {
-        await _deleteAttachedImage(doc.data());
+        if (deleteImages) await _deleteAttachedImage(doc.data());
         batch.delete(doc.reference);
       }
       await batch.commit();
@@ -214,21 +125,11 @@ class TutorChatCleanupService {
     final imageUrl = data['imageUrl'];
     if (imageUrl is! String || imageUrl.isEmpty) return;
     try {
-      await FirebaseStorage.instance.refFromURL(imageUrl).delete();
+      await _storage.refFromURL(imageUrl).delete();
     } catch (e) {
-      // Bild existiert nicht mehr o.ä. – Cleanup nicht blockieren
+      // Bild existiert nicht mehr o.ä. – Löschen nicht blockieren
       debugPrint('⚠️ Chat-Bild konnte nicht gelöscht werden: $e');
     }
-  }
-
-  /// Leert die active_tutor_chat Collection eines Kindes.
-  Future<void> _clearActiveTutorChat({
-    required String userId,
-    required String childId,
-  }) async {
-    await _deleteSubCollection(
-      path: 'users/$userId/children/$childId/active_tutor_chat',
-    );
   }
 }
 
