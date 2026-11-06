@@ -1,18 +1,14 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../../school/data/parent_link_repository.dart';
 import '../../school/presentation/linked_school_children_section.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../auth/data/profile_repository.dart';
 import 'live_child_stat_card.dart';
-import '../../auth/data/auth_repository.dart';
 import 'settings_screen.dart';
-import '../../auth/presentation/login_screen.dart';
+import '../../auth/presentation/sign_out.dart';
 import '../../../tutorial_provider.dart';
 import '../../../tutorial_overlay.dart';
 // NEU: Subscription
-import '../../subscription/data/subscription_service.dart';
 import '../../subscription/data/subscription_provider.dart';
 import '../../subscription/presentation/paywall_screen.dart';
 import '../../school/data/school_repository.dart';
@@ -551,41 +547,6 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
   }
 
   // ── Abmelden bestätigen ──────────────────────────────────────────────────
-  void _confirmSignOut(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Abmelden?'),
-        content: const Text('Möchtest du dich wirklich abmelden?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Abbrechen'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              Navigator.pop(context);
-              // RevenueCat ebenfalls ausloggen
-              await SubscriptionService(
-                FirebaseFirestore.instance,
-                FirebaseAuth.instance,
-              ).logOut();
-              await ref.read(authRepositoryProvider).signOut();
-              if (context.mounted) {
-                Navigator.of(context).pushAndRemoveUntil(
-                  MaterialPageRoute(builder: (_) => const LoginScreen()),
-                  (route) => false,
-                );
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Abmelden'),
-          ),
-        ],
-      ),
-    );
-  }
+  // Gemeinsamer Abmeldeweg (Firebase, RevenueCat, gemerkte Codes, Provider)
+  void _confirmSignOut(BuildContext context) => confirmSignOut(context, ref);
 }
