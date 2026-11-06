@@ -7,7 +7,6 @@ import '../../auth/domain/child_model.dart';
 import '../../generated_tasks/data/generated_task_repository.dart';
 import '../../generated_tasks/data/generated_task_models.dart';
 import 'ai_question_cache_repository.dart';
-import 'combined_quiz_params.dart';
 
 /// 📚 ERWEITERTER QUIZ REPOSITORY v4
 ///
@@ -205,19 +204,3 @@ final extendedQuizRepositoryProvider = Provider<ExtendedQuizRepository>((ref) {
     ref.watch(generatedTaskRepositoryProvider),
   );
 });
-
-/// Provider zum Laden einer kombinierten Quiz-Session
-final combinedQuizSessionProvider =
-    FutureProvider.family<List<Question>, CombinedQuizParams>((
-      ref,
-      params,
-    ) async {
-      final repository = ref.watch(extendedQuizRepositoryProvider);
-      return repository.loadQuizForChild(
-        userId: params.userId,
-        childId: params.childId,
-        child: params.child,
-        subject: params.subject,
-        questionCount: params.questionCount,
-      );
-    });

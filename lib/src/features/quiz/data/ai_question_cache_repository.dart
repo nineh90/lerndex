@@ -3,7 +3,21 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lerndex/src/ai/vertex_ai_service.dart';
 import 'package:lerndex/src/features/auth/domain/child_model.dart';
+import 'package:lerndex/src/features/quiz/data/curriculum_data.dart';
 import 'package:lerndex/src/features/quiz/domain/question_model.dart';
+
+/// Was mit dem Quiz-Cache eines Fachs passieren muss, bevor er genutzt wird.
+enum CacheAction {
+  /// Fragen passen weiter.
+  keep,
+
+  /// Andere Lehrplanstufe: ungespielte Fragen verwerfen. Gespielte bleiben
+  /// (Schutz gegen Wiederholung).
+  discardUnplayed,
+
+  /// Altes Format (vor Emoji-Feld): alles löschen.
+  clearAll,
+}
 
 /// AI QUESTION CACHE REPOSITORY v4
 ///
@@ -17,8 +31,14 @@ import 'package:lerndex/src/features/quiz/domain/question_model.dart';
 ///     wenn Splash-Screen mehrere Fächer eines Kindes parallel startet.
 ///   - prefillIfEmpty() macht KEINEN Level-Check mehr — der Level ist beim
 ///     Splash-Start garantiert aktuell. Level-Checks nur in getQuestions().
-///   - _checkAndInvalidateOnLevelChange läuft nie zweimal gleichzeitig für
-///     dasselbe childId+subject (ebenfalls durch _inflightSubjects geschützt).
+///
+/// Seit v5:
+///   - Ein Levelaufstieg verwirft den Cache nur, wenn sich die Lehrplanstufe
+///     ändert ([CurriculumData.curriculumStage]), und dann nur die
+///     ungespielten Fragen – die gespielten schützen weiter vor Wiederholung.
+///   - Das Meta-Dokument wird pro Abruf einmal gelesen (Stufe + Schema).
+///   - _inflightSubjects gilt für alle Instanzen (static): auch ein Aufrufer
+///     mit eigener Instanz löst keine doppelte Generierung aus.
 class AiQuestionCacheRepository {
   final FirebaseFirestore _firestore;
   final VertexAIService _generator;
@@ -38,8 +58,8 @@ class AiQuestionCacheRepository {
   static const int _cacheSchemaVersion = 2;
 
   /// In-Memory-Guard: verhindert Race Conditions beim parallelen Prefetch.
-  /// Key: "$childId|$subject"
-  final Set<String> _inflightSubjects = {};
+  /// Key: "$childId|$subject". Für alle Instanzen gemeinsam.
+  static final Set<String> _inflightSubjects = {};
 
   AiQuestionCacheRepository(this._firestore, this._generator);
 
@@ -51,7 +71,6 @@ class AiQuestionCacheRepository {
   /// Blockiert bis die Generierung fertig ist.
   /// Wird beim Splash-Screen-Prefetch aufgerufen.
   ///
-  /// KEIN Level-Check hier — beim Splash-Start ist child.level aktuell.
   /// Race-Condition-Schutz: Wenn dasselbe childId+subject bereits läuft,
   /// wird dieser Aufruf sofort übersprungen (kein Doppel-Request).
   Future<void> prefillIfEmpty({
@@ -72,13 +91,9 @@ class AiQuestionCacheRepository {
 
     _inflightSubjects.add(key);
     try {
-      // Prüfen ob schon genug ungespielte Fragen für das aktuelle Level da sind
-      final unplayed = await _loadUnplayedForLevel(
-        userId,
-        childId,
-        subject,
-        child.level,
-      );
+      // Fragen einer anderen Lehrplanstufe zählen nicht
+      await _ensureCacheCurrent(userId, childId, child, subject);
+      final unplayed = await _loadUnplayed(userId, childId, subject);
 
       if (unplayed.length >= _refillThreshold) {
         debugPrint(
@@ -121,8 +136,8 @@ class AiQuestionCacheRepository {
   /// Wenn Cache voll: Sofort aus Firestore (0 Wartezeit).
   /// Wenn Cache leer: Schnell-Batch (~5-8s mit gemini-3.5-flash).
   ///
-  /// Level-Check läuft hier (nicht in prefillIfEmpty) da getQuestions()
-  /// auch nach einem Level-Up mitten im Tag aufgerufen wird.
+  /// Prüft vorher die Lehrplanstufe – getQuestions() läuft auch nach einem
+  /// Level-Up mitten im Tag.
   Future<List<Question>> getQuestions({
     required String userId,
     required String childId,
@@ -130,9 +145,7 @@ class AiQuestionCacheRepository {
     required String subject,
     int count = 5,
   }) async {
-    // Level-Check NUR in getQuestions – prefillIfEmpty vertraut dem aktuellen Level
-    await _checkAndInvalidateOnLevelChange(userId, childId, child, subject);
-    await _checkAndInvalidateOnSchemaChange(userId, childId, subject);
+    await _ensureCacheCurrent(userId, childId, child, subject);
 
     final unplayed = await _loadUnplayed(userId, childId, subject);
 
@@ -306,11 +319,40 @@ class AiQuestionCacheRepository {
       .collection('ai_quiz_cache')
       .doc(subject.toLowerCase());
 
-  // -- Level-Change Detection --
+  // -- Stufen- und Schema-Prüfung --
 
-  /// Invalidiert den Cache wenn das Level des Kindes gestiegen ist.
-  /// Wird NUR in getQuestions() aufgerufen, nicht in prefillIfEmpty().
-  Future<void> _checkAndInvalidateOnLevelChange(
+  /// Entscheidet anhand des Meta-Dokuments, ob der Cache noch passt.
+  /// Alte Meta-Dokumente ohne `curriculumStage` werden über
+  /// `generatedForLevel` mit der heutigen Schulform/Klasse verglichen.
+  @visibleForTesting
+  static CacheAction cacheActionFor(
+    Map<String, dynamic>? meta,
+    ChildModel child,
+  ) {
+    if (meta == null) return CacheAction.keep; // Kein Cache
+    final schema = meta['schemaVersion'] as int? ?? 1; // null = v1 (alt)
+    if (schema < _cacheSchemaVersion) return CacheAction.clearAll;
+
+    final current = CurriculumData.curriculumStage(
+      schoolType: child.schoolType,
+      grade: child.grade,
+      level: child.level,
+    );
+    var cached = meta['curriculumStage'] as String?;
+    if (cached == null) {
+      final level = meta['generatedForLevel'] as int?;
+      if (level == null) return CacheAction.keep;
+      cached = CurriculumData.curriculumStage(
+        schoolType: child.schoolType,
+        grade: child.grade,
+        level: level,
+      );
+    }
+    return cached == current ? CacheAction.keep : CacheAction.discardUnplayed;
+  }
+
+  /// Ein Read aufs Meta-Dokument; verwirft bei Bedarf Fragen.
+  Future<void> _ensureCacheCurrent(
     String userId,
     String childId,
     ChildModel child,
@@ -318,56 +360,55 @@ class AiQuestionCacheRepository {
   ) async {
     try {
       final metaDoc = await _cacheMetaRef(userId, childId, subject).get();
-      if (!metaDoc.exists) return; // Kein Cache → nichts zu invalidieren
-
-      final cachedLevel = metaDoc.data()?['generatedForLevel'] as int?;
-      if (cachedLevel != null && cachedLevel != child.level) {
-        debugPrint(
-          '🔄 Level geändert ($cachedLevel → ${child.level}) '
-          '– Cache für $subject invalidiert',
-        );
-        await clearCache(userId: userId, childId: childId, subject: subject);
+      switch (cacheActionFor(metaDoc.data(), child)) {
+        case CacheAction.keep:
+          return;
+        case CacheAction.clearAll:
+          debugPrint('🔄 Cache-Schema veraltet – Cache für $subject gelöscht');
+          await clearCache(userId: userId, childId: childId, subject: subject);
+        case CacheAction.discardUnplayed:
+          debugPrint(
+            '🔄 Neue Lehrplanstufe – ungespielte Fragen für $subject verworfen',
+          );
+          await _discardUnplayed(userId, childId, subject);
       }
     } catch (e) {
-      debugPrint('⚠️ Level-Check Fehler: $e');
+      debugPrint('⚠️ Cache-Prüfung Fehler: $e');
     }
   }
 
-  /// Invalidiert den Cache wenn dort noch Pre-Emoji-Einträge (Schema v1)
-  /// liegen. Greift einmalig nach App-Update auf v2 — danach steht in der
-  /// Meta-Doc `schemaVersion: 2` und der Check ist no-op.
-  Future<void> _checkAndInvalidateOnSchemaChange(
+  /// Löscht nur die ungespielten Fragen eines Fachs.
+  Future<void> _discardUnplayed(
     String userId,
     String childId,
     String subject,
   ) async {
-    try {
-      final metaDoc = await _cacheMetaRef(userId, childId, subject).get();
-      if (!metaDoc.exists) return;
-
-      final cachedSchema =
-          metaDoc.data()?['schemaVersion'] as int? ?? 1; // null = v1 (alt)
-      if (cachedSchema < _cacheSchemaVersion) {
-        debugPrint(
-          '🔄 Cache-Schema veraltet (v$cachedSchema → v$_cacheSchemaVersion) '
-          '– Cache für $subject invalidiert (Emoji-Migration)',
-        );
-        await clearCache(userId: userId, childId: childId, subject: subject);
-      }
-    } catch (e) {
-      debugPrint('⚠️ Schema-Check Fehler: $e');
+    final snapshot = await _questionsRef(
+      userId,
+      childId,
+      subject,
+    ).where('played', isEqualTo: false).get();
+    final batch = _firestore.batch();
+    for (final doc in snapshot.docs) {
+      batch.delete(doc.reference);
     }
+    await batch.commit();
   }
 
   Future<void> _updateCacheMeta(
     String userId,
     String childId,
     String subject,
-    int level,
+    ChildModel child,
   ) async {
     try {
       await _cacheMetaRef(userId, childId, subject).set({
-        'generatedForLevel': level,
+        'generatedForLevel': child.level,
+        'curriculumStage': CurriculumData.curriculumStage(
+          schoolType: child.schoolType,
+          grade: child.grade,
+          level: child.level,
+        ),
         'lastRefill': FieldValue.serverTimestamp(),
         'schemaVersion': _cacheSchemaVersion,
       }, SetOptions(merge: true));
@@ -376,8 +417,7 @@ class AiQuestionCacheRepository {
 
   // -- Laden --
 
-  /// Lädt alle ungespielten Fragen unabhängig vom Level.
-  /// Wird in getQuestions() verwendet (nach Level-Check).
+  /// Lädt alle ungespielten Fragen (nach der Stufen-Prüfung).
   Future<List<_CachedQuestion>> _loadUnplayed(
     String userId,
     String childId,
@@ -411,44 +451,6 @@ class AiQuestionCacheRepository {
     }
   }
 
-  /// Lädt ungespielte Fragen NUR für ein bestimmtes Level.
-  /// Wird in prefillIfEmpty() verwendet um festzustellen ob genug
-  /// level-passende Fragen da sind, ohne den Cache zu invalidieren.
-  Future<List<_CachedQuestion>> _loadUnplayedForLevel(
-    String userId,
-    String childId,
-    String subject,
-    int level,
-  ) async {
-    try {
-      final snapshot = await _questionsRef(userId, childId, subject)
-          .where('played', isEqualTo: false)
-          .where('generatedForLevel', isEqualTo: level)
-          .orderBy('createdAt')
-          .get();
-
-      return snapshot.docs.map((doc) {
-        final data = doc.data();
-        return _CachedQuestion(
-          id: doc.id,
-          question: Question(
-            grade: data['grade'] as int? ?? 1,
-            question: data['question'] as String? ?? '',
-            options: List<String>.from(data['options'] ?? []),
-            answer: data['answer'] as String? ?? '',
-            difficulty: data['difficulty'] as String? ?? 'medium',
-            topic: data['topic'] as String? ?? '',
-            emoji: data['emoji'] as String?,
-          ),
-        );
-      }).toList();
-    } catch (e) {
-      debugPrint('⚠️ _loadUnplayedForLevel Fehler: $e');
-      // Fallback: alle ungespielten laden
-      return _loadUnplayed(userId, childId, subject);
-    }
-  }
-
   /// Lädt in EINEM Read den jüngsten Quiz-Kontext für die Anti-Wiederholungs-
   /// Hinweise an die KI: die zuletzt abgefragten Unterthemen UND die zuletzt
   /// gestellten Fragetexte (damit neue Batches inhaltlich nicht doppeln).
@@ -473,7 +475,9 @@ class AiQuestionCacheRepository {
           topics.add(topic);
         }
         final question = data['question'] as String?;
-        if (question != null && question.trim().isNotEmpty && questions.length < 20) {
+        if (question != null &&
+            question.trim().isNotEmpty &&
+            questions.length < 20) {
           questions.add(question.trim());
         }
       }
@@ -601,7 +605,7 @@ class AiQuestionCacheRepository {
     }
 
     await batch.commit();
-    await _updateCacheMeta(userId, childId, subject, child.level);
+    await _updateCacheMeta(userId, childId, subject, child);
     debugPrint(
       '✅ ${questions.length} Fragen für $subject gecacht (Level ${child.level})',
     );
