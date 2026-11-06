@@ -172,10 +172,9 @@ class AuthRepository {
         nonce: hashedNonce,
       );
 
-      final oauthCredential = OAuthProvider('apple.com').credential(
-        idToken: appleCredential.identityToken,
-        rawNonce: rawNonce,
-      );
+      final oauthCredential = OAuthProvider(
+        'apple.com',
+      ).credential(idToken: appleCredential.identityToken, rawNonce: rawNonce);
 
       final credential = await _auth.signInWithCredential(oauthCredential);
       final isNewUser = credential.additionalUserInfo?.isNewUser ?? false;
@@ -232,22 +231,63 @@ class AuthRepository {
   // ONBOARDING
   // =========================================================================
 
-  /// Prüft ob der Onboarding-Flow abgeschlossen wurde
-  /// Reines Schulkonto (Schulleitung oder Lehrkraft ohne eigene Kinder,
-  /// angelegt über einen Einladungslink). Sieht nur den Schulbereich.
-  Future<bool> isSchoolAccount() async {
+  /// Art des angemeldeten Kontos aus users/{uid}, mit EINEM Lesezugriff:
+  /// [isSchool] = reines Schulkonto (Schulleitung, über einen Einladungslink
+  /// angelegt; sieht nur den Schulbereich), [onboardingDone] = Eltern-
+  /// Onboarding abgeschlossen. Nicht für Kinder- und Lehrergeräte (die haben
+  /// kein eigenes Dokument).
+  Future<({bool isSchool, bool onboardingDone})> accountInfo() async {
     final user = _auth.currentUser;
-    if (user == null) return false;
+    if (user == null) return (isSchool: false, onboardingDone: false);
     final doc = await _firestore.collection('users').doc(user.uid).get();
-    return doc.data()?['accountType'] == 'school';
+    final data = doc.data();
+    return (
+      isSchool: data?['accountType'] == 'school',
+      onboardingDone: data?['onboardingCompleted'] == true,
+    );
   }
 
-  Future<bool> isOnboardingComplete() async {
+  /// E-Mail-Konto, dessen Adresse noch nicht bestätigt ist (wie beim Login
+  /// in [signInWithEmailAndPassword]). Google/Apple, Kinder- und
+  /// Lehrergeräte brauchen keine Bestätigung.
+  Future<bool> needsEmailVerification() async {
     final user = _auth.currentUser;
-    if (user == null) return false;
+    if (user == null || user.emailVerified) return false;
+    final hasPassword = user.providerData.any(
+      (p) => p.providerId == 'password',
+    );
+    if (!hasPassword) return false;
+    // Inzwischen bestätigt? Der gespeicherte Stand kann veraltet sein.
+    try {
+      await user.reload();
+    } catch (_) {
+      // Offline: beim gespeicherten Stand bleiben
+    }
+    return !(_auth.currentUser?.emailVerified ?? false);
+  }
 
-    final doc = await _firestore.collection('users').doc(user.uid).get();
-    return doc.data()?['onboardingCompleted'] == true;
+  /// Nur im Browser: Anmeldung nur in diesem Tab speichern. Für Schulkonten
+  /// und Lehrergeräte (geteilte Klassen-PCs): Tab zu = abgemeldet. Eine
+  /// bestehende Anmeldung zieht Firebase dabei mit um.
+  Future<void> keepLoginInThisTabOnly() async {
+    if (!kIsWeb) return;
+    try {
+      await _auth.setPersistence(Persistence.SESSION);
+    } catch (e) {
+      debugPrint('⚠️ Anmeldung nur für den Tab nicht möglich: $e');
+    }
+  }
+
+  /// Nur im Browser: wieder dauerhaft angemeldet bleiben (Standard, für
+  /// Eltern). Nach dem Abmelden, damit die nächste Anmeldung im selben Tab
+  /// nicht versehentlich nur für den Tab gilt.
+  Future<void> keepLoginOnThisDevice() async {
+    if (!kIsWeb) return;
+    try {
+      await _auth.setPersistence(Persistence.LOCAL);
+    } catch (e) {
+      debugPrint('⚠️ Dauerhafte Anmeldung nicht einstellbar: $e');
+    }
   }
 
   /// Markiert das Onboarding als abgeschlossen

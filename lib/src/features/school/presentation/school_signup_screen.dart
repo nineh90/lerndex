@@ -73,9 +73,7 @@ class _SchoolSignupScreenState extends ConsumerState<SchoolSignupScreen> {
     final name = _name.text.trim();
     final email = _email.text.trim();
     final password = _password.text;
-    if (schoolName.length < 3 ||
-        name.isEmpty ||
-        email.isEmpty) {
+    if (schoolName.length < 3 || name.isEmpty || email.isEmpty) {
       setState(() => _error = 'Bitte alle Felder ausfüllen.');
       return;
     }
@@ -91,6 +89,8 @@ class _SchoolSignupScreenState extends ConsumerState<SchoolSignupScreen> {
     _registering = true;
     await _run(() async {
       final auth = ref.read(authRepositoryProvider);
+      // Schulkonto: im Browser nur für diesen Tab angemeldet (Schul-PCs)
+      await auth.keepLoginInThisTabOnly();
       await auth.createUserWithEmailAndPassword(email, password, name);
       try {
         await auth.recordPrivacyConsent();
@@ -100,6 +100,7 @@ class _SchoolSignupScreenState extends ConsumerState<SchoolSignupScreen> {
       } catch (_) {
         // Code ungültig o.ä.: kein Konto ohne Schule zurücklassen
         await auth.abortNewSocialAccount();
+        await auth.keepLoginOnThisDevice();
         _registering = false;
         rethrow;
       }
@@ -143,10 +144,7 @@ class _SchoolSignupScreenState extends ConsumerState<SchoolSignupScreen> {
                   const SizedBox(height: 8),
                   const Text(
                     title,
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w700,
-                    ),
+                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 20),

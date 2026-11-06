@@ -19,6 +19,7 @@ import 'src/features/auth/data/child_device_repository.dart';
 import 'src/features/splash/splash_screen.dart';
 import 'src/shared/web/browser_url.dart';
 import 'src/shared/app_links.dart';
+import 'src/shared/activity_tracker.dart';
 // NEU: RevenueCat
 import 'src/features/subscription/data/subscription_service.dart';
 
@@ -124,8 +125,12 @@ class MyApp extends StatelessWidget {
         useMaterial3: true,
       ),
       // Im Browser am PC/Tablet: Die Oberfläche ist fürs Handy gebaut und
-      // würde sonst über die ganze Breite gezogen.
-      builder: kIsWeb ? (context, child) => _WebFrame(child: child!) : null,
+      // würde sonst über die ganze Breite gezogen. Eingaben zählen für die
+      // Abmeldung nach Inaktivität im Schulbereich (ActivityTracker).
+      builder: kIsWeb
+          ? (context, child) =>
+                ActivityListener(child: _WebFrame(child: child!))
+          : null,
       // Der Start-Link wird nur beim ersten Aufbau mitgegeben, danach ist er
       // verbraucht (sonst würde er nach einem Neuaufbau noch einmal
       // eingelöst).
