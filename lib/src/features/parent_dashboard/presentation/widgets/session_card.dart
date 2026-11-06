@@ -181,7 +181,7 @@ class SessionCard extends StatelessWidget {
                 children: [
                   Text(
                     '← Wischen zum Löschen',
-                    style: TextStyle(fontSize: 11, color: Colors.grey[400]),
+                    style: TextStyle(fontSize: 11, color: Colors.grey[700]),
                   ),
                   Icon(Icons.chevron_right, color: Colors.grey[400]),
                 ],

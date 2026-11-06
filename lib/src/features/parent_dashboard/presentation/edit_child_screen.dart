@@ -302,7 +302,7 @@ class _EditChildScreenState extends ConsumerState<EditChildScreen> {
                   'Lernfortschritte (XP, Sterne, Level) bleiben erhalten.',
                   style: TextStyle(
                     fontSize: 12,
-                    color: Colors.grey[500],
+                    color: Colors.grey[700],
                     fontStyle: FontStyle.italic,
                   ),
                   textAlign: TextAlign.center,
