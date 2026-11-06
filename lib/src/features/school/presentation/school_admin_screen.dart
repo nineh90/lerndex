@@ -330,7 +330,7 @@ class TeacherCardDialog extends StatelessWidget {
         children: [
           Text(card.name, textAlign: TextAlign.center),
           Text(
-            'Lehrer-Karte',
+            'Lehrerkarte',
             style: TextStyle(fontSize: 14, color: Colors.grey[600]),
           ),
         ],

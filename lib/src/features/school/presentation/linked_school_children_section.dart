@@ -63,9 +63,9 @@ Future<void> connectSchoolChild(BuildContext context, WidgetRef ref) async {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Den Code finden Sie im Elternbrief der Schule (oder einfach den '
+            'Den Code findest du im Elternbrief der Schule (oder einfach den '
             'QR-Code „Eltern verbinden“ mit der Kamera scannen). Für '
-            'Schulkinder brauchen Sie kein Abo.',
+            'Schulkinder brauchst du kein Abo.',
             style: TextStyle(fontSize: 13, color: Colors.grey[700]),
           ),
           const SizedBox(height: 12),
@@ -233,8 +233,8 @@ class _LinkedChildCard extends ConsumerWidget {
       builder: (ctx) => AlertDialog(
         title: const Text('Verbindung trennen?'),
         content: Text(
-          '${link.name} verschwindet aus Ihrem Elternbereich. In der Schule '
-          'bleibt alles, wie es ist. Mit dem Elternbrief können Sie sich '
+          '${link.name} verschwindet aus deinem Elternbereich. In der Schule '
+          'bleibt alles, wie es ist. Mit dem Elternbrief kannst du dich '
           'jederzeit wieder verbinden.',
         ),
         actions: [

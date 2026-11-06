@@ -321,7 +321,7 @@ class _LerndexSplashScreenState extends ConsumerState<LerndexSplashScreen>
       } else if (_conflictPairingCode != null || _conflictCardToken != null) {
         // Eltern-/Lehrerkonto angemeldet und ein Kinder-Link gescannt
         _conflictAccount = user?.isTeacherDevice ?? false
-            ? 'eine Lehrkraft (Lehrer-Karte)'
+            ? 'eine Lehrkraft (Lehrerkarte)'
             : user?.email ?? 'ein anderes Konto';
         destination = 'conflict';
         _setProgress(1.0, 'Weiter…');

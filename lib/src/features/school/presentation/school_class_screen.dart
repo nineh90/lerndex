@@ -71,10 +71,7 @@ class SchoolClassScreen extends ConsumerWidget {
                   ? _parentLetters(context, ref, students)
                   : _printCards(context, ref, students),
               itemBuilder: (_) => const [
-                PopupMenuItem(
-                  value: 'cards',
-                  child: Text('Anmeldekarten (Schule)'),
-                ),
+                PopupMenuItem(value: 'cards', child: Text('Schülerkarten')),
                 PopupMenuItem(value: 'letters', child: Text('Elternbriefe')),
               ],
             ),
@@ -185,7 +182,7 @@ class SchoolClassScreen extends ConsumerWidget {
         },
         itemBuilder: (_) => const [
           PopupMenuItem(value: 'stats', child: Text('Statistik')),
-          PopupMenuItem(value: 'card', child: Text('Anmelde-Code (QR)')),
+          PopupMenuItem(value: 'card', child: Text('Neue Schülerkarte')),
           PopupMenuItem(value: 'letter', child: Text('Elternbrief')),
           PopupMenuItem(value: 'rename', child: Text('Umbenennen')),
           PopupMenuItem(
@@ -395,8 +392,8 @@ class SchoolClassScreen extends ConsumerWidget {
         scrollable: true,
         title: Text(
           single
-              ? 'Anmelde-Code für ${students.first.name}'
-              : 'Anmeldekarten für ${students.length} Schüler',
+              ? 'Schülerkarte für ${students.first.name}'
+              : 'Schülerkarten für ${students.length} Schüler',
         ),
         content: Text(
           single

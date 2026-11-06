@@ -78,7 +78,7 @@ class _LinkConflictScreenState extends ConsumerState<LinkConflictScreen> {
         ? 'Als Schüler anmelden?'
         : 'Als Kindergerät einrichten?';
     final text = _isCard
-        ? 'Du hast eine Anmeldekarte gescannt. Auf diesem Gerät ist aber '
+        ? 'Du hast eine Schülerkarte gescannt. Auf diesem Gerät ist aber '
               'gerade ${widget.accountLabel} angemeldet.'
         : 'Du hast den Code für ein Kindergerät gescannt. Auf diesem Gerät '
               'ist aber gerade ${widget.accountLabel} angemeldet.';

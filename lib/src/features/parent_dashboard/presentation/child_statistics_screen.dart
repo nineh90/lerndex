@@ -197,7 +197,7 @@ class ChildStatisticsScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 16),
             Text(
-              'Sehen Sie alle Gespräche zwischen ${child.name} und dem KI-Tutor.',
+              'Alle Gespräche zwischen ${child.name} und Lexi.',
               style: TextStyle(fontSize: 14, color: Colors.grey[700]),
             ),
             const SizedBox(height: 16),

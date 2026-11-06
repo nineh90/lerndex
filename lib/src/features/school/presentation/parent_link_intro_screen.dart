@@ -43,17 +43,17 @@ class ParentLinkIntroScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 12),
                   const Text(
-                    'Mit Ihrem Kind verbinden',
+                    'Mit deinem Kind verbinden',
                     textAlign: TextAlign.center,
                     style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    'Melden Sie sich mit Ihrem Lerndex-Konto an oder legen Sie '
-                    'kostenlos eins an. Danach ist Ihr Kind automatisch '
-                    'verbunden: Sie sehen, was es gelernt hat, und können '
-                    'Belohnungen festlegen. Für Kinder einer Schule brauchen '
-                    'Sie kein Abo.',
+                    'Melde dich mit deinem Lerndex-Konto an oder lege '
+                    'kostenlos eins an. Danach ist dein Kind automatisch '
+                    'verbunden: Du siehst, was es gelernt hat, und kannst '
+                    'Belohnungen festlegen. Für Kinder einer Schule brauchst '
+                    'du kein Abo.',
                     textAlign: TextAlign.center,
                     style: TextStyle(color: Colors.grey[800], fontSize: 15),
                   ),

@@ -64,7 +64,7 @@ String studentCardsHtml(List<StudentCard> cards, {required String schoolName}) {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Lerndex – Anmeldekarten ${_escape(className)}</title>
+<title>Lerndex – Schülerkarten ${_escape(className)}</title>
 <style>
   * { box-sizing: border-box; }
   body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
@@ -112,14 +112,14 @@ String studentCardsHtml(List<StudentCard> cards, {required String schoolName}) {
 </head>
 <body>
 <header><div class="inner">
-  <h1>Anmeldekarten${className.isEmpty ? '' : ' · Klasse ${_escape(className)}'}</h1>
+  <h1>Schülerkarten${className.isEmpty ? '' : ' · Klasse ${_escape(className)}'}</h1>
   <p>${_escape(schoolName)} · ${cards.length} ${cards.length == 1 ? 'Karte' : 'Karten'}</p>
 </div></header>
 <main>
   <div class="info">
     <p>Ausdrucken, ausschneiden, austeilen. Jede Karte meldet genau dieses Kind an, auf dem
     Schul-Tablet oder dem eigenen Handy. Geht eine Karte verloren, in Lerndex beim Kind
-    „Anmelde-Code (QR)“ wählen. Die alte Karte gilt dann nicht mehr.</p>
+    „Neue Schülerkarte“ wählen. Die alte Karte gilt dann nicht mehr.</p>
     <button onclick="window.print()">Drucken</button>
   </div>
   <div class="grid">
@@ -138,7 +138,7 @@ String teacherCardHtml(TeacherCard card) =>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Lerndex – Lehrer-Karte ${_escape(card.name)}</title>
+<title>Lerndex – Lehrerkarte ${_escape(card.name)}</title>
 <style>
   * { box-sizing: border-box; }
   body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
@@ -171,7 +171,7 @@ String teacherCardHtml(TeacherCard card) =>
   <div class="card">
     <div>
       <div class="school">${_escape(card.schoolName)}</div>
-      <div class="title">Lehrer-Karte</div>
+      <div class="title">Lehrerkarte</div>
       <div class="name">${_escape(card.name)}</div>
     </div>
     <div class="qr">${qrSvg(card.link.toString())}</div>

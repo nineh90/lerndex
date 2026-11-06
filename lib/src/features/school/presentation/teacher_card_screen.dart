@@ -129,7 +129,7 @@ class _TeacherCardScreenState extends ConsumerState<TeacherCardScreen> {
                   if (user != null)
                     _signedIn(
                       user.isTeacherDevice
-                          ? 'eine Lehrkraft (Lehrer-Karte)'
+                          ? 'eine Lehrkraft (Lehrerkarte)'
                           : user.email ?? 'ein anderes Konto',
                     )
                   else
@@ -170,7 +170,7 @@ class _TeacherCardScreenState extends ConsumerState<TeacherCardScreen> {
       const SizedBox(height: 12),
       Text(
         'Auf diesem Gerät ist gerade $email angemeldet. Zum Anmelden mit '
-        'Ihrer Lehrer-Karte melden wir es zuerst ab.',
+        'Ihrer Lehrerkarte melden wir es zuerst ab.',
         textAlign: TextAlign.center,
         style: TextStyle(color: Colors.grey[800], fontSize: 15),
       ),

@@ -97,10 +97,10 @@ class _FamilyDashboardScreenState extends ConsumerState<FamilyDashboardScreen> {
         scrollable: true,
         title: const Text('Kind aus der Schule verbinden?'),
         content: Text(
-          'Sie haben einen Elternbrief gescannt (Code $display). Soll '
+          'Du hast einen Elternbrief gescannt (Code $display). Soll '
           '$child mit '
           '${account == null ? 'diesem Konto' : 'dem Konto $account'} '
-          'verbunden werden? Sie sehen dann die Statistik und können '
+          'verbunden werden? Du siehst dann die Statistik und kannst '
           'Belohnungen festlegen.',
         ),
         actions: [
@@ -121,7 +121,7 @@ class _FamilyDashboardScreenState extends ConsumerState<FamilyDashboardScreen> {
     try {
       final name = await repo.link(code);
       messenger.showSnackBar(
-        SnackBar(content: Text('$name ist jetzt mit Ihrem Konto verbunden.')),
+        SnackBar(content: Text('$name ist jetzt mit deinem Konto verbunden.')),
       );
     } catch (e) {
       messenger.showSnackBar(
@@ -268,7 +268,7 @@ class _FamilyDashboardScreenState extends ConsumerState<FamilyDashboardScreen> {
                         hasSchoolChildren
                             ? 'Schulkinder lernen mit der Karte „Zu Hause '
                                   'lernen“ aus dem Elternbrief. Statistik und '
-                                  'Belohnungen finden Sie im Eltern-Dashboard.'
+                                  'Belohnungen findest du im Eltern-Dashboard.'
                             : 'Öffne das Eltern-Dashboard, um ein Kind hinzuzufügen',
                         textAlign: TextAlign.center,
                         style: const TextStyle(color: Colors.grey),

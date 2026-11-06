@@ -623,7 +623,7 @@ exports.previewSchoolChild = onCall(async (request) => {
   }
   const invalid = new HttpsError(
     "not-found",
-    "Der Code stimmt nicht. Bitte prüfen Sie den Elternbrief oder fragen Sie die Lehrkraft.",
+    "Der Code stimmt nicht. Bitte prüf den Elternbrief oder frag die Lehrkraft.",
   );
   const code = normalizeCode(request.data?.code);
   if (!code) throw invalid;
@@ -655,7 +655,7 @@ exports.linkSchoolChild = onCall(async (request) => {
   const code = normalizeCode(request.data?.code);
   const invalid = new HttpsError(
     "not-found",
-    "Der Code stimmt nicht. Bitte prüfen Sie den Elternbrief oder fragen Sie die Lehrkraft.",
+    "Der Code stimmt nicht. Bitte prüf den Elternbrief oder frag die Lehrkraft.",
   );
   if (!code) throw invalid;
   const link = await db.doc(`parentLinks/${code}`).get();
