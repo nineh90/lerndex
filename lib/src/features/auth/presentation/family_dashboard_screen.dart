@@ -23,6 +23,8 @@ import '../../subscription/presentation/paywall_screen.dart';
 import '../../../shared/widgets/parental_gate.dart';
 import 'package:lerndex/src/features/auth/domain/account.dart';
 
+import 'package:lerndex/src/shared/theme/app_theme.dart';
+
 class FamilyDashboardScreen extends ConsumerStatefulWidget {
   const FamilyDashboardScreen({super.key});
 
@@ -238,7 +240,7 @@ class _FamilyDashboardScreenState extends ConsumerState<FamilyDashboardScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Lerndex'),
-        backgroundColor: const Color(0xFF6B21A8),
+        backgroundColor: AppColors.purple,
         foregroundColor: Colors.white,
       ),
       body: Stack(
@@ -267,7 +269,7 @@ class _FamilyDashboardScreenState extends ConsumerState<FamilyDashboardScreen> {
                             ? 'Schulkinder lernen mit der Karte „Zu Hause '
                                   'lernen“ aus dem Elternbrief. Statistik und '
                                   'Belohnungen finden Sie im Eltern-Dashboard.'
-                            : 'Öffne das Eltern-Dashboard um ein Kind hinzuzufügen',
+                            : 'Öffne das Eltern-Dashboard, um ein Kind hinzuzufügen',
                         textAlign: TextAlign.center,
                         style: const TextStyle(color: Colors.grey),
                       ),
@@ -277,7 +279,7 @@ class _FamilyDashboardScreenState extends ConsumerState<FamilyDashboardScreen> {
                         icon: const Icon(Icons.family_restroom),
                         label: const Text('Eltern-Dashboard öffnen'),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF6B21A8),
+                          backgroundColor: AppColors.purple,
                           foregroundColor: Colors.white,
                         ),
                       ),
@@ -338,7 +340,7 @@ class _FamilyDashboardScreenState extends ConsumerState<FamilyDashboardScreen> {
                           children: [
                             CircleAvatar(
                               backgroundColor: isActive
-                                  ? const Color(0xFF6B21A8)
+                                  ? AppColors.purple
                                   : Colors.grey.shade400,
                               radius: 24,
                               backgroundImage: child.selectedAvatar != null
@@ -433,7 +435,7 @@ class _FamilyDashboardScreenState extends ConsumerState<FamilyDashboardScreen> {
                         trailing: isActive
                             ? const Icon(
                                 Icons.chevron_right,
-                                color: Color(0xFF6B21A8),
+                                color: AppColors.purple,
                               )
                             : GestureDetector(
                                 // Parental Gate vor der Paywall (Kids-App)
@@ -453,7 +455,7 @@ class _FamilyDashboardScreenState extends ConsumerState<FamilyDashboardScreen> {
                                 },
                                 child: const Icon(
                                   Icons.upgrade,
-                                  color: Color(0xFF6B21A8),
+                                  color: AppColors.purple,
                                 ),
                               ),
                       ),
@@ -506,7 +508,7 @@ class _FamilyDashboardScreenState extends ConsumerState<FamilyDashboardScreen> {
                     badge: pendingRewards,
                     icon: Icons.family_restroom_rounded,
                     label: 'Eltern-Dashboard',
-                    color: const Color(0xFF6B21A8),
+                    color: AppColors.purple,
                   ),
                 ),
 

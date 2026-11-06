@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../tutor_provider.dart';
 
+import 'package:lerndex/src/shared/theme/app_theme.dart';
+
 const int _kMaxXpPerDay = 50;
 
 // ============================================================================
@@ -68,7 +70,7 @@ class TutorXpBanner extends ConsumerWidget {
                       minHeight: 5,
                       backgroundColor: Colors.purple.shade100,
                       valueColor: AlwaysStoppedAnimation<Color>(
-                        limitReached ? Colors.orange : Colors.deepPurple,
+                        limitReached ? Colors.orange : AppColors.purple,
                       ),
                     ),
                   ),

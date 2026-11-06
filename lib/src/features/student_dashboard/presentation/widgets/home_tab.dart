@@ -7,6 +7,7 @@ import 'live_learning_time_card.dart';
 import 'playful_subject_tile.dart';
 import '../../../quiz/presentation/quiz_screen.dart';
 
+import 'package:lerndex/src/shared/theme/app_theme.dart';
 // ============================================================================
 // TAB 0: HOME – NEU GESTALTET (ohne Statistiken)
 // ============================================================================
@@ -42,7 +43,7 @@ class HomeTab extends ConsumerWidget {
                   width: 4,
                   height: 22,
                   decoration: BoxDecoration(
-                    color: Colors.deepPurple,
+                    color: AppColors.purple,
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),

@@ -7,6 +7,7 @@ import '../../../auth/domain/child_model.dart';
 import '../../../rewards/data/xp_service.dart';
 import 'header_badge.dart';
 
+import 'package:lerndex/src/shared/theme/app_theme.dart';
 // ============================================================================
 // HERO HEADER – nahtlos an AppBar, enthält Level/Sterne/XP
 // Live via Firestore-Stream → updated sofort nach Tutor-Session
@@ -25,7 +26,7 @@ class HeroHeader extends ConsumerWidget {
       width: double.infinity,
       decoration: const BoxDecoration(
         gradient: LinearGradient(
-          colors: [Colors.deepPurple, Color(0xFF7B1FA2)],
+          colors: [AppColors.purple, Color(0xFF7B1FA2)],
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
         ),

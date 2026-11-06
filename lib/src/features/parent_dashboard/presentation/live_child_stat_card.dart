@@ -21,6 +21,8 @@ import 'widgets/pulsing_dot.dart';
 import '../../subscription/presentation/paywall_screen.dart';
 import 'package:lerndex/src/features/auth/domain/account.dart';
 
+import 'package:lerndex/src/shared/theme/app_theme.dart';
+
 /// Provider für Live-Child-Daten (Stream für Echtzeit-Updates)
 final liveChildProvider = StreamProvider.family<ChildModel?, String>((
   ref,
@@ -168,7 +170,7 @@ class LiveChildStatCard extends ConsumerWidget {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text('${child.name} wurde gelöscht'),
-                      backgroundColor: Colors.deepPurple,
+                      backgroundColor: AppColors.purple,
                     ),
                   );
                 }
@@ -264,7 +266,7 @@ class LiveChildStatCard extends ConsumerWidget {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
             side: claimedCount > 0
-                ? BorderSide(color: Colors.deepPurple.shade300, width: 1.5)
+                ? BorderSide(color: AppColors.purple.shade300, width: 1.5)
                 : BorderSide.none,
           ),
           child: Column(
@@ -293,7 +295,7 @@ class LiveChildStatCard extends ConsumerWidget {
                           children: [
                             CircleAvatar(
                               radius: 25,
-                              backgroundColor: Colors.deepPurple.shade100,
+                              backgroundColor: AppColors.purple.shade100,
                               backgroundImage: child.selectedAvatar != null
                                   ? AssetImage(
                                       'assets/images/${child.selectedAvatar}.webp',
@@ -305,7 +307,7 @@ class LiveChildStatCard extends ConsumerWidget {
                                       style: TextStyle(
                                         fontSize: 20,
                                         fontWeight: FontWeight.bold,
-                                        color: Colors.deepPurple.shade700,
+                                        color: AppColors.purple.shade700,
                                       ),
                                     )
                                   : null,
@@ -410,7 +412,7 @@ class LiveChildStatCard extends ConsumerWidget {
                                   Icon(
                                     Icons.edit,
                                     size: 18,
-                                    color: Colors.deepPurple,
+                                    color: AppColors.purple,
                                   ),
                                   SizedBox(width: 8),
                                   Text('Bearbeiten'),
@@ -424,7 +426,7 @@ class LiveChildStatCard extends ConsumerWidget {
                                   Icon(
                                     Icons.qr_code_2,
                                     size: 18,
-                                    color: Colors.deepPurple,
+                                    color: AppColors.purple,
                                   ),
                                   SizedBox(width: 8),
                                   Text('Gerät verbinden'),
@@ -438,7 +440,7 @@ class LiveChildStatCard extends ConsumerWidget {
                                   Icon(
                                     Icons.card_giftcard,
                                     size: 18,
-                                    color: Colors.deepPurple,
+                                    color: AppColors.purple,
                                   ),
                                   SizedBox(width: 8),
                                   Text('Belohnungen'),
@@ -452,7 +454,7 @@ class LiveChildStatCard extends ConsumerWidget {
                                   Icon(
                                     Icons.auto_awesome,
                                     size: 18,
-                                    color: Colors.deepPurple,
+                                    color: AppColors.purple,
                                   ),
                                   SizedBox(width: 8),
                                   Text('KI-Aufgaben generieren'),
@@ -467,7 +469,7 @@ class LiveChildStatCard extends ConsumerWidget {
                                     Icons.task_alt,
                                     size: 18,
                                     color: pendingCount > 0
-                                        ? Colors.deepPurple
+                                        ? AppColors.purple
                                         : Colors.green,
                                   ),
                                   const SizedBox(width: 8),
@@ -486,7 +488,7 @@ class LiveChildStatCard extends ConsumerWidget {
                                   Icon(
                                     Icons.chat,
                                     size: 18,
-                                    color: Colors.deepPurple,
+                                    color: AppColors.purple,
                                   ),
                                   SizedBox(width: 8),
                                   Text('Tutor-Gespräche'),
@@ -617,7 +619,7 @@ class LiveChildStatCard extends ConsumerWidget {
                         const SizedBox(width: 8),
                         StatChip(
                           icon: Icons.local_fire_department,
-                          color: Colors.deepPurple.shade300,
+                          color: AppColors.purple.shade300,
                           label: '${child.streak ?? 0} Tage',
                         ),
                         const SizedBox(width: 8),
@@ -740,7 +742,7 @@ class LiveChildStatCard extends ConsumerWidget {
                             icon: const Icon(Icons.upgrade, size: 16),
                             label: const Text('Upgraden'),
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF6B21A8),
+                              backgroundColor: AppColors.purple,
                               foregroundColor: Colors.white,
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 14,

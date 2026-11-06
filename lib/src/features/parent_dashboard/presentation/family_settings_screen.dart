@@ -5,6 +5,8 @@ import '../../../tutorial_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../shared/legal_links.dart';
 
+import 'package:lerndex/src/shared/theme/app_theme.dart';
+
 /// Einstellungen im Family-Dashboard (für alle sichtbar – auch Kinder).
 /// Enthält nur unkritische Optionen: App-Tour & Rechtliches.
 /// Passwort, PIN und Konto-Löschung sind im Eltern-Dashboard (hinter PIN-Sperre).
@@ -36,7 +38,7 @@ class FamilySettingsScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Infos'),
-        backgroundColor: const Color(0xFF6B21A8),
+        backgroundColor: AppColors.purple,
         foregroundColor: Colors.white,
       ),
       body: ListView(
@@ -45,7 +47,7 @@ class FamilySettingsScreen extends ConsumerWidget {
           const _SectionHeader(title: 'Hilfe'),
 
           ListTile(
-            leading: const Icon(Icons.tour_outlined, color: Color(0xFF6B21A8)),
+            leading: const Icon(Icons.tour_outlined, color: AppColors.purple),
             title: const Text('App-Tour wiederholen'),
             subtitle: const Text(
               'Interaktives Tutorial durch die wichtigsten Funktionen',
@@ -70,7 +72,7 @@ class FamilySettingsScreen extends ConsumerWidget {
           ListTile(
             leading: const Icon(
               Icons.privacy_tip_outlined,
-              color: Color(0xFF6B21A8),
+              color: AppColors.purple,
             ),
             title: const Text('Datenschutz'),
             subtitle: const Text(
@@ -82,12 +84,11 @@ class FamilySettingsScreen extends ConsumerWidget {
               size: 18,
               color: Colors.grey,
             ),
-            onTap: () =>
-                _launchUrl(context, ref, LegalLinks.privacy),
+            onTap: () => _launchUrl(context, ref, LegalLinks.privacy),
           ),
 
           ListTile(
-            leading: const Icon(Icons.gavel_outlined, color: Color(0xFF6B21A8)),
+            leading: const Icon(Icons.gavel_outlined, color: AppColors.purple),
             title: const Text('Nutzungsbedingungen'),
             subtitle: const Text(
               'AGB von Lerndex',
@@ -102,7 +103,7 @@ class FamilySettingsScreen extends ConsumerWidget {
           ),
 
           ListTile(
-            leading: const Icon(Icons.info_outline, color: Color(0xFF6B21A8)),
+            leading: const Icon(Icons.info_outline, color: AppColors.purple),
             title: const Text('Impressum'),
             subtitle: const Text(
               'Angaben gemäß § 5 DDG',
@@ -113,8 +114,7 @@ class FamilySettingsScreen extends ConsumerWidget {
               size: 18,
               color: Colors.grey,
             ),
-            onTap: () =>
-                _launchUrl(context, ref, LegalLinks.imprint),
+            onTap: () => _launchUrl(context, ref, LegalLinks.imprint),
           ),
         ],
       ),

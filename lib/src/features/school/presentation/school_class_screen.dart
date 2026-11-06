@@ -18,6 +18,8 @@ import 'class_task_screen.dart';
 import '../../../shared/user_message.dart';
 import 'student_cards_print.dart';
 
+import 'package:lerndex/src/shared/theme/app_theme.dart';
+
 /// Eine Klasse: Schüler anlegen, Anmeldekarten (QR) drucken, Schüler löschen.
 class SchoolClassScreen extends ConsumerWidget {
   const SchoolClassScreen({
@@ -43,7 +45,7 @@ class SchoolClassScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         title: Text('Klasse ${schoolClass.name}'),
-        backgroundColor: Colors.deepPurple,
+        backgroundColor: AppColors.purple,
         foregroundColor: Colors.white,
         actions: [
           if (students.isNotEmpty)
@@ -86,7 +88,7 @@ class SchoolClassScreen extends ConsumerWidget {
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _addStudents(context, ref),
-        backgroundColor: Colors.deepPurple,
+        backgroundColor: AppColors.purple,
         foregroundColor: Colors.white,
         icon: const Icon(Icons.person_add),
         label: const Text('Schüler hinzufügen'),
@@ -137,10 +139,10 @@ class SchoolClassScreen extends ConsumerWidget {
       leading: Stack(
         children: [
           CircleAvatar(
-            backgroundColor: Colors.deepPurple.shade50,
+            backgroundColor: AppColors.purple.shade50,
             child: Text(
               s.name.isEmpty ? '?' : s.name[0].toUpperCase(),
-              style: const TextStyle(color: Colors.deepPurple),
+              style: const TextStyle(color: AppColors.purple),
             ),
           ),
           Positioned(
@@ -763,7 +765,7 @@ class _ClassOverview extends StatelessWidget {
           style: const TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.bold,
-            color: Colors.deepPurple,
+            color: AppColors.purple,
           ),
         ),
         const SizedBox(height: 2),
@@ -811,7 +813,7 @@ class _AssignmentList extends ConsumerWidget {
               'Aufgaben',
               style: TextStyle(
                 fontWeight: FontWeight.bold,
-                color: Colors.deepPurple,
+                color: AppColors.purple,
               ),
             ),
           ),

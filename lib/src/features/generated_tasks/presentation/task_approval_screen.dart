@@ -7,6 +7,8 @@ import 'widgets/batch_card.dart';
 import 'batch_detail_screen.dart';
 import 'package:lerndex/src/features/auth/domain/account.dart';
 
+import 'package:lerndex/src/shared/theme/app_theme.dart';
+
 /// 🔍 FREIGABE-SCREEN FÜR GENERIERTE AUFGABEN
 ///
 /// - Ausstehende Batches oben, prominent
@@ -51,7 +53,7 @@ class _TaskApprovalScreenState extends ConsumerState<TaskApprovalScreen> {
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
         title: const Text('Aufgaben freigeben'),
-        backgroundColor: Colors.deepPurple,
+        backgroundColor: AppColors.purple,
         foregroundColor: Colors.white,
       ),
       body: batchesAsync.when(
@@ -74,7 +76,7 @@ class _TaskApprovalScreenState extends ConsumerState<TaskApprovalScreen> {
                 _SectionHeader(
                   title: 'Warten auf Freigabe',
                   count: pending.length,
-                  color: Colors.deepPurple,
+                  color: AppColors.purple,
                   icon: Icons.pending_actions,
                 ),
                 const SizedBox(height: 8),

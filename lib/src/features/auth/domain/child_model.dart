@@ -21,7 +21,8 @@ class ChildModel {
   final DateTime? lastLearningDate; // Letztes Lerndatum
   final DateTime? lastQuizDate; // Letztes Quiz-Datum
   final DateTime? lastXPGain; // Letzter XP-Gewinn
-  final DateTime? firstLearningDate; // Erstes Lerndatum (für Durchschnittsberechnung)
+  final DateTime?
+  firstLearningDate; // Erstes Lerndatum (für Durchschnittsberechnung)
 
   // Avatar
   final String? selectedAvatar; // z.B. 'avatar-common', 'avatar-rare', etc.

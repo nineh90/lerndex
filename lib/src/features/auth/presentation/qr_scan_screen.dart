@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
+import 'package:lerndex/src/shared/theme/app_theme.dart';
+
 /// Kamera-Ansicht, die einen QR-Code liest und dessen Text zurückgibt
 /// (`Navigator.pop(context, text)`). Nur in der App: Im Browser lädt
 /// mobile_scanner seine Erkennung von einem fremden Server, dort scannt die
@@ -45,7 +47,7 @@ class _QrScanScreenState extends State<QrScanScreen> {
       backgroundColor: Colors.black,
       appBar: AppBar(
         title: const Text('QR-Code scannen'),
-        backgroundColor: const Color(0xFF6B21A8),
+        backgroundColor: AppColors.purple,
         foregroundColor: Colors.white,
       ),
       body: Stack(

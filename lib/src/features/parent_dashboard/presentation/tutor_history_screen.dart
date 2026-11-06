@@ -8,6 +8,8 @@ import 'widgets/flag_filter_chip.dart';
 import 'widgets/session_card.dart';
 import 'package:lerndex/src/features/auth/domain/account.dart';
 
+import 'package:lerndex/src/shared/theme/app_theme.dart';
+
 /// 💬 CHAT-HISTORIE FÜR ELTERN
 /// - Dynamische Topic-Filter (nur tatsächlich vorhandene Topics)
 /// - ⚠️ / 🚨 Content-Flag-Badges für auffällige Gespräche
@@ -108,7 +110,7 @@ class _TutorHistoryScreenState extends ConsumerState<TutorHistoryScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text('${widget.child.name} – Gespräche'),
-        backgroundColor: Colors.deepPurple,
+        backgroundColor: AppColors.purple,
         foregroundColor: Colors.white,
         actions: [
           IconButton(
@@ -138,7 +140,7 @@ class _TutorHistoryScreenState extends ConsumerState<TutorHistoryScreen> {
     }
 
     return Container(
-      color: Colors.deepPurple.shade50,
+      color: AppColors.purple.shade50,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -164,16 +166,16 @@ class _TutorHistoryScreenState extends ConsumerState<TutorHistoryScreen> {
                         _showFlaggedOnly = false;
                       }),
                       backgroundColor: Colors.white,
-                      selectedColor: Colors.deepPurple,
+                      selectedColor: AppColors.purple,
                       checkmarkColor: Colors.white,
                       showCheckmark: true,
                       side: BorderSide(
                         color: selected
-                            ? Colors.deepPurple
-                            : Colors.deepPurple.shade200,
+                            ? AppColors.purple
+                            : AppColors.purple.shade200,
                       ),
                       labelStyle: TextStyle(
-                        color: selected ? Colors.white : Colors.deepPurple,
+                        color: selected ? Colors.white : AppColors.purple,
                         fontWeight: FontWeight.w600,
                         fontSize: 13,
                       ),
@@ -386,7 +388,7 @@ class _TutorHistoryScreenState extends ConsumerState<TutorHistoryScreen> {
                       width: 4,
                       height: 16,
                       decoration: BoxDecoration(
-                        color: Colors.deepPurple,
+                        color: AppColors.purple,
                         borderRadius: BorderRadius.circular(2),
                       ),
                     ),
@@ -396,7 +398,7 @@ class _TutorHistoryScreenState extends ConsumerState<TutorHistoryScreen> {
                       style: const TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.bold,
-                        color: Colors.deepPurple,
+                        color: AppColors.purple,
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -415,12 +417,12 @@ class _TutorHistoryScreenState extends ConsumerState<TutorHistoryScreen> {
                         decoration: BoxDecoration(
                           color: xpCapped >= kMaxXpPerDay
                               ? Colors.orange.shade100
-                              : Colors.deepPurple.shade50,
+                              : AppColors.purple.shade50,
                           borderRadius: BorderRadius.circular(20),
                           border: Border.all(
                             color: xpCapped >= kMaxXpPerDay
                                 ? Colors.orange.shade400
-                                : Colors.deepPurple.shade200,
+                                : AppColors.purple.shade200,
                             width: 1,
                           ),
                         ),
@@ -439,7 +441,7 @@ class _TutorHistoryScreenState extends ConsumerState<TutorHistoryScreen> {
                                 fontWeight: FontWeight.w700,
                                 color: xpCapped >= kMaxXpPerDay
                                     ? Colors.orange.shade800
-                                    : Colors.deepPurple.shade700,
+                                    : AppColors.purple.shade700,
                               ),
                             ),
                           ],

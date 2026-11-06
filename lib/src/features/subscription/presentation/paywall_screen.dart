@@ -13,6 +13,8 @@ import '../data/subscription_service.dart';
 import '../../../shared/user_message.dart';
 import '../../../shared/legal_links.dart';
 
+import 'package:lerndex/src/shared/theme/app_theme.dart';
+
 /// Sucht das RevenueCat-Package zu einem Plan im aktuellen Offering.
 Package? _packageForPlan(Offering offering, SubscriptionPlan plan) {
   final packageId = plan.revenueCatPackageId;
@@ -50,7 +52,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
   SubscriptionPlan? _selectedPlan; // null bis Status geladen
   bool _isLoading = false;
 
-  static const _purple = Color(0xFF6B21A8);
+  static const _purple = AppColors.purple;
   static const _lightPurple = Color(0xFFF3E8FF);
 
   @override
@@ -72,12 +74,13 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
       backgroundColor: Colors.white,
       appBar: AppBar(
         title: Text(hasActivePlan ? 'Abo verwalten' : 'Abo wählen'),
-        backgroundColor: Colors.deepPurple,
+        backgroundColor: AppColors.purple,
         foregroundColor: Colors.white,
         automaticallyImplyLeading: false,
         actions: [
           if (widget.canDismiss)
             IconButton(
+              tooltip: 'Schließen',
               icon: const Icon(Icons.close, color: Colors.white),
               onPressed: () => Navigator.of(context).pop(),
             )
@@ -421,10 +424,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
             ? '✅ Plan erfolgreich gewechselt!'
             : '🎉 Willkommen bei Lerndex Premium!';
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(msg),
-            backgroundColor: const Color(0xFF6B21A8),
-          ),
+          SnackBar(content: Text(msg), backgroundColor: AppColors.purple),
         );
         Navigator.of(context).pop(true);
       }
@@ -487,7 +487,7 @@ class _PlanCard extends StatelessWidget {
     this.badge,
   });
 
-  static const _purple = Color(0xFF6B21A8);
+  static const _purple = AppColors.purple;
 
   @override
   Widget build(BuildContext context) {
@@ -690,7 +690,7 @@ class _FeatureRow extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 5),
       child: Row(
         children: [
-          Icon(icon, size: 20, color: const Color(0xFF6B21A8)),
+          Icon(icon, size: 20, color: AppColors.purple),
           const SizedBox(width: 10),
           Text(text, style: const TextStyle(fontSize: 14)),
         ],

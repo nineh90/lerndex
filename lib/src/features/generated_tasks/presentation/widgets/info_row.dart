@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'package:lerndex/src/shared/theme/app_theme.dart';
+
 /// Vielseitiges Info-Zeilen-Widget mit zwei Modi:
 ///
 /// Modus 1 — nur [text] (für Info-Cards wie den Task-Generator):
@@ -55,7 +57,7 @@ class InfoRow extends StatelessWidget {
     // Modus 1: nur text
     return Row(
       children: [
-        Icon(icon, size: 20, color: Colors.deepPurple.shade400),
+        Icon(icon, size: 20, color: AppColors.purple.shade400),
         const SizedBox(width: 12),
         Expanded(
           child: Text(

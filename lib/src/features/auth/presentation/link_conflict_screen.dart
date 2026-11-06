@@ -7,6 +7,8 @@ import '../../../shared/user_message.dart';
 import 'child_login_confirm.dart';
 import 'sign_out.dart';
 
+import 'package:lerndex/src/shared/theme/app_theme.dart';
+
 /// Jemand scannt einen Koppel-Code (…/k/CODE) oder eine Schülerkarte
 /// (…/s/TOKEN), während auf dem Gerät schon ein Eltern- oder Lehrerkonto
 /// angemeldet ist. Statt den Link still zu ignorieren, wird nachgefragt.
@@ -88,7 +90,7 @@ class _LinkConflictScreenState extends ConsumerState<LinkConflictScreen> {
       appBar: AppBar(
         automaticallyImplyLeading: false,
         title: const Text('Lerndex'),
-        backgroundColor: const Color(0xFF6B21A8),
+        backgroundColor: AppColors.purple,
         foregroundColor: Colors.white,
       ),
       body: SafeArea(
@@ -133,7 +135,7 @@ class _LinkConflictScreenState extends ConsumerState<LinkConflictScreen> {
                     FilledButton(
                       onPressed: _busy ? null : _switch,
                       style: FilledButton.styleFrom(
-                        backgroundColor: const Color(0xFF6B21A8),
+                        backgroundColor: AppColors.purple,
                         padding: const EdgeInsets.symmetric(vertical: 14),
                       ),
                       child: _busy

@@ -4,6 +4,8 @@ import 'package:lerndex/src/features/auth/data/profile_repository.dart';
 import 'package:lerndex/src/features/auth/domain/child_model.dart';
 import '../../../../shared/user_message.dart';
 
+import 'package:lerndex/src/shared/theme/app_theme.dart';
+
 /// Wird gezeigt wenn ein User mehr Kinder hat als sein aktueller Plan erlaubt.
 /// Beispiel: War auf Family (4 Kinder), jetzt auf Solo (1 Kind) gewechselt.
 /// Der User muss Kinder auswählen die deaktiviert werden sollen.
@@ -32,7 +34,7 @@ class _ChildLimitExceededScreenState
   final Set<String> _keptChildIds = {};
   bool _isSaving = false;
 
-  static const _purple = Color(0xFF6B21A8);
+  static const _purple = AppColors.purple;
 
   int get _toDeactivate => widget.children.length - widget.allowedCount;
 
@@ -52,7 +54,7 @@ class _ChildLimitExceededScreenState
     return Scaffold(
       appBar: AppBar(
         title: const Text('Abo-Änderung'),
-        backgroundColor: Colors.deepPurple,
+        backgroundColor: AppColors.purple,
         foregroundColor: Colors.white,
         automaticallyImplyLeading: false,
       ),
@@ -234,7 +236,7 @@ class _ChildSelectionCard extends StatelessWidget {
     required this.onTap,
   });
 
-  static const _purple = Color(0xFF6B21A8);
+  static const _purple = AppColors.purple;
 
   @override
   Widget build(BuildContext context) {

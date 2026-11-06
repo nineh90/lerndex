@@ -12,6 +12,8 @@ import '../../student_dashboard/presentation/widgets/dashboard_theme.dart';
 import 'student_notification_popup.dart';
 import 'package:lerndex/src/features/auth/domain/account.dart';
 
+import 'package:lerndex/src/shared/theme/app_theme.dart';
+
 /// 🎁 REWARDS SCREEN (Schüler-Sicht)
 ///
 /// Wird immer eingebettet aufgerufen – keine eigene AppBar.
@@ -28,7 +30,7 @@ class RewardsScreen extends ConsumerWidget {
 
   const RewardsScreen({super.key, this.theme});
 
-  Color _primary(BuildContext context) => theme?.primary ?? Colors.deepPurple;
+  Color _primary(BuildContext context) => theme?.primary ?? AppColors.purple;
   Color _background(BuildContext context) =>
       theme?.background ?? const Color(0xFFF5F3FF);
   Color _onSurface(BuildContext context) =>

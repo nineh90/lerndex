@@ -81,7 +81,8 @@ class FeedbackRepository {
       'image/jpeg' => 'jpg',
       _ => file.name.split('.').last.toLowerCase(),
     };
-    final safeExt = (ext == 'png' || ext == 'jpg' || ext == 'jpeg' || ext == 'webp')
+    final safeExt =
+        (ext == 'png' || ext == 'jpg' || ext == 'jpeg' || ext == 'webp')
         ? ext
         : 'jpg';
     final contentType = switch (safeExt) {
@@ -103,5 +104,8 @@ class FeedbackRepository {
 }
 
 final feedbackRepositoryProvider = Provider<FeedbackRepository>((ref) {
-  return FeedbackRepository(FirebaseFirestore.instance, FirebaseStorage.instance);
+  return FeedbackRepository(
+    FirebaseFirestore.instance,
+    FirebaseStorage.instance,
+  );
 });

@@ -901,9 +901,9 @@ class CurriculumData {
         topic: 'Grundwortschatz und erste Sätze',
         learningGoals: [
           'Begrüßung und Verabschiedung (Hello, Goodbye, Good morning)',
-          'Sich vorstellen (My name is..., I am ... years old)',
+          'Sich vorstellen (My name is…, I am … years old)',
           'Farben, Zahlen 1–20, Tiere, Familie, Schulsachen benennen',
-          'Einfache Fragen verstehen und beantworten (What is this? / Do you like...?)',
+          'Einfache Fragen verstehen und beantworten (What is this? / Do you like…?)',
         ],
         typicalOperators: ['benennen', 'zuordnen', 'antworten'],
         notExpected: [
@@ -920,7 +920,7 @@ class CurriculumData {
         topic: 'Wortschatz erweitern und einfache Dialoge',
         learningGoals: [
           'Wortschatz: Hobbies, Essen, Kleidung, Wetter, Körperteile',
-          'Einfache Sätze bilden (I like..., I can..., I have got...)',
+          'Einfache Sätze bilden (I like…, I can…, I have got…)',
           'Kurze Dialoge führen (Im Geschäft, Freunde vorstellen)',
           'Einfache Texte/Lieder verstehen',
         ],

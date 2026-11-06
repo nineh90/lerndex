@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/generated_task_models.dart';
 import '../batch_detail_screen.dart';
 
+import 'package:lerndex/src/shared/theme/app_theme.dart';
+
 /// 📦 BATCH CARD - Kompakte Übersicht eines Aufgaben-Batches
 class BatchCard extends ConsumerWidget {
   final GeneratedTaskBatch batch;
@@ -68,7 +70,7 @@ class BatchCard extends ConsumerWidget {
                         if (batch.pendingTasks > 0)
                           _MiniChip(
                             label: '${batch.pendingTasks} offen',
-                            color: Colors.deepPurple,
+                            color: AppColors.purple,
                           ),
                         if (batch.pendingTasks > 0 && batch.approvedTasks > 0)
                           const SizedBox(width: 6),

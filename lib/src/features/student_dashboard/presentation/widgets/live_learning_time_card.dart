@@ -7,6 +7,7 @@ import 'streak_roadmap_content.dart';
 import 'time_block.dart';
 import 'time_sep.dart';
 
+import 'package:lerndex/src/shared/theme/app_theme.dart';
 // ============================================================================
 // LIVE LERNZEIT CARD (Home Tab) – kompaktes Layout mit Streak + Info-Icon
 // ============================================================================
@@ -67,7 +68,7 @@ class _LiveLearningTimeCardState extends ConsumerState<LiveLearningTimeCard> {
                         Icon(
                           Icons.timer_outlined,
                           size: 14,
-                          color: Colors.deepPurple.shade400,
+                          color: AppColors.purple.shade400,
                         ),
                         const SizedBox(width: 4),
                         Text(

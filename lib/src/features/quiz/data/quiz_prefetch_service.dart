@@ -78,7 +78,7 @@ class QuizPrefetchService {
     final effectiveCache = cache;
 
     debugPrint(
-      '🚀 Splash-Prefetch: Starte für ${children.length} Kinder parallel...',
+      '🚀 Splash-Prefetch: Starte für ${children.length} Kinder parallel…',
     );
 
     await Future.wait(

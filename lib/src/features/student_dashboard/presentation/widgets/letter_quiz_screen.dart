@@ -369,14 +369,14 @@ class _LetterQuizScreenState extends ConsumerState<LetterQuizScreen>
             Icon(
               Icons.sort_by_alpha_rounded,
               size: 16,
-              color: Colors.grey.shade400,
+              color: Colors.grey.shade700,
             ),
             const SizedBox(width: 4),
             Text(
               'Das ABC hilft dir!',
               style: TextStyle(
                 fontSize: 13,
-                color: Colors.grey.shade400,
+                color: Colors.grey.shade700,
                 fontWeight: FontWeight.w600,
               ),
             ),

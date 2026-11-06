@@ -394,14 +394,14 @@ class _MathQuizScreenState extends ConsumerState<MathQuizScreen>
             Icon(
               Icons.trending_up_rounded,
               size: 16,
-              color: Colors.grey.shade400,
+              color: Colors.grey.shade700,
             ),
             const SizedBox(width: 4),
             Text(
               seq.length >= 2 ? 'Schritte: +${seq[1] - seq[0]}' : '',
               style: TextStyle(
                 fontSize: 13,
-                color: Colors.grey.shade400,
+                color: Colors.grey.shade700,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -635,7 +635,7 @@ class _MathQuizScreenState extends ConsumerState<MathQuizScreen>
               child: Text(
                 _sliderMoved
                     ? '✓ Das ist die ${_sliderValue.round()}!'
-                    : 'Erst schieben...',
+                    : 'Erst schieben…',
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.w900,

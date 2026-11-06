@@ -10,6 +10,8 @@ import 'package:lerndex/src/features/student_dashboard/domain/avatar_config.dart
 import 'package:lerndex/src/features/student_dashboard/presentation/widgets/dashboard_theme.dart';
 import 'package:lerndex/src/features/auth/domain/account.dart';
 
+import 'package:lerndex/src/shared/theme/app_theme.dart';
+
 /// 🏆 ACHIEVEMENTS SCREEN
 /// Zeigt dem Schüler alle Systembelohnungen (freigeschaltet + noch nicht erreicht)
 /// mit Fortschrittsanzeige. Eltern-Belohnungen werden hier NICHT angezeigt.
@@ -180,7 +182,7 @@ class _AchievementHeader extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.deepPurple.withValues(alpha: 0.3),
+            color: AppColors.purple.withValues(alpha: 0.3),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -737,7 +739,7 @@ class _AchievementTile extends StatelessWidget {
                 ),
                 decoration: BoxDecoration(
                   color: _isUnlocked
-                      ? Colors.deepPurple.shade50
+                      ? AppColors.purple.shade50
                       : Colors.grey.shade50,
                   borderRadius: BorderRadius.circular(8),
                 ),
@@ -746,7 +748,7 @@ class _AchievementTile extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 11,
                     color: _isUnlocked
-                        ? Colors.deepPurple.shade400
+                        ? AppColors.purple.shade400
                         : Colors.grey.shade700,
                   ),
                 ),

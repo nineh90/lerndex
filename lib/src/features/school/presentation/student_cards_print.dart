@@ -180,7 +180,7 @@ String teacherCardHtml(TeacherCard card) =>
     <strong>So melden Sie sich bei Lerndex an</strong>
     <ol>
       <li>QR-Code mit der Kamera des Handys, Tablets oder Laptops scannen.</li>
-      <li>Beim ersten Mal eine eigene PIN festlegen (4 bis 6 Ziffern).</li>
+      <li>Beim ersten Mal einen eigenen PIN festlegen (4 bis 6 Ziffern).</li>
       <li>Danach immer: Karte scannen und PIN eingeben.</li>
     </ol>
     <p>Die Karte bitte nicht weitergeben. Verloren oder PIN vergessen? Die Schulleitung stellt eine neue Karte aus, die alte gilt dann nicht mehr.</p>

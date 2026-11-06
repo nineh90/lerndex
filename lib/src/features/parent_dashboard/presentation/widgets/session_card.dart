@@ -4,6 +4,7 @@ import '../../../auth/domain/child_model.dart';
 import 'content_flag_banner.dart';
 import 'parent_session_detail_screen.dart';
 
+import 'package:lerndex/src/shared/theme/app_theme.dart';
 // ============================================================================
 // SESSION-KARTE
 // ============================================================================
@@ -224,7 +225,7 @@ class SessionCard extends StatelessWidget {
   Color _topicColor(String topic) {
     switch (topic) {
       case 'Mathematik':
-        return Colors.deepPurple;
+        return AppColors.purple;
       case 'Deutsch':
         return Colors.red.shade700;
       case 'Englisch':
@@ -252,7 +253,7 @@ class SessionCard extends StatelessWidget {
       case 'Spanisch':
         return Colors.red.shade800;
       default:
-        return Colors.deepPurple;
+        return AppColors.purple;
     }
   }
 

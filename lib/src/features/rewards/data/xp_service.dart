@@ -307,7 +307,7 @@ class XPService {
           rethrow;
         }
         debugPrint(
-          '⚠️ addTutorXP Versuch $attempt fehlgeschlagen, retry in ${attempt}s...',
+          '⚠️ addTutorXP Versuch $attempt fehlgeschlagen, retry in ${attempt}s…',
         );
         await Future.delayed(Duration(seconds: attempt));
       }

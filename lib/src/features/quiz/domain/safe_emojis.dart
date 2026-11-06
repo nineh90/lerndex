@@ -28,7 +28,6 @@ class SafeEmojis {
     '🍒', // Kirsche
     '🍐', // Birne
     '🥕', // Karotte
-
     // ── Essen ────────────────────────────────────────────────────────────
     '🍞', // Brot
     '🧀', // Käse
@@ -36,7 +35,6 @@ class SafeEmojis {
     '🍪', // Keks
     '🍰', // Kuchen
     '🍫', // Schokolade
-
     // ── Tiere (eindeutig, ohne Verwechslung) ──────────────────────────────
     '🐶', // Hund
     '🐱', // Katze
@@ -52,7 +50,6 @@ class SafeEmojis {
     '🐟', // Fisch
     '🦋', // Schmetterling
     '🐝', // Biene
-
     // ── Natur ────────────────────────────────────────────────────────────
     '🌳', // Baum
     '🌸', // Blume
@@ -65,7 +62,6 @@ class SafeEmojis {
     '🌧️', // Regen
     '❄️', // Schneeflocke
     '🔥', // Feuer
-
     // ── Gegenstände ──────────────────────────────────────────────────────
     '⚽', // Fußball
     '🎈', // Luftballon
@@ -77,7 +73,6 @@ class SafeEmojis {
     '🏠', // Haus
     '🪑', // Stuhl
     '🧸', // Teddy
-
     // ── Formen & Farben (für Klasse 1–2 Quiz) ──────────────────────────────
     '🔴', // roter Kreis
     '🟠', // oranger Kreis

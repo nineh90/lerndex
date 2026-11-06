@@ -10,6 +10,8 @@ import 'qr_scan_screen.dart';
 import '../../../shared/legal_links.dart';
 import '../../../shared/user_message.dart';
 
+import 'package:lerndex/src/shared/theme/app_theme.dart';
+
 /// „Ich bin ein Kind“: Kopplungscode eintippen, den die Eltern im
 /// Elternbereich (Kind bearbeiten → Eigenes Gerät) erzeugt haben.
 class ChildPairingScreen extends ConsumerStatefulWidget {
@@ -91,7 +93,7 @@ class _ChildPairingScreenState extends ConsumerState<ChildPairingScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Ich bin ein Kind'),
-        backgroundColor: const Color(0xFF6B21A8),
+        backgroundColor: AppColors.purple,
         foregroundColor: Colors.white,
       ),
       body: SafeArea(
@@ -136,7 +138,7 @@ class _ChildPairingScreenState extends ConsumerState<ChildPairingScreen> {
                     style: TextStyle(fontSize: 16),
                   ),
                   style: FilledButton.styleFrom(
-                    backgroundColor: const Color(0xFF6B21A8),
+                    backgroundColor: AppColors.purple,
                     padding: const EdgeInsets.symmetric(vertical: 16),
                   ),
                 ),
@@ -180,7 +182,7 @@ class _ChildPairingScreenState extends ConsumerState<ChildPairingScreen> {
               FilledButton(
                 onPressed: _loading ? null : _submit,
                 style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFF6B21A8),
+                  backgroundColor: AppColors.purple,
                   padding: const EdgeInsets.symmetric(vertical: 16),
                 ),
                 child: _loading

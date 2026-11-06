@@ -10,6 +10,7 @@ import 'info_tile.dart';
 import 'dashboard_theme_provider.dart';
 import 'package:lerndex/src/features/auth/domain/account.dart';
 
+import 'package:lerndex/src/shared/theme/app_theme.dart';
 // ============================================================================
 // TAB 3: STATISTIK – eigene Seite, vollständig erhalten
 // ============================================================================
@@ -38,7 +39,7 @@ class StatisticsTab extends ConsumerWidget {
       textColor = const Color(0xFF1A1A2E);
       subtleColor = Colors.grey[600]!;
       cardColor = null;
-      accentColor = Colors.deepPurple;
+      accentColor = AppColors.purple;
     } else {
       // Theme laden – Slate (isDark=false) behält dunkle Farben, alle anderen
       // dunklen Themes bekommen helle Textfarben.
@@ -85,7 +86,7 @@ class StatisticsTab extends ConsumerWidget {
               Expanded(
                 child: StatCard(
                   icon: Icons.emoji_events,
-                  color: Colors.deepPurple,
+                  color: AppColors.purple,
                   value: 'Lvl $level',
                   label: 'Level',
                   labelColor: subtleColor,

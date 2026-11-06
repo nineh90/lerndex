@@ -31,6 +31,7 @@ import '../../tutorial_provider.dart';
 import '../subscription/data/subscription_provider.dart';
 import 'package:lerndex/src/features/auth/domain/account.dart';
 
+import 'package:lerndex/src/shared/theme/app_theme.dart';
 // ============================================================================
 // LERNDEX SPLASH SCREEN
 //
@@ -69,7 +70,7 @@ class _LerndexSplashScreenState extends ConsumerState<LerndexSplashScreen>
   final List<_FloatingItem> _particles = [];
   final _random = math.Random();
 
-  String _statusText = 'Starte Lerndex...';
+  String _statusText = 'Starte Lerndex…';
 
   /// Fehler beim Einlösen eines Koppel-Links → Code-Eingabe zeigt ihn an.
   String? _pairingError;
@@ -105,7 +106,7 @@ class _LerndexSplashScreenState extends ConsumerState<LerndexSplashScreen>
   static const _bgGradient = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
-    colors: [Color(0xFF3B0764), Color(0xFF6B21A8), Color(0xFF7C3AED)],
+    colors: [Color(0xFF3B0764), AppColors.purple, Color(0xFF7C3AED)],
   );
 
   /// Beim Anlegen festgehalten: Baut sich die App währenddessen neu auf,
@@ -212,7 +213,7 @@ class _LerndexSplashScreenState extends ConsumerState<LerndexSplashScreen>
         onTimeout: () => authRepo.currentUser,
       );
 
-      _setProgress(_bootstrapShare * 0.5, 'Anmeldung prüfen...');
+      _setProgress(_bootstrapShare * 0.5, 'Anmeldung prüfen…');
 
       // Link, mit dem die App geöffnet wurde: vom Aufrufer (App Link,
       // QR-Scanner) bzw. beim Start aus readInitialAppLink (im Browser aus
@@ -270,7 +271,7 @@ class _LerndexSplashScreenState extends ConsumerState<LerndexSplashScreen>
         if (user != null && !user.isChildDevice) {
           _conflictPairingCode = linkCode;
         } else if (user == null) {
-          _setProgress(_bootstrapShare * 0.5, 'Gerät wird verbunden...');
+          _setProgress(_bootstrapShare * 0.5, 'Gerät wird verbunden…');
           final repo = ref.read(childDeviceRepositoryProvider);
           try {
             final login = await repo.checkPairingCode(linkCode);
@@ -293,7 +294,7 @@ class _LerndexSplashScreenState extends ConsumerState<LerndexSplashScreen>
         if (user != null && !user.isChildDevice) {
           _conflictCardToken = cardToken;
         } else if (user == null || user.isSchoolDevice) {
-          _setProgress(_bootstrapShare * 0.5, 'Anmelden...');
+          _setProgress(_bootstrapShare * 0.5, 'Anmelden…');
           final repo = ref.read(childDeviceRepositoryProvider);
           try {
             final login = await repo.checkStudentCard(cardToken);
@@ -310,20 +311,20 @@ class _LerndexSplashScreenState extends ConsumerState<LerndexSplashScreen>
 
       if (_parentLinkIntro) {
         destination = 'parentLinkIntro';
-        _setProgress(1.0, 'Weiter...');
+        _setProgress(1.0, 'Weiter…');
       } else if (_teacherCardToken != null) {
         destination = 'teacherCard';
-        _setProgress(1.0, 'Weiter...');
+        _setProgress(1.0, 'Weiter…');
       } else if (_signupCode != null) {
         destination = 'schoolSignup';
-        _setProgress(1.0, 'Weiter...');
+        _setProgress(1.0, 'Weiter…');
       } else if (_conflictPairingCode != null || _conflictCardToken != null) {
         // Eltern-/Lehrerkonto angemeldet und ein Kinder-Link gescannt
         _conflictAccount = user?.isTeacherDevice ?? false
             ? 'eine Lehrkraft (Lehrer-Karte)'
             : user?.email ?? 'ein anderes Konto';
         destination = 'conflict';
-        _setProgress(1.0, 'Weiter...');
+        _setProgress(1.0, 'Weiter…');
       } else if (user == null) {
         destination = _pairingError != null ? 'pairing' : 'login';
         _setProgress(1.0, 'Los geht\'s! ✨');
@@ -338,7 +339,7 @@ class _LerndexSplashScreenState extends ConsumerState<LerndexSplashScreen>
         _verifyName = user.displayName ?? '';
         _verifySchool = (await accountInfo()).isSchool;
         destination = 'verifyEmail';
-        _setProgress(1.0, 'Weiter...');
+        _setProgress(1.0, 'Weiter…');
       } else if ((await accountInfo()).isSchool) {
         // Reines Schulkonto: nur der Schulbereich, kein Abo, kein Elternbereich
         destination = 'school';
@@ -347,7 +348,7 @@ class _LerndexSplashScreenState extends ConsumerState<LerndexSplashScreen>
         // RevenueCat-Nutzer identifizieren, Abo-Status laden
         final subscriptionService = ref.read(subscriptionServiceProvider);
         await subscriptionService.identifyUser(user.ownerUid);
-        _setProgress(_bootstrapShare * 0.7, 'Abo prüfen...');
+        _setProgress(_bootstrapShare * 0.7, 'Abo prüfen…');
         await ref.read(subscriptionStatusProvider.notifier).refresh();
 
         // Kein Vorladen von Quizfragen: In der Eltern-App ist noch kein Kind
@@ -366,7 +367,7 @@ class _LerndexSplashScreenState extends ConsumerState<LerndexSplashScreen>
         await signOutAccount(ref);
       }
       destination = 'login';
-      _setProgress(1.0, 'Weiter...');
+      _setProgress(1.0, 'Weiter…');
     }
 
     // Mindestzeit nur wenn Prefetch sehr schnell war (alles gecacht)
@@ -385,7 +386,7 @@ class _LerndexSplashScreenState extends ConsumerState<LerndexSplashScreen>
   /// Fächer vorladen. Kein RevenueCat (Abo-Status kommt aus Firestore), keine
   /// Kinderauswahl, kein Elternbereich.
   Future<void> _prepareChildDevice(User user, Duration maxPrefetchWait) async {
-    _setProgress(_bootstrapShare * 0.7, 'Abo prüfen...');
+    _setProgress(_bootstrapShare * 0.7, 'Abo prüfen…');
     await ref.read(subscriptionStatusProvider.notifier).refresh();
 
     final snap = await FirebaseFirestore.instance
@@ -438,8 +439,8 @@ class _LerndexSplashScreenState extends ConsumerState<LerndexSplashScreen>
       _setProgress(
         _bootstrapShare,
         children.length == 1
-            ? 'Bereite Fragen für ${children.first.name} vor...'
-            : 'Bereite Fragen für ${children.length} Kinder vor...',
+            ? 'Bereite Fragen für ${children.first.name} vor…'
+            : 'Bereite Fragen für ${children.length} Kinder vor…',
       );
 
       final cache = ref.read(aiQuestionCacheRepositoryProvider);
@@ -462,7 +463,7 @@ class _LerndexSplashScreenState extends ConsumerState<LerndexSplashScreen>
       _setProgress(1.0, 'Alles bereit! ✨');
     } catch (e) {
       debugPrint('⚠️ Prefetch-Fehler im Splash: $e');
-      _setProgress(1.0, 'Weiter...');
+      _setProgress(1.0, 'Weiter…');
     }
   }
 

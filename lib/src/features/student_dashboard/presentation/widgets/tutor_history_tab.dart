@@ -6,6 +6,7 @@ import '../../../auth/domain/child_model.dart';
 import 'session_detail_screen.dart';
 import 'package:lerndex/src/features/auth/domain/account.dart';
 
+import 'package:lerndex/src/shared/theme/app_theme.dart';
 // ============================================================================
 // TAB 2: TUTOR-VERLAUF (Schüler-Sicht)
 // Filtert leere Sessions (messageCount <= 1) und gelöschte (status == 'deleted')
@@ -196,7 +197,7 @@ class TutorHistoryTab extends ConsumerWidget {
       case 'Geschichte':
         return Colors.brown;
       default:
-        return Colors.deepPurple;
+        return AppColors.purple;
     }
   }
 

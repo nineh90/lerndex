@@ -9,6 +9,8 @@ import '../data/parent_link_repository.dart';
 import '../domain/class_stats.dart';
 import '../../../shared/user_message.dart';
 
+import 'package:lerndex/src/shared/theme/app_theme.dart';
+
 /// Eltern-Dashboard: Kinder, die über den Elternbrief der Schule verbunden
 /// sind. Statistik, Belohnungen und Lexi-Gespräche wie bei eigenen Kindern;
 /// gelernt wird mit der Heimkarte aus dem Elternbrief.
@@ -29,7 +31,7 @@ class LinkedSchoolChildrenSection extends ConsumerWidget {
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
-                color: Colors.deepPurple,
+                color: AppColors.purple,
               ),
             ),
           ),
@@ -134,8 +136,8 @@ class _LinkedChildCard extends ConsumerWidget {
             Row(
               children: [
                 CircleAvatar(
-                  backgroundColor: Colors.deepPurple.shade50,
-                  child: const Icon(Icons.school, color: Colors.deepPurple),
+                  backgroundColor: AppColors.purple.shade50,
+                  child: const Icon(Icons.school, color: AppColors.purple),
                 ),
                 const SizedBox(width: 12),
                 Expanded(

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:lerndex/src/shared/theme/app_theme.dart';
 // ============================================================================
 // +XP ANIMATIONS-OVERLAY
 // ============================================================================
@@ -61,11 +62,11 @@ class _XpGainOverlayState extends State<XpGainOverlay>
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
             decoration: BoxDecoration(
-              color: Colors.deepPurple,
+              color: AppColors.purple,
               borderRadius: BorderRadius.circular(20),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.deepPurple.withValues(alpha: 0.4),
+                  color: AppColors.purple.withValues(alpha: 0.4),
                   blurRadius: 12,
                   offset: const Offset(0, 4),
                 ),

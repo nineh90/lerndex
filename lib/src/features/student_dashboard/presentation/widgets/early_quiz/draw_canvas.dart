@@ -137,7 +137,7 @@ class DrawCanvas extends StatelessWidget {
                               ),
                               const SizedBox(height: 12),
                               Text(
-                                'Ich schaue nach...',
+                                'Ich schaue nach…',
                                 style: TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w700,

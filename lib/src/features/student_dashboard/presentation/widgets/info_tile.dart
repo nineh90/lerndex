@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'package:lerndex/src/shared/theme/app_theme.dart';
+
 /// Vereinheitlichte Info-Kachel – funktioniert in beiden Dashboards.
 ///
 /// **Parent-Modus** ([color] angegeben):
@@ -59,7 +61,7 @@ class InfoTile extends StatelessWidget {
     }
 
     // Student-Modus: flaches Layout, Farbe aus textColor oder Fallback
-    final effectiveColor = textColor ?? Colors.deepPurple;
+    final effectiveColor = textColor ?? AppColors.purple;
     final labelColor = textColor?.withValues(alpha: 0.6) ?? Colors.grey[600]!;
     return Column(
       children: [

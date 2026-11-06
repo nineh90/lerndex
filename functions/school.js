@@ -320,14 +320,14 @@ exports.redeemTeacherCard = onCall(async (request) => {
   if (!stored.exists) {
     if (newPin === undefined) return { pinSet: false, name: member.get("name") || "" };
     if (typeof newPin !== "string" || !TEACHER_PIN.test(newPin)) {
-      throw new HttpsError("invalid-argument", "Die PIN braucht 4 bis 6 Ziffern.");
+      throw new HttpsError("invalid-argument", "Der PIN braucht 4 bis 6 Ziffern.");
     }
     const salt = newSalt();
     // create() statt set(): legen zwei Geräte gleichzeitig eine PIN fest,
     // gewinnt das erste
     await pinRef.create({ hash: hashPin(newPin, salt), salt, failedAttempts: 0, lockedUntil: null })
       .catch(() => {
-        throw new HttpsError("already-exists", "Die PIN wurde gerade schon festgelegt.");
+        throw new HttpsError("already-exists", "Der PIN wurde gerade schon festgelegt.");
       });
     await member.ref.update({ pinSet: true });
   } else {

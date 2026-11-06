@@ -8,6 +8,7 @@ import '../../parent_dashboard/data/pin_repository.dart';
 import '../../../tutorial_provider.dart';
 import '../../../shared/user_message.dart';
 
+import 'package:lerndex/src/shared/theme/app_theme.dart';
 // ============================================================================
 // SETUP DIALOG
 //
@@ -117,7 +118,7 @@ class _SetupDialogState extends ConsumerState<SetupDialog> {
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [Color(0xFF6B21A8), Color(0xFF7E22CE)],
+            colors: [AppColors.purple, Color(0xFF7E22CE)],
           ),
         ),
         child: SafeArea(
@@ -224,7 +225,7 @@ class _SetupDialogState extends ConsumerState<SetupDialog> {
                       child: ElevatedButton(
                         onPressed: _nextNameStep,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF6B21A8),
+                          backgroundColor: AppColors.purple,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
@@ -303,26 +304,26 @@ class _SetupDialogState extends ConsumerState<SetupDialog> {
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF6B21A8).withValues(alpha: 0.08),
+                        color: AppColors.purple.withValues(alpha: 0.08),
                         borderRadius: BorderRadius.circular(10),
                         border: Border.all(
-                          color: const Color(0xFF6B21A8).withValues(alpha: 0.2),
+                          color: AppColors.purple.withValues(alpha: 0.2),
                         ),
                       ),
                       child: const Row(
                         children: [
                           Icon(
                             Icons.info_outline,
-                            color: Color(0xFF6B21A8),
+                            color: AppColors.purple,
                             size: 20,
                           ),
                           SizedBox(width: 10),
                           Expanded(
                             child: Text(
-                              'Merke dir diesen PIN! Du brauchst ihn um Fortschritte und Einstellungen deiner Kinder einzusehen.',
+                              'Merke dir diesen PIN! Du brauchst ihn, um Fortschritte und Einstellungen deiner Kinder einzusehen.',
                               style: TextStyle(
                                 fontSize: 13,
-                                color: Color(0xFF6B21A8),
+                                color: AppColors.purple,
                               ),
                             ),
                           ),
@@ -385,7 +386,7 @@ class _SetupDialogState extends ConsumerState<SetupDialog> {
                       child: ElevatedButton(
                         onPressed: _isLoading ? null : _finish,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF6B21A8),
+                          backgroundColor: AppColors.purple,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),

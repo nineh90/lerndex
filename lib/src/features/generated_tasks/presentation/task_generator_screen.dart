@@ -17,6 +17,8 @@ import '../../student_dashboard/presentation/subject_config.dart'
     show getSubjectsForChild;
 import 'package:lerndex/src/features/auth/domain/account.dart';
 
+import 'package:lerndex/src/shared/theme/app_theme.dart';
+
 /// 📸 KI-AUFGABENGENERATOR FÜR ELTERN
 ///
 /// Foto von Schulaufgabe → Vertex AI generiert Multiple-Choice-Übungen
@@ -96,7 +98,7 @@ class _TaskGeneratorScreenState extends ConsumerState<TaskGeneratorScreen> {
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
         title: Text('KI-Aufgaben für ${widget.child.name}'),
-        backgroundColor: Colors.deepPurple,
+        backgroundColor: AppColors.purple,
         foregroundColor: Colors.white,
       ),
       body: SingleChildScrollView(
@@ -139,10 +141,10 @@ class _TaskGeneratorScreenState extends ConsumerState<TaskGeneratorScreen> {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [Colors.deepPurple.shade50, Colors.purple.shade50],
+          colors: [AppColors.purple.shade50, Colors.purple.shade50],
         ),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.deepPurple.shade200),
+        border: Border.all(color: AppColors.purple.shade200),
       ),
       child: Column(
         children: [
@@ -151,7 +153,7 @@ class _TaskGeneratorScreenState extends ConsumerState<TaskGeneratorScreen> {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.deepPurple,
+                  color: AppColors.purple,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: const Icon(
@@ -170,14 +172,14 @@ class _TaskGeneratorScreenState extends ConsumerState<TaskGeneratorScreen> {
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
-                        color: Colors.deepPurple.shade800,
+                        color: AppColors.purple.shade800,
                       ),
                     ),
                     Text(
                       'Für ${widget.child.name} · ${widget.child.schoolType} · Klasse ${widget.child.grade}',
                       style: TextStyle(
                         fontSize: 13,
-                        color: Colors.deepPurple.shade600,
+                        color: AppColors.purple.shade600,
                       ),
                     ),
                   ],
@@ -284,18 +286,16 @@ class _TaskGeneratorScreenState extends ConsumerState<TaskGeneratorScreen> {
                   vertical: 11,
                 ),
                 decoration: BoxDecoration(
-                  color: isSelected ? Colors.deepPurple : Colors.white,
+                  color: isSelected ? AppColors.purple : Colors.white,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: isSelected
-                        ? Colors.deepPurple
-                        : Colors.grey.shade300,
+                    color: isSelected ? AppColors.purple : Colors.grey.shade300,
                     width: 2,
                   ),
                   boxShadow: isSelected
                       ? [
                           BoxShadow(
-                            color: Colors.deepPurple.withValues(alpha: 0.25),
+                            color: AppColors.purple.withValues(alpha: 0.25),
                             blurRadius: 8,
                             offset: const Offset(0, 2),
                           ),
@@ -341,9 +341,9 @@ class _TaskGeneratorScreenState extends ConsumerState<TaskGeneratorScreen> {
             borderRadius: BorderRadius.circular(16),
             child: Container(
               decoration: BoxDecoration(
-                color: Colors.deepPurple.shade50,
+                color: AppColors.purple.shade50,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.deepPurple.shade200, width: 2),
+                border: Border.all(color: AppColors.purple.shade200, width: 2),
               ),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -351,7 +351,7 @@ class _TaskGeneratorScreenState extends ConsumerState<TaskGeneratorScreen> {
                   Icon(
                     Icons.camera_alt,
                     size: 64,
-                    color: Colors.deepPurple.shade300,
+                    color: AppColors.purple.shade300,
                   ),
                   const SizedBox(height: 12),
                   Text(
@@ -359,7 +359,7 @@ class _TaskGeneratorScreenState extends ConsumerState<TaskGeneratorScreen> {
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
-                      color: Colors.deepPurple.shade700,
+                      color: AppColors.purple.shade700,
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -367,7 +367,7 @@ class _TaskGeneratorScreenState extends ConsumerState<TaskGeneratorScreen> {
                     'Schulaufgabe fotografieren',
                     style: TextStyle(
                       fontSize: 14,
-                      color: Colors.deepPurple.shade400,
+                      color: AppColors.purple.shade400,
                     ),
                   ),
                 ],
@@ -450,6 +450,7 @@ class _TaskGeneratorScreenState extends ConsumerState<TaskGeneratorScreen> {
               top: 8,
               right: 8,
               child: IconButton(
+                tooltip: 'Schließen',
                 onPressed: () => setState(() {
                   _selectedImage = null;
                   _errorMessage = null;
@@ -491,28 +492,30 @@ class _TaskGeneratorScreenState extends ConsumerState<TaskGeneratorScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               IconButton(
+                tooltip: 'Weniger Aufgaben',
                 onPressed: _numberOfTasks > 3
                     ? () => setState(() => _numberOfTasks--)
                     : null,
                 icon: const Icon(Icons.remove_circle_outline),
                 iconSize: 32,
-                color: Colors.deepPurple,
+                color: AppColors.purple,
               ),
               Text(
                 '$_numberOfTasks Aufgaben',
                 style: const TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
-                  color: Colors.deepPurple,
+                  color: AppColors.purple,
                 ),
               ),
               IconButton(
+                tooltip: 'Mehr Aufgaben',
                 onPressed: _numberOfTasks < 10
                     ? () => setState(() => _numberOfTasks++)
                     : null,
                 icon: const Icon(Icons.add_circle_outline),
                 iconSize: 32,
-                color: Colors.deepPurple,
+                color: AppColors.purple,
               ),
             ],
           ),
@@ -548,11 +551,11 @@ class _TaskGeneratorScreenState extends ConsumerState<TaskGeneratorScreen> {
               )
             : const Icon(Icons.auto_awesome, size: 24),
         label: Text(
-          _isGenerating ? 'KI generiert Aufgaben...' : 'Aufgaben generieren',
+          _isGenerating ? 'KI generiert Aufgaben…' : 'Aufgaben generieren',
           style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
         style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.deepPurple,
+          backgroundColor: AppColors.purple,
           foregroundColor: Colors.white,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),

@@ -588,7 +588,7 @@ class VertexAIService {
       debugPrint(
         '📸 Analysiere Schulaufgabe (childId: ${child.id}) '
         '(${child.schoolType}, Kl. ${child.grade}, Lv. ${child.level}, '
-        '${subject.displayName})...',
+        '${subject.displayName})…',
       );
 
       final imageBytes = await imageFile.readAsBytes();
@@ -1285,9 +1285,7 @@ Antworte NUR mit einem JSON-Array, kein Text oder Markdown davor/danach:
       debugPrint('✅ ${questions.length} Aufgaben aus Einzel-Objekten geparst');
     } catch (e) {
       debugPrint('❌ JSON Parse Fehler (generateTasks): $e');
-      debugPrint(
-        'Text war: ${text.substring(0, text.length.clamp(0, 200))}...',
-      );
+      debugPrint('Text war: ${text.substring(0, text.length.clamp(0, 200))}…');
     }
 
     return questions;
@@ -1367,7 +1365,7 @@ Antworte NUR mit einem JSON-Array, kein Text oder Markdown davor/danach:
           if (subject.isNotEmpty && !_questionMatchesSubject(q, subject)) {
             filteredOut++;
             debugPrint(
-              '🚫 Fach-Mismatch gefiltert: "${q.question.length > 60 ? q.question.substring(0, 60) : q.question}..." (topic: ${q.topic})',
+              '🚫 Fach-Mismatch gefiltert: "${q.question.length > 60 ? q.question.substring(0, 60) : q.question}…" (topic: ${q.topic})',
             );
             continue;
           }

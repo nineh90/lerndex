@@ -7,6 +7,7 @@ import '../../../auth/domain/child_model.dart';
 import '../../domain/avatar_config.dart';
 import 'package:lerndex/src/features/auth/domain/account.dart';
 
+import 'package:lerndex/src/shared/theme/app_theme.dart';
 // ============================================================================
 // AVATAR SETTINGS BOTTOM SHEET
 // ============================================================================
@@ -111,7 +112,7 @@ class _AvatarSettingsSheetState extends ConsumerState<AvatarSettingsSheet> {
             // Aktueller Avatar
             CircleAvatar(
               radius: 40,
-              backgroundColor: Colors.deepPurple.shade100,
+              backgroundColor: AppColors.purple.shade100,
               backgroundImage: currentAvatar != null
                   ? AssetImage('assets/images/$currentAvatar.webp')
                   : null,
@@ -121,7 +122,7 @@ class _AvatarSettingsSheetState extends ConsumerState<AvatarSettingsSheet> {
                       style: const TextStyle(
                         fontSize: 32,
                         fontWeight: FontWeight.bold,
-                        color: Colors.deepPurple,
+                        color: AppColors.purple,
                       ),
                     )
                   : null,

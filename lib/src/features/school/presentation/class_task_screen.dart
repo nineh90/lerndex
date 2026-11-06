@@ -13,6 +13,8 @@ import '../../student_dashboard/presentation/subject_config.dart'
     show getSubjectsForChild;
 import '../domain/school_models.dart';
 
+import 'package:lerndex/src/shared/theme/app_theme.dart';
+
 /// Lehrkraft: Aufgaben für die Klasse erzeugen – aus einem Foto (Arbeitsblatt,
 /// Tafelbild) oder aus einem Thema. Die Lehrkraft prüft die Aufgaben, streicht
 /// unpassende und wählt die Kinder. Jedes Kind bekommt die Aufgaben dann
@@ -36,7 +38,7 @@ class ClassTaskScreen extends ConsumerStatefulWidget {
 enum _Source { topic, photo }
 
 class _ClassTaskScreenState extends ConsumerState<ClassTaskScreen> {
-  static const _purple = Color(0xFF6B21A8);
+  static const _purple = AppColors.purple;
   static const _stringToSubject = {
     'Mathe': Subject.mathe,
     'Deutsch': Subject.deutsch,

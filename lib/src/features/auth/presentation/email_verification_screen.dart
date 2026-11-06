@@ -7,6 +7,8 @@ import 'login_screen.dart';
 import 'sign_out.dart';
 import '../../../shared/user_message.dart';
 
+import 'package:lerndex/src/shared/theme/app_theme.dart';
+
 /// E-Mail Verifizierungs-Screen
 /// Erscheint nach der Registrierung per E-Mail
 /// Prüft automatisch alle 3 Sekunden ob die E-Mail bestätigt wurde
@@ -130,7 +132,7 @@ class _EmailVerificationScreenState
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [Color(0xFF6B21A8), Color(0xFF7E22CE)],
+            colors: [AppColors.purple, Color(0xFF7E22CE)],
           ),
         ),
         child: SafeArea(
@@ -170,7 +172,7 @@ class _EmailVerificationScreenState
                       ? 'Fast geschafft!\n\nWir haben Ihnen eine Bestätigungs-Mail '
                             'geschickt. Bitte klicken Sie auf den Link darin, dann '
                             'geht es hier automatisch weiter.'
-                      : 'Hallo ${widget.displayName.split(' ').first}! 👋\n\nWir haben eine Bestätigungs-Mail an dich gesendet. Bitte klicke auf den Link in der E-Mail um fortzufahren.',
+                      : 'Hallo ${widget.displayName.split(' ').first}! 👋\n\nWir haben eine Bestätigungs-Mail an dich gesendet. Bitte klicke auf den Link in der E-Mail, um fortzufahren.',
                   textAlign: TextAlign.center,
                   style: const TextStyle(fontSize: 16, color: Colors.white70),
                 ),
@@ -193,12 +195,12 @@ class _EmailVerificationScreenState
                               height: 18,
                               child: CircularProgressIndicator(
                                 strokeWidth: 2,
-                                color: Color(0xFF6B21A8),
+                                color: AppColors.purple,
                               ),
                             ),
                             SizedBox(width: 12),
                             Text(
-                              'Warte auf Bestätigung...',
+                              'Warte auf Bestätigung…',
                               style: TextStyle(fontWeight: FontWeight.w500),
                             ),
                           ],
@@ -227,8 +229,8 @@ class _EmailVerificationScreenState
                                   : 'Erneut senden ($_resendCountdown s)',
                             ),
                             style: OutlinedButton.styleFrom(
-                              side: const BorderSide(color: Color(0xFF6B21A8)),
-                              foregroundColor: const Color(0xFF6B21A8),
+                              side: const BorderSide(color: AppColors.purple),
+                              foregroundColor: AppColors.purple,
                             ),
                           ),
                         ),
@@ -242,7 +244,7 @@ class _EmailVerificationScreenState
                 TextButton(
                   onPressed: _cancelAndSignOut,
                   child: const Text(
-                    'Abbrechen und zurück zum Login',
+                    'Abbrechen und zurück zur Anmeldung',
                     style: TextStyle(color: Colors.white60),
                   ),
                 ),

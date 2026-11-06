@@ -23,6 +23,8 @@ import 'src/shared/activity_tracker.dart';
 // NEU: RevenueCat
 import 'src/features/subscription/data/subscription_service.dart';
 
+import 'package:lerndex/src/shared/theme/app_theme.dart';
+
 void main() async {
   final binding = WidgetsFlutterBinding.ensureInitialized();
   // Im Browser zeigt web/index.html einen eigenen Ladebildschirm.
@@ -120,10 +122,7 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       localizationsDelegates: GlobalMaterialLocalizations.delegates,
       supportedLocales: const [Locale('de', 'DE'), Locale('en', 'US')],
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF6B21A8)),
-        useMaterial3: true,
-      ),
+      theme: AppTheme.light,
       // Im Browser am PC/Tablet: Die Oberfläche ist fürs Handy gebaut und
       // würde sonst über die ganze Breite gezogen. Eingaben zählen für die
       // Abmeldung nach Inaktivität im Schulbereich (ActivityTracker).
@@ -155,7 +154,7 @@ class _WebFrame extends StatelessWidget {
     if (mediaQuery.size.width <= _maxWidth) return child;
 
     return ColoredBox(
-      color: const Color(0xFF6B21A8),
+      color: AppColors.purple,
       child: Center(
         child: SizedBox(
           width: _maxWidth,

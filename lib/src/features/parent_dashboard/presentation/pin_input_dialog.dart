@@ -5,6 +5,8 @@ import '../data/pin_repository.dart';
 import '../../auth/data/auth_repository.dart';
 import 'package:lerndex/src/features/auth/domain/account.dart';
 
+import 'package:lerndex/src/shared/theme/app_theme.dart';
+
 /// Dialog zum Eingeben des PINs.
 ///
 /// Fehlversuche zählt und sperrt der Server (nach 5 Fehlversuchen für
@@ -85,7 +87,7 @@ class _PinInputDialogState extends ConsumerState<PinInputDialog> {
       scrollable: true,
       title: const Row(
         children: [
-          Icon(Icons.lock_outline, color: Colors.deepPurple),
+          Icon(Icons.lock_outline, color: AppColors.purple),
           SizedBox(width: 8),
           Expanded(child: Text('Eltern-PIN eingeben')),
         ],
@@ -127,7 +129,7 @@ class _PinInputDialogState extends ConsumerState<PinInputDialog> {
         ElevatedButton(
           onPressed: _isLoading ? null : _verifyPin,
           style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.deepPurple,
+            backgroundColor: AppColors.purple,
             foregroundColor: Colors.white,
           ),
           child: _isLoading

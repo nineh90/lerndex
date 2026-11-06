@@ -3,6 +3,7 @@ import '../../../auth/domain/child_model.dart';
 import '../../domain/reward_model.dart';
 import '../../domain/reward_enums.dart';
 
+import 'package:lerndex/src/shared/theme/app_theme.dart';
 // ============================================================================
 // REWARD CARD
 // ============================================================================
@@ -137,11 +138,7 @@ class RewardManageCard extends StatelessWidget {
                         onTap: onEdit,
                         child: const Row(
                           children: [
-                            Icon(
-                              Icons.edit,
-                              size: 20,
-                              color: Colors.deepPurple,
-                            ),
+                            Icon(Icons.edit, size: 20, color: AppColors.purple),
                             SizedBox(width: 8),
                             Text('Bearbeiten'),
                           ],
@@ -283,9 +280,9 @@ class RewardManageCard extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: Colors.deepPurple.shade50,
+                        color: AppColors.purple.shade50,
                         borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.deepPurple.shade200),
+                        border: Border.all(color: AppColors.purple.shade200),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -295,7 +292,7 @@ class RewardManageCard extends StatelessWidget {
                               Icon(
                                 Icons.redeem_outlined,
                                 size: 16,
-                                color: Colors.deepPurple.shade600,
+                                color: AppColors.purple.shade600,
                               ),
                               const SizedBox(width: 6),
                               Text(
@@ -304,7 +301,7 @@ class RewardManageCard extends StatelessWidget {
                                     : 'Vom Kind eingelöst',
                                 style: TextStyle(
                                   fontSize: 12,
-                                  color: Colors.deepPurple.shade700,
+                                  color: AppColors.purple.shade700,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
@@ -318,7 +315,7 @@ class RewardManageCard extends StatelessWidget {
                               icon: const Icon(Icons.check, size: 18),
                               label: const Text('Belohnung ausgehändigt'),
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.deepPurple,
+                                backgroundColor: AppColors.purple,
                                 foregroundColor: Colors.white,
                                 padding: const EdgeInsets.symmetric(
                                   vertical: 10,

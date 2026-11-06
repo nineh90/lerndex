@@ -12,6 +12,8 @@ import '../../splash/splash_screen.dart';
 import '../../../shared/user_message.dart';
 import '../../../shared/legal_links.dart';
 
+import 'package:lerndex/src/shared/theme/app_theme.dart';
+
 /// Registrierungs-Screen — Name + E-Mail + Passwort ODER Google
 class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
@@ -83,7 +85,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         return Theme(
           data: Theme.of(context).copyWith(
             colorScheme: const ColorScheme.light(
-              primary: Color(0xFF6B21A8),
+              primary: AppColors.purple,
               onPrimary: Colors.white,
             ),
           ),
@@ -303,7 +305,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [Color(0xFF6B21A8), Color(0xFF7E22CE)],
+            colors: [AppColors.purple, Color(0xFF7E22CE)],
           ),
         ),
         child: SafeArea(
@@ -313,6 +315,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               Align(
                 alignment: Alignment.centerLeft,
                 child: IconButton(
+                  tooltip: 'Zurück',
                   icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
                   onPressed: _back,
                 ),
@@ -395,7 +398,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                                   'Dein Name',
                                   style: TextStyle(
                                     fontWeight: FontWeight.bold,
-                                    color: Color(0xFF6B21A8),
+                                    color: AppColors.purple,
                                   ),
                                 ),
                                 const SizedBox(height: 10),
@@ -449,7 +452,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                                   'Zugangsdaten',
                                   style: TextStyle(
                                     fontWeight: FontWeight.bold,
-                                    color: Color(0xFF6B21A8),
+                                    color: AppColors.purple,
                                   ),
                                 ),
                                 const SizedBox(height: 10),
@@ -491,6 +494,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                                       borderRadius: BorderRadius.circular(12),
                                     ),
                                     suffixIcon: IconButton(
+                                      tooltip:
+                                          'Passwort anzeigen oder verbergen',
                                       icon: Icon(
                                         _obscurePassword
                                             ? Icons.visibility_outlined
@@ -562,6 +567,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                                       borderRadius: BorderRadius.circular(12),
                                     ),
                                     suffixIcon: IconButton(
+                                      tooltip:
+                                          'Passwort anzeigen oder verbergen',
                                       icon: Icon(
                                         _obscureConfirm
                                             ? Icons.visibility_outlined
@@ -621,7 +628,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                                   children: [
                                     Checkbox(
                                       value: _privacyAccepted,
-                                      activeColor: const Color(0xFF6B21A8),
+                                      activeColor: AppColors.purple,
                                       onChanged: (val) => setState(
                                         () => _privacyAccepted = val ?? false,
                                       ),
@@ -640,7 +647,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                                             TextSpan(
                                               text: 'Datenschutzbestimmungen',
                                               style: const TextStyle(
-                                                color: Color(0xFF6B21A8),
+                                                color: AppColors.purple,
                                                 decoration:
                                                     TextDecoration.underline,
                                                 fontWeight: FontWeight.w600,
@@ -667,7 +674,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                                   child: ElevatedButton(
                                     onPressed: _isLoading ? null : _register,
                                     style: ElevatedButton.styleFrom(
-                                      backgroundColor: const Color(0xFF6B21A8),
+                                      backgroundColor: AppColors.purple,
                                       shape: RoundedRectangleBorder(
                                         borderRadius: BorderRadius.circular(12),
                                       ),

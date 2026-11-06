@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/school_repository.dart';
 import 'school_home_screen.dart';
 
+import 'package:lerndex/src/shared/theme/app_theme.dart';
+
 /// Abschnitt „Schule“ in den Einstellungen (hinter dem Eltern-PIN): den
 /// Schulbereich öffnen, falls das Konto zu einer Schule gehört. Schulen legt
 /// nur Lerndex an (Einladungslink, siehe tool/admin/schule.py), Lehrkräfte
@@ -18,7 +20,7 @@ class SchoolSection extends ConsumerWidget {
     if (membership != null) {
       final name = ref.watch(schoolNameProvider(membership.schoolId)).value;
       return ListTile(
-        leading: const Icon(Icons.school, color: Colors.deepPurple),
+        leading: const Icon(Icons.school, color: AppColors.purple),
         title: const Text('Lehrerbereich öffnen'),
         subtitle: Text(name ?? '…', style: const TextStyle(fontSize: 12)),
         trailing: const Icon(Icons.chevron_right),
@@ -32,7 +34,7 @@ class SchoolSection extends ConsumerWidget {
     return Column(
       children: [
         const ListTile(
-          leading: Icon(Icons.add_business, color: Colors.deepPurple),
+          leading: Icon(Icons.add_business, color: AppColors.purple),
           title: Text('Lerndex für Ihre Schule'),
           subtitle: Text(
             'Schulen bekommen ihren Zugang direkt von uns: support@lerndex.de',

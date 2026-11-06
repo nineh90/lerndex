@@ -6,6 +6,8 @@ import '../../auth/data/auth_repository.dart';
 import 'widgets/question_card.dart';
 import 'package:lerndex/src/features/auth/domain/account.dart';
 
+import 'package:lerndex/src/shared/theme/app_theme.dart';
+
 /// 📋 BATCH DETAIL SCREEN - Zeigt alle Aufgaben eines Batches
 ///
 /// - Ausstehende Aufgaben oben
@@ -52,7 +54,7 @@ class _BatchDetailScreenState extends ConsumerState<BatchDetailScreen> {
           '${widget.batch.childName} · ${widget.batch.subject.displayName}',
           style: const TextStyle(fontSize: 16),
         ),
-        backgroundColor: Colors.deepPurple,
+        backgroundColor: AppColors.purple,
         foregroundColor: Colors.white,
         actions: [
           if (hasPending)
@@ -104,7 +106,7 @@ class _BatchDetailScreenState extends ConsumerState<BatchDetailScreen> {
                     const Icon(
                       Icons.pending_actions,
                       size: 16,
-                      color: Colors.deepPurple,
+                      color: AppColors.purple,
                     ),
                     const SizedBox(width: 6),
                     Text(
@@ -112,7 +114,7 @@ class _BatchDetailScreenState extends ConsumerState<BatchDetailScreen> {
                       style: const TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w700,
-                        color: Colors.deepPurple,
+                        color: AppColors.purple,
                       ),
                     ),
                   ],

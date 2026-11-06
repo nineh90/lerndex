@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:lerndex/src/shared/theme/app_theme.dart';
 // ============================================================================
 // NAV ITEM WIDGET
 // ============================================================================
@@ -37,7 +38,7 @@ class NavItem extends StatelessWidget {
               children: [
                 Icon(
                   selected ? activeIcon : icon,
-                  color: selected ? Colors.deepPurple : Colors.grey,
+                  color: selected ? AppColors.purple : Colors.grey,
                   size: 24,
                 ),
                 if (badgeCount > 0)
@@ -73,7 +74,7 @@ class NavItem extends StatelessWidget {
               label,
               style: TextStyle(
                 fontSize: 12,
-                color: selected ? Colors.deepPurple : Colors.grey,
+                color: selected ? AppColors.purple : Colors.grey,
                 fontWeight: selected ? FontWeight.bold : FontWeight.normal,
               ),
             ),

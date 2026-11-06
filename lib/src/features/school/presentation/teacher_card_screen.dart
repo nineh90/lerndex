@@ -11,6 +11,8 @@ import '../../../shared/user_message.dart';
 import '../../../shared/legal_links.dart';
 import '../../auth/domain/account.dart';
 
+import 'package:lerndex/src/shared/theme/app_theme.dart';
+
 /// Lehrkraft scannt ihre QR-Karte (…/l/TOKEN): beim ersten Mal PIN
 /// festlegen, danach PIN eingeben. Die PIN prüft der Server
 /// (redeemTeacherCard), nach 5 Fehlversuchen ist die Karte 15 Minuten
@@ -31,7 +33,7 @@ class _TeacherCardScreenState extends ConsumerState<TeacherCardScreen> {
   bool _busy = false;
   String? _error;
 
-  static const _purple = Color(0xFF6B21A8);
+  static const _purple = AppColors.purple;
 
   @override
   void initState() {
@@ -53,7 +55,7 @@ class _TeacherCardScreenState extends ConsumerState<TeacherCardScreen> {
   Future<void> _submit({required bool firstPin}) async {
     final pin = _pin.text;
     if (!RegExp(r'^\d{4,6}$').hasMatch(pin)) {
-      setState(() => _error = 'Die PIN hat 4 bis 6 Ziffern.');
+      setState(() => _error = 'Der PIN hat 4 bis 6 Ziffern.');
       return;
     }
     if (firstPin && pin != _pinRepeat.text) {
@@ -77,7 +79,7 @@ class _TeacherCardScreenState extends ConsumerState<TeacherCardScreen> {
         );
         return;
       }
-      error = 'Die PIN stimmt nicht.';
+      error = 'Der PIN stimmt nicht.';
     } on FirebaseFunctionsException catch (e) {
       if (e.code == 'resource-exhausted') {
         final seconds =
@@ -224,14 +226,14 @@ class _TeacherCardScreenState extends ConsumerState<TeacherCardScreen> {
               ? 'Legen Sie jetzt Ihre persönliche PIN fest (4 bis 6 Ziffern). '
                     'Danach melden Sie sich immer mit Karte und PIN an. Die '
                     'Karte allein reicht nicht.'
-              : 'Bitte geben Sie Ihre PIN ein.',
+              : 'Bitte geben Sie Ihren PIN ein.',
           textAlign: TextAlign.center,
           style: TextStyle(color: Colors.grey[800], fontSize: 15),
         ),
         const SizedBox(height: 20),
         _pinField(
           _pin,
-          firstPin ? 'Neue PIN' : 'PIN',
+          firstPin ? 'Neuer PIN' : 'PIN',
           autofocus: true,
           onSubmitted: firstPin ? null : () => _submit(firstPin: false),
         ),

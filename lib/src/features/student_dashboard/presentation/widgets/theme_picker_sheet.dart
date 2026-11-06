@@ -428,7 +428,7 @@ class _UploadProgress extends StatelessWidget {
               ),
               const SizedBox(width: 12),
               Text(
-                'Wird hochgeladen...',
+                'Wird hochgeladen…',
                 style: TextStyle(
                   fontSize: 14,
                   color: theme.onSurface,

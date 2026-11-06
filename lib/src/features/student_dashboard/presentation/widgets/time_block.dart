@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'package:lerndex/src/shared/theme/app_theme.dart';
+
 class TimeBlock extends StatelessWidget {
   final int value;
   final String label;
@@ -22,7 +24,7 @@ class TimeBlock extends StatelessWidget {
             vertical: small ? 4 : 6,
           ),
           decoration: BoxDecoration(
-            color: Colors.deepPurple.shade50,
+            color: AppColors.purple.shade50,
             borderRadius: BorderRadius.circular(8),
           ),
           child: Text(
@@ -30,7 +32,7 @@ class TimeBlock extends StatelessWidget {
             style: TextStyle(
               fontSize: small ? 18 : 22,
               fontWeight: FontWeight.bold,
-              color: Colors.deepPurple.shade700,
+              color: AppColors.purple.shade700,
             ),
           ),
         ),

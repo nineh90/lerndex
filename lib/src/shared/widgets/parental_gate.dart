@@ -10,6 +10,8 @@ import '../../features/parent_dashboard/presentation/pin_input_dialog.dart';
 import 'package:lerndex/src/features/auth/domain/account.dart';
 import '../../features/auth/presentation/sign_out.dart';
 
+import 'package:lerndex/src/shared/theme/app_theme.dart';
+
 /// Parental Gate für Kids-Apps (Apple Guideline 1.3 / Play Families Policy):
 /// Vor Käufen, externen Links und der PIN-Ersteinrichtung muss eine
 /// Erwachsenen-Schranke stehen.
@@ -193,7 +195,7 @@ class _ParentalGateScreenState extends ConsumerState<ParentalGateScreen> {
                 const Icon(
                   Icons.family_restroom_rounded,
                   size: 72,
-                  color: Color(0xFF6B21A8),
+                  color: AppColors.purple,
                 ),
                 const SizedBox(height: 24),
                 Text(
@@ -204,7 +206,7 @@ class _ParentalGateScreenState extends ConsumerState<ParentalGateScreen> {
                 const SizedBox(height: 32),
                 FilledButton.icon(
                   style: FilledButton.styleFrom(
-                    backgroundColor: const Color(0xFF6B21A8),
+                    backgroundColor: AppColors.purple,
                     padding: const EdgeInsets.symmetric(
                       horizontal: 24,
                       vertical: 14,

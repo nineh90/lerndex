@@ -28,6 +28,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:lerndex/src/features/auth/domain/account.dart';
 import 'package:lerndex/src/features/auth/presentation/widgets/device_logout_button.dart';
 
+import 'package:lerndex/src/shared/theme/app_theme.dart';
 // ============================================================================
 // Dashboard-Varianten – werden je nach Klassenstufe angezeigt.
 // Phase 2 (Klasse 1–2) und Phase 3 (Klasse 5+) sind Placeholder-Screens,
@@ -274,7 +275,7 @@ class _PrimaryDashboardScreenState
         backgroundColor: const Color(0xFFF5F3FF),
         appBar: AppBar(
           title: Text(_appBarTitle(child.name)),
-          backgroundColor: Colors.deepPurple,
+          backgroundColor: AppColors.purple,
           foregroundColor: Colors.white,
           elevation: 0,
           automaticallyImplyLeading: false,
@@ -419,7 +420,7 @@ class _PrimaryDashboardScreenState
         onPressed: () => _openTutor(context, child),
         backgroundColor: isLocked
             ? Colors.grey.shade400
-            : Colors.deepPurple.shade200,
+            : AppColors.purple.shade200,
         elevation: 6,
         shape: const CircleBorder(),
         tooltip: isLocked ? 'Lexi ab Level 2' : 'Mit Lexi sprechen',
@@ -468,7 +469,7 @@ class _PrimaryDashboardScreenState
                 width: 80,
                 height: 80,
                 decoration: BoxDecoration(
-                  color: Colors.deepPurple.shade50,
+                  color: AppColors.purple.shade50,
                   shape: BoxShape.circle,
                 ),
                 child: const Center(
@@ -481,7 +482,7 @@ class _PrimaryDashboardScreenState
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
-                  color: Colors.deepPurple,
+                  color: AppColors.purple,
                 ),
               ),
               const SizedBox(height: 10),
@@ -501,7 +502,7 @@ class _PrimaryDashboardScreenState
                   vertical: 8,
                 ),
                 decoration: BoxDecoration(
-                  color: Colors.deepPurple.shade50,
+                  color: AppColors.purple.shade50,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Row(
@@ -514,7 +515,7 @@ class _PrimaryDashboardScreenState
                       style: const TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
-                        color: Colors.deepPurple,
+                        color: AppColors.purple,
                       ),
                     ),
                   ],
@@ -526,7 +527,7 @@ class _PrimaryDashboardScreenState
                 child: ElevatedButton(
                   onPressed: () => Navigator.pop(context),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.deepPurple,
+                    backgroundColor: AppColors.purple,
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14),
@@ -562,7 +563,7 @@ class _NoAccessScreen extends ConsumerWidget {
       backgroundColor: const Color(0xFFF5F3FF),
       appBar: AppBar(
         automaticallyImplyLeading: false,
-        backgroundColor: Colors.deepPurple,
+        backgroundColor: AppColors.purple,
         foregroundColor: Colors.white,
         leading: const DeviceLogoutButton(),
         title: const Text('Lerndex'),

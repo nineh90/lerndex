@@ -12,6 +12,8 @@ import 'widgets/create_reward_dialog.dart';
 import 'widgets/edit_reward_dialog.dart';
 import 'package:lerndex/src/features/auth/domain/account.dart';
 
+import 'package:lerndex/src/shared/theme/app_theme.dart';
+
 /// MANAGE REWARDS SCREEN FÜR ELTERN
 /// Zeigt und verwaltet ausschließlich eltern-erstellte Belohnungen (RewardType.parent).
 /// System-Belohnungen (Achievements, XP, Avatare) werden im Schüler-Dashboard angezeigt.
@@ -71,7 +73,7 @@ class _ManageRewardsScreenState extends ConsumerState<ManageRewardsScreen>
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
         title: Text('Belohnungen für ${widget.child.name}'),
-        backgroundColor: Colors.deepPurple,
+        backgroundColor: AppColors.purple,
         foregroundColor: Colors.white,
         elevation: 0,
         bottom: TabBar(
@@ -91,7 +93,7 @@ class _ManageRewardsScreenState extends ConsumerState<ManageRewardsScreen>
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(
-              child: CircularProgressIndicator(color: Colors.deepPurple),
+              child: CircularProgressIndicator(color: AppColors.purple),
             );
           }
 
@@ -160,7 +162,7 @@ class _ManageRewardsScreenState extends ConsumerState<ManageRewardsScreen>
           widget.ownerUid ??
               ref.watch(authStateChangesProvider).value!.ownerUid,
         ),
-        backgroundColor: Colors.deepPurple,
+        backgroundColor: AppColors.purple,
         foregroundColor: Colors.white,
         icon: const Icon(Icons.add),
         label: const Text('Neue Belohnung'),

@@ -11,6 +11,8 @@ import '../../../shared/user_message.dart';
 import 'student_cards_print.dart';
 import '../../../shared/legal_links.dart';
 
+import 'package:lerndex/src/shared/theme/app_theme.dart';
+
 /// Schulleitung: verwaltet nur die Lehrkräfte (anlegen, Karte neu ausstellen,
 /// PIN zurücksetzen, entfernen) und sieht die Lizenz. Klassen und Schüler
 /// legen die Lehrkräfte an – die Schulleitung sieht keine Schülerdaten.
@@ -35,13 +37,13 @@ class SchoolAdminScreen extends ConsumerWidget {
       appBar: AppBar(
         automaticallyImplyLeading: !isRoot,
         title: Text(name.isEmpty ? 'Schule' : name),
-        backgroundColor: Colors.deepPurple,
+        backgroundColor: AppColors.purple,
         foregroundColor: Colors.white,
         actions: [if (isRoot) const SchoolLogoutAction()],
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _addTeacher(context, ref, name),
-        backgroundColor: Colors.deepPurple,
+        backgroundColor: AppColors.purple,
         foregroundColor: Colors.white,
         icon: const Icon(Icons.person_add_alt),
         label: const Text('Lehrkraft anlegen'),
@@ -56,7 +58,7 @@ class SchoolAdminScreen extends ConsumerWidget {
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
-              color: Colors.deepPurple,
+              color: AppColors.purple,
             ),
           ),
           const SizedBox(height: 4),
@@ -110,7 +112,7 @@ class SchoolAdminScreen extends ConsumerWidget {
       child: ListTile(
         leading: const CircleAvatar(
           backgroundColor: Color(0xFFEDE9FE),
-          child: Icon(Icons.person, color: Colors.deepPurple),
+          child: Icon(Icons.person, color: AppColors.purple),
         ),
         title: Text(m.name.isEmpty ? m.email : m.name),
         subtitle: Text(status),
@@ -195,9 +197,9 @@ class SchoolAdminScreen extends ConsumerWidget {
         content: Text(
           resetPin
               ? '${m.name} bekommt eine neue Karte und legt beim ersten '
-                    'Scannen eine neue PIN fest. Die alte Karte gilt nicht '
+                    'Scannen einen neuen PIN fest. Die alte Karte gilt nicht '
                     'mehr, angemeldete Geräte werden abgemeldet.'
-              : '${m.name} bekommt eine neue Karte, die PIN bleibt. Die alte '
+              : '${m.name} bekommt eine neue Karte, der PIN bleibt. Die alte '
                     'Karte gilt nicht mehr, angemeldete Geräte werden '
                     'abgemeldet.',
         ),

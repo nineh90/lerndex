@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'package:lerndex/src/shared/theme/app_theme.dart';
+
 class TimeSep extends StatelessWidget {
   const TimeSep({super.key});
 
@@ -12,7 +14,7 @@ class TimeSep extends StatelessWidget {
         style: TextStyle(
           fontSize: 18,
           fontWeight: FontWeight.bold,
-          color: Colors.deepPurple.shade300,
+          color: AppColors.purple.shade300,
         ),
       ),
     );

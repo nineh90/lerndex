@@ -118,7 +118,7 @@ class AuthRepository {
       }
 
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
-      if (googleUser == null) throw 'Google-Login abgebrochen.';
+      if (googleUser == null) throw 'Google-Anmeldung abgebrochen.';
 
       final GoogleSignInAuthentication googleAuth =
           await googleUser.authentication;
@@ -200,9 +200,9 @@ class AuthRepository {
       return (credential: credential, isNewUser: isNewUser);
     } on SignInWithAppleAuthorizationException catch (e) {
       if (e.code == AuthorizationErrorCode.canceled) {
-        throw 'Apple-Login abgebrochen.';
+        throw 'Apple-Anmeldung abgebrochen.';
       }
-      throw 'Apple-Login fehlgeschlagen: ${e.message}';
+      throw 'Apple-Anmeldung hat nicht geklappt. Bitte versuch es noch einmal.';
     } on FirebaseAuthException catch (e) {
       throw _handleAuthException(e);
     } catch (e) {
@@ -406,7 +406,7 @@ class AuthRepository {
       case 'invalid-email':
         return 'Ungültige E-Mail-Adresse.';
       case 'user-disabled':
-        return 'Dieser Account wurde deaktiviert.';
+        return 'Dieses Konto wurde deaktiviert.';
       case 'too-many-requests':
         return 'Zu viele Anfragen. Bitte später erneut versuchen.';
       case 'account-exists-with-different-credential':
@@ -420,7 +420,7 @@ class AuthRepository {
       // Google-Login im Browser (Popup)
       case 'popup-closed-by-user':
       case 'cancelled-popup-request':
-        return 'Google-Login abgebrochen.';
+        return 'Google-Anmeldung abgebrochen.';
       case 'popup-blocked':
         return 'Der Browser hat das Anmeldefenster blockiert. Bitte Popups für Lerndex erlauben.';
       default:

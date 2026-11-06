@@ -105,7 +105,7 @@ class AiQuestionCacheRepository {
 
       debugPrint(
         '🔮 Pre-Fill: ${unplayed.length}/$_refillThreshold Fragen für $subject '
-        '(Level ${child.level}) – generiere $_fullBatchSize neue...',
+        '(Level ${child.level}) – generiere $_fullBatchSize neue…',
       );
       final recent = await _loadRecentContext(userId, childId, subject);
 
@@ -159,7 +159,7 @@ class AiQuestionCacheRepository {
 
     // Nicht genug: Schnell-Batch synchron generieren
     debugPrint(
-      '🚀 Schnell-Batch: Generiere $_quickBatchSize Fragen für $subject...',
+      '🚀 Schnell-Batch: Generiere $_quickBatchSize Fragen für $subject…',
     );
     final recent = await _loadRecentContext(userId, childId, subject);
 

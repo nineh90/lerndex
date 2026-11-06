@@ -8,6 +8,7 @@ import 'package:markdown/markdown.dart' as md;
 import '../../features/tutor/domain/chat_message.dart';
 import 'picked_image.dart';
 
+import 'package:lerndex/src/shared/theme/app_theme.dart';
 // ============================================================================
 // UNIFIED MESSAGE BUBBLE
 //
@@ -86,13 +87,13 @@ class MessageBubble extends StatelessWidget {
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
                       valueColor: AlwaysStoppedAnimation<Color>(
-                        Colors.deepPurple,
+                        AppColors.purple,
                       ),
                     ),
                   ),
                   SizedBox(width: 10),
                   Text(
-                    'Tutor denkt nach...',
+                    'Tutor denkt nach…',
                     style: TextStyle(
                       fontStyle: FontStyle.italic,
                       color: Colors.black54,
@@ -124,7 +125,7 @@ class MessageBubble extends StatelessWidget {
                 maxWidth: MediaQuery.of(context).size.width * 0.72,
               ),
               decoration: BoxDecoration(
-                color: isUser ? Colors.deepPurple : Colors.grey.shade100,
+                color: isUser ? AppColors.purple : Colors.grey.shade100,
                 borderRadius: BorderRadius.only(
                   topLeft: const Radius.circular(18),
                   topRight: const Radius.circular(18),
@@ -183,7 +184,7 @@ class MessageBubble extends StatelessWidget {
       // Volle 48 × 48 dp Trefferfläche (Kinderhände, Barrierefreiheit)
       constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
       iconSize: 22,
-      color: Colors.deepPurple,
+      color: AppColors.purple,
       icon: Icon(
         isSpeaking ? Icons.stop_circle_outlined : Icons.volume_up_outlined,
       ),
@@ -193,7 +194,7 @@ class MessageBubble extends StatelessWidget {
   Widget _buildTutorAvatar() {
     return CircleAvatar(
       radius: 18,
-      backgroundColor: Colors.deepPurple.shade100,
+      backgroundColor: AppColors.purple.shade100,
       child: ClipOval(
         child: Image.asset(
           'assets/images/lerndex_logo.webp',
@@ -201,7 +202,7 @@ class MessageBubble extends StatelessWidget {
           height: 36,
           fit: BoxFit.cover,
           errorBuilder: (_, _, _) =>
-              const Icon(Icons.school, size: 20, color: Colors.deepPurple),
+              const Icon(Icons.school, size: 20, color: AppColors.purple),
         ),
       ),
     );
@@ -212,7 +213,7 @@ class MessageBubble extends StatelessWidget {
     if (childSelectedAvatar != null) {
       return CircleAvatar(
         radius: 18,
-        backgroundColor: Colors.deepPurple.shade100,
+        backgroundColor: AppColors.purple.shade100,
         backgroundImage: AssetImage('assets/images/$childSelectedAvatar.webp'),
         onBackgroundImageError: (_, _) {},
         child: null,
@@ -220,7 +221,7 @@ class MessageBubble extends StatelessWidget {
     }
     return CircleAvatar(
       radius: 18,
-      backgroundColor: Colors.deepPurple,
+      backgroundColor: AppColors.purple,
       child: Text(
         initial,
         style: const TextStyle(
@@ -306,7 +307,7 @@ class MessageBubble extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.bold,
-                  color: isUser ? color : Colors.deepPurple,
+                  color: isUser ? color : AppColors.purple,
                 ),
               ),
             ),

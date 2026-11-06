@@ -7,6 +7,7 @@ import '../../data/reward_service.dart';
 import '../../domain/reward_enums.dart';
 import '../../../student_dashboard/domain/avatar_config.dart';
 
+import 'package:lerndex/src/shared/theme/app_theme.dart';
 // ============================================================================
 // CREATE REWARD DIALOG
 // ============================================================================
@@ -134,12 +135,12 @@ class _CreateRewardDialogState extends ConsumerState<CreateRewardDialog> {
                         ),
                         decoration: BoxDecoration(
                           color: !_isAvatarReward
-                              ? Colors.deepPurple.shade50
+                              ? AppColors.purple.shade50
                               : Colors.grey.shade100,
                           borderRadius: BorderRadius.circular(10),
                           border: Border.all(
                             color: !_isAvatarReward
-                                ? Colors.deepPurple
+                                ? AppColors.purple
                                 : Colors.grey.shade300,
                             width: !_isAvatarReward ? 2 : 1,
                           ),
@@ -149,7 +150,7 @@ class _CreateRewardDialogState extends ConsumerState<CreateRewardDialog> {
                             Icon(
                               Icons.card_giftcard,
                               color: !_isAvatarReward
-                                  ? Colors.deepPurple
+                                  ? AppColors.purple
                                   : Colors.grey,
                               size: 24,
                             ),
@@ -163,7 +164,7 @@ class _CreateRewardDialogState extends ConsumerState<CreateRewardDialog> {
                                     ? FontWeight.bold
                                     : FontWeight.normal,
                                 color: !_isAvatarReward
-                                    ? Colors.deepPurple
+                                    ? AppColors.purple
                                     : Colors.grey,
                               ),
                             ),
@@ -184,12 +185,12 @@ class _CreateRewardDialogState extends ConsumerState<CreateRewardDialog> {
                         ),
                         decoration: BoxDecoration(
                           color: _isAvatarReward
-                              ? Colors.deepPurple.shade50
+                              ? AppColors.purple.shade50
                               : Colors.grey.shade100,
                           borderRadius: BorderRadius.circular(10),
                           border: Border.all(
                             color: _isAvatarReward
-                                ? Colors.deepPurple
+                                ? AppColors.purple
                                 : Colors.grey.shade300,
                             width: _isAvatarReward ? 2 : 1,
                           ),
@@ -199,7 +200,7 @@ class _CreateRewardDialogState extends ConsumerState<CreateRewardDialog> {
                             Icon(
                               Icons.face,
                               color: _isAvatarReward
-                                  ? Colors.deepPurple
+                                  ? AppColors.purple
                                   : Colors.grey,
                               size: 24,
                             ),
@@ -213,7 +214,7 @@ class _CreateRewardDialogState extends ConsumerState<CreateRewardDialog> {
                                     ? FontWeight.bold
                                     : FontWeight.normal,
                                 color: _isAvatarReward
-                                    ? Colors.deepPurple
+                                    ? AppColors.purple
                                     : Colors.grey,
                               ),
                             ),
@@ -468,8 +469,8 @@ class _CreateRewardDialogState extends ConsumerState<CreateRewardDialog> {
                           : () => Navigator.pop(context),
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 14),
-                        side: const BorderSide(color: Colors.deepPurple),
-                        foregroundColor: Colors.deepPurple,
+                        side: const BorderSide(color: AppColors.purple),
+                        foregroundColor: AppColors.purple,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
@@ -483,7 +484,7 @@ class _CreateRewardDialogState extends ConsumerState<CreateRewardDialog> {
                     child: ElevatedButton(
                       onPressed: _isCreating ? null : _createReward,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.deepPurple,
+                        backgroundColor: AppColors.purple,
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(

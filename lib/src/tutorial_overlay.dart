@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'tutorial_provider.dart';
 
+import 'package:lerndex/src/shared/theme/app_theme.dart';
 // ============================================================================
 // TUTORIAL OVERLAY
 //
@@ -200,12 +201,12 @@ class _TutorialOverlayState extends ConsumerState<TutorialOverlay>
                       Container(
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF6B21A8).withValues(alpha: 0.1),
+                          color: AppColors.purple.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: Icon(
                           content.icon,
-                          color: const Color(0xFF6B21A8),
+                          color: AppColors.purple,
                           size: 22,
                         ),
                       ),
@@ -256,7 +257,7 @@ class _TutorialOverlayState extends ConsumerState<TutorialOverlay>
                       ElevatedButton(
                         onPressed: widget.onAction,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF6B21A8),
+                          backgroundColor: AppColors.purple,
                           foregroundColor: Colors.white,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
@@ -308,9 +309,7 @@ class _TutorialOverlayState extends ConsumerState<TutorialOverlay>
           width: isActive ? 18 : 7,
           height: 7,
           decoration: BoxDecoration(
-            color: isDone || isActive
-                ? const Color(0xFF6B21A8)
-                : Colors.grey[300],
+            color: isDone || isActive ? AppColors.purple : Colors.grey[300],
             borderRadius: BorderRadius.circular(4),
           ),
         );

@@ -19,6 +19,8 @@ import '../../school/presentation/school_section.dart';
 import 'package:lerndex/src/features/auth/domain/account.dart';
 import '../../../shared/user_message.dart';
 
+import 'package:lerndex/src/shared/theme/app_theme.dart';
+
 /// Einstellungsbereich im Elterndashboard
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -35,7 +37,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Einstellungen'),
-        backgroundColor: Colors.deepPurple,
+        backgroundColor: AppColors.purple,
         foregroundColor: Colors.white,
       ),
       body: ListView(
@@ -57,7 +59,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ) ??
               false)
             ListTile(
-              leading: const Icon(Icons.lock_outline, color: Colors.deepPurple),
+              leading: const Icon(Icons.lock_outline, color: AppColors.purple),
               title: const Text('Passwort ändern'),
               subtitle: const Text(
                 'Lege ein neues Anmelde-Passwort fest',
@@ -69,7 +71,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
           // ── PIN ändern ────────────────────────────────────────────────
           ListTile(
-            leading: const Icon(Icons.pin_outlined, color: Colors.deepPurple),
+            leading: const Icon(Icons.pin_outlined, color: AppColors.purple),
             title: const Text('Eltern-PIN ändern'),
             subtitle: const Text(
               'Ändere deinen 4–6-stelligen Eltern-PIN',
@@ -93,7 +95,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ListTile(
             leading: const Icon(
               Icons.feedback_outlined,
-              color: Colors.deepPurple,
+              color: AppColors.purple,
             ),
             title: const Text('Feedback senden'),
             subtitle: const Text(
@@ -162,7 +164,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
             title: const Row(
               children: [
-                Icon(Icons.lock_outline, color: Colors.deepPurple),
+                Icon(Icons.lock_outline, color: AppColors.purple),
                 SizedBox(width: 8),
                 Text('Passwort ändern'),
               ],
@@ -280,7 +282,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         }
                       },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.deepPurple,
+                  backgroundColor: AppColors.purple,
                   foregroundColor: Colors.white,
                 ),
                 child: loading
@@ -316,6 +318,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         border: const OutlineInputBorder(),
         errorText: errorText,
         suffixIcon: IconButton(
+          tooltip: 'Passwort anzeigen oder verbergen',
           icon: Icon(obscure ? Icons.visibility : Icons.visibility_off),
           onPressed: onToggle,
         ),
@@ -343,7 +346,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
             title: const Row(
               children: [
-                Icon(Icons.pin_outlined, color: Colors.deepPurple),
+                Icon(Icons.pin_outlined, color: AppColors.purple),
                 SizedBox(width: 8),
                 Text('Eltern-PIN ändern'),
               ],
@@ -440,7 +443,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         }
                       },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.deepPurple,
+                  backgroundColor: AppColors.purple,
                   foregroundColor: Colors.white,
                 ),
                 child: loading
@@ -582,6 +585,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     labelText: 'Passwort',
                     border: const OutlineInputBorder(),
                     suffixIcon: IconButton(
+                      tooltip: 'Passwort anzeigen oder verbergen',
                       icon: Icon(
                         obscure ? Icons.visibility : Icons.visibility_off,
                       ),
@@ -709,7 +713,7 @@ class _SectionHeader extends StatelessWidget {
         style: TextStyle(
           fontSize: 12,
           fontWeight: FontWeight.bold,
-          color: Colors.deepPurple[700],
+          color: AppColors.purple[700],
           letterSpacing: 1.2,
         ),
       ),
@@ -750,7 +754,7 @@ class _DeleteAccountDialogState extends State<_DeleteAccountDialog> {
           const SizedBox(height: 12),
           const Text('Folgendes wird dauerhaft gelöscht:'),
           const SizedBox(height: 8),
-          _buildBullet('Dein Eltern-Account'),
+          _buildBullet('Dein Elternkonto'),
           _buildBullet('Alle Kinderprofile'),
           _buildBullet('Sämtliche Lernfortschritte & XP'),
           _buildBullet('Alle Tutor-Gespräche'),
@@ -810,7 +814,7 @@ class _DeleteAccountDialogState extends State<_DeleteAccountDialog> {
 // =============================================================================
 
 class _SubscriptionTile extends ConsumerWidget {
-  static const _purple = Colors.deepPurple;
+  static const _purple = AppColors.purple;
 
   // Abo-Verwaltung — öffnet die Seite des Stores, in dem gekauft wurde
 
@@ -820,11 +824,11 @@ class _SubscriptionTile extends ConsumerWidget {
 
     return statusAsync.when(
       loading: () => const ListTile(
-        leading: Icon(Icons.star_outline, color: Colors.deepPurple),
-        title: Text('Abo wird geladen...'),
+        leading: Icon(Icons.star_outline, color: AppColors.purple),
+        title: Text('Abo wird geladen…'),
       ),
       error: (_, _) => const ListTile(
-        leading: Icon(Icons.star_outline, color: Colors.deepPurple),
+        leading: Icon(Icons.star_outline, color: AppColors.purple),
         title: Text('Abo'),
         subtitle: Text('Fehler beim Laden'),
       ),
@@ -901,7 +905,7 @@ class _SubscriptionTile extends ConsumerWidget {
                       ),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: _purple,
-                        side: const BorderSide(color: Colors.deepPurple),
+                        side: const BorderSide(color: AppColors.purple),
                         padding: const EdgeInsets.symmetric(vertical: 10),
                       ),
                       onPressed: () => Navigator.push(

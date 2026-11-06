@@ -10,6 +10,8 @@ import '../data/school_repository.dart';
 import '../../../shared/user_message.dart';
 import '../../../shared/legal_links.dart';
 
+import 'package:lerndex/src/shared/theme/app_theme.dart';
+
 /// Registrierung einer Schule über den Einladungslink von Lerndex
 /// (…/schule/CODE): Die Schulleitung legt die Schule und ihr Konto an. Das
 /// Konto ist ein reines Schulkonto (accountType "school", gesetzt von den
@@ -34,7 +36,7 @@ class _SchoolSignupScreenState extends ConsumerState<SchoolSignupScreen> {
   bool _registering = false;
   String? _error;
 
-  static const _purple = Color(0xFF6B21A8);
+  static const _purple = AppColors.purple;
 
   @override
   void dispose() {

@@ -36,7 +36,7 @@ class _AccountDeletedScreenState extends State<AccountDeletedScreen> {
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
             SizedBox(height: 8),
-            Text('Du wirst zum Login weitergeleitet...'),
+            Text('Du wirst zur Anmeldung weitergeleitet …'),
             SizedBox(height: 24),
             CircularProgressIndicator(),
           ],

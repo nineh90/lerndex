@@ -30,7 +30,9 @@ class FlagFilterChip extends StatelessWidget {
         decoration: BoxDecoration(
           color: isSelected ? color : color.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: color.withValues(alpha: isSelected ? 1.0 : 0.4)),
+          border: Border.all(
+            color: color.withValues(alpha: isSelected ? 1.0 : 0.4),
+          ),
         ),
         child: Text(
           label,

@@ -15,6 +15,8 @@ import '../../subscription/data/subscription_provider.dart';
 import '../../../shared/user_message.dart';
 import '../../../shared/legal_links.dart';
 
+import 'package:lerndex/src/shared/theme/app_theme.dart';
+
 /// Login-Screen für bestehende Nutzer
 /// Neue Nutzer werden zu RegisterScreen weitergeleitet
 class LoginScreen extends ConsumerStatefulWidget {
@@ -264,7 +266,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [Color(0xFF6B21A8), Color(0xFF7E22CE)],
+            colors: [AppColors.purple, Color(0xFF7E22CE)],
           ),
         ),
         child: SafeArea(
@@ -362,6 +364,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               suffixIcon: IconButton(
+                                tooltip: 'Passwort anzeigen oder verbergen',
                                 icon: Icon(
                                   _obscurePassword
                                       ? Icons.visibility_outlined
@@ -384,7 +387,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               onPressed: _forgotPassword,
                               child: const Text(
                                 'Passwort vergessen?',
-                                style: TextStyle(color: Color(0xFF6B21A8)),
+                                style: TextStyle(color: AppColors.purple),
                               ),
                             ),
                           ),
@@ -398,7 +401,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             child: ElevatedButton(
                               onPressed: _isLoading ? null : _login,
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF6B21A8),
+                                backgroundColor: AppColors.purple,
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(12),
                                 ),
@@ -520,7 +523,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 child: const Text(
                                   'Jetzt registrieren',
                                   style: TextStyle(
-                                    color: Color(0xFF6B21A8),
+                                    color: AppColors.purple,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
@@ -545,7 +548,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                   ? 'Ich bin ein Kind – Code eingeben'
                                   : 'Ich bin ein Kind – QR-Code scannen',
                               style: TextStyle(
-                                color: Color(0xFF6B21A8),
+                                color: AppColors.purple,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),

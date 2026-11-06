@@ -5,6 +5,8 @@ import '../../data/generated_task_repository.dart';
 import '../../../auth/data/auth_repository.dart';
 import 'package:lerndex/src/features/auth/domain/account.dart';
 
+import 'package:lerndex/src/shared/theme/app_theme.dart';
+
 /// Aufklappbare Multiple-Choice-Karte mit zwei Modi:
 ///
 /// Vorschau-Modus (task_generator_screen nach Generierung):
@@ -470,7 +472,7 @@ class _QuestionCardState extends ConsumerState<QuestionCard> {
       case 'hard':
         return Colors.red;
       default:
-        return Colors.deepPurple;
+        return AppColors.purple;
     }
   }
 
@@ -503,7 +505,7 @@ class _QuestionCardState extends ConsumerState<QuestionCard> {
       case TaskApprovalStatus.rejected:
         return Colors.red;
       default:
-        return Colors.deepPurple;
+        return AppColors.purple;
     }
   }
 

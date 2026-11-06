@@ -10,6 +10,7 @@ import '../../../auth/data/child_device_repository.dart';
 import '../../../auth/domain/account.dart';
 import '../../../auth/domain/child_model.dart';
 
+import 'package:lerndex/src/shared/theme/app_theme.dart';
 // ============================================================================
 // EIGENES GERÄT FÜRS KIND (Elternbereich → Kind bearbeiten)
 //
@@ -84,7 +85,7 @@ class ChildDeviceSection extends ConsumerWidget {
                 icon: const Icon(Icons.qr_code_2),
                 label: const Text('Gerät verbinden'),
                 style: FilledButton.styleFrom(
-                  backgroundColor: Colors.deepPurple,
+                  backgroundColor: AppColors.purple,
                 ),
               ),
               if (count > 0)

@@ -4,13 +4,15 @@ import '../../auth/presentation/login_screen.dart';
 import '../../auth/presentation/register_screen.dart';
 import '../../../shared/legal_links.dart';
 
+import 'package:lerndex/src/shared/theme/app_theme.dart';
+
 /// QR-Code „Eltern verbinden“ gescannt, aber noch nicht angemeldet. Der Code
 /// ist gemerkt (ParentLinkRepository.rememberPending) und wird nach der
 /// Anmeldung im Familien-Dashboard eingelöst.
 class ParentLinkIntroScreen extends StatelessWidget {
   const ParentLinkIntroScreen({super.key});
 
-  static const _purple = Color(0xFF6B21A8);
+  static const _purple = AppColors.purple;
 
   @override
   Widget build(BuildContext context) {

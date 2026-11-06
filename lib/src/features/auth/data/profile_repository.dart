@@ -163,7 +163,7 @@ class ProfileRepository {
 
     debugPrint(
       '🔮 Starte Quiz-Pre-Fetch fuer neues Kind: $name '
-      '($schoolType, Klasse $grade)...',
+      '($schoolType, Klasse $grade)…',
     );
 
     // Fire-and-forget: Blockiert createChild() NICHT
@@ -450,7 +450,7 @@ class ChildLimitReachedException implements Exception {
   @override
   String toString() {
     if (plan == SubscriptionPlan.none) {
-      return 'Kein aktives Abo. Bitte wähle einen Plan um fortzufahren.';
+      return 'Kein aktives Abo. Bitte wähle einen Plan, um fortzufahren.';
     }
     return 'Du hast das Limit von $limit '
         '${limit == 1 ? "Kind" : "Kindern"} für deinen '

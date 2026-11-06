@@ -4,6 +4,8 @@ import 'package:lerndex/src/features/auth/data/profile_repository.dart';
 import 'package:lerndex/src/features/auth/domain/child_model.dart';
 import '../../../../shared/user_message.dart';
 
+import 'package:lerndex/src/shared/theme/app_theme.dart';
+
 /// Wird nach einem Upgrade angezeigt wenn nicht alle pausierten Kinder
 /// reaktiviert werden können (z.B. Solo → Duo mit 4 Kindern).
 /// Der User wählt welche Kinder reaktiviert werden sollen.
@@ -41,7 +43,7 @@ class _ChildReactivationScreenState
         backgroundColor: const Color(0xFFF3E8FF),
         appBar: AppBar(
           title: const Text('Kinder reaktivieren'),
-          backgroundColor: const Color(0xFF6B21A8),
+          backgroundColor: AppColors.purple,
           foregroundColor: Colors.white,
           automaticallyImplyLeading: false,
         ),
@@ -57,7 +59,7 @@ class _ChildReactivationScreenState
                   const Icon(
                     Icons.upgrade_rounded,
                     size: 48,
-                    color: Color(0xFF6B21A8),
+                    color: AppColors.purple,
                   ),
                   const SizedBox(height: 12),
                   const Text(
@@ -65,7 +67,7 @@ class _ChildReactivationScreenState
                     style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
-                      color: Color(0xFF6B21A8),
+                      color: AppColors.purple,
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -83,7 +85,7 @@ class _ChildReactivationScreenState
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
                       color: _limitReached
-                          ? const Color(0xFF6B21A8)
+                          ? AppColors.purple
                           : Colors.grey.shade500,
                     ),
                   ),
@@ -106,7 +108,7 @@ class _ChildReactivationScreenState
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14),
                       side: isSelected
-                          ? const BorderSide(color: Color(0xFF6B21A8), width: 2)
+                          ? const BorderSide(color: AppColors.purple, width: 2)
                           : BorderSide.none,
                     ),
                     child: ListTile(
@@ -117,7 +119,7 @@ class _ChildReactivationScreenState
                       leading: CircleAvatar(
                         backgroundColor: isDisabled
                             ? Colors.grey.shade300
-                            : const Color(0xFF6B21A8),
+                            : AppColors.purple,
                         radius: 22,
                         backgroundImage: child.selectedAvatar != null
                             ? AssetImage(
@@ -152,7 +154,7 @@ class _ChildReactivationScreenState
                       ),
                       trailing: Checkbox(
                         value: isSelected,
-                        activeColor: const Color(0xFF6B21A8),
+                        activeColor: AppColors.purple,
                         onChanged: isDisabled
                             ? null
                             : (val) {
@@ -191,7 +193,7 @@ class _ChildReactivationScreenState
                   child: ElevatedButton(
                     onPressed: _selected.isEmpty || _saving ? null : _confirm,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF6B21A8),
+                      backgroundColor: AppColors.purple,
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       shape: RoundedRectangleBorder(

@@ -8,6 +8,7 @@ import 'package:lerndex/src/features/tutor/presentation/tutor_screen.dart';
 import 'package:lerndex/src/features/tts/tts_provider.dart';
 import 'package:lerndex/src/shared/widgets/message_bubble.dart';
 
+import 'package:lerndex/src/shared/theme/app_theme.dart';
 // ============================================================================
 // SESSION DETAIL – Nachrichtenanzeige (Schüler-Sicht)
 // ============================================================================
@@ -69,12 +70,12 @@ class SessionDetailScreen extends ConsumerWidget {
                 ),
             ],
           ),
-          backgroundColor: Colors.deepPurple,
+          backgroundColor: AppColors.purple,
           foregroundColor: Colors.white,
         ),
         floatingActionButton: FloatingActionButton.extended(
           onPressed: () => _resumeSession(context, ref),
-          backgroundColor: Colors.deepPurple,
+          backgroundColor: AppColors.purple,
           foregroundColor: Colors.white,
           icon: const Icon(Icons.restart_alt_rounded),
           label: const Text('Chat fortsetzen'),

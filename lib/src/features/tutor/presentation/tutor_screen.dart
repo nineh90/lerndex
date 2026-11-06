@@ -22,6 +22,8 @@ import 'widgets/xp_gain_overlay.dart';
 import 'widgets/tutor_xp_banner.dart';
 import 'package:lerndex/src/features/auth/domain/account.dart';
 
+import 'package:lerndex/src/shared/theme/app_theme.dart';
+
 /// Chat-Screen mit dem KI-Tutor
 class TutorScreen extends ConsumerStatefulWidget {
   const TutorScreen({super.key});
@@ -281,7 +283,7 @@ class _TutorScreenState extends ConsumerState<TutorScreen> {
               ),
             ),
             ListTile(
-              leading: const Icon(Icons.camera_alt, color: Colors.deepPurple),
+              leading: const Icon(Icons.camera_alt, color: AppColors.purple),
               title: const Text('Foto aufnehmen'),
               onTap: () {
                 Navigator.pop(ctx);
@@ -289,10 +291,7 @@ class _TutorScreenState extends ConsumerState<TutorScreen> {
               },
             ),
             ListTile(
-              leading: const Icon(
-                Icons.photo_library,
-                color: Colors.deepPurple,
-              ),
+              leading: const Icon(Icons.photo_library, color: AppColors.purple),
               title: const Text('Aus Galerie wählen'),
               onTap: () {
                 Navigator.pop(ctx);
@@ -419,7 +418,7 @@ class _TutorScreenState extends ConsumerState<TutorScreen> {
           children: [
             CircleAvatar(
               radius: 18,
-              backgroundColor: Colors.deepPurple.shade300,
+              backgroundColor: AppColors.purple.shade300,
               child: ClipOval(
                 child: Image.asset(
                   'assets/images/lerndex_logo.webp',
@@ -435,7 +434,7 @@ class _TutorScreenState extends ConsumerState<TutorScreen> {
             const Text('Lexi'),
           ],
         ),
-        backgroundColor: Colors.deepPurple,
+        backgroundColor: AppColors.purple,
         foregroundColor: Colors.white,
         actions: [
           if (canRead)
@@ -463,7 +462,7 @@ class _TutorScreenState extends ConsumerState<TutorScreen> {
                         Icon(
                           Icons.smart_toy,
                           size: 80,
-                          color: Colors.deepPurple.shade200,
+                          color: AppColors.purple.shade200,
                         ),
                         const SizedBox(height: 16),
                         Text(
@@ -568,7 +567,7 @@ class _TutorScreenState extends ConsumerState<TutorScreen> {
                             // (der Tracker sieht nur Berührungen der App)
                             onChanged: (_) => _timeTracker?.markActivity(),
                             decoration: InputDecoration(
-                              hintText: 'Stell mir eine Frage...',
+                              hintText: 'Stell mir eine Frage…',
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(20),
                                 borderSide: BorderSide.none,
@@ -613,7 +612,7 @@ class _TutorScreenState extends ConsumerState<TutorScreen> {
                               : 'Senden',
                           backgroundColor: isWaiting
                               ? Colors.grey.shade400
-                              : Colors.deepPurple,
+                              : AppColors.purple,
                           mini: true,
                           child: const Icon(
                             Icons.send,
@@ -783,7 +782,7 @@ class _MicButtonState extends ConsumerState<_MicButton> {
       height: 40,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: listening ? Colors.red.shade400 : Colors.deepPurple,
+        color: listening ? Colors.red.shade400 : AppColors.purple,
         boxShadow: listening
             ? [
                 BoxShadow(
@@ -837,14 +836,14 @@ class _AttachButton extends StatelessWidget {
                 height: 40,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: Colors.deepPurple.shade50,
-                  border: Border.all(color: Colors.deepPurple.shade200),
+                  color: AppColors.purple.shade50,
+                  border: Border.all(color: AppColors.purple.shade200),
                 ),
                 child: Icon(
                   Icons.add_a_photo_outlined,
                   color: onTap == null
-                      ? Colors.deepPurple.shade200
-                      : Colors.deepPurple,
+                      ? AppColors.purple.shade200
+                      : AppColors.purple,
                   size: 20,
                 ),
               ),

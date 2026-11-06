@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:lerndex/src/shared/theme/app_theme.dart';
 // =============================================================================
 // CLAIMED REWARDS BANNER
 // =============================================================================
@@ -29,13 +30,13 @@ class ClaimedRewardsBanner extends StatelessWidget {
           width: double.infinity,
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           decoration: BoxDecoration(
-            color: Colors.deepPurple.shade50,
+            color: AppColors.purple.shade50,
             borderRadius: const BorderRadius.only(
               topLeft: Radius.circular(16),
               topRight: Radius.circular(16),
             ),
             border: Border(
-              bottom: BorderSide(color: Colors.deepPurple.shade100),
+              bottom: BorderSide(color: AppColors.purple.shade100),
             ),
           ),
           child: Row(
@@ -43,7 +44,7 @@ class ClaimedRewardsBanner extends StatelessWidget {
               Icon(
                 Icons.redeem_outlined,
                 size: 16,
-                color: Colors.deepPurple.shade600,
+                color: AppColors.purple.shade600,
               ),
               const SizedBox(width: 8),
               Expanded(
@@ -52,14 +53,14 @@ class ClaimedRewardsBanner extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
-                    color: Colors.deepPurple.shade700,
+                    color: AppColors.purple.shade700,
                   ),
                 ),
               ),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(
-                  color: Colors.deepPurple.shade600,
+                  color: AppColors.purple.shade600,
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Text(
@@ -75,7 +76,7 @@ class ClaimedRewardsBanner extends StatelessWidget {
               Icon(
                 Icons.chevron_right,
                 size: 16,
-                color: Colors.deepPurple.shade400,
+                color: AppColors.purple.shade400,
               ),
             ],
           ),

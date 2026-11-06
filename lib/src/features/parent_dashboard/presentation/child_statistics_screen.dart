@@ -9,9 +9,11 @@ import 'widgets/widgets_info_tile.dart';
 import 'widgets/widgets_stat_card.dart';
 import 'package:lerndex/src/features/auth/domain/account.dart';
 
+import 'package:lerndex/src/shared/theme/app_theme.dart';
+
 // ─── Lerndex Brand-Theme für Eltern-Screens ──────────────────────────────────
 // Brand-Lila aus main.dart (ColorScheme.fromSeed seed). Wird hier konsistent
-// statt der lockeren `Colors.deepPurple`-Variante verwendet.
+// statt der lockeren `AppColors.purple`-Variante verwendet.
 //
 // Komplette Lila-Palette für Variation innerhalb des Brands:
 //   _kBrand        — Haupt-Lila (AppBar, Buttons, Streak)
@@ -20,12 +22,12 @@ import 'package:lerndex/src/features/auth/domain/account.dart';
 //   _kBrandSoft    — Pastell-Lila (Lernzeit-Block, dezent)
 //   _kBrandAccent  — Pink-Lila (Sterne/Belohnungen statt gelb-amber)
 //   _kBrandTint    — 10% Lila-Hintergrund für getintete Container
-const Color _kBrand = Color(0xFF6B21A8);
+const Color _kBrand = AppColors.purple;
 const Color _kBrandLight = Color(0xFF9333EA);
 const Color _kBrandDeep = Color(0xFF4C1D95);
 const Color _kBrandSoft = Color(0xFFA855F7);
 const Color _kBrandAccent = Color(0xFFC026D3);
-final Color _kBrandTint = const Color(0xFF6B21A8).withValues(alpha: 0.10);
+final Color _kBrandTint = AppColors.purple.withValues(alpha: 0.10);
 
 // ─── Daten (von Riverpod zwischengespeichert, nicht bei jedem build() neu) ───
 

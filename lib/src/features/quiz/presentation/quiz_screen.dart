@@ -17,6 +17,7 @@ import '../data/quiz_prefetch_service.dart';
 import '../../../ai/vertex_ai_service.dart';
 import 'package:lerndex/src/features/auth/domain/account.dart';
 
+import 'package:lerndex/src/shared/theme/app_theme.dart';
 // ============================================================================
 // QUIZ SCREEN – Klasse 3+ (v2)
 //
@@ -270,7 +271,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
     // Klasse 3-4: klassische Fachfarben (dunkle Töne)
     switch (widget.subject.toLowerCase()) {
       case 'mathe':
-        return Colors.deepPurple;
+        return AppColors.purple;
       case 'deutsch':
         return Colors.red.shade700;
       case 'englisch':
@@ -286,7 +287,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
       case 'geschichte':
         return const Color(0xFF6D4C41);
       default:
-        return Colors.deepPurple;
+        return AppColors.purple;
     }
   }
 
@@ -399,7 +400,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen>
             const CircularProgressIndicator(color: Colors.white),
             const SizedBox(height: 24),
             Text(
-              'Bereite dein ${widget.subject}-Quiz vor...',
+              'Bereite dein ${widget.subject}-Quiz vor…',
               style: const TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
@@ -1167,10 +1168,10 @@ class _WrongQuestionTileState extends ConsumerState<_WrongQuestionTile> {
               '💡 Antwort erklären',
               style: TextStyle(
                 fontSize: 13,
-                color: Color(0xFF6B21A8),
+                color: AppColors.purple,
                 fontWeight: FontWeight.w600,
                 decoration: TextDecoration.underline,
-                decorationColor: Color(0xFF6B21A8),
+                decorationColor: AppColors.purple,
               ),
             ),
           ),
@@ -1183,7 +1184,7 @@ class _WrongQuestionTileState extends ConsumerState<_WrongQuestionTile> {
                 height: 14,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
-                  color: Color(0xFF6B21A8),
+                  color: AppColors.purple,
                 ),
               ),
               SizedBox(width: 8),

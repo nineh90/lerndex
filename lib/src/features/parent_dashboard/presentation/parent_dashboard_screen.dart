@@ -14,6 +14,8 @@ import '../../subscription/presentation/paywall_screen.dart';
 import '../../school/data/school_repository.dart';
 import '../../school/presentation/school_home_screen.dart';
 
+import 'package:lerndex/src/shared/theme/app_theme.dart';
+
 /// Haupt-Dashboard für Eltern mit Statistiken & Verwaltung
 class ParentDashboardScreen extends ConsumerStatefulWidget {
   const ParentDashboardScreen({super.key});
@@ -61,7 +63,7 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: const Text('Eltern-Dashboard'),
-        backgroundColor: Colors.deepPurple,
+        backgroundColor: AppColors.purple,
         foregroundColor: Colors.white,
         actions: [
           // Lehrkräfte: direkt in den Lehrerbereich
@@ -191,7 +193,7 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
           }
         },
         type: BottomNavigationBarType.fixed,
-        selectedItemColor: Colors.deepPurple,
+        selectedItemColor: AppColors.purple,
         unselectedItemColor: Colors.grey,
         items: [
           BottomNavigationBarItem(
@@ -435,7 +437,7 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Row(
           children: [
-            Icon(Icons.child_care, color: Color(0xFF6B21A8)),
+            Icon(Icons.child_care, color: AppColors.purple),
             SizedBox(width: 10),
             Flexible(
               child: Text(
@@ -459,11 +461,7 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
                 child: const Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(
-                      Icons.info_outline,
-                      color: Color(0xFF6B21A8),
-                      size: 20,
-                    ),
+                    Icon(Icons.info_outline, color: AppColors.purple, size: 20),
                     SizedBox(width: 10),
                     Expanded(
                       child: Text(
@@ -504,7 +502,7 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF6B21A8),
+              backgroundColor: AppColors.purple,
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(10),

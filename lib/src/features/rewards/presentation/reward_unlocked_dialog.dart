@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:confetti/confetti.dart';
 import '../domain/reward_model.dart';
 
+import 'package:lerndex/src/shared/theme/app_theme.dart';
 // ============================================================================
 // REWARD UNLOCKED DIALOG — Lerndex Design v2
 //
@@ -33,7 +34,7 @@ class _RewardUnlockedDialogState extends State<RewardUnlockedDialog>
   late ConfettiController _confettiController;
 
   // Lerndex Lila Palette
-  static const _purple = Color(0xFF6B21A8);
+  static const _purple = AppColors.purple;
   static const _purpleLight = Color(0xFF9333EA);
   static const _purpleDark = Color(0xFF4C1D95);
 
@@ -277,7 +278,7 @@ class _LevelBadge extends StatelessWidget {
               style: const TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.w900,
-                color: Color(0xFF6B21A8),
+                color: AppColors.purple,
               ),
             ),
           ),

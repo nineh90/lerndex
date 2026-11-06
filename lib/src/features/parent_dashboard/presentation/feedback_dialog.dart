@@ -5,6 +5,8 @@ import 'package:image_picker/image_picker.dart';
 import '../../../shared/widgets/picked_image.dart';
 import '../data/feedback_repository.dart';
 
+import 'package:lerndex/src/shared/theme/app_theme.dart';
+
 class FeedbackDialog extends ConsumerStatefulWidget {
   const FeedbackDialog({super.key});
 
@@ -57,7 +59,9 @@ class _FeedbackDialogState extends ConsumerState<FeedbackDialog> {
     setState(() => _isSending = true);
 
     try {
-      await ref.read(feedbackRepositoryProvider).sendFeedback(
+      await ref
+          .read(feedbackRepositoryProvider)
+          .sendFeedback(
             subject: _subjectCtrl.text,
             message: _messageCtrl.text,
             screenshot: _screenshot,
@@ -77,15 +81,17 @@ class _FeedbackDialogState extends ConsumerState<FeedbackDialog> {
       final msg = e.code == 'permission-denied'
           ? 'Bitte gib mindestens 10 Zeichen ein.'
           : 'Senden fehlgeschlagen. Bitte versuch es später erneut.';
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(msg), backgroundColor: Colors.red),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(msg), backgroundColor: Colors.red));
     } catch (_) {
       if (!mounted) return;
       setState(() => _isSending = false);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Senden fehlgeschlagen. Bitte versuch es später erneut.'),
+          content: Text(
+            'Senden fehlgeschlagen. Bitte versuch es später erneut.',
+          ),
           backgroundColor: Colors.red,
         ),
       );
@@ -98,7 +104,7 @@ class _FeedbackDialogState extends ConsumerState<FeedbackDialog> {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       title: const Row(
         children: [
-          Icon(Icons.feedback_outlined, color: Colors.deepPurple),
+          Icon(Icons.feedback_outlined, color: AppColors.purple),
           SizedBox(width: 8),
           Expanded(child: Text('Feedback senden')),
         ],
@@ -182,9 +188,9 @@ class _FeedbackDialogState extends ConsumerState<FeedbackDialog> {
         ElevatedButton.icon(
           onPressed: _isSending ? null : _submit,
           style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.deepPurple,
+            backgroundColor: AppColors.purple,
             foregroundColor: Colors.white,
-            disabledBackgroundColor: Colors.deepPurple.withValues(alpha: 0.4),
+            disabledBackgroundColor: AppColors.purple.withValues(alpha: 0.4),
           ),
           icon: _isSending
               ? const SizedBox(
@@ -210,7 +216,7 @@ class _FeedbackDialogState extends ConsumerState<FeedbackDialog> {
           onPressed: _isSending ? null : _pickScreenshot,
           icon: const Icon(Icons.image_outlined, size: 18),
           label: const Text('Screenshot anhängen (optional)'),
-          style: TextButton.styleFrom(foregroundColor: Colors.deepPurple),
+          style: TextButton.styleFrom(foregroundColor: AppColors.purple),
         ),
       );
     }
@@ -227,13 +233,12 @@ class _FeedbackDialogState extends ConsumerState<FeedbackDialog> {
         ),
         const SizedBox(width: 10),
         const Expanded(
-          child: Text(
-            'Screenshot angehängt',
-            style: TextStyle(fontSize: 13),
-          ),
+          child: Text('Screenshot angehängt', style: TextStyle(fontSize: 13)),
         ),
         IconButton(
-          onPressed: _isSending ? null : () => setState(() => _screenshot = null),
+          onPressed: _isSending
+              ? null
+              : () => setState(() => _screenshot = null),
           icon: const Icon(Icons.close, size: 20),
           tooltip: 'Entfernen',
           color: Colors.grey.shade700,
@@ -258,7 +263,7 @@ class _FeedbackDialogState extends ConsumerState<FeedbackDialog> {
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: Colors.deepPurple, width: 1.5),
+        borderSide: const BorderSide(color: AppColors.purple, width: 1.5),
       ),
     );
   }

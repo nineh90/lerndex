@@ -5,6 +5,7 @@ import '../../../../shared/widgets/message_bubble.dart';
 import '../../../tutor/data/chat_message_firestore.dart';
 import 'content_flag_banner.dart';
 
+import 'package:lerndex/src/shared/theme/app_theme.dart';
 // ============================================================================
 // PARENT SESSION DETAIL
 // Eltern-Ansicht eines Tutor-Gesprächs mit Löschen-Button und Flag-Banner
@@ -49,7 +50,7 @@ class ParentSessionDetailScreen extends StatelessWidget {
           ],
         ),
         // ✅ Immer Lerndex-Lila – unabhängig vom Fach
-        backgroundColor: Colors.deepPurple,
+        backgroundColor: AppColors.purple,
         foregroundColor: Colors.white,
         actions: [
           IconButton(
@@ -96,7 +97,7 @@ class ParentSessionDetailScreen extends StatelessWidget {
                     return MessageBubble(
                       message: chatMessageFromFirestore(docs[i].id, msg),
                       childName: childName,
-                      topicColor: Colors.deepPurple,
+                      topicColor: AppColors.purple,
                     );
                   },
                 );

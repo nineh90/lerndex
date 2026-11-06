@@ -56,7 +56,9 @@ class Question {
     // Frage-Text sanitisieren: Platzhalter wie "(Bild eines Apfels)"
     // werden entfernt, da wir stattdessen das emoji-Feld nutzen.
     final rawQuestion = json['question'] as String;
-    final cleanedQuestion = AiResponseParser.stripImagePlaceholders(rawQuestion);
+    final cleanedQuestion = AiResponseParser.stripImagePlaceholders(
+      rawQuestion,
+    );
 
     return Question(
       grade: json['grade'] as int? ?? 1,
@@ -134,5 +136,5 @@ class Question {
   @override
   String toString() =>
       'Question(grade: $grade, topic: $topic, difficulty: $difficulty, '
-      'q: "${question.length > 50 ? "${question.substring(0, 50)}..." : question}")';
+      'q: "${question.length > 50 ? "${question.substring(0, 50)}…" : question}")';
 }

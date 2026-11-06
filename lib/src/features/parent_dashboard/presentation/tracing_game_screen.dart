@@ -939,7 +939,7 @@ class _TracingGameScreenState extends ConsumerState<TracingGameScreen>
                       ),
                       const SizedBox(height: 16),
                       Text(
-                        '🔍 Schaue mir das an...',
+                        '🔍 Schaue mir das an…',
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,

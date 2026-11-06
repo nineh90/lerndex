@@ -5,6 +5,8 @@ import '../../auth/data/profile_repository.dart';
 import '../../student_dashboard/presentation/subject_config.dart';
 import 'widgets/child_device_section.dart';
 
+import 'package:lerndex/src/shared/theme/app_theme.dart';
+
 /// Screen zum Bearbeiten eines Kindes
 class EditChildScreen extends ConsumerStatefulWidget {
   final ChildModel child;
@@ -97,7 +99,7 @@ class _EditChildScreenState extends ConsumerState<EditChildScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text('${widget.child.name} bearbeiten'),
-        backgroundColor: Colors.deepPurple,
+        backgroundColor: AppColors.purple,
         foregroundColor: Colors.white,
         actions: [
           if (_isSaving)
@@ -138,13 +140,13 @@ class _EditChildScreenState extends ConsumerState<EditChildScreen> {
               Center(
                 child: CircleAvatar(
                   radius: 48,
-                  backgroundColor: Colors.deepPurple.shade100,
+                  backgroundColor: AppColors.purple.shade100,
                   child: Text(
                     widget.child.name[0].toUpperCase(),
                     style: const TextStyle(
                       fontSize: 40,
                       fontWeight: FontWeight.bold,
-                      color: Colors.deepPurple,
+                      color: AppColors.purple,
                     ),
                   ),
                 ),
@@ -280,10 +282,10 @@ class _EditChildScreenState extends ConsumerState<EditChildScreen> {
                         )
                       : const Icon(Icons.save),
                   label: Text(
-                    _isSaving ? 'Wird gespeichert...' : 'Änderungen speichern',
+                    _isSaving ? 'Wird gespeichert…' : 'Änderungen speichern',
                   ),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.deepPurple,
+                    backgroundColor: AppColors.purple,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
@@ -323,11 +325,11 @@ class _EditChildScreenState extends ConsumerState<EditChildScreen> {
     return InputDecoration(
       labelText: label,
       hintText: hint,
-      prefixIcon: Icon(icon, color: Colors.deepPurple),
+      prefixIcon: Icon(icon, color: AppColors.purple),
       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: Colors.deepPurple, width: 2),
+        borderSide: const BorderSide(color: AppColors.purple, width: 2),
       ),
       filled: true,
       fillColor: Colors.grey.shade50,
@@ -377,7 +379,7 @@ class _EditChildScreenState extends ConsumerState<EditChildScreen> {
                 }
               });
             },
-            activeThumbColor: Colors.deepPurple,
+            activeThumbColor: AppColors.purple,
             secondary: Text(s.emoji, style: const TextStyle(fontSize: 24)),
             title: Text(
               s.title,
@@ -406,19 +408,19 @@ class _SectionHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Icon(icon, color: Colors.deepPurple, size: 20),
+        Icon(icon, color: AppColors.purple, size: 20),
         const SizedBox(width: 8),
         Text(
           title,
           style: const TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.bold,
-            color: Colors.deepPurple,
+            color: AppColors.purple,
           ),
         ),
         const SizedBox(width: 8),
         Expanded(
-          child: Divider(color: Colors.deepPurple.shade100, thickness: 1),
+          child: Divider(color: AppColors.purple.shade100, thickness: 1),
         ),
       ],
     );

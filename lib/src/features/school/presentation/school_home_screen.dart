@@ -15,6 +15,8 @@ import 'school_admin_screen.dart';
 import '../../../shared/user_message.dart';
 import '../../../shared/legal_links.dart';
 
+import 'package:lerndex/src/shared/theme/app_theme.dart';
+
 /// Startseite eines reinen Schulkontos bzw. Lehrergeräts: lädt die
 /// Schul-Rolle aus dem (frischen) Token und zeigt den Schulbereich – ohne
 /// Elternbereich.
@@ -98,7 +100,7 @@ class _SchoolRootScreenState extends ConsumerState<SchoolRootScreen> {
           appBar: AppBar(
             automaticallyImplyLeading: false,
             title: const Text('Lerndex für Schulen'),
-            backgroundColor: Colors.deepPurple,
+            backgroundColor: AppColors.purple,
             foregroundColor: Colors.white,
             actions: const [SchoolLogoutAction()],
           ),
@@ -168,13 +170,13 @@ class SchoolHomeScreen extends ConsumerWidget {
       appBar: AppBar(
         automaticallyImplyLeading: !isRoot,
         title: Text(name.isEmpty ? 'Schule' : name),
-        backgroundColor: Colors.deepPurple,
+        backgroundColor: AppColors.purple,
         foregroundColor: Colors.white,
         actions: [if (isRoot) const SchoolLogoutAction()],
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _addClass(context, ref),
-        backgroundColor: Colors.deepPurple,
+        backgroundColor: AppColors.purple,
         foregroundColor: Colors.white,
         icon: const Icon(Icons.add),
         label: const Text('Klasse anlegen'),
@@ -200,7 +202,7 @@ class SchoolHomeScreen extends ConsumerWidget {
                         (c) => Card(
                           child: ListTile(
                             leading: CircleAvatar(
-                              backgroundColor: Colors.deepPurple.shade100,
+                              backgroundColor: AppColors.purple.shade100,
                               child: Padding(
                                 padding: const EdgeInsets.all(4),
                                 child: FittedBox(
@@ -208,7 +210,7 @@ class SchoolHomeScreen extends ConsumerWidget {
                                     classAvatarLabel(c.name),
                                     style: const TextStyle(
                                       fontWeight: FontWeight.bold,
-                                      color: Colors.deepPurple,
+                                      color: AppColors.purple,
                                     ),
                                   ),
                                 ),
@@ -330,7 +332,7 @@ class _Header extends StatelessWidget {
       style: const TextStyle(
         fontSize: 16,
         fontWeight: FontWeight.bold,
-        color: Colors.deepPurple,
+        color: AppColors.purple,
       ),
     ),
   );

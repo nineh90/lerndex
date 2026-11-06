@@ -213,7 +213,7 @@ const Map<TutorialStep, TutorialContent> tutorialContent = {
   TutorialStep.showChildCard: TutorialContent(
     title: 'Dein Kind ist da! 🎉',
     body:
-        'Super! Das Kind erscheint jetzt hier im Familien-Dashboard. Tippe auf die Karte um das Kinder-Dashboard zu öffnen. Aber erst schauen wir noch kurz ins Eltern-Dashboard.',
+        'Super! Das Kind erscheint jetzt hier im Familien-Dashboard. Tippe auf die Karte, um das Kinder-Dashboard zu öffnen. Aber erst schauen wir noch kurz ins Eltern-Dashboard.',
     buttonLabel: 'Weiter zum Eltern-Dashboard',
     icon: Icons.child_care_outlined,
   ),
