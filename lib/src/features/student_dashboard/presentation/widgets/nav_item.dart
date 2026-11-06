@@ -58,7 +58,7 @@ class NavItem extends StatelessWidget {
                         badgeCount > 99 ? '99+' : '$badgeCount',
                         style: const TextStyle(
                           color: Colors.white,
-                          fontSize: 9,
+                          fontSize: 11,
                           fontWeight: FontWeight.bold,
                           height: 1,
                         ),
@@ -72,7 +72,7 @@ class NavItem extends StatelessWidget {
             Text(
               label,
               style: TextStyle(
-                fontSize: 10,
+                fontSize: 12,
                 color: selected ? Colors.deepPurple : Colors.grey,
                 fontWeight: selected ? FontWeight.bold : FontWeight.normal,
               ),

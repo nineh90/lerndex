@@ -155,8 +155,7 @@ class _EarlyLearnerDashboardScreenState
 
   @override
   Widget build(BuildContext context) {
-    final rewardsCount =
-        ref.watch(availableRewardsCountProvider).value ?? 0;
+    final rewardsCount = ref.watch(availableRewardsCountProvider).value ?? 0;
 
     return PopScope(
       canPop: _currentTab == _EarlyTab.home,
@@ -214,7 +213,9 @@ class _EarlyLearnerDashboardScreenState
         grade: grade,
         subjectColors: subject.colors,
       ),
-      _ => throw StateError('Unbekanntes Early-Learner-Fach: ${subject.subject}'),
+      _ => throw StateError(
+        'Unbekanntes Early-Learner-Fach: ${subject.subject}',
+      ),
     };
 
     Navigator.push(
@@ -223,7 +224,10 @@ class _EarlyLearnerDashboardScreenState
         pageBuilder: (_, animation, _) => screen,
         transitionsBuilder: (_, animation, _, child) {
           return ScaleTransition(
-            scale: CurvedAnimation(parent: animation, curve: Curves.easeOutBack),
+            scale: CurvedAnimation(
+              parent: animation,
+              curve: Curves.easeOutBack,
+            ),
             child: child,
           );
         },
@@ -254,12 +258,14 @@ class _EarlyLearnerDashboardScreenState
           children: [
             _BigNavButton(
               emoji: '🏠',
+              label: 'Lernen',
               isSelected: _currentTab == _EarlyTab.home,
               color: const Color(0xFF7C4DFF),
               onTap: () => setState(() => _currentTab = _EarlyTab.home),
             ),
             _BigNavButton(
               emoji: '🎁',
+              label: 'Geschenke',
               isSelected: _currentTab == _EarlyTab.rewards,
               color: const Color(0xFFEC407A),
               badgeCount: rewardsCount,
@@ -267,6 +273,7 @@ class _EarlyLearnerDashboardScreenState
             ),
             _BigNavButton(
               emoji: '⭐',
+              label: 'Meine Sterne',
               isSelected: _currentTab == _EarlyTab.stars,
               color: const Color(0xFF9C64FF),
               onTap: () => setState(() => _currentTab = _EarlyTab.stars),
@@ -420,7 +427,7 @@ class _CompactHeader extends ConsumerWidget {
         ? _buildContent(
             context,
             ref,
-            child.stars,
+            child.xp,
             child.level,
             ttsEnabled,
             ttsState.isSpeaking,
@@ -434,7 +441,9 @@ class _CompactHeader extends ConsumerWidget {
                 .snapshots(),
             builder: (context, snapshot) {
               final data = snapshot.data?.data() as Map<String, dynamic>?;
-              final stars = data?['stars'] as int? ?? child.stars;
+              // In Kl. 1–2 heißen die XP „Sterne“ (child.stars wird nicht mehr
+              // vergeben und bliebe 0).
+              final stars = data?['xp'] as int? ?? child.xp;
               final level = data?['level'] as int? ?? child.level;
               return _buildContent(
                 context,
@@ -485,22 +494,27 @@ class _CompactHeader extends ConsumerWidget {
               if (ref.watch(isChildDeviceProvider))
                 const DeviceLogoutButton(color: Colors.white)
               else
-              GestureDetector(
-                onTap: () => Navigator.of(context).pop(),
-                child: Container(
-                  width: 42,
-                  height: 42,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.3),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.arrow_back_rounded,
-                    color: Colors.white,
-                    size: 22,
+                Semantics(
+                  button: true,
+                  label: 'Zurück',
+                  excludeSemantics: true,
+                  child: GestureDetector(
+                    onTap: () => Navigator.of(context).pop(),
+                    child: Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.3),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.arrow_back_rounded,
+                        color: Colors.white,
+                        size: 22,
+                      ),
+                    ),
                   ),
                 ),
-              ),
 
               const SizedBox(width: 10),
 
@@ -530,7 +544,9 @@ class _CompactHeader extends ConsumerWidget {
                             color: Colors.white,
                             boxShadow: [
                               BoxShadow(
-                                color: const Color(0xFF512DA8).withValues(alpha: 0.3),
+                                color: const Color(
+                                  0xFF512DA8,
+                                ).withValues(alpha: 0.3),
                                 blurRadius: 12,
                                 offset: const Offset(0, 4),
                               ),
@@ -608,12 +624,12 @@ class _CompactHeader extends ConsumerWidget {
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              const Text('🏆', style: TextStyle(fontSize: 12)),
+                              const Text('🏆', style: TextStyle(fontSize: 14)),
                               const SizedBox(width: 3),
                               Text(
                                 '$level',
                                 style: const TextStyle(
-                                  fontSize: 12,
+                                  fontSize: 14,
                                   fontWeight: FontWeight.bold,
                                   color: Colors.white,
                                 ),
@@ -634,12 +650,12 @@ class _CompactHeader extends ConsumerWidget {
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              const Text('⭐', style: TextStyle(fontSize: 12)),
+                              const Text('⭐', style: TextStyle(fontSize: 14)),
                               const SizedBox(width: 3),
                               Text(
                                 '$stars',
                                 style: const TextStyle(
-                                  fontSize: 12,
+                                  fontSize: 14,
                                   fontWeight: FontWeight.bold,
                                   color: Colors.white,
                                 ),
@@ -654,33 +670,39 @@ class _CompactHeader extends ConsumerWidget {
               ),
 
               // ── TTS Toggle ─────────────────────────────────────────
-              GestureDetector(
-                onTap: () {
-                  HapticFeedback.selectionClick();
-                  ref.read(ttsSettingsProvider(child.id).notifier).toggle();
-                },
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 250),
-                  width: 46,
-                  height: 46,
-                  decoration: BoxDecoration(
-                    color: ttsEnabled
-                        ? Colors.white.withValues(alpha: 0.35)
-                        : Colors.black.withValues(alpha: 0.15),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Center(
-                    child: AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 200),
-                      child: Icon(
-                        ttsEnabled
-                            ? (isSpeaking
-                                  ? Icons.volume_up_rounded
-                                  : Icons.volume_up_rounded)
-                            : Icons.volume_off_rounded,
-                        key: ValueKey(ttsEnabled),
-                        color: Colors.white,
-                        size: 24,
+              Semantics(
+                button: true,
+                toggled: ttsEnabled,
+                label: 'Vorlesen',
+                excludeSemantics: true,
+                child: GestureDetector(
+                  onTap: () {
+                    HapticFeedback.selectionClick();
+                    ref.read(ttsSettingsProvider(child.id).notifier).toggle();
+                  },
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 250),
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: ttsEnabled
+                          ? Colors.white.withValues(alpha: 0.35)
+                          : Colors.black.withValues(alpha: 0.15),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Center(
+                      child: AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 200),
+                        child: Icon(
+                          ttsEnabled
+                              ? (isSpeaking
+                                    ? Icons.volume_up_rounded
+                                    : Icons.volume_up_rounded)
+                              : Icons.volume_off_rounded,
+                          key: ValueKey(ttsEnabled),
+                          color: Colors.white,
+                          size: 24,
+                        ),
                       ),
                     ),
                   ),
@@ -974,8 +996,7 @@ class _GiftTeaserState extends ConsumerState<_GiftTeaser>
 
   @override
   Widget build(BuildContext context) {
-    final rewardsCount =
-        ref.watch(availableRewardsCountProvider).value ?? 0;
+    final rewardsCount = ref.watch(availableRewardsCountProvider).value ?? 0;
 
     // Nichts anzeigen wenn keine Belohnungen verfügbar
     if (rewardsCount == 0) return const SizedBox.shrink();
@@ -1039,7 +1060,7 @@ class _GiftTeaserState extends ConsumerState<_GiftTeaser>
                   Text(
                     'Tippe hier zum Anschauen',
                     style: TextStyle(
-                      fontSize: 12,
+                      fontSize: 16,
                       color: Colors.white.withValues(alpha: 0.8),
                       fontWeight: FontWeight.w500,
                     ),
@@ -1193,7 +1214,7 @@ class _StarsContent extends ConsumerWidget {
                   Text(
                     'Noch $xpToNext ⭐ bis Level ${level + 1}',
                     style: TextStyle(
-                      fontSize: 13,
+                      fontSize: 16,
                       color: Colors.grey.shade600,
                       fontWeight: FontWeight.w500,
                     ),
@@ -1282,6 +1303,9 @@ class _LevelBadge extends StatelessWidget {
 
 class _BigNavButton extends StatelessWidget {
   final String emoji;
+
+  /// Für Screenreader (sichtbar ist nur das Emoji).
+  final String label;
   final bool isSelected;
   final Color color;
   final VoidCallback onTap;
@@ -1289,6 +1313,7 @@ class _BigNavButton extends StatelessWidget {
 
   const _BigNavButton({
     required this.emoji,
+    required this.label,
     required this.isSelected,
     required this.color,
     required this.onTap,
@@ -1297,45 +1322,53 @@ class _BigNavButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () {
-        HapticFeedback.selectionClick();
-        onTap();
-      },
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        width: 80,
-        height: 62,
-        decoration: BoxDecoration(
-          color: isSelected ? color.withValues(alpha: 0.15) : Colors.transparent,
-          borderRadius: BorderRadius.circular(22),
-        ),
-        child: Stack(
-          clipBehavior: Clip.none,
-          alignment: Alignment.center,
-          children: [
-            Text(emoji, style: TextStyle(fontSize: isSelected ? 38 : 30)),
-            if (badgeCount > 0)
-              Positioned(
-                top: 4,
-                right: 6,
-                child: Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: const BoxDecoration(
-                    color: Colors.red,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Text(
-                    badgeCount > 9 ? '9+' : '$badgeCount',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
+    return Semantics(
+      button: true,
+      selected: isSelected,
+      label: badgeCount > 0 ? '$label, $badgeCount neu' : label,
+      excludeSemantics: true,
+      child: GestureDetector(
+        onTap: () {
+          HapticFeedback.selectionClick();
+          onTap();
+        },
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          width: 80,
+          height: 62,
+          decoration: BoxDecoration(
+            color: isSelected
+                ? color.withValues(alpha: 0.15)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(22),
+          ),
+          child: Stack(
+            clipBehavior: Clip.none,
+            alignment: Alignment.center,
+            children: [
+              Text(emoji, style: TextStyle(fontSize: isSelected ? 38 : 30)),
+              if (badgeCount > 0)
+                Positioned(
+                  top: 4,
+                  right: 6,
+                  child: Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: const BoxDecoration(
+                      color: Colors.red,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Text(
+                      badgeCount > 9 ? '9+' : '$badgeCount',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                 ),
-              ),
-          ],
+            ],
+          ),
         ),
       ),
     );

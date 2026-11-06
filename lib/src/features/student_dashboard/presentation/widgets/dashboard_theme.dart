@@ -134,7 +134,7 @@ class DashboardThemes {
 
   static const slate = DashboardThemeData(
     preset: DashboardThemePreset.slate,
-    name: 'Slate',
+    name: 'Schiefer',
     emoji: '🩶',
     primary: Color(0xFF455A64),
     secondary: Color(0xFF263238),

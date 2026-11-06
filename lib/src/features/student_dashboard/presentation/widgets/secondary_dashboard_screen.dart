@@ -161,6 +161,7 @@ class _SecondaryDashboardScreenState
                   Navigator.of(context).pop();
                 }
               },
+              tooltip: 'Zurück',
             ),
       title: Text(
         _appBarTitle(),
@@ -797,7 +798,7 @@ class _HeaderStat extends StatelessWidget {
         Text(
           label,
           style: TextStyle(
-            fontSize: 11,
+            fontSize: 12,
             color: Colors.white.withValues(alpha: 0.6),
             fontWeight: FontWeight.w500,
           ),
@@ -926,7 +927,7 @@ class _QuickStatCard extends StatelessWidget {
           Text(
             label,
             style: TextStyle(
-              fontSize: 10,
+              fontSize: 12,
               color: theme.onSurface.withValues(alpha: 0.5),
             ),
             textAlign: TextAlign.center,
@@ -1085,7 +1086,7 @@ class _ModernSubjectCardState extends State<_ModernSubjectCard>
                             widget.config.title,
                             style: TextStyle(
                               color: widget.theme.onSurface,
-                              fontSize: 11,
+                              fontSize: 13,
                               fontWeight: FontWeight.w700,
                               letterSpacing: 0.1,
                             ),
@@ -1197,7 +1198,7 @@ class _SecondaryNavItem extends StatelessWidget {
             Text(
               label,
               style: TextStyle(
-                fontSize: 10,
+                fontSize: 12,
                 color: selected
                     ? theme.primary
                     : theme.onSurface.withValues(alpha: 0.4),
