@@ -3,12 +3,24 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'generated_task_models.dart';
-import 'approved_questions_params.dart';
 
 /// 🗄️ REPOSITORY FÜR GENERIERTE AUFGABEN
 /// Verwaltet das Speichern, Laden und Freigeben von KI-generierten Aufgaben
 class GeneratedTaskRepository {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  GeneratedTaskRepository({
+    FirebaseFirestore? firestore,
+    FirebaseStorage? storage,
+  }) : _firestore = firestore ?? FirebaseFirestore.instance,
+       _storageOverride = storage;
+
+  final FirebaseFirestore _firestore;
+  final FirebaseStorage? _storageOverride;
+  FirebaseStorage get _storage => _storageOverride ?? FirebaseStorage.instance;
+
+  /// Batches, deren freigegebene Aufgaben das Kind schon alle gelöst hat –
+  /// mit der Zahl freigegebener Aufgaben zu dem Zeitpunkt. Solange die gleich
+  /// bleibt, muss der Quizstart dort nicht noch einmal nachsehen.
+  final Map<String, int> _doneBatches = {};
 
   // ========================================================================
   // AUFGABEN SPEICHERN
@@ -163,7 +175,10 @@ class GeneratedTaskRepository {
         });
   }
 
-  /// Lehrkraft: Auftrag zurückziehen (alle Batches samt Aufgaben).
+  /// Lehrkraft: Auftrag zurückziehen (alle Batches samt Aufgaben und Foto).
+  ///
+  /// Das Foto löschen dürfen Lehrkräfte laut storage.rules nicht – der
+  /// Fehler wird geschluckt, den Rest räumt der Server auf.
   Future<void> deleteAssignment(String ownerUid, String assignmentId) async {
     final batches = await _firestore
         .collection('users')
@@ -171,7 +186,10 @@ class GeneratedTaskRepository {
         .collection('generated_batches')
         .where('assignmentId', isEqualTo: assignmentId)
         .get();
+    final imageUrls = <String>{};
     for (final batchDoc in batches.docs) {
+      final imageUrl = batchDoc.data()['imageUrl'] as String?;
+      if (imageUrl != null && imageUrl.isNotEmpty) imageUrls.add(imageUrl);
       final questions = await batchDoc.reference.collection('questions').get();
       final writes = _firestore.batch();
       for (final q in questions.docs) {
@@ -180,40 +198,25 @@ class GeneratedTaskRepository {
       writes.delete(batchDoc.reference);
       await writes.commit();
     }
+    for (final url in imageUrls) {
+      await deleteTaskImage(url);
+    }
+  }
+
+  /// Löscht ein Aufgaben-Foto aus Storage (best effort: Lehrkräfte dürfen
+  /// das nicht, das Foto kann schon weg sein).
+  Future<void> deleteTaskImage(String imageUrl) async {
+    if (imageUrl.isEmpty) return;
+    try {
+      await _storage.refFromURL(imageUrl).delete();
+    } catch (e) {
+      debugPrint('⚠️ Aufgaben-Foto nicht gelöscht: $e');
+    }
   }
 
   // ========================================================================
   // AUFGABEN LADEN
   // ========================================================================
-
-  /// Lädt alle Batches für einen User (für Eltern-Dashboard)
-  /// Zähler werden direkt aus dem Batch-Dokument gelesen → echter Live-Stream
-  Stream<List<GeneratedTaskBatch>> watchBatchesForUser(String userId) {
-    return _firestore
-        .collection('users')
-        .doc(userId)
-        .collection('generated_batches')
-        .orderBy('createdAt', descending: true)
-        .snapshots()
-        .asyncMap((snapshot) async {
-          final batches = <GeneratedTaskBatch>[];
-          for (final doc in snapshot.docs) {
-            final data = doc.data();
-            final migrated = await _migrateCountersIfNeeded(doc, data, userId);
-            batches.add(
-              GeneratedTaskBatch.fromFirestore(migrated ?? doc, const []),
-            );
-          }
-          return batches;
-        });
-  }
-
-  /// Lädt alle ausstehenden Batches (mit pending-Aufgaben)
-  Stream<List<GeneratedTaskBatch>> watchPendingBatches(String userId) {
-    return watchBatchesForUser(userId).map((batches) {
-      return batches.where((batch) => batch.pendingTasks > 0).toList();
-    });
-  }
 
   /// Lädt alle Batches für einen User gefiltert nach Kind
   /// Zähler werden direkt aus dem Batch-Dokument gelesen → echter Live-Stream
@@ -304,72 +307,6 @@ class GeneratedTaskRepository {
     return watchBatchesForChild(userId, childId).map((batches) {
       return batches.fold<int>(0, (acc, batch) => acc + batch.pendingTasks);
     });
-  }
-
-  /// Lädt einen einzelnen Batch mit allen Details
-  Future<GeneratedTaskBatch?> getBatch(String userId, String batchId) async {
-    try {
-      final doc = await _firestore
-          .collection('users')
-          .doc(userId)
-          .collection('generated_batches')
-          .doc(batchId)
-          .get();
-
-      if (!doc.exists) return null;
-
-      final questionsSnapshot = await doc.reference
-          .collection('questions')
-          .get();
-      final questions = questionsSnapshot.docs
-          .map((qDoc) => GeneratedQuestion.fromFirestore(qDoc))
-          .toList();
-
-      return GeneratedTaskBatch.fromFirestore(doc, questions);
-    } catch (e) {
-      debugPrint('❌ Fehler beim Laden des Batches: $e');
-      return null;
-    }
-  }
-
-  /// Lädt alle freigegebenen Aufgaben für ein Kind in einem Fach
-  Future<List<GeneratedQuestion>> getApprovedQuestionsForChild({
-    required String userId,
-    required String childId,
-    required Subject subject,
-  }) async {
-    try {
-      // Lade alle Batches für dieses Kind und Fach
-      final batchesSnapshot = await _firestore
-          .collection('users')
-          .doc(userId)
-          .collection('generated_batches')
-          .where('childId', isEqualTo: childId)
-          .where('subject', isEqualTo: subject.value)
-          .get();
-
-      final approvedQuestions = <GeneratedQuestion>[];
-
-      // Durchsuche alle Batches nach freigegebenen Aufgaben
-      for (var batchDoc in batchesSnapshot.docs) {
-        final questionsSnapshot = await batchDoc.reference
-            .collection('questions')
-            .where('status', isEqualTo: 'approved')
-            .get();
-
-        approvedQuestions.addAll(
-          questionsSnapshot.docs.map((q) => GeneratedQuestion.fromFirestore(q)),
-        );
-      }
-
-      debugPrint(
-        '✅ ${approvedQuestions.length} freigegebene Aufgaben geladen für ${subject.displayName}',
-      );
-      return approvedQuestions;
-    } catch (e) {
-      debugPrint('❌ Fehler beim Laden freigegebener Aufgaben: $e');
-      return [];
-    }
   }
 
   // ========================================================================
@@ -517,10 +454,7 @@ class GeneratedTaskRepository {
       // sonst bleibt das Bild nach dem Löschen des Batches verwaist liegen.
       try {
         final snapshot = await batchDoc.get();
-        final imageUrl = snapshot.data()?['imageUrl'] as String?;
-        if (imageUrl != null && imageUrl.isNotEmpty) {
-          await FirebaseStorage.instance.refFromURL(imageUrl).delete();
-        }
+        await deleteTaskImage(snapshot.data()?['imageUrl'] as String? ?? '');
       } catch (e) {
         debugPrint('⚠️ Batch-Foto konnte nicht gelöscht werden: $e');
       }
@@ -542,44 +476,6 @@ class GeneratedTaskRepository {
       debugPrint('❌ Fehler beim Löschen: $e');
       rethrow;
     }
-  }
-
-  // ========================================================================
-  // STATISTIKEN
-  // ========================================================================
-
-  /// Zählt die Anzahl der ausstehenden Aufgaben für einen User
-  Future<int> getPendingTaskCount(String userId) async {
-    try {
-      final batchesSnapshot = await _firestore
-          .collection('users')
-          .doc(userId)
-          .collection('generated_batches')
-          .get();
-
-      int totalPending = 0;
-
-      for (var batchDoc in batchesSnapshot.docs) {
-        final pendingSnapshot = await batchDoc.reference
-            .collection('questions')
-            .where('status', isEqualTo: 'pending')
-            .get();
-
-        totalPending += pendingSnapshot.docs.length;
-      }
-
-      return totalPending;
-    } catch (e) {
-      debugPrint('❌ Fehler beim Zählen ausstehender Aufgaben: $e');
-      return 0;
-    }
-  }
-
-  /// Stream für Anzahl ausstehender Aufgaben
-  Stream<int> watchPendingTaskCount(String userId) {
-    return watchPendingBatches(userId).map((batches) {
-      return batches.fold<int>(0, (acc, batch) => acc + batch.pendingTasks);
-    });
   }
 
   // ========================================================================
@@ -621,6 +517,10 @@ class GeneratedTaskRepository {
 
   /// Lädt alle freigegebenen Eltern-Aufgaben, die das Kind noch NICHT
   /// korrekt beantwortet hat, für ein bestimmtes Fach.
+  ///
+  /// Weniger Abfragen pro Quizstart: Batches ohne freigegebene Aufgaben
+  /// (Zähler approvedTasks = 0) und Batches, die das Kind in dieser
+  /// App-Sitzung schon komplett gelöst hat, werden übersprungen.
   Future<List<GeneratedQuestion>> getUnansweredApprovedQuestions({
     required String userId,
     required String childId,
@@ -643,12 +543,20 @@ class GeneratedTaskRepository {
       final unansweredQuestions = <GeneratedQuestion>[];
 
       for (var batchDoc in batchesSnapshot.docs) {
+        final approvedTasks = batchDoc.data()['approvedTasks'] as int?;
+        if (approvedTasks == 0) continue;
+        if (approvedTasks != null &&
+            _doneBatches[batchDoc.id] == approvedTasks) {
+          continue;
+        }
+
         // Alle approved Fragen laden (kein Filter auf answeredCorrectly in Firestore!)
         final questionsSnapshot = await batchDoc.reference
             .collection('questions')
             .where('status', isEqualTo: 'approved')
             .get();
 
+        final before = unansweredQuestions.length;
         for (var qDoc in questionsSnapshot.docs) {
           final data = qDoc.data();
           // Clientseitig filtern: Feld fehlt (Altdaten) → noch nicht beantwortet
@@ -660,6 +568,11 @@ class GeneratedTaskRepository {
             // batchId für parentTaskRef mitgeben
             unansweredQuestions.add(question.copyWith(batchId: batchDoc.id));
           }
+        }
+        if (approvedTasks != null &&
+            unansweredQuestions.length == before &&
+            questionsSnapshot.docs.length == approvedTasks) {
+          _doneBatches[batchDoc.id] = approvedTasks;
         }
       }
 
@@ -684,29 +597,6 @@ final generatedTaskRepositoryProvider = Provider<GeneratedTaskRepository>((
   ref,
 ) {
   return GeneratedTaskRepository();
-});
-
-/// Provider für alle Batches eines Users
-final generatedBatchesProvider =
-    StreamProvider.family<List<GeneratedTaskBatch>, String>((ref, userId) {
-      final repository = ref.watch(generatedTaskRepositoryProvider);
-      return repository.watchBatchesForUser(userId);
-    });
-
-/// Provider für ausstehende Batches
-final pendingBatchesProvider =
-    StreamProvider.family<List<GeneratedTaskBatch>, String>((ref, userId) {
-      final repository = ref.watch(generatedTaskRepositoryProvider);
-      return repository.watchPendingBatches(userId);
-    });
-
-/// Provider für Anzahl ausstehender Aufgaben (alle Kinder)
-final pendingTaskCountProvider = StreamProvider.family<int, String>((
-  ref,
-  userId,
-) {
-  final repository = ref.watch(generatedTaskRepositoryProvider);
-  return repository.watchPendingTaskCount(userId);
 });
 
 /// Provider für Batches gefiltert nach Kind
@@ -740,20 +630,6 @@ final batchQuestionsProvider =
     >((ref, params) {
       final repository = ref.watch(generatedTaskRepositoryProvider);
       return repository.watchQuestionsForBatch(params.userId, params.batchId);
-    });
-
-/// Provider für freigegebene Aufgaben eines Kindes in einem Fach
-final approvedQuestionsProvider =
-    FutureProvider.family<List<GeneratedQuestion>, ApprovedQuestionsParams>((
-      ref,
-      params,
-    ) async {
-      final repository = ref.watch(generatedTaskRepositoryProvider);
-      return repository.getApprovedQuestionsForChild(
-        userId: params.userId,
-        childId: params.childId,
-        subject: params.subject,
-      );
     });
 
 /// Ein Klassenauftrag der Lehrkraft (dieselben Aufgaben für mehrere Kinder).

@@ -66,7 +66,11 @@ class _ClassTaskScreenState extends ConsumerState<ClassTaskScreen> {
   bool _busy = false;
   String? _error;
   List<GeneratedQuestion>? _questions;
-  String _imageUrl = '';
+
+  /// Foto der erzeugten Aufgaben; hochgeladen wird es erst beim Verteilen
+  /// (Lehrkräfte können Fotos nicht löschen – so bleibt bei „Neu erstellen“
+  /// nichts liegen).
+  XFile? _taskImage;
   final _removed = <int>{};
   late final Set<String> _selected = widget.students.map((s) => s.id).toSet();
 
@@ -120,12 +124,16 @@ class _ClassTaskScreenState extends ConsumerState<ClassTaskScreen> {
           userId: owner,
           subject: subject,
           numberOfTasks: _count,
+          uploadImage: false,
         );
         if (!result.success || result.questions.isEmpty) {
-          throw Exception(result.errorMessage ?? 'Keine Aufgaben erzeugt.');
+          _error =
+              result.errorMessage ??
+              'Die KI hat keine Aufgaben erstellt. Bitte noch einmal versuchen.';
+        } else {
+          _taskImage = _image;
+          _questions = result.questions;
         }
-        _imageUrl = result.imageUrl ?? '';
-        _questions = result.questions;
       } else {
         final quiz = await ai.generateQuizQuestions(
           child: _classChild,
@@ -133,8 +141,10 @@ class _ClassTaskScreenState extends ConsumerState<ClassTaskScreen> {
           count: _count,
           teacherTopic: _topic.text.trim(),
         );
-        if (quiz.isEmpty) throw Exception('Keine Aufgaben erzeugt.');
-        _imageUrl = '';
+        if (quiz.isEmpty) {
+          throw const _NoQuestions();
+        }
+        _taskImage = null;
         _questions = [
           for (final q in quiz)
             GeneratedQuestion(
@@ -151,7 +161,12 @@ class _ClassTaskScreenState extends ConsumerState<ClassTaskScreen> {
       }
       _removed.clear();
     } catch (e) {
-      _error = 'Das hat nicht geklappt: $e';
+      debugPrint('❌ Klassenaufgaben: $e');
+      _error = e is _NoQuestions
+          ? 'Zu diesem Thema hat die KI keine Aufgaben erstellt. Bitte das '
+                'Thema genauer beschreiben oder noch einmal versuchen.'
+          : 'Die Aufgaben konnten gerade nicht erstellt werden. Bitte die '
+                'Internetverbindung prüfen und noch einmal versuchen.';
     }
     if (mounted) setState(() => _busy = false);
   }
@@ -168,6 +183,10 @@ class _ClassTaskScreenState extends ConsumerState<ClassTaskScreen> {
     if (kept.isEmpty || students.isEmpty) return;
     setState(() => _busy = true);
     try {
+      final taskImage = _taskImage;
+      final imageUrl = taskImage == null
+          ? ''
+          : await _uploadTaskImage(taskImage);
       final title = _source == _Source.topic
           ? _topic.text.trim()
           : (kept.first.topic.isNotEmpty ? kept.first.topic : 'Aufgaben');
@@ -181,7 +200,7 @@ class _ClassTaskScreenState extends ConsumerState<ClassTaskScreen> {
             title: title,
             questions: kept,
             assignedBy: ref.read(authRepositoryProvider).currentUser?.uid ?? '',
-            imageUrl: _imageUrl,
+            imageUrl: imageUrl,
           );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -194,12 +213,33 @@ class _ClassTaskScreenState extends ConsumerState<ClassTaskScreen> {
       );
       Navigator.pop(context);
     } catch (e) {
+      debugPrint('❌ Klassenaufgaben speichern: $e');
       if (mounted) {
         setState(() {
           _busy = false;
-          _error = 'Speichern hat nicht geklappt: $e';
+          _error =
+              'Speichern hat nicht geklappt. Bitte die Internetverbindung '
+              'prüfen und noch einmal versuchen.';
         });
       }
+    }
+  }
+
+  /// Foto zu den Aufgaben hochladen. Klappt das nicht, gehen die Aufgaben
+  /// ohne Foto raus (das Foto ist nur zur Ansicht).
+  Future<String> _uploadTaskImage(XFile image) async {
+    try {
+      return await ref
+          .read(vertexAIServiceProvider)
+          .uploadTaskImage(
+            imageFile: image,
+            userId: schoolOwnerUid(widget.schoolId),
+            childId: widget.schoolClass.id,
+            subject: _subject!,
+          );
+    } catch (e) {
+      debugPrint('⚠️ Foto der Klassenaufgabe nicht hochgeladen: $e');
+      return '';
     }
   }
 
@@ -342,18 +382,31 @@ class _ClassTaskScreenState extends ConsumerState<ClassTaskScreen> {
               ),
             )
           : const Icon(Icons.auto_awesome),
-      label: Text(_busy ? 'Lexi erstellt die Aufgaben …' : 'Aufgaben erstellen'),
+      label: Text(
+        _busy ? 'Lexi erstellt die Aufgaben …' : 'Aufgaben erstellen',
+      ),
     ),
   ];
 
   Future<void> _pick(ImageSource source) async {
-    final image = await ImagePicker().pickImage(
-      source: source,
-      maxWidth: 1920,
-      maxHeight: 1080,
-      imageQuality: 85,
-    );
-    if (image != null) setState(() => _image = image);
+    try {
+      final image = await ImagePicker().pickImage(
+        source: source,
+        maxWidth: 1920,
+        maxHeight: 1080,
+        imageQuality: 85,
+      );
+      if (image != null && mounted) setState(() => _image = image);
+    } catch (e) {
+      debugPrint('⚠️ Foto konnte nicht geladen werden: $e');
+      if (mounted) {
+        setState(
+          () => _error =
+              'Das Foto konnte nicht geladen werden. Bitte noch '
+              'einmal versuchen.',
+        );
+      }
+    }
   }
 
   List<Widget> _review() {
@@ -382,13 +435,24 @@ class _ClassTaskScreenState extends ConsumerState<ClassTaskScreen> {
                 runSpacing: 4,
                 children: [
                   for (final o in questions[i].options)
-                    Chip(
-                      label: Text(o, style: const TextStyle(fontSize: 12)),
-                      visualDensity: VisualDensity.compact,
-                      backgroundColor: o == questions[i].correctAnswer
-                          ? const Color(0xFFDCFCE7)
-                          : null,
-                    ),
+                    if (o == questions[i].correctAnswer)
+                      // Richtige Antwort nicht nur über die Farbe zeigen
+                      Chip(
+                        avatar: const Icon(
+                          Icons.check_circle,
+                          size: 16,
+                          color: Color(0xFF15803D),
+                          semanticLabel: 'richtige Antwort',
+                        ),
+                        label: Text(o, style: const TextStyle(fontSize: 12)),
+                        visualDensity: VisualDensity.compact,
+                        backgroundColor: const Color(0xFFDCFCE7),
+                      )
+                    else
+                      Chip(
+                        label: Text(o, style: const TextStyle(fontSize: 12)),
+                        visualDensity: VisualDensity.compact,
+                      ),
                 ],
               ),
             ),
@@ -410,9 +474,7 @@ class _ClassTaskScreenState extends ConsumerState<ClassTaskScreen> {
                     }
                   }),
             child: Text(
-              _selected.length == widget.students.length
-                  ? 'Keins'
-                  : 'Alle',
+              _selected.length == widget.students.length ? 'Keine' : 'Alle',
             ),
           ),
         ],
@@ -455,4 +517,9 @@ class _ClassTaskScreenState extends ConsumerState<ClassTaskScreen> {
       ),
     ];
   }
+}
+
+/// Zum Thema kamen keine Aufgaben zurück.
+class _NoQuestions implements Exception {
+  const _NoQuestions();
 }

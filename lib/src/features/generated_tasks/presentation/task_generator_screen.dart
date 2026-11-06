@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -643,17 +645,21 @@ class _TaskGeneratorScreenState extends ConsumerState<TaskGeneratorScreen> {
         maxHeight: 1080,
         imageQuality: 85,
       );
-      if (image != null) {
+      if (image != null && mounted) {
         setState(() {
           _selectedImage = image;
           _errorMessage = null;
         });
       }
     } catch (e) {
+      debugPrint('⚠️ Foto konnte nicht geladen werden: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Fehler beim Laden des Bildes: $e'),
+          const SnackBar(
+            content: Text(
+              'Das Foto konnte nicht geladen werden. Bitte noch einmal '
+              'versuchen.',
+            ),
             backgroundColor: Colors.red,
           ),
         );
@@ -669,9 +675,12 @@ class _TaskGeneratorScreenState extends ConsumerState<TaskGeneratorScreen> {
       _errorMessage = null;
     });
 
+    String? uploadedImageUrl;
     try {
       final userId = ref.read(authRepositoryProvider).currentUser?.ownerUid;
-      if (userId == null) throw Exception('Nicht angemeldet');
+      if (userId == null) {
+        throw const _UserMessage('Bitte melde dich erneut an.');
+      }
 
       final aiService = ref.read(vertexAIServiceProvider);
       final result = await aiService.generateTasksFromImage(
@@ -684,10 +693,13 @@ class _TaskGeneratorScreenState extends ConsumerState<TaskGeneratorScreen> {
       );
 
       if (!result.success || result.questions.isEmpty) {
-        throw Exception(
-          result.errorMessage ?? 'KI hat keine Aufgaben generiert',
+        throw _UserMessage(
+          result.errorMessage ??
+              'Die KI hat keine Aufgaben erstellt. Bitte noch einmal '
+                  'versuchen.',
         );
       }
+      uploadedImageUrl = result.imageUrl;
 
       // In Firestore speichern → gibt Batch-ID zurück
       final repository = ref.read(generatedTaskRepositoryProvider);
@@ -713,11 +725,23 @@ class _TaskGeneratorScreenState extends ConsumerState<TaskGeneratorScreen> {
         );
       }
     } catch (e) {
+      debugPrint('❌ Aufgaben aus Foto: $e');
+      // Gespeichert wurde nichts → hochgeladenes Foto wieder entfernen
+      final url = uploadedImageUrl;
+      if (url != null && e is! _UserMessage) {
+        unawaited(
+          ref.read(generatedTaskRepositoryProvider).deleteTaskImage(url),
+        );
+      }
+      final message = e is _UserMessage
+          ? e.text
+          : 'Die Aufgaben konnten nicht gespeichert werden. Bitte die '
+                'Internetverbindung prüfen und noch einmal versuchen.';
       if (mounted) {
-        setState(() => _errorMessage = e.toString());
+        setState(() => _errorMessage = message);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Fehler: $e'),
+            content: Text(message),
             backgroundColor: Colors.red,
             duration: const Duration(seconds: 5),
           ),
@@ -754,4 +778,10 @@ class _TaskGeneratorScreenState extends ConsumerState<TaskGeneratorScreen> {
         return Icons.palette;
     }
   }
+}
+
+/// Fehler mit einem Text, der so angezeigt werden kann.
+class _UserMessage implements Exception {
+  const _UserMessage(this.text);
+  final String text;
 }
