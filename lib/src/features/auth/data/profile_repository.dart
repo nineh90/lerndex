@@ -167,11 +167,14 @@ class ProfileRepository {
     );
 
     // Fire-and-forget: Blockiert createChild() NICHT
-    QuizPrefetchService.prefetchAllSubjects(
-      userId: userId,
-      child: child,
-      cache: questionCache,
-    );
+    final cache = questionCache;
+    if (cache != null) {
+      QuizPrefetchService.prefetchAllSubjects(
+        userId: userId,
+        child: child,
+        cache: cache,
+      );
+    }
   }
 
   /// Aktualisiert die Stammdaten eines Kindes (Name, Alter, Schulform, Klasse)

@@ -89,6 +89,8 @@ class SubscriptionService {
   /// geräten zählt der Abo-Status, den das kaufende Gerät in Firestore
   /// gespeichert hat. Sonst meldete RevenueCat dort „kein Abo“, und zahlende
   /// Familien verlören im Browser bzw. auf dem Kinderhandy den Zugang.
+  bool get usesStoredStatus => _useStoredStatus;
+
   bool get _useStoredStatus =>
       !isConfigured || (_auth.currentUser?.isChildDevice ?? false);
 
@@ -352,22 +354,6 @@ class SubscriptionService {
     } catch (e) {
       debugPrint('❌ Fehler beim Laden aus Firestore: $e');
       return SubscriptionStatus.empty;
-    }
-  }
-
-  /// Ist der eingeloggte User ein Review-/Testaccount?
-  /// Gesteuert über `testAccess: true` am users/{uid}-Dokument – wird nur
-  /// manuell in der Firebase Console gesetzt und ist per Security Rules
-  /// gegen Selbst-Freischaltung durch Clients geschützt.
-  Future<bool> hasTestAccess() async {
-    final uid = _auth.currentUser?.ownerUid;
-    if (uid == null) return false;
-
-    try {
-      final doc = await _firestore.collection('users').doc(uid).get();
-      return doc.data()?['testAccess'] == true;
-    } catch (_) {
-      return false;
     }
   }
 }

@@ -168,6 +168,19 @@ class ParentLinkRepository {
     return letters;
   }
 
+  /// Eltern: zu welchem Kind gehört der Code? (Vorname, Klasse, Schule –
+  /// verbindet noch nicht)
+  Future<({String firstName, String className, String schoolName})> preview(
+    String code,
+  ) async {
+    final data = await _call('previewSchoolChild', {'code': code});
+    return (
+      firstName: data['firstName'] as String? ?? '',
+      className: data['className'] as String? ?? '',
+      schoolName: data['schoolName'] as String? ?? '',
+    );
+  }
+
   /// Eltern: mit dem Code aus dem Elternbrief verbinden. Gibt den Namen des
   /// Kindes zurück.
   Future<String> link(String code) async {

@@ -65,11 +65,12 @@ class SubscriptionNotifier
   /// vor dem Login existiert (Login-Screen ruft refresh() nach dem Login auf).
   Future<void> refresh() async {
     try {
-      _testAccess = await _service.hasTestAccess();
-      if (_testAccess) {
-        if (mounted) {
-          state = const AsyncValue.data(SubscriptionStatus.testAccess);
-        }
+      // Gespeicherter Status (enthält testAccess) – im Browser und auf
+      // Kindergeräten ist er schon das Ergebnis, sonst fragt RevenueCat.
+      final stored = await _service.getStatusFromFirestore();
+      _testAccess = identical(stored, SubscriptionStatus.testAccess);
+      if (_testAccess || _service.usesStoredStatus) {
+        if (mounted) state = AsyncValue.data(stored);
         return;
       }
       final status = await _service.getSubscriptionStatus();

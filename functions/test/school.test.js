@@ -355,6 +355,12 @@ test("Elternbrief: Eltern verbinden sich, sehen ihr Schulkind, nur das eigene", 
   assert.match(letters[0].parentCode, /^[A-HJ-NP-Z2-9]{8}$/);
 
   const parent = await parentWithChildren();
+  // Vorschau verbindet noch nicht
+  const preview = await parent.call("previewSchoolChild", { code: letters[0].parentCode });
+  assert.equal(preview.firstName, "Mia");
+  assert.equal((await adb.doc(`users/${teacher.owner}/children/s1`).get()).get("parentUids"), undefined);
+  await expectError(parent.call("previewSchoolChild", { code: "ABCDEFGH" }), "not-found");
+
   const linked = await parent.call("linkSchoolChild", { code: letters[0].parentCode.toLowerCase() });
   assert.equal(linked.name, "Mia");
   assert.equal(linked.ownerUid, teacher.owner);

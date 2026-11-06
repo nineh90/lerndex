@@ -1,6 +1,4 @@
 import 'package:flutter/foundation.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:lerndex/src/ai/vertex_ai_service.dart';
 import 'package:lerndex/src/features/auth/domain/child_model.dart';
 import 'package:lerndex/src/features/quiz/data/ai_question_cache_repository.dart';
 import 'package:lerndex/src/features/student_dashboard/presentation/subject_config.dart';
@@ -37,11 +35,6 @@ class QuizPrefetchService {
   /// ein Neustart oft bedeutet dass Zeit vergangen ist.
   static final Set<String> _sessionPrefetchDone = {};
 
-  /// Nur für Aufrufer ohne Riverpod (eine Instanz statt einer pro Aufruf).
-  static AiQuestionCacheRepository? _fallback;
-  static AiQuestionCacheRepository get _fallbackCache => _fallback ??=
-      AiQuestionCacheRepository(FirebaseFirestore.instance, VertexAIService());
-
   // ============================================================
   // HILFSMETHODEN
   // ============================================================
@@ -77,12 +70,12 @@ class QuizPrefetchService {
   static Future<void> prefetchAllChildren({
     required String userId,
     required List<ChildModel> children,
-    AiQuestionCacheRepository? cache,
+    required AiQuestionCacheRepository cache,
     void Function(String childName, String subject)? onSubjectDone,
   }) async {
     if (children.isEmpty) return;
 
-    final effectiveCache = cache ?? _fallbackCache;
+    final effectiveCache = cache;
 
     debugPrint(
       '🚀 Splash-Prefetch: Starte für ${children.length} Kinder parallel...',
@@ -152,9 +145,9 @@ class QuizPrefetchService {
   static Future<void> prefetchAllSubjects({
     required String userId,
     required ChildModel child,
-    AiQuestionCacheRepository? cache,
+    required AiQuestionCacheRepository cache,
   }) async {
-    final effectiveCache = cache ?? _fallbackCache;
+    final effectiveCache = cache;
 
     await _prefetchChildParallel(
       userId: userId,

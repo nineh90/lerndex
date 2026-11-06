@@ -9,7 +9,7 @@
   "scripts": {
     "test": "node --test --test-concurrency=1 --test-reporter=spec \"test/*.test.js\"",
     "test:emulator": "firebase emulators:exec --project demo-lerndex --only auth,firestore,functions,storage \"npm test\"",
-    "deploy": "firebase deploy --project lerndex-3775f --only functions:aiGenerate,functions:createPairingCode,functions:redeemPairingCode,functions:unpairChildDevices,functions:leaveChildDevice,functions:verifyParentPin,functions:setParentPin,functions:cleanupDeletedParent,functions:createSchool,functions:createTeacher,functions:reissueTeacherCard,functions:redeemTeacherCard,functions:removeTeacher,functions:createStudentCards,functions:redeemStudentCard,functions:revokeStudent,functions:createParentLetters,functions:linkSchoolChild,functions:unlinkSchoolChild,functions:deleteStudent,functions:syncSubscription,functions:revenuecatWebhook,functions:deleteRevenueCatCustomer,functions:cleanupOldTutorChats"
+    "deploy": "firebase deploy --project lerndex-3775f --only functions:aiGenerate,functions:createPairingCode,functions:redeemPairingCode,functions:unpairChildDevices,functions:leaveChildDevice,functions:verifyParentPin,functions:setParentPin,functions:cleanupDeletedParent,functions:createSchool,functions:createTeacher,functions:reissueTeacherCard,functions:redeemTeacherCard,functions:removeTeacher,functions:createStudentCards,functions:redeemStudentCard,functions:revokeStudent,functions:createParentLetters,functions:linkSchoolChild,functions:unlinkSchoolChild,functions:previewSchoolChild,functions:deleteStudent,functions:syncSubscription,functions:revenuecatWebhook,functions:deleteRevenueCatCustomer,functions:cleanupOldTutorChats"
   },
   "dependencies": {
     "firebase-admin": "^14.5.0",

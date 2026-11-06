@@ -67,16 +67,38 @@ class _FamilyDashboardScreenState extends ConsumerState<FamilyDashboardScreen> {
     final display = code.length == 8
         ? '${code.substring(0, 4)}-${code.substring(4)}'
         : code;
+    // Wer ist das Kind? Ohne Antwort (offline) bleibt es beim Code.
+    String child = 'das Kind aus diesem Brief';
+    try {
+      final p = await repo.preview(code);
+      final where = [
+        if (p.className.isNotEmpty) 'Klasse ${p.className}',
+        if (p.schoolName.isNotEmpty) p.schoolName,
+      ].join(', ');
+      if (p.firstName.isNotEmpty) {
+        child = where.isEmpty ? p.firstName : '${p.firstName} ($where)';
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Elternbrief: ${userMessage(e)}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+    if (!mounted) return;
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         scrollable: true,
         title: const Text('Kind aus der Schule verbinden?'),
         content: Text(
-          'Sie haben einen Elternbrief gescannt (Code $display). Soll das '
-          'Kind aus diesem Brief mit '
+          'Sie haben einen Elternbrief gescannt (Code $display). Soll '
+          '$child mit '
           '${account == null ? 'diesem Konto' : 'dem Konto $account'} '
-          'verbunden werden? Sie sehen dann seine Statistik und können '
+          'verbunden werden? Sie sehen dann die Statistik und können '
           'Belohnungen festlegen.',
         ),
         actions: [

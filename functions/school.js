@@ -611,6 +611,39 @@ exports.createParentLetters = onCall(async (request) => {
   return { letters };
 });
 
+/**
+ * Eltern: Vorab zeigen, zu welchem Kind ein Eltern-Code gehört (Vorname,
+ * Klasse, Schule), ohne zu verbinden – für die Rückfrage in der App.
+ */
+exports.previewSchoolChild = onCall(async (request) => {
+  if (!request.auth) throw new HttpsError("unauthenticated", "Bitte zuerst anmelden.");
+  const token = request.auth.token;
+  if (token.role || token.schoolRole === "admin") {
+    throw new HttpsError("permission-denied", "Bitte mit einem Elternkonto anmelden.");
+  }
+  const invalid = new HttpsError(
+    "not-found",
+    "Der Code stimmt nicht. Bitte prüfen Sie den Elternbrief oder fragen Sie die Lehrkraft.",
+  );
+  const code = normalizeCode(request.data?.code);
+  if (!code) throw invalid;
+  const link = await db.doc(`parentLinks/${code}`).get();
+  if (!link.exists) throw invalid;
+  const { schoolId, studentId } = link.data();
+  const student = await db.doc(`users/${schoolOwnerUid(schoolId)}/children/${studentId}`).get();
+  if (!student.exists) throw invalid;
+  const [school, schoolClass] = await Promise.all([
+    db.doc(`schools/${schoolId}`).get(),
+    db.doc(`schools/${schoolId}/classes/${student.get("classId") || "-"}`).get(),
+  ]);
+  return {
+    // Nur der Vorname: Wer den Code nicht rechtmäßig hat, erfährt so wenig
+    firstName: String(student.get("name") || "").trim().split(/\s+/)[0] || "",
+    className: schoolClass.exists ? schoolClass.get("name") || "" : "",
+    schoolName: school.get("name") || "",
+  };
+});
+
 /** Eltern: Konto mit einem Schulkind verbinden (Code aus dem Elternbrief). */
 exports.linkSchoolChild = onCall(async (request) => {
   if (!request.auth) throw new HttpsError("unauthenticated", "Bitte zuerst anmelden.");
