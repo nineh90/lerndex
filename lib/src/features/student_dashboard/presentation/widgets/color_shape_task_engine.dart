@@ -1,5 +1,7 @@
 import 'dart:math';
 
+import 'early_quiz/early_quiz_widgets.dart';
+
 // ============================================================================
 // COLOR SHAPE TASK ENGINE – Algorithmischer Generator für Klasse 1 & 2
 //
@@ -20,7 +22,6 @@ import 'dart:math';
 //   gleicheFarbe   – Was ist auch rot? → 🍓/🌳/☀️/🐸
 //   gleicheForm    – Was hat die gleiche Form wie ○? → 🌕/📦/🔺/💎
 //   farbMuster     – 🔴🔵🔴__ → welche Farbe kommt?
-//   formMuster     – ○□○__ → welche Form kommt?
 //   oddOneOutFarbe – Was ist nicht rot? (3 rote + 1 andere)
 //   oddOneOutForm  – Was ist nicht rund? (3 runde + 1 eckige)
 //   farbeZuordnen  – Welche Farbe hat dieses Objekt?
@@ -34,7 +35,6 @@ enum ColorShapeTaskType {
   gleicheFarbe, // Welches Objekt hat die gleiche Farbe?
   gleicheForm, // Welches Objekt hat die gleiche Form?
   farbMuster, // Farbmuster ergänzen
-  formMuster, // Formmuster ergänzen (ab Stufe 2)
   oddOneOutFarbe, // Was passt farblich nicht dazu?
   oddOneOutForm, // Was passt formal nicht dazu?
   farbeZuordnen, // Welche Farbe hat dieses Objekt?
@@ -44,21 +44,27 @@ enum ColorShapeTaskType {
 
 // ── Aufgaben-Modell ───────────────────────────────────────────────────────────
 
-class ColorShapeTask {
+class ColorShapeTask implements EarlyTask {
   final ColorShapeTaskType type;
+  @override
   final String questionText;
 
   /// Haupt-Emoji/Symbol der Frage
   final String? questionEmoji;
 
   /// Antwortoptionen (Text oder Emoji)
+  @override
   final List<String> options;
+  @override
   final String correctAnswer;
+  @override
   final String feedbackCorrect;
+  @override
   final String feedbackWrong;
+  @override
   final int difficultyLevel;
 
-  /// Für farbMuster / formMuster: die vollständige Sequenz
+  /// Für farbMuster: die vollständige Sequenz
   final List<String>? sequence;
 
   /// Für farbMischung (nicht mehr aktiv genutzt, bleibt für Kompatibilität)
@@ -106,7 +112,7 @@ const _colors = [
   _ColorData(
     name: 'Blau',
     emoji: '🔵',
-    objects: ['🫐', '🌊', '💙', '🧢', '🐳', '💎', '🫐'],
+    objects: ['🫐', '🌊', '💙', '🧢', '🐳', '💎', '💧'],
   ),
   _ColorData(
     name: 'Gelb',
@@ -163,42 +169,42 @@ const _shapes = [
     name: 'Kreis',
     emoji: '⭕',
     ecken: 0,
-    objects: ['🌕', '🍕', '🎱', '🌍', '🍩', '⚽', '🌶️'],
+    objects: ['🌕', '🍪', '🎱', '🌍', '🍩', '⚽', '🏀'],
     description: 'runde Form ohne Ecken',
   ),
   _ShapeData(
     name: 'Dreieck',
     emoji: '🔺',
     ecken: 3,
-    objects: ['⛰️', '🔔', '🏔️', '📐', '⚠️', '🎄', '🍕'],
+    objects: ['⛰️', '⛺', '🏔️', '📐', '⚠️', '🎄', '🍕'],
     description: 'Form mit 3 Ecken',
   ),
   _ShapeData(
     name: 'Quadrat',
     emoji: '🟦',
     ecken: 4,
-    objects: ['📦', '🧊', '🪟', '🎲', '📱', '🖥️', '🎁'],
+    objects: ['📦', '🧊', '🪟', '🎲', '🎁', '🔲', '🧇'],
     description: 'Form mit 4 gleichen Seiten',
   ),
   _ShapeData(
     name: 'Rechteck',
     emoji: '▬',
     ecken: 4,
-    objects: ['📄', '🚪', '🖼️', '📺', '🏠', '📏', '📋'],
+    objects: ['📄', '🚪', '🖼️', '📺', '📏', '📋', '💵'],
     description: 'Form mit 4 Seiten, zwei länger',
   ),
   _ShapeData(
     name: 'Stern',
     emoji: '⭐',
     ecken: 5,
-    objects: ['🌟', '✨', '💫', '🌠', '⭐', '🌃', '🎇'],
+    objects: ['🌟', '✨', '💫', '🌠', '🎇', '🌃'],
     description: 'Form mit 5 Zacken',
   ),
   _ShapeData(
     name: 'Raute',
     emoji: '🔷',
     ecken: 4,
-    objects: ['💎', '♦️', '🃏', '🔷', '🔹', '🎯', '🃏'],
+    objects: ['💎', '♦️', '🔹', '🔶', '🔸', '🪁'],
     description: 'Form mit 4 gleichen Seiten, spitz',
   ),
 ];
@@ -453,41 +459,6 @@ const _farbMuster = [
   },
 ];
 
-// ── Formmuster-Daten ──────────────────────────────────────────────────────────
-
-const _formMuster = [
-  {
-    'seq': ['⭕', '🔺', '⭕', '🔺', '⭕'],
-    'next': '🔺',
-    'falsch': ['🟦', '⭐', '🔷'],
-  },
-  {
-    'seq': ['🟦', '⭕', '🟦', '⭕', '🟦'],
-    'next': '⭕',
-    'falsch': ['🔺', '⭐', '🔷'],
-  },
-  {
-    'seq': ['🔺', '🔺', '🟦', '🔺', '🔺'],
-    'next': '🟦',
-    'falsch': ['⭕', '⭐', '🔷'],
-  },
-  {
-    'seq': ['⭕', '⭐', '⭕', '⭐', '⭕'],
-    'next': '⭐',
-    'falsch': ['🟦', '🔺', '🔷'],
-  },
-  {
-    'seq': ['🔷', '🔺', '🔷', '🔺', '🔷'],
-    'next': '🔺',
-    'falsch': ['⭕', '🟦', '⭐'],
-  },
-  {
-    'seq': ['⭐', '⭕', '🔺', '⭐', '⭕'],
-    'next': '🔺',
-    'falsch': ['🟦', '🔷', '⭐'],
-  },
-];
-
 // ── Feedback-Texte ────────────────────────────────────────────────────────────
 
 const _feedbacksCorrect = [
@@ -499,7 +470,6 @@ const _feedbacksCorrect = [
   '🥳 Genau richtig!',
   '💪 Stark!',
 ];
-
 
 // ── Engine ────────────────────────────────────────────────────────────────────
 
@@ -610,8 +580,6 @@ class ColorShapeTaskEngine {
         return _genGleicheForm(usedShapes);
       case ColorShapeTaskType.farbMuster:
         return _genFarbMuster();
-      case ColorShapeTaskType.formMuster:
-        return _genFormMuster();
       case ColorShapeTaskType.oddOneOutFarbe:
         return _genOddOneOutFarbe(usedColors);
       case ColorShapeTaskType.oddOneOutForm:
@@ -748,10 +716,11 @@ class ColorShapeTaskEngine {
     final correctObjs = List<String>.from(shape.objects)..shuffle(_rng);
     final correct = correctObjs.first;
 
-    // Distraktoren aus anderen Formen
+    // Distraktoren aus Formen mit anderer Eckenzahl (ein Quadrat ist auch
+    // ein Rechteck – sonst wären mehrere Antworten richtig)
     final wrongPool =
         _shapes
-            .where((s) => s.name != shape.name)
+            .where((s) => s.ecken != shape.ecken)
             .expand((s) => s.objects)
             .toSet()
             .where((o) => !shape.objects.contains(o))
@@ -788,28 +757,6 @@ class ColorShapeTaskEngine {
 
     return ColorShapeTask(
       type: ColorShapeTaskType.farbMuster,
-      questionText: '${seq.join(' ')} ?',
-      options: opts,
-      correctAnswer: next,
-      sequence: seq,
-      feedbackCorrect: _pickRandom(_feedbacksCorrect),
-      feedbackWrong: '💪 Schau auf das Muster!',
-      difficultyLevel: _diffStage,
-    );
-  }
-
-  // ── Formmuster ────────────────────────────────────────────────────────────
-
-  ColorShapeTask _genFormMuster() {
-    final muster = _formMuster[_rng.nextInt(_formMuster.length)];
-    final seq = List<String>.from(muster['seq'] as List);
-    final next = muster['next'] as String;
-    final falsch = List<String>.from(muster['falsch'] as List)..shuffle(_rng);
-
-    final opts = [next, ...falsch.take(3)]..shuffle(_rng);
-
-    return ColorShapeTask(
-      type: ColorShapeTaskType.formMuster,
       questionText: '${seq.join(' ')} ?',
       options: opts,
       correctAnswer: next,
@@ -859,15 +806,27 @@ class ColorShapeTaskEngine {
   // ── Odd One Out Form ─────────────────────────────────────────────────────
 
   ColorShapeTask _genOddOneOutForm(Set<String> used) {
-    final pool = _shapes.where((s) => s.objects.length >= 3).toList();
-    final shape = pool[_rng.nextInt(pool.length)];
+    final pool = _shapes
+        .where((s) => s.objects.length >= 3 && !used.contains(s.name))
+        .toList();
+    final shape = pool.isEmpty
+        ? _shapes[_rng.nextInt(_shapes.length)]
+        : pool[_rng.nextInt(pool.length)];
 
     final shapeObjs = List<String>.from(shape.objects)..shuffle(_rng);
     final three = shapeObjs.take(3).toList();
 
-    // Das "odd one out": Objekt einer anderen Form
-    final otherShape = _shapes.firstWhere((s) => s.name != shape.name);
-    final odd = otherShape.objects[_rng.nextInt(otherShape.objects.length)];
+    // Das "odd one out": Objekt einer Form mit anderer Eckenzahl, das nicht
+    // auch zur gesuchten Form gehört
+    final oddPool =
+        _shapes
+            .where((s) => s.ecken != shape.ecken)
+            .expand((s) => s.objects)
+            .where((o) => !shape.objects.contains(o))
+            .toSet()
+            .toList()
+          ..shuffle(_rng);
+    final odd = oddPool.first;
 
     final opts = [...three, odd]..shuffle(_rng);
 
@@ -905,7 +864,6 @@ class ColorShapeTaskEngine {
     );
   }
 
-  // ── Wie viele Ecken ───────────────────────────────────────────────────────
   // ── Wie viele Ecken ───────────────────────────────────────────────────────
 
   ColorShapeTask _genWieVieleEcken(Set<String> used) {

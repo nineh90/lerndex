@@ -1,5 +1,7 @@
 import 'dart:math';
 
+import 'early_quiz/early_quiz_widgets.dart';
+
 // ============================================================================
 // MATH TASK ENGINE – Algorithmischer Generator für Klasse 1 & 2
 //
@@ -20,7 +22,10 @@ import 'dart:math';
 //   fillBlank      – „3 + __ = 7" → Zahl tippen (4 Antworten)
 //   comparison     – „5 __ 8" → < = > wählen
 //   countDots      – Emojis zählen → Zahl wählen
-//   numberOrder    – Zahlen in richtige Reihenfolge bringen
+//   numberLine     – Zahlenstrahl: Regler auf die Zahl schieben
+//   drawAnswer     – Ergebnis malen, KI prüft
+//   missingNumber  – Zahlenfolge mit Lücke
+//   wordProblem    – Emoji-Textaufgabe
 // ============================================================================
 
 enum MathTaskType {
@@ -28,9 +33,7 @@ enum MathTaskType {
   fillBlank,
   comparison,
   countDots,
-  numberOrder,
   numberLine, // Zahlenstrahl: Slider auf richtige Position ziehen
-  balanceScale, // Waage: fehlende Zahl finden die die Waage ausgleicht
   drawAnswer, // Antwort malen: Kind zeichnet Zahl, KI prüft sie
   missingNumber, // Zahlenfolge mit Lücke: 2, 4, __, 8
   wordProblem, // Emoji-Textaufgabe: 🍎🍎🍎 + 🍎🍎 = ?
@@ -38,33 +41,31 @@ enum MathTaskType {
 
 // ── Aufgaben-Modell ───────────────────────────────────────────────────────────
 
-class MathTask {
+class MathTask implements EarlyTask {
   final MathTaskType type;
+  @override
   final String questionText;
   final String? countEmoji;
   final int? countAmount;
-  final List<int>? orderNumbers;
   final int? compareLeft;
   final int? compareRight;
+  @override
   final List<String> options;
+  @override
   final String correctAnswer;
+  @override
   final String feedbackCorrect;
+  @override
   final String feedbackWrong;
 
   /// Schwierigkeitsstufe (1–5) – für optionales Badge im Header
+  @override
   final int difficultyLevel;
 
   /// Für numberLine: Minimum, Maximum und Zielwert auf dem Strahl
   final int? lineMin;
   final int? lineMax;
   final int? lineTarget;
-
-  /// Für balanceScale: linke Seite (bekannt), rechte Seite (gesamt),
-  /// Operator (+/-) und gesuchter Wert
-  final int? scaleLeft;
-  final int? scaleRight;
-  final String? scaleOp; // '+' oder '-'
-  final int? scaleTarget; // = correctAnswer als int
 
   /// Für missingNumber: komplette Folge und Position der Lücke
   final List<int>? sequence;
@@ -86,16 +87,11 @@ class MathTask {
     required this.difficultyLevel,
     this.countEmoji,
     this.countAmount,
-    this.orderNumbers,
     this.compareLeft,
     this.compareRight,
     this.lineMin,
     this.lineMax,
     this.lineTarget,
-    this.scaleLeft,
-    this.scaleRight,
-    this.scaleOp,
-    this.scaleTarget,
     this.sequence,
     this.blankIndex,
     this.wpEmoji,
@@ -349,12 +345,8 @@ class MathTaskEngine {
         return _genComparison(diff);
       case MathTaskType.countDots:
         return _genCountDots(diff);
-      case MathTaskType.numberOrder:
-        return _genNumberOrder(diff);
       case MathTaskType.numberLine:
         return _genNumberLine(diff);
-      case MathTaskType.balanceScale:
-        return _genBalanceScale(diff);
       case MathTaskType.drawAnswer:
         return _genDrawAnswer(diff);
       case MathTaskType.missingNumber:
@@ -531,58 +523,19 @@ class MathTaskEngine {
     );
   }
 
-  // ── Number Order ──────────────────────────────────────────────────────────
-
-  MathTask _genNumberOrder(_Difficulty diff) {
-    // Ab Stufe 4: 4 Zahlen sortieren statt 3
-    final numCount = _diffStage >= 4 ? 4 : 3;
-
-    // Ab Stufe 4 mit großem Zahlenbereich: Zahlen aus verschiedenen
-    // Segmenten wählen damit nicht immer kleine nahe Zahlen kommen
-    final Set<int> nums = {};
-    if (_diffStage >= 4 && diff.maxNumber >= 20) {
-      final segSize = diff.maxNumber ~/ numCount;
-      for (int i = 0; i < numCount; i++) {
-        final segMin = i * segSize + 1;
-        final segMax = (i + 1) * segSize;
-        nums.add(segMin + _rng.nextInt(segMax - segMin + 1));
-      }
-    } else {
-      while (nums.length < numCount) {
-        nums.add(_rng.nextInt(diff.maxNumber) + 1);
-      }
-    }
-
-    final list = nums.toList()..shuffle(_rng);
-
-    // Ab Stufe 3 manchmal absteigend sortieren lassen (1/4 Chance)
-    final askDescending = _diffStage >= 3 && _rng.nextInt(4) == 0;
-    final sorted = List<int>.from(list)
-      ..sort((a, b) => askDescending ? b.compareTo(a) : a.compareTo(b));
-
-    return MathTask(
-      type: MathTaskType.numberOrder,
-      questionText: askDescending
-          ? 'Sortiere von groß nach klein!'
-          : 'Sortiere von klein nach groß!',
-      orderNumbers: list,
-      options: list.map((n) => '$n').toList(),
-      correctAnswer: sorted.map((n) => '$n').join(','),
-      feedbackCorrect: _pickRandom(_feedbacksCorrect),
-      feedbackWrong: '💪 Nochmal sortieren!',
-      difficultyLevel: _diffStage,
-    );
-  }
-
   // ── Number Line ───────────────────────────────────────────────────────────
 
   MathTask _genNumberLine(_Difficulty diff) {
     // Ziel-Zahl zufällig im erlaubten Bereich
     final target = _rng.nextInt(diff.maxNumber) + 1;
 
-    // Strahl-Bereich: startet immer bei 0, endet bei einem runden Wert
-    // der etwas größer als der Zielwert ist (für sinnvolle Darstellung)
-    final lineMax = ((target / 5).ceil() * 5).clamp(5, diff.maxNumber);
+    // Strahl-Bereich: startet bei 0, endet bei einem Fünfer-Wert. Nicht
+    // immer direkt über dem Ziel (sonst läge das Ziel stets im letzten
+    // Fünferblock): bis zu zwei Fünferblöcke Luft, höchstens bis zum
+    // Zahlenraum der Stufe.
+    final rangeMax = max(5, (diff.maxNumber / 5).ceil() * 5);
+    final minLineMax = max(5, (target / 5).ceil() * 5);
+    final lineMax = min(minLineMax + 5 * _rng.nextInt(3), rangeMax);
     const lineMin = 0;
 
     final options = _buildNumericOptions(target, lineMin, lineMax + 1, diff);
@@ -601,45 +554,6 @@ class MathTaskEngine {
     );
   }
 
-  // ── Balance Scale ─────────────────────────────────────────────────────────
-
-  MathTask _genBalanceScale(_Difficulty diff) {
-    final isAddition = !diff.allowSubtraction || _rng.nextBool();
-    int left, right, target;
-
-    if (isAddition) {
-      // left + target = right
-      left = _rng.nextInt(diff.maxNumber ~/ 2) + 1;
-      target = _rng.nextInt(diff.maxNumber - left) + 1;
-      right = left + target;
-    } else {
-      // left - target = right  →  left = right + target
-      right = _rng.nextInt(diff.maxNumber ~/ 2) + 1;
-      target = _rng.nextInt(right) + 1;
-      left = right + target;
-    }
-
-    final op = isAddition ? '+' : '-';
-    // Frage: „X + ? = Y" oder „X - ? = Y"
-    final question = isAddition ? '$left + ? = $right' : '$left - ? = $right';
-
-    final options = _buildNumericOptions(target, 1, diff.maxNumber + 1, diff);
-
-    return MathTask(
-      type: MathTaskType.balanceScale,
-      questionText: question,
-      options: options,
-      correctAnswer: '$target',
-      scaleLeft: left,
-      scaleRight: right,
-      scaleOp: op,
-      scaleTarget: target,
-      feedbackCorrect: _pickRandom(_feedbacksCorrect),
-      feedbackWrong: '💪 Die Waage stimmt noch nicht!',
-      difficultyLevel: _diffStage,
-    );
-  }
-
   // ── Draw Answer ───────────────────────────────────────────────────────────
 
   /// Einfache Rechenaufgabe deren Ergebnis das Kind als Zahl malt.
@@ -648,13 +562,16 @@ class MathTaskEngine {
   MathTask _genDrawAnswer(_Difficulty diff) {
     final isAddition = !diff.allowSubtraction || _rng.nextBool();
     int a, b, result;
+    // Ergebnis wird von Hand gemalt: höchstens zweistellig und klein
+    // (Klasse 1 bis 10, Klasse 2 bis 20), auch wenn die Stufe bis 100 geht.
+    final maxResult = max(4, min(diff.maxNumber, grade <= 1 ? 10 : 20));
 
     if (isAddition) {
-      a = _rng.nextInt(diff.maxNumber ~/ 2) + 1;
-      b = _rng.nextInt(diff.maxNumber - a) + 1;
+      a = _rng.nextInt(maxResult ~/ 2) + 1;
+      b = _rng.nextInt(maxResult - a) + 1;
       result = a + b;
     } else {
-      result = _rng.nextInt(diff.maxNumber ~/ 3) + 1;
+      result = _rng.nextInt(maxResult ~/ 3) + 1;
       b = _rng.nextInt(result) + 1;
       a = result + b;
     }

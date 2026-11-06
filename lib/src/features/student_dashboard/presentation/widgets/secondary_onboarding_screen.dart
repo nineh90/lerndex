@@ -72,9 +72,9 @@ class _SecondaryOnboardingScreenState extends State<SecondaryOnboardingScreen>
     ),
     _OnboardingPage(
       emoji: '🤖',
-      title: 'KI-Tutor',
+      title: 'Lexi',
       subtitle:
-          'Hast du eine Frage zu einem Thema? Tippe auf den Button in der Mitte – dein persönlicher KI-Tutor hilft dir.',
+          'Hast du eine Frage zu einem Thema? Tippe auf den Button in der Mitte – Lexi, deine KI-Lernhilfe, hilft dir.',
       color: Color(0xFF2E7D32),
     ),
   ];
