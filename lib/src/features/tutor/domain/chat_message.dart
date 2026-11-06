@@ -2,9 +2,9 @@
 class ChatMessage {
   final String id;
   final String text;
-  final bool isUser;           // true = vom Kind, false = vom Tutor
+  final bool isUser; // true = vom Kind, false = vom Tutor
   final DateTime timestamp;
-  final bool isLoading;        // Zeigt Lade-Animation
+  final bool isLoading; // Zeigt Lade-Animation
 
   /// Remote-URL eines hochgeladenen Aufgabenblatt-Fotos (Firebase Storage).
   /// Wird in Firestore persistiert → Eltern können das Bild im Verlauf sehen.
@@ -14,6 +14,11 @@ class ChatMessage {
   /// Vorschau bevor der Upload fertig ist). Wird nicht persistiert.
   final String? localImagePath;
 
+  /// Geht nicht mit in den Verlauf an die KI: Antworten der App selbst
+  /// (Begrüßung, Filter, Hilfe-Antwort, Fehler) und die Frage des Kindes,
+  /// auf die so eine Antwort kam. In Firestore als Feld `excludeFromAi`.
+  final bool excludeFromAi;
+
   ChatMessage({
     required this.id,
     required this.text,
@@ -22,6 +27,7 @@ class ChatMessage {
     this.isLoading = false,
     this.imageUrl,
     this.localImagePath,
+    this.excludeFromAi = false,
   });
 
   /// True wenn diese Nachricht ein Foto enthält (remote oder lokal)
@@ -41,12 +47,13 @@ class ChatMessage {
   }
 
   /// Erstellt eine Tutor-Nachricht
-  factory ChatMessage.tutor(String text) {
+  factory ChatMessage.tutor(String text, {bool excludeFromAi = false}) {
     return ChatMessage(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       text: text,
       isUser: false,
       timestamp: DateTime.now(),
+      excludeFromAi: excludeFromAi,
     );
   }
 
@@ -70,6 +77,7 @@ class ChatMessage {
     bool? isLoading,
     String? imageUrl,
     String? localImagePath,
+    bool? excludeFromAi,
   }) {
     return ChatMessage(
       id: id ?? this.id,
@@ -79,6 +87,7 @@ class ChatMessage {
       isLoading: isLoading ?? this.isLoading,
       imageUrl: imageUrl ?? this.imageUrl,
       localImagePath: localImagePath ?? this.localImagePath,
+      excludeFromAi: excludeFromAi ?? this.excludeFromAi,
     );
   }
 }
