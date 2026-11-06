@@ -58,7 +58,7 @@ final class ProfileRepositoryProvider
   }
 }
 
-String _$profileRepositoryHash() => r'3aa54b7cf9d7220e922d36cee297e850f9941d06';
+String _$profileRepositoryHash() => r'97737348396d40e1a8636e92d9d784e8900b13d5';
 
 @ProviderFor(childrenList)
 final childrenListProvider = ChildrenListProvider._();

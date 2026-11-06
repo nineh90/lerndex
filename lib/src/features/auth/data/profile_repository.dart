@@ -8,6 +8,7 @@ import '../domain/child_model.dart';
 import 'child_device_repository.dart';
 import '../../rewards/data/system_rewards_initializer.dart';
 import '../../rewards/data/xp_service.dart';
+import '../../quiz/data/ai_question_cache_repository.dart';
 import '../../quiz/data/quiz_prefetch_service.dart';
 import 'auth_repository.dart';
 // NEU: Subscription
@@ -19,9 +20,14 @@ part 'profile_repository.g.dart';
 /// Repository für Profil-Verwaltung (Kinder hinzufügen, XP vergeben, etc.)
 /// Kommuniziert mit Firestore
 class ProfileRepository {
-  ProfileRepository(this._firestore, this._auth);
+  ProfileRepository(this._firestore, this._auth, {this.questionCache});
   final FirebaseFirestore _firestore;
   final FirebaseAuth _auth;
+
+  /// Fragen-Vorrat für das Vorladen bei einem neuen Kind. Kommt aus dem
+  /// Provider (gemeinsame VertexAIService-Instanz der App), statt dass
+  /// jedes Vorladen ein eigenes KI-Modell anlegt.
+  final AiQuestionCacheRepository? questionCache;
 
   /// Aktuell eingeloggter User (Eltern-Account)
   String get _uid => _auth.currentUser?.ownerUid ?? '';
@@ -161,7 +167,11 @@ class ProfileRepository {
     );
 
     // Fire-and-forget: Blockiert createChild() NICHT
-    QuizPrefetchService.prefetchAllSubjects(userId: userId, child: child);
+    QuizPrefetchService.prefetchAllSubjects(
+      userId: userId,
+      child: child,
+      cache: questionCache,
+    );
   }
 
   /// Aktualisiert die Stammdaten eines Kindes (Name, Alter, Schulform, Klasse)
@@ -347,7 +357,9 @@ class ProfileRepository {
         .where('childId', isEqualTo: childId)
         .get();
     for (final batchDoc in batches.docs) {
-      await _deleteCollectionInBatches(batchDoc.reference.collection('questions'));
+      await _deleteCollectionInBatches(
+        batchDoc.reference.collection('questions'),
+      );
       await batchDoc.reference.delete();
     }
 
@@ -400,7 +412,11 @@ class ProfileRepository {
 /// Provider für ProfileRepository
 @riverpod
 ProfileRepository profileRepository(Ref ref) {
-  return ProfileRepository(FirebaseFirestore.instance, FirebaseAuth.instance);
+  return ProfileRepository(
+    FirebaseFirestore.instance,
+    FirebaseAuth.instance,
+    questionCache: ref.read(aiQuestionCacheRepositoryProvider),
+  );
 }
 
 @riverpod

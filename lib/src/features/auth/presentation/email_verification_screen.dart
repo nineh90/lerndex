@@ -2,8 +2,9 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/auth_repository.dart';
-import '../../school/presentation/school_home_screen.dart';
-import 'setup_dialog.dart';
+import '../../splash/splash_screen.dart';
+import 'login_screen.dart';
+import 'sign_out.dart';
 import '../../../shared/user_message.dart';
 
 /// E-Mail Verifizierungs-Screen
@@ -55,13 +56,11 @@ class _EmailVerificationScreenState
       final verified = await ref.read(authRepositoryProvider).isEmailVerified();
       if (verified && mounted) {
         _checkTimer?.cancel();
-        // Weiter zum Onboarding bzw. in den Schulbereich
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(
-            builder: (_) => widget.schoolAccount
-                ? const SchoolRootScreen()
-                : const SetupDialog(),
-          ),
+        // Weiter über den Start: der entscheidet zwischen Onboarding,
+        // Familien-Dashboard (schon eingerichtet) und Schulbereich.
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const LerndexSplashScreen()),
+          (_) => false,
         );
       }
     });
@@ -109,8 +108,18 @@ class _EmailVerificationScreenState
   }
 
   Future<void> _cancelAndSignOut() async {
-    await ref.read(authRepositoryProvider).signOut();
-    if (mounted) Navigator.of(context).pop();
+    final navigator = Navigator.of(context);
+    await signOutAccount(ref);
+    // Nach der Schul-Registrierung oder vom Start aus gibt es keine Seite
+    // darunter – pop hinterließe einen schwarzen Bildschirm.
+    if (navigator.canPop()) {
+      navigator.pop();
+    } else {
+      navigator.pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
+        (_) => false,
+      );
+    }
   }
 
   @override
