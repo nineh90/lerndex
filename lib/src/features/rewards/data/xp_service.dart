@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -158,6 +160,85 @@ class XPService {
       debugPrint('❌ Fehler beim Hinzufügen von XP: $e');
       rethrow;
     }
+  }
+
+  // =========================================================================
+  // TAGESZÄHLER (z.B. Malspiel: XP und KI-Prüfungen pro Tag begrenzen)
+  // =========================================================================
+
+  /// Heutiger Stand eines Tageszählers am Kind ([counterField] mit Datum in
+  /// [dateField]); an einem neuen Tag 0.
+  static int _todayCount(
+    Map<String, dynamic> data,
+    String counterField,
+    String dateField,
+  ) {
+    final last = (data[dateField] as Timestamp?)?.toDate();
+    if (last == null || !_isSameDay(last, DateTime.now())) return 0;
+    return (data[counterField] as num?)?.toInt() ?? 0;
+  }
+
+  /// Gibt XP mit Tageslimit pro Quelle (Transaktion). Gibt null zurück, wenn
+  /// das Limit für heute erreicht ist; sonst höchstens den Rest bis zum
+  /// Limit.
+  Future<XPResult?> addDailyCappedXP({
+    required String userId,
+    required String childId,
+    required int xpToAdd,
+    required String counterField,
+    required String dateField,
+    required int maxXpPerDay,
+  }) {
+    final docRef = _firestore
+        .collection('users')
+        .doc(userId)
+        .collection('children')
+        .doc(childId);
+
+    return _firestore.runTransaction<XPResult?>((tx) async {
+      final snapshot = await tx.get(docRef);
+      final data = snapshot.data();
+      if (data == null) return null;
+
+      final today = _todayCount(data, counterField, dateField);
+      final actual = min(xpToAdd, maxXpPerDay - today);
+      if (actual <= 0) return null;
+
+      final (:fields, :result) = xpGainFields(data, actual);
+      tx.update(docRef, {
+        ...fields,
+        counterField: today + actual,
+        dateField: Timestamp.now(),
+      });
+      return result;
+    });
+  }
+
+  /// Zählt einen Tageszähler um 1 hoch, wenn [maxPerDay] noch nicht erreicht
+  /// ist (Transaktion). false = Limit für heute erreicht.
+  Future<bool> reserveDailyQuota({
+    required String userId,
+    required String childId,
+    required String counterField,
+    required String dateField,
+    required int maxPerDay,
+  }) {
+    final docRef = _firestore
+        .collection('users')
+        .doc(userId)
+        .collection('children')
+        .doc(childId);
+
+    return _firestore.runTransaction<bool>((tx) async {
+      final snapshot = await tx.get(docRef);
+      final data = snapshot.data();
+      if (data == null) return false;
+
+      final today = _todayCount(data, counterField, dateField);
+      if (today >= maxPerDay) return false;
+      tx.update(docRef, {counterField: today + 1, dateField: Timestamp.now()});
+      return true;
+    });
   }
 
   // =========================================================================

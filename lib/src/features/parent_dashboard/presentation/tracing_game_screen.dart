@@ -197,9 +197,25 @@ class _TracingGameScreenState extends ConsumerState<TracingGameScreen>
 
   static const int _totalRounds = 5;
 
+  /// XP pro richtig gemaltem Zeichen und höchstens pro Tag (wie Lexi)
+  static const int _xpPerDrawing = 10;
+  static const int _maxXpPerDay = 50;
+
+  /// Jede Prüfung ist ein bezahlter KI-Aufruf: höchstens so viele Versuche
+  /// pro Zeichen und Prüfungen pro Tag.
+  static const int _maxChecksPerTask = 3;
+  static const int _maxChecksPerDay = 60;
+  int _checksThisTask = 0;
+
+  /// In initState gemerkt: in dispose() ist ref nicht mehr nutzbar
+  /// (Riverpod 3 wirft dort), dann käme super.dispose() nie an und die
+  /// Vorlesestimme spräche weiter.
+  late final TtsController _tts;
+
   @override
   void initState() {
     super.initState();
+    _tts = ref.read(ttsControllerProvider.notifier);
     _buildTaskList();
 
     _feedbackCtrl = AnimationController(
@@ -258,7 +274,7 @@ class _TracingGameScreenState extends ConsumerState<TracingGameScreen>
   void dispose() {
     _feedbackCtrl.dispose();
     _shakeCtrl.dispose();
-    ref.read(ttsControllerProvider.notifier).stop();
+    _tts.stop();
     super.dispose();
   }
 
@@ -271,7 +287,7 @@ class _TracingGameScreenState extends ConsumerState<TracingGameScreen>
     if (child == null) return;
     final ttsEnabled = ref.read(ttsSettingsProvider(child.id));
     if (ttsEnabled) {
-      ref.read(ttsControllerProvider.notifier).speak(_currentTask.ttsPrompt);
+      _tts.speak(_currentTask.ttsPrompt);
     }
   }
 
@@ -315,6 +331,11 @@ class _TracingGameScreenState extends ConsumerState<TracingGameScreen>
 
   Future<void> _submitDrawing() async {
     if (_strokes.isEmpty && _currentStroke.isEmpty) return;
+    if (_status != _TracingStatus.idle) return;
+    if (_checksThisTask >= _maxChecksPerTask) {
+      _nextTask(); // genug Versuche für dieses Zeichen
+      return;
+    }
     HapticFeedback.mediumImpact();
     setState(() => _status = _TracingStatus.evaluating);
 
@@ -324,6 +345,12 @@ class _TracingGameScreenState extends ConsumerState<TracingGameScreen>
         _showCheckFailed();
         return;
       }
+
+      if (!await _reserveCheck()) {
+        _showDailyLimitReached();
+        return;
+      }
+      _checksThisTask++;
 
       final task = _currentTask;
       // Buchstaben-spezifische Hinweise für häufige Verwechslungen
@@ -432,9 +459,7 @@ class _TracingGameScreenState extends ConsumerState<TracingGameScreen>
     if (child != null) {
       final ttsEnabled = ref.read(ttsSettingsProvider(child.id));
       if (ttsEnabled) {
-        ref
-            .read(ttsControllerProvider.notifier)
-            .speak(isCorrect ? _feedbackText : 'Versuch es noch einmal!');
+        _tts.speak(isCorrect ? _feedbackText : 'Versuch es noch einmal!');
       }
     }
 
@@ -445,7 +470,14 @@ class _TracingGameScreenState extends ConsumerState<TracingGameScreen>
         unawaited(
           ref
               .read(xpServiceProvider)
-              .addXP(userId: user.ownerUid, childId: child.id, xpToAdd: 10)
+              .addDailyCappedXP(
+                userId: user.ownerUid,
+                childId: child.id,
+                xpToAdd: _xpPerDrawing,
+                counterField: 'tracingXpToday',
+                dateField: 'tracingXpLastDate',
+                maxXpPerDay: _maxXpPerDay,
+              )
               .then((_) {})
               .catchError((Object e) {
                 debugPrint('TracingGame: addXP fehlgeschlagen: $e');
@@ -462,6 +494,45 @@ class _TracingGameScreenState extends ConsumerState<TracingGameScreen>
       });
     }
     // ── Falsch: KEIN auto-advance! Buttons werden angezeigt (see build)
+  }
+
+  /// Zählt eine KI-Prüfung für heute. false = Tageslimit erreicht.
+  Future<bool> _reserveCheck() async {
+    final user = ref.read(authStateChangesProvider).value;
+    final child = ref.read(activeChildProvider);
+    if (user == null || child == null) return false;
+    try {
+      return await ref
+          .read(xpServiceProvider)
+          .reserveDailyQuota(
+            userId: user.ownerUid,
+            childId: child.id,
+            counterField: 'tracingChecksToday',
+            dateField: 'tracingChecksLastDate',
+            maxPerDay: _maxChecksPerDay,
+          );
+    } catch (e) {
+      debugPrint('TracingGame: Tageszähler fehlgeschlagen: $e');
+      return false;
+    }
+  }
+
+  /// Für heute genug gemalt: Spiel beenden (zur Ergebnisseite).
+  void _showDailyLimitReached() {
+    if (!mounted) return;
+    const msg = 'Für heute hast du genug gemalt. Morgen geht es weiter!';
+    setState(() => _status = _TracingStatus.finished);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(msg, style: TextStyle(fontWeight: FontWeight.w700)),
+        duration: Duration(seconds: 4),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+    final child = ref.read(activeChildProvider);
+    if (child != null && ref.read(ttsSettingsProvider(child.id))) {
+      _tts.speak(msg);
+    }
   }
 
   /// Prüfung nicht möglich (offline, Timeout, KI-Fehler): nichts werten,
@@ -483,7 +554,7 @@ class _TracingGameScreenState extends ConsumerState<TracingGameScreen>
     );
     final child = ref.read(activeChildProvider);
     if (child != null && ref.read(ttsSettingsProvider(child.id))) {
-      ref.read(ttsControllerProvider.notifier).speak(msg);
+      _tts.speak(msg);
     }
   }
 
@@ -494,6 +565,7 @@ class _TracingGameScreenState extends ConsumerState<TracingGameScreen>
     }
     setState(() {
       _taskIndex++;
+      _checksThisTask = 0;
       _strokes.clear();
       _currentStroke = [];
       _showHint = true;
@@ -537,6 +609,7 @@ class _TracingGameScreenState extends ConsumerState<TracingGameScreen>
         onRetry: () => setState(() {
           _buildTaskList();
           _taskIndex = 0;
+          _checksThisTask = 0;
           _correctCount = 0;
           _strokes.clear();
           _currentStroke = [];
@@ -584,19 +657,26 @@ class _TracingGameScreenState extends ConsumerState<TracingGameScreen>
       ),
       child: Row(
         children: [
-          GestureDetector(
-            onTap: () => Navigator.pop(context),
-            child: Container(
-              width: 42,
-              height: 42,
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.3),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.arrow_back_rounded,
-                color: Colors.white,
-                size: 22,
+          Tooltip(
+            message: 'Zurück',
+            child: Semantics(
+              button: true,
+              label: 'Zurück',
+              child: GestureDetector(
+                onTap: () => Navigator.pop(context),
+                child: Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.3),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.arrow_back_rounded,
+                    color: Colors.white,
+                    size: 24,
+                  ),
+                ),
               ),
             ),
           ),
@@ -673,23 +753,38 @@ class _TracingGameScreenState extends ConsumerState<TracingGameScreen>
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(width: 10),
-                  GestureDetector(
-                    onTap: () {
-                      HapticFeedback.selectionClick();
-                      _speakCurrentTask();
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: BoxDecoration(
-                        color: widget.subjectColors.first.withValues(
-                          alpha: 0.1,
+                  Tooltip(
+                    message: 'Nochmal vorlesen',
+                    child: Semantics(
+                      button: true,
+                      label: 'Nochmal vorlesen',
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: () {
+                          HapticFeedback.selectionClick();
+                          _speakCurrentTask();
+                        },
+                        // Trefferfläche 48 dp, sichtbarer Kreis bleibt klein
+                        child: SizedBox(
+                          width: 48,
+                          height: 48,
+                          child: Center(
+                            child: Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: BoxDecoration(
+                                color: widget.subjectColors.first.withValues(
+                                  alpha: 0.1,
+                                ),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                Icons.replay_rounded,
+                                color: widget.subjectColors.first,
+                                size: 20,
+                              ),
+                            ),
+                          ),
                         ),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        Icons.replay_rounded,
-                        color: widget.subjectColors.first,
-                        size: 18,
                       ),
                     ),
                   ),
@@ -864,45 +959,49 @@ class _TracingGameScreenState extends ConsumerState<TracingGameScreen>
   Widget _buildControls() {
     // ── Bei falscher Antwort: Nochmal / Weiter Buttons ──────────────
     if (_status == _TracingStatus.wrong) {
+      final canRetry = _checksThisTask < _maxChecksPerTask;
       return Padding(
         padding: const EdgeInsets.symmetric(horizontal: 20),
         child: Column(
           children: [
-            // 🔄 Nochmal-Button
-            GestureDetector(
-              onTap: _retryCurrentTask,
-              child: Container(
-                width: double.infinity,
-                height: 64,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(colors: widget.subjectColors),
-                  borderRadius: BorderRadius.circular(22),
-                  boxShadow: [
-                    BoxShadow(
-                      color: widget.subjectColors.first.withValues(alpha: 0.4),
-                      blurRadius: 16,
-                      offset: const Offset(0, 6),
-                    ),
-                  ],
-                ),
-                child: const Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text('🔄', style: TextStyle(fontSize: 28)),
-                    SizedBox(width: 10),
-                    Text(
-                      'Nochmal!',
-                      style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w900,
-                        color: Colors.white,
+            // 🔄 Nochmal-Button (höchstens _maxChecksPerTask Versuche)
+            if (canRetry)
+              GestureDetector(
+                onTap: _retryCurrentTask,
+                child: Container(
+                  width: double.infinity,
+                  height: 64,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(colors: widget.subjectColors),
+                    borderRadius: BorderRadius.circular(22),
+                    boxShadow: [
+                      BoxShadow(
+                        color: widget.subjectColors.first.withValues(
+                          alpha: 0.4,
+                        ),
+                        blurRadius: 16,
+                        offset: const Offset(0, 6),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
+                  child: const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text('🔄', style: TextStyle(fontSize: 28)),
+                      SizedBox(width: 10),
+                      Text(
+                        'Nochmal!',
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w900,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: 10),
+            if (canRetry) const SizedBox(height: 10),
             // ➡️ Weiter-Button
             GestureDetector(
               onTap: _nextTask,
@@ -949,26 +1048,33 @@ class _TracingGameScreenState extends ConsumerState<TracingGameScreen>
       child: Row(
         children: [
           // Löschen
-          GestureDetector(
-            onTap: _clearCanvas,
-            child: Container(
-              width: 64,
-              height: 64,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.1),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
+          Tooltip(
+            message: 'Alles löschen',
+            child: Semantics(
+              button: true,
+              label: 'Alles löschen',
+              child: GestureDetector(
+                onTap: _clearCanvas,
+                child: Container(
+                  width: 64,
+                  height: 64,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.1),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-              child: const Icon(
-                Icons.refresh_rounded,
-                color: Colors.grey,
-                size: 30,
+                  child: Icon(
+                    Icons.refresh_rounded,
+                    color: Colors.grey[700],
+                    size: 30,
+                  ),
+                ),
               ),
             ),
           ),
