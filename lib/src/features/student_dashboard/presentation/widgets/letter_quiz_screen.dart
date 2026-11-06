@@ -582,8 +582,6 @@ class _LetterQuizScreenState extends ConsumerState<LetterQuizScreen>
                   totalSteps: _tasks.length,
                   currentStep: _currentIndex,
                   stepResults: _stepResults,
-                  isFinished: _isFinished,
-                  correctCount: _correctAnswers,
                   avatarId: child?.selectedAvatar,
                   childName: child?.name ?? '',
                   subjectColor: widget.subjectColors.first,

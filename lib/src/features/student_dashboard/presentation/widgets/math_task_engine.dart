@@ -20,7 +20,10 @@ import 'dart:math';
 //   fillBlank      – „3 + __ = 7" → Zahl tippen (4 Antworten)
 //   comparison     – „5 __ 8" → < = > wählen
 //   countDots      – Emojis zählen → Zahl wählen
-//   numberOrder    – Zahlen in richtige Reihenfolge bringen
+//   numberLine     – Zahlenstrahl: Regler auf die Zahl schieben
+//   drawAnswer     – Ergebnis malen, KI prüft
+//   missingNumber  – Zahlenfolge mit Lücke
+//   wordProblem    – Emoji-Textaufgabe
 // ============================================================================
 
 enum MathTaskType {
@@ -28,9 +31,7 @@ enum MathTaskType {
   fillBlank,
   comparison,
   countDots,
-  numberOrder,
   numberLine, // Zahlenstrahl: Slider auf richtige Position ziehen
-  balanceScale, // Waage: fehlende Zahl finden die die Waage ausgleicht
   drawAnswer, // Antwort malen: Kind zeichnet Zahl, KI prüft sie
   missingNumber, // Zahlenfolge mit Lücke: 2, 4, __, 8
   wordProblem, // Emoji-Textaufgabe: 🍎🍎🍎 + 🍎🍎 = ?
@@ -43,7 +44,6 @@ class MathTask {
   final String questionText;
   final String? countEmoji;
   final int? countAmount;
-  final List<int>? orderNumbers;
   final int? compareLeft;
   final int? compareRight;
   final List<String> options;
@@ -58,13 +58,6 @@ class MathTask {
   final int? lineMin;
   final int? lineMax;
   final int? lineTarget;
-
-  /// Für balanceScale: linke Seite (bekannt), rechte Seite (gesamt),
-  /// Operator (+/-) und gesuchter Wert
-  final int? scaleLeft;
-  final int? scaleRight;
-  final String? scaleOp; // '+' oder '-'
-  final int? scaleTarget; // = correctAnswer als int
 
   /// Für missingNumber: komplette Folge und Position der Lücke
   final List<int>? sequence;
@@ -86,16 +79,11 @@ class MathTask {
     required this.difficultyLevel,
     this.countEmoji,
     this.countAmount,
-    this.orderNumbers,
     this.compareLeft,
     this.compareRight,
     this.lineMin,
     this.lineMax,
     this.lineTarget,
-    this.scaleLeft,
-    this.scaleRight,
-    this.scaleOp,
-    this.scaleTarget,
     this.sequence,
     this.blankIndex,
     this.wpEmoji,
@@ -349,12 +337,8 @@ class MathTaskEngine {
         return _genComparison(diff);
       case MathTaskType.countDots:
         return _genCountDots(diff);
-      case MathTaskType.numberOrder:
-        return _genNumberOrder(diff);
       case MathTaskType.numberLine:
         return _genNumberLine(diff);
-      case MathTaskType.balanceScale:
-        return _genBalanceScale(diff);
       case MathTaskType.drawAnswer:
         return _genDrawAnswer(diff);
       case MathTaskType.missingNumber:
@@ -531,49 +515,6 @@ class MathTaskEngine {
     );
   }
 
-  // ── Number Order ──────────────────────────────────────────────────────────
-
-  MathTask _genNumberOrder(_Difficulty diff) {
-    // Ab Stufe 4: 4 Zahlen sortieren statt 3
-    final numCount = _diffStage >= 4 ? 4 : 3;
-
-    // Ab Stufe 4 mit großem Zahlenbereich: Zahlen aus verschiedenen
-    // Segmenten wählen damit nicht immer kleine nahe Zahlen kommen
-    final Set<int> nums = {};
-    if (_diffStage >= 4 && diff.maxNumber >= 20) {
-      final segSize = diff.maxNumber ~/ numCount;
-      for (int i = 0; i < numCount; i++) {
-        final segMin = i * segSize + 1;
-        final segMax = (i + 1) * segSize;
-        nums.add(segMin + _rng.nextInt(segMax - segMin + 1));
-      }
-    } else {
-      while (nums.length < numCount) {
-        nums.add(_rng.nextInt(diff.maxNumber) + 1);
-      }
-    }
-
-    final list = nums.toList()..shuffle(_rng);
-
-    // Ab Stufe 3 manchmal absteigend sortieren lassen (1/4 Chance)
-    final askDescending = _diffStage >= 3 && _rng.nextInt(4) == 0;
-    final sorted = List<int>.from(list)
-      ..sort((a, b) => askDescending ? b.compareTo(a) : a.compareTo(b));
-
-    return MathTask(
-      type: MathTaskType.numberOrder,
-      questionText: askDescending
-          ? 'Sortiere von groß nach klein!'
-          : 'Sortiere von klein nach groß!',
-      orderNumbers: list,
-      options: list.map((n) => '$n').toList(),
-      correctAnswer: sorted.map((n) => '$n').join(','),
-      feedbackCorrect: _pickRandom(_feedbacksCorrect),
-      feedbackWrong: '💪 Nochmal sortieren!',
-      difficultyLevel: _diffStage,
-    );
-  }
-
   // ── Number Line ───────────────────────────────────────────────────────────
 
   MathTask _genNumberLine(_Difficulty diff) {
@@ -601,45 +542,6 @@ class MathTaskEngine {
       lineTarget: target,
       feedbackCorrect: _pickRandom(_feedbacksCorrect),
       feedbackWrong: '💪 Schau nochmal auf den Strahl!',
-      difficultyLevel: _diffStage,
-    );
-  }
-
-  // ── Balance Scale ─────────────────────────────────────────────────────────
-
-  MathTask _genBalanceScale(_Difficulty diff) {
-    final isAddition = !diff.allowSubtraction || _rng.nextBool();
-    int left, right, target;
-
-    if (isAddition) {
-      // left + target = right
-      left = _rng.nextInt(diff.maxNumber ~/ 2) + 1;
-      target = _rng.nextInt(diff.maxNumber - left) + 1;
-      right = left + target;
-    } else {
-      // left - target = right  →  left = right + target
-      right = _rng.nextInt(diff.maxNumber ~/ 2) + 1;
-      target = _rng.nextInt(right) + 1;
-      left = right + target;
-    }
-
-    final op = isAddition ? '+' : '-';
-    // Frage: „X + ? = Y" oder „X - ? = Y"
-    final question = isAddition ? '$left + ? = $right' : '$left - ? = $right';
-
-    final options = _buildNumericOptions(target, 1, diff.maxNumber + 1, diff);
-
-    return MathTask(
-      type: MathTaskType.balanceScale,
-      questionText: question,
-      options: options,
-      correctAnswer: '$target',
-      scaleLeft: left,
-      scaleRight: right,
-      scaleOp: op,
-      scaleTarget: target,
-      feedbackCorrect: _pickRandom(_feedbacksCorrect),
-      feedbackWrong: '💪 Die Waage stimmt noch nicht!',
       difficultyLevel: _diffStage,
     );
   }

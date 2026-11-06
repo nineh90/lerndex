@@ -20,7 +20,6 @@ import 'dart:math';
 //   gleicheFarbe   – Was ist auch rot? → 🍓/🌳/☀️/🐸
 //   gleicheForm    – Was hat die gleiche Form wie ○? → 🌕/📦/🔺/💎
 //   farbMuster     – 🔴🔵🔴__ → welche Farbe kommt?
-//   formMuster     – ○□○__ → welche Form kommt?
 //   oddOneOutFarbe – Was ist nicht rot? (3 rote + 1 andere)
 //   oddOneOutForm  – Was ist nicht rund? (3 runde + 1 eckige)
 //   farbeZuordnen  – Welche Farbe hat dieses Objekt?
@@ -34,7 +33,6 @@ enum ColorShapeTaskType {
   gleicheFarbe, // Welches Objekt hat die gleiche Farbe?
   gleicheForm, // Welches Objekt hat die gleiche Form?
   farbMuster, // Farbmuster ergänzen
-  formMuster, // Formmuster ergänzen (ab Stufe 2)
   oddOneOutFarbe, // Was passt farblich nicht dazu?
   oddOneOutForm, // Was passt formal nicht dazu?
   farbeZuordnen, // Welche Farbe hat dieses Objekt?
@@ -58,7 +56,7 @@ class ColorShapeTask {
   final String feedbackWrong;
   final int difficultyLevel;
 
-  /// Für farbMuster / formMuster: die vollständige Sequenz
+  /// Für farbMuster: die vollständige Sequenz
   final List<String>? sequence;
 
   /// Für farbMischung (nicht mehr aktiv genutzt, bleibt für Kompatibilität)
@@ -453,41 +451,6 @@ const _farbMuster = [
   },
 ];
 
-// ── Formmuster-Daten ──────────────────────────────────────────────────────────
-
-const _formMuster = [
-  {
-    'seq': ['⭕', '🔺', '⭕', '🔺', '⭕'],
-    'next': '🔺',
-    'falsch': ['🟦', '⭐', '🔷'],
-  },
-  {
-    'seq': ['🟦', '⭕', '🟦', '⭕', '🟦'],
-    'next': '⭕',
-    'falsch': ['🔺', '⭐', '🔷'],
-  },
-  {
-    'seq': ['🔺', '🔺', '🟦', '🔺', '🔺'],
-    'next': '🟦',
-    'falsch': ['⭕', '⭐', '🔷'],
-  },
-  {
-    'seq': ['⭕', '⭐', '⭕', '⭐', '⭕'],
-    'next': '⭐',
-    'falsch': ['🟦', '🔺', '🔷'],
-  },
-  {
-    'seq': ['🔷', '🔺', '🔷', '🔺', '🔷'],
-    'next': '🔺',
-    'falsch': ['⭕', '🟦', '⭐'],
-  },
-  {
-    'seq': ['⭐', '⭕', '🔺', '⭐', '⭕'],
-    'next': '🔺',
-    'falsch': ['🟦', '🔷', '⭐'],
-  },
-];
-
 // ── Feedback-Texte ────────────────────────────────────────────────────────────
 
 const _feedbacksCorrect = [
@@ -609,8 +572,6 @@ class ColorShapeTaskEngine {
         return _genGleicheForm(usedShapes);
       case ColorShapeTaskType.farbMuster:
         return _genFarbMuster();
-      case ColorShapeTaskType.formMuster:
-        return _genFormMuster();
       case ColorShapeTaskType.oddOneOutFarbe:
         return _genOddOneOutFarbe(usedColors);
       case ColorShapeTaskType.oddOneOutForm:
@@ -798,28 +759,6 @@ class ColorShapeTaskEngine {
     );
   }
 
-  // ── Formmuster ────────────────────────────────────────────────────────────
-
-  ColorShapeTask _genFormMuster() {
-    final muster = _formMuster[_rng.nextInt(_formMuster.length)];
-    final seq = List<String>.from(muster['seq'] as List);
-    final next = muster['next'] as String;
-    final falsch = List<String>.from(muster['falsch'] as List)..shuffle(_rng);
-
-    final opts = [next, ...falsch.take(3)]..shuffle(_rng);
-
-    return ColorShapeTask(
-      type: ColorShapeTaskType.formMuster,
-      questionText: '${seq.join(' ')} ?',
-      options: opts,
-      correctAnswer: next,
-      sequence: seq,
-      feedbackCorrect: _pickRandom(_feedbacksCorrect),
-      feedbackWrong: '💪 Schau auf das Muster!',
-      difficultyLevel: _diffStage,
-    );
-  }
-
   // ── Odd One Out Farbe ────────────────────────────────────────────────────
 
   ColorShapeTask _genOddOneOutFarbe(Set<String> used) {
@@ -917,7 +856,6 @@ class ColorShapeTaskEngine {
     );
   }
 
-  // ── Wie viele Ecken ───────────────────────────────────────────────────────
   // ── Wie viele Ecken ───────────────────────────────────────────────────────
 
   ColorShapeTask _genWieVieleEcken(Set<String> used) {

@@ -30,9 +30,7 @@ import 'package:lerndex/src/features/auth/domain/account.dart';
 //   fillBlank       – 4 + __ = 7 →  4 Antwort-Buttons
 //   comparison      – 5 __ 8     →  < = > Buttons
 //   countDots       – ●●●●● = ?  →  4 Antwort-Buttons
-//   numberOrder     – [5,2,8] sortieren → Drag-Reihenfolge tippen
 //   numberLine      – Zahlenstrahl: richtige Zahl antippen
-//   balanceScale    – Waage: fehlende Zahl finden
 // ============================================================================
 
 class MathQuizScreen extends ConsumerStatefulWidget {
@@ -64,9 +62,6 @@ class _MathQuizScreenState extends ConsumerState<MathQuizScreen>
   bool _showRetryChoice = false;
   String _feedbackText = '';
   bool _showTreasureChest = false;
-
-  // Für numberOrder: bisher getippte Reihenfolge
-  List<String> _orderTaps = [];
 
   // Für numberLine (Slider)
   double _sliderValue = 0;
@@ -309,7 +304,6 @@ class _MathQuizScreenState extends ConsumerState<MathQuizScreen>
     setState(() {
       _showFeedback = false;
       _showRetryChoice = false;
-      _orderTaps = [];
       _sliderValue = 0;
       _sliderMoved = false;
       _drawing.clear();
@@ -341,7 +335,6 @@ class _MathQuizScreenState extends ConsumerState<MathQuizScreen>
     setState(() {
       _showFeedback = false;
       _showRetryChoice = false;
-      _orderTaps = [];
       _sliderValue = 0;
       _sliderMoved = false;
       _drawing.clear();
@@ -492,8 +485,6 @@ class _MathQuizScreenState extends ConsumerState<MathQuizScreen>
                   totalSteps: _tasks.length,
                   currentStep: _currentIndex,
                   stepResults: _stepResults,
-                  isFinished: _isFinished,
-                  correctCount: _correctAnswers,
                   avatarId: child?.selectedAvatar,
                   childName: child?.name ?? '',
                   subjectColor: widget.subjectColors.first,
@@ -633,14 +624,8 @@ class _MathQuizScreenState extends ConsumerState<MathQuizScreen>
       case MathTaskType.countDots:
         return _buildCountDotsQuestion(task);
 
-      case MathTaskType.numberOrder:
-        return _buildOrderQuestion(task);
-
       case MathTaskType.numberLine:
         return _buildNumberLineQuestion(task);
-
-      case MathTaskType.balanceScale:
-        return _buildBalanceScaleQuestion(task);
 
       case MathTaskType.drawAnswer:
         return _buildDrawAnswerQuestion(task);
@@ -824,82 +809,6 @@ class _MathQuizScreenState extends ConsumerState<MathQuizScreen>
     );
   }
 
-  /// Zahlen sortieren
-  Widget _buildOrderQuestion(MathTask task) {
-    return Column(
-      children: [
-        const Text('🔢', style: TextStyle(fontSize: 40)),
-        const SizedBox(height: 8),
-        Text(
-          task.questionText,
-          textAlign: TextAlign.center,
-          style: const TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.w800,
-            color: Color(0xFF1A1A2E),
-          ),
-        ),
-        const SizedBox(height: 12),
-        // Tippe-Fortschritt anzeigen
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: List.generate(task.orderNumbers!.length, (i) {
-            final hasValue = i < _orderTaps.length;
-            return Container(
-              margin: const EdgeInsets.symmetric(horizontal: 6),
-              width: 56,
-              height: 56,
-              decoration: BoxDecoration(
-                color: hasValue
-                    ? widget.subjectColors.first.withValues(alpha: 0.15)
-                    : Colors.grey.shade100,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: hasValue
-                      ? widget.subjectColors.first
-                      : Colors.grey.shade300,
-                  width: 2,
-                ),
-              ),
-              child: Center(
-                child: Text(
-                  hasValue ? _orderTaps[i] : '',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w900,
-                    color: widget.subjectColors.first,
-                  ),
-                ),
-              ),
-            );
-          }),
-        ),
-        if (_orderTaps.isNotEmpty)
-          Padding(
-            padding: const EdgeInsets.only(top: 10),
-            child: GestureDetector(
-              onTap: () => setState(() => _orderTaps = []),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.refresh, size: 16, color: Colors.grey.shade500),
-                  const SizedBox(width: 4),
-                  Text(
-                    'Nochmal',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey.shade500,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-      ],
-    );
-  }
-
   // ── Antwort-Bereich je nach Typ ───────────────────────────────────────────
 
   Widget _buildAnswerArea(MathTask task) {
@@ -912,14 +821,8 @@ class _MathQuizScreenState extends ConsumerState<MathQuizScreen>
       case MathTaskType.comparison:
         return _buildComparisonButtons(task);
 
-      case MathTaskType.numberOrder:
-        return _buildOrderButtons(task);
-
       case MathTaskType.numberLine:
         return _buildSliderAnswer(task); // Slider
-
-      case MathTaskType.balanceScale:
-        return _buildFourButtons(task); // Waage → 4 Optionen antippen
 
       case MathTaskType.drawAnswer:
         return _buildDrawCanvas(task);
@@ -975,78 +878,6 @@ class _MathQuizScreenState extends ConsumerState<MathQuizScreen>
             ),
           )
           .toList(),
-    );
-  }
-
-  /// Buttons zum Antippen in Reihenfolge (numberOrder)
-  Widget _buildOrderButtons(MathTask task) {
-    final enabled = !_showFeedback;
-    return Row(
-      children: task.options
-          .map(
-            (opt) => Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 6),
-                child: _MathAnswerButton(
-                  label: opt,
-                  colors: widget.subjectColors,
-                  enabled: enabled && !_orderTaps.contains(opt),
-                  faded: _orderTaps.contains(opt),
-                  onTap: () {
-                    if (_orderTaps.contains(opt)) return;
-                    final newTaps = [..._orderTaps, opt];
-                    setState(() => _orderTaps = newTaps);
-                    if (newTaps.length == task.orderNumbers!.length) {
-                      _checkAnswer(newTaps.join(','));
-                    }
-                  },
-                ),
-              ),
-            ),
-          )
-          .toList(),
-    );
-  }
-
-  // ── Zahlenstrahl ──────────────────────────────────────────────────────────
-
-  // ── Waage ─────────────────────────────────────────────────────────────────
-
-  Widget _buildBalanceScaleQuestion(MathTask task) {
-    final left = task.scaleLeft ?? 0;
-    final right = task.scaleRight ?? 0;
-    final op = task.scaleOp ?? '+';
-
-    return Column(
-      children: [
-        const SizedBox(height: 4),
-        Text(
-          op == '+' ? '$left + ? = $right' : '$left - ? = $right',
-          textAlign: TextAlign.center,
-          style: const TextStyle(
-            fontSize: 36,
-            fontWeight: FontWeight.w900,
-            color: Color(0xFF1A1A2E),
-            height: 1.1,
-          ),
-        ),
-        const SizedBox(height: 16),
-        // Animierte Waage
-        _BalanceScaleWidget(
-          leftValue: left,
-          rightValue: right,
-          color: widget.subjectColors.first,
-        ),
-        const SizedBox(height: 8),
-        Text(
-          'Was fehlt auf der Waage?',
-          style: TextStyle(
-            fontSize: 14,
-            color: Colors.grey.shade600,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ],
     );
   }
 
@@ -1785,9 +1616,7 @@ class _MathQuizScreenState extends ConsumerState<MathQuizScreen>
                                     const SizedBox(width: 10),
                                     Expanded(
                                       child: Text(
-                                        t.type == MathTaskType.numberOrder
-                                            ? '${t.questionText} (${t.orderNumbers!.map((n) => '$n').join(', ')})'
-                                            : t.questionText,
+                                        t.questionText,
                                         style: const TextStyle(
                                           fontSize: 18,
                                           fontWeight: FontWeight.w800,
@@ -1969,7 +1798,6 @@ class _MathAnswerButton extends StatefulWidget {
   final List<Color> colors;
   final VoidCallback onTap;
   final bool enabled;
-  final bool faded;
   final double fontSize;
 
   const _MathAnswerButton({
@@ -1977,7 +1805,6 @@ class _MathAnswerButton extends StatefulWidget {
     required this.colors,
     required this.onTap,
     this.enabled = true,
-    this.faded = false,
     this.fontSize = 28,
   });
 
@@ -2025,42 +1852,30 @@ class _MathAnswerButtonState extends State<_MathAnswerButton>
         animation: _scale,
         builder: (_, child) =>
             Transform.scale(scale: _scale.value, child: child),
-        child: AnimatedOpacity(
-          opacity: widget.faded ? 0.35 : 1.0,
-          duration: const Duration(milliseconds: 200),
-          child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 18),
-            decoration: BoxDecoration(
-              color: widget.faded
-                  ? Colors.white.withValues(alpha: 0.15)
-                  : Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              border: widget.faded
-                  ? null
-                  : Border.all(
-                      color: widget.colors.first.withValues(alpha: 0.3),
-                      width: 2,
-                    ),
-              boxShadow: widget.faded
-                  ? null
-                  : [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.12),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 18),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: widget.colors.first.withValues(alpha: 0.3),
+              width: 2,
             ),
-            child: Center(
-              child: Text(
-                widget.label,
-                style: TextStyle(
-                  fontSize: widget.fontSize,
-                  fontWeight: FontWeight.w900,
-                  color: widget.faded
-                      ? Colors.white.withValues(alpha: 0.5)
-                      : widget.colors.first,
-                ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.12),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Center(
+            child: Text(
+              widget.label,
+              style: TextStyle(
+                fontSize: widget.fontSize,
+                fontWeight: FontWeight.w900,
+                color: widget.colors.first,
               ),
             ),
           ),
@@ -2281,201 +2096,6 @@ class _NumberLinePainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _NumberLinePainter old) =>
       old.markerValue != markerValue;
-}
-
-// ============================================================================
-// WAAGE WIDGET
-// ============================================================================
-
-class _BalanceScaleWidget extends StatefulWidget {
-  final int leftValue;
-  final int rightValue;
-  final Color color;
-
-  const _BalanceScaleWidget({
-    required this.leftValue,
-    required this.rightValue,
-    required this.color,
-  });
-
-  @override
-  State<_BalanceScaleWidget> createState() => _BalanceScaleWidgetState();
-}
-
-class _BalanceScaleWidgetState extends State<_BalanceScaleWidget>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _tiltController;
-  late Animation<double> _tiltAnim;
-
-  @override
-  void initState() {
-    super.initState();
-    _tiltController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 900),
-    );
-    // Die Waage kippt zur schwereren Seite (links ist immer der größere Wert)
-    // Da wir zeigen wollen dass etwas fehlt, kippt sie leicht nach links
-    _tiltAnim = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _tiltController, curve: Curves.elasticOut),
-    );
-    _tiltController.forward();
-  }
-
-  @override
-  void dispose() {
-    _tiltController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _tiltAnim,
-      builder: (_, _) {
-        // Neigungswinkel: links schwerer → linke Schale tiefer
-        final tilt = _tiltAnim.value * 0.12; // ~7 Grad
-
-        return SizedBox(
-          height: 130,
-          child: CustomPaint(
-            painter: _BalanceScalePainter(
-              leftValue: widget.leftValue,
-              rightValue: widget.rightValue,
-              tilt: tilt,
-              color: widget.color,
-            ),
-            size: const Size(double.infinity, 130),
-          ),
-        );
-      },
-    );
-  }
-}
-
-class _BalanceScalePainter extends CustomPainter {
-  final int leftValue;
-  final int rightValue;
-  final double tilt;
-  final Color color;
-
-  _BalanceScalePainter({
-    required this.leftValue,
-    required this.rightValue,
-    required this.tilt,
-    required this.color,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final cx = size.width / 2;
-    final poleTop = size.height * 0.08;
-    final poleBottom = size.height * 0.65;
-    final armY = poleTop + 10;
-    final armHalf = size.width * 0.32;
-
-    final polePaint = Paint()
-      ..color = color.withValues(alpha: 0.7)
-      ..strokeWidth = 4
-      ..strokeCap = StrokeCap.round;
-
-    final armPaint = Paint()
-      ..color = color
-      ..strokeWidth = 3
-      ..strokeCap = StrokeCap.round;
-
-    final platePaint = Paint()
-      ..color = color.withValues(alpha: 0.15)
-      ..style = PaintingStyle.fill;
-
-    final plateBorder = Paint()
-      ..color = color
-      ..strokeWidth = 2.5
-      ..style = PaintingStyle.stroke;
-
-    // Standfuß
-    const baseW = 40.0;
-    canvas.drawLine(
-      Offset(cx - baseW, poleBottom),
-      Offset(cx + baseW, poleBottom),
-      polePaint..strokeWidth = 5,
-    );
-    // Mast
-    canvas.drawLine(
-      Offset(cx, poleBottom),
-      Offset(cx, poleTop),
-      polePaint..strokeWidth = 4,
-    );
-    // Drehpunkt-Kreis
-    canvas.drawCircle(Offset(cx, armY), 6, Paint()..color = color);
-
-    // Balken (geneigt)
-    final leftEnd = Offset(cx - armHalf, armY + armHalf * tilt);
-    final rightEnd = Offset(cx + armHalf, armY - armHalf * tilt);
-    canvas.drawLine(leftEnd, rightEnd, armPaint..strokeWidth = 3);
-
-    // Fäden
-    const ropeLen = 28.0;
-    final leftPlateCenter = Offset(leftEnd.dx, leftEnd.dy + ropeLen);
-    final rightPlateCenter = Offset(rightEnd.dx, rightEnd.dy + ropeLen);
-
-    canvas.drawLine(leftEnd, leftPlateCenter, armPaint..strokeWidth = 1.5);
-    canvas.drawLine(rightEnd, rightPlateCenter, armPaint..strokeWidth = 1.5);
-
-    // Schalen
-    const plateW = 50.0;
-    const plateH = 12.0;
-    final leftPlateRect = RRect.fromRectAndRadius(
-      Rect.fromCenter(center: leftPlateCenter, width: plateW, height: plateH),
-      const Radius.circular(6),
-    );
-    final rightPlateRect = RRect.fromRectAndRadius(
-      Rect.fromCenter(center: rightPlateCenter, width: plateW, height: plateH),
-      const Radius.circular(6),
-    );
-    canvas.drawRRect(leftPlateRect, platePaint);
-    canvas.drawRRect(leftPlateRect, plateBorder);
-    canvas.drawRRect(rightPlateRect, platePaint);
-    canvas.drawRRect(rightPlateRect, plateBorder);
-
-    // Werte auf den Schalen
-    final tp = TextPainter(textDirection: TextDirection.ltr);
-
-    // Linke Schale: bekannter Wert
-    tp.text = TextSpan(
-      text: '$leftValue',
-      style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: color),
-    );
-    tp.layout();
-    tp.paint(
-      canvas,
-      Offset(
-        leftPlateCenter.dx - tp.width / 2,
-        leftPlateCenter.dy - plateH / 2 - tp.height - 2,
-      ),
-    );
-
-    // Rechte Schale: gesuchter Wert (Fragezeichen)
-    tp.text = TextSpan(
-      text: '?',
-      style: TextStyle(
-        fontSize: 22,
-        fontWeight: FontWeight.w900,
-        color: color.withValues(alpha: 0.5),
-      ),
-    );
-    tp.layout();
-    tp.paint(
-      canvas,
-      Offset(
-        rightPlateCenter.dx - tp.width / 2,
-        rightPlateCenter.dy - plateH / 2 - tp.height - 2,
-      ),
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant _BalanceScalePainter old) => old.tilt != tilt;
 }
 
 // ============================================================================

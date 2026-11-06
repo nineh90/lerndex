@@ -200,7 +200,6 @@ class _ColorShapeQuizScreenState extends ConsumerState<ColorShapeQuizScreen>
   String _buildTtsText(ColorShapeTask task) {
     switch (task.type) {
       case ColorShapeTaskType.farbMuster:
-      case ColorShapeTaskType.formMuster:
         return '${task.questionText.replaceAll('?', '')} – was kommt als nächstes?';
       case ColorShapeTaskType.farbeZuordnen:
         return task.questionText; // z.B. "Welche Farbe hat das?"
@@ -563,8 +562,6 @@ class _ColorShapeQuizScreenState extends ConsumerState<ColorShapeQuizScreen>
                   totalSteps: _tasks.length,
                   currentStep: _currentIndex,
                   stepResults: _stepResults,
-                  isFinished: _isFinished,
-                  correctCount: _correctAnswers,
                   avatarId: child?.selectedAvatar,
                   childName: child?.name ?? '',
                   subjectColor: widget.subjectColors.first,
@@ -693,7 +690,6 @@ class _ColorShapeQuizScreenState extends ConsumerState<ColorShapeQuizScreen>
         return _buildSimpleQuestion(task);
 
       case ColorShapeTaskType.farbMuster:
-      case ColorShapeTaskType.formMuster:
         return _buildMusterQuestion(task);
 
       case ColorShapeTaskType.farbeZuordnen:
