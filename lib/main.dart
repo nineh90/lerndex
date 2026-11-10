@@ -64,7 +64,7 @@ void main() async {
   // gespeichert ist – die Test-App spräche dann mit dem echten Firebase.
   if (useEmulator && kIsWeb) await clearStoredFirebaseLogin();
 
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  await Firebase.initializeApp(options: firebaseOptionsForPlatform());
 
   if (useEmulator) {
     // Android-Emulator erreicht den Rechner unter 10.0.2.2
@@ -206,3 +206,23 @@ Future<void> _activateAppCheck({required bool useEmulator}) async {
     if (!kIsWeb) FirebaseCrashlytics.instance.recordError(e, st);
   }
 }
+
+/// Firebase-Konfiguration; im Browser auf app.lerndex.de läuft die Anmeldung
+/// über die eigene Domain (siehe [webAuthDomainFor]).
+FirebaseOptions firebaseOptionsForPlatform() {
+  final options = DefaultFirebaseOptions.currentPlatform;
+  if (!kIsWeb) return options;
+  final authDomain = webAuthDomainFor(Uri.base.host);
+  return authDomain == null
+      ? options
+      : options.copyWith(authDomain: authDomain);
+}
+
+/// Auf app.lerndex.de läuft der Google-Login über die eigene Domain: nginx
+/// reicht /__/auth/ an firebaseapp.com durch (deploy/hostinger/nginx.conf).
+/// Sonst blockieren Safari und Firefox die Anmeldeseite einer fremden Domain
+/// teilweise, und Google zeigt „weiter zu lerndex-3775f.firebaseapp.com“.
+/// Auf anderen Adressen (localhost, altes Firebase Hosting) bleibt die
+/// Standard-Domain, dort gibt es den Proxy nicht.
+String? webAuthDomainFor(String host) =>
+    host == 'app.lerndex.de' ? 'app.lerndex.de' : null;
