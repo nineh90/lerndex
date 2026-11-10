@@ -1,0 +1,83 @@
+rules_version = '2';
+
+// Firebase Storage Security Rules für Lerndex.
+//
+// Deployment: Inhalt in die Firebase Console kopieren (Storage → Regeln)
+// oder per CLI: firebase deploy --only storage
+//
+// Bisher gab es keine Storage-Rules im Projekt. Die App nutzt genau drei
+// Pfade, alle strikt pro Nutzer (Eltern-UID):
+//   task_images/{uid}/{childId}/{fach}/{ts}.jpg   – Eltern-Fotos für Aufgaben-Generierung
+//   tutor_worksheets/{uid}/{childId}/{ts}.jpg      – vom Kind hochgeladene Aufgabenblätter
+//   feedback/{uid}/{ts}.{ext}                      – optionale Feedback-Screenshots
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // Eltern (Konto ohne role-Claim)
+    function isOwner(userId) {
+      return request.auth != null
+        && !('role' in request.auth.token)
+        && request.auth.uid == userId;
+    }
+
+    // Gekoppeltes Kindergerät genau dieses Kindes (siehe firestore.rules)
+    function isStudentFor(userId, childId) {
+      return request.auth != null
+        && request.auth.token.role == 'student'
+        && request.auth.token.parentUid == userId
+        && request.auth.token.childId == childId;
+    }
+
+    // Lehrkraft der Schule, der dieses „Besitzer-Konto“ (school_<id>) gehört
+    // (Lehrergerät mit Karte + PIN, siehe firestore.rules)
+    function isTeacherOf(userId) {
+      return request.auth != null
+        && request.auth.token.get('schoolRole', '') == 'teacher'
+        && userId == 'school_' + request.auth.token.get('schoolId', '');
+    }
+
+    // Nur Bilder, max. 10 MB (App komprimiert vor Upload auf 1920px/85 %,
+    // liegt also deutlich darunter — das Limit fängt manipulierte Clients ab).
+    function isValidImage() {
+      return request.resource.size < 10 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
+
+    match /task_images/{userId}/{allPaths=**} {
+      // read schließt list ein – nötig für den Storage-Cleanup bei
+      // Konto-Löschung (listAll in profile_repository).
+      allow read: if isOwner(userId);
+      allow create, update: if isOwner(userId) && isValidImage();
+      allow delete: if isOwner(userId);
+    }
+
+    // Fotos für Klassenaufgaben (Arbeitsblatt, Tafelbild)
+    match /task_images/{userId}/{allPaths=**} {
+      allow read: if isTeacherOf(userId);
+      allow create, update: if isTeacherOf(userId) && isValidImage();
+    }
+
+    match /tutor_worksheets/{userId}/{allPaths=**} {
+      allow read: if isOwner(userId);
+      allow create, update: if isOwner(userId) && isValidImage();
+      allow delete: if isOwner(userId);
+    }
+
+    // Aufgabenblatt-Fotos vom Kindergerät: nur im Ordner des eigenen Kindes
+    match /tutor_worksheets/{userId}/{childId}/{allPaths=**} {
+      allow read: if isStudentFor(userId, childId);
+      allow create: if isStudentFor(userId, childId) && isValidImage();
+    }
+
+    match /feedback/{userId}/{allPaths=**} {
+      allow read: if isOwner(userId);
+      allow create, update: if isOwner(userId) && isValidImage();
+      allow delete: if isOwner(userId);
+    }
+
+    // Alles andere: verboten.
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

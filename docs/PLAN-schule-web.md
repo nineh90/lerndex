@@ -372,3 +372,12 @@ Funde und Stand: siehe Commits ab 424e25a. Live seit 05.11.: Kinderschutz-Regeln
    eine Fehlermeldung, obwohl er geklappt hat – der Server zählt ihn trotzdem.
 7. nginx: `tool/deploy/web_hostinger.sh --setup` (HSTS, Einbett-Schutz, keine
    Versionsnummer).
+
+**Deployt am 10.11.2026:** Secrets (Kevin hat dafür die Rollen Secret Manager- und Cloud
+Scheduler-Administrator bekommen), Index, alle Functions (syncSubscription,
+revenuecatWebhook, previewSchoolChild per `invokerIamDisabled` freigeschaltet;
+cleanupOldTutorChats täglich 03:30), RevenueCat-Webhook (Test-Ereignis 200), Abgleich der
+70 Konten (keine Familie verliert Zugang, 2 bezahlte Solo-Abos waren fälschlich inaktiv),
+Firestore- und Storage-Regeln (Sicherung `docs/rules-backup/*.live-2026-11-10.*`), nginx
+(HSTS, frame-ancestors, server_tokens off; nach `--setup` ist `nginx -s reload` nötig).
+Offen: KI-Live-Check, dann Release (AAB + Web).
