@@ -1,6 +1,6 @@
 # Plan: Lerndex für Schulen und als Web-App
 
-Stand: 27.10.2026, Branch `web`
+Begonnen: 27.10.2026. Zuletzt aktualisiert: 10.11.2026 (Release 1.2.1+18).
 
 Anlass: Eine Schule testet Lerndex. Wünsche der Lehrerin:
 
@@ -16,6 +16,59 @@ Entscheidungen:
 - **Zuerst Web.** Flutter Web aus demselben Code. Läuft auf iPhone und PC ohne App Store,
   die Play-Store-App bleibt.
 - **Laravel-Backend als letzte Phase**, wenn der Schulvertrag steht.
+
+## Überblick (Stand 10.11.2026)
+
+| Phase | Inhalt | Stand |
+|---|---|---|
+| 1 | Web-Version | ✅ live auf https://app.lerndex.de |
+| 2 | Lexi liest vor | ✅ live |
+| 3 | Rollen und Sicherheit | ✅ live |
+| 4 + 4b | Schule, Lehrerkarten, Aufgaben, Statistik, Elternbriefe | ✅ live seit 03.11.2026 |
+| – | Review: Sicherheit, DSGVO, Abo vom Server | ✅ live seit 10.11.2026 |
+| 5 | Arbeitsverhalten, Stufen, Privilegien | ❌ nicht begonnen, wartet auf das Gespräch mit der Lehrerin |
+| 6 | Laravel-Backend auf Hostinger | ❌ bewusst erst mit Schulvertrag |
+
+### Was noch offen ist
+
+Vor echten Schülerdaten (keine Programmierarbeit):
+- Auftragsverarbeitungsvertrag (AVV) mit Schule bzw. Schulträger, Zustimmung der
+  Datenschutzbeauftragten.
+
+Technik:
+- **App Check erzwingen** (Firebase Console, AI Logic und `enforceAppCheck` in den
+  Functions), sobald die meisten Android-Nutzer auf 1.2.0+ sind. Firebase erzwingt es für
+  AI Logic ohnehin ab 21.01.2027. Danach `LEGACY_PIN_MIRROR` in `functions/index.js` auf
+  `false` (und die Übergangsregel in `firestore.rules` entfernen).
+- **Bezahlen im Browser:** Paddle (Merchant of Record) über RevenueCat Web Billing, Nils
+  legt das Konto an. Danach Import-Map in `web/index.html` anpassen und das Bezahlskript nur
+  auf der Abo-Seite laden; Datenschutzerklärung ergänzen. Kein Android-Release nötig, die App
+  erkennt das Abo über den Server-Abgleich.
+- **Google-Login in Safari:** `authDomain` steht noch auf `lerndex-3775f.firebaseapp.com`.
+  Safari kann den Login wegen fremder Cookies blockieren. Lösung: Login-Handler unter
+  app.lerndex.de bereitstellen (`/__/auth/*` an Firebase durchreichen) und `authDomain`
+  umstellen. Auf dem iPhone testen.
+- **Fremde Server im Browser:** Firebase-JS-SDK (www.gstatic.com) und Google-Login-Skript
+  (accounts.google.com/gsi/client), siehe Phase 1.
+- **Altes Firebase Hosting** (`lerndex-3775f.web.app`) abschalten. Es liefert noch den Stand
+  vom 04.11.2026; gedruckte Karten zeigen seit 1.2.1 fest auf app.lerndex.de.
+- **Echte Geräte testen:** iPhone mit Safari, Schul-Tablet, PC (Kamera, Mikrofon, Vorlesen).
+- **Händlerstatus in der Play Console** bis Februar 2027 (nur der Kontoinhaber, Nils).
+
+Schulbereich:
+- Schulkonto selbst löschen, Passwort ändern (bisher nur über Lerndex).
+- Lehrkräfte können ihre PIN nicht selbst ändern (nur Reset über die Schulleitung).
+- Import der Schülerliste als CSV, sobald das Exportformat der Schule bekannt ist.
+- Breitere Ansicht für Lehrkräfte am PC (bisher Handybreite).
+- Kartenwechsel ohne Abmelden auf geteilten Tablets live testen.
+
+Entscheidungen:
+- Wer sieht kritische Lexi-Gespräche von Schulkindern ohne verbundene Eltern? (Lehrkräfte sehen
+  Lexi-Chats bisher nicht.)
+- Sollen Aufgabenpakete nach einiger Zeit ablaufen?
+
+Bekannte Grenze: Im Kindermodus auf dem Elterngerät ist das Elternkonto angemeldet, der PIN
+schützt dort nur die Oberfläche. Echte Trennung nur mit gekoppeltem Kindergerät.
 
 ---
 
@@ -36,22 +89,26 @@ Erledigt:
 - `firebase.json`: Firebase Hosting mit `build/web`.
 - Keine fremden Server beim Start (siehe unten „Fremde Server im Browser“).
 
-Offen, nur Kevin kann das machen (Konsolen und Zugänge):
+Ursprünglich offen (Stand 10.11.: siehe Markierungen):
 
-1. **reCAPTCHA Enterprise / App Check:** Firebase Console → App Check → Web-App registrieren →
+1. *(Für die KI nicht mehr nötig: Im Browser läuft sie seit 1.2.0 über die Function
+   `aiGenerate`.)* **reCAPTCHA Enterprise / App Check:** Firebase Console → App Check → Web-App registrieren →
    Site-Key als `RECAPTCHA_SITE_KEY` in `dart-defines.json` eintragen.
    Die **Erzwingung (Enforcement) erst einschalten, wenn auch Android App Check hat.**
    Sonst funktioniert die KI in der Play-Store-App nicht mehr.
-2. **Domain:** z.B. `app.lerndex.de` in Firebase Hosting anbinden und unter
+2. *(Teilweise erledigt: app.lerndex.de läuft auf Hostinger. Offen bleibt `authDomain`, siehe
+   Überblick.)* **Domain:** z.B. `app.lerndex.de` in Firebase Hosting anbinden und unter
    Authentication → Einstellungen → Autorisierte Domains eintragen.
    `authDomain` in `firebase_options.dart` (web) auf diese Domain setzen. Sonst kann der
    Google-Login in Safari scheitern, weil Safari Cookies fremder Domains blockiert.
-3. **RevenueCat Web Billing:** Stripe verbinden, Web-Produkte anlegen, Web-API-Key als
+3. *(Offen, jetzt mit Paddle statt Stripe geplant, siehe Überblick.)* **RevenueCat Web
+   Billing:** Stripe verbinden, Web-Produkte anlegen, Web-API-Key als
    `REVENUECAT_WEB_KEY` eintragen. Für die Schule nicht nötig, dort per Rechnung.
    Dann zusätzlich die Import-Map in `web/index.html` entfernen (sonst bleibt RevenueCat im
    Browser abgeschaltet) und vorher klären, ob dafür ein Cookie-/Einwilligungsbanner nötig
    ist: Stripe.js lädt Telemetrie von Stripe-Servern.
-4. **Deploy:** `rm -rf .dart_tool/flutter_build build/web`, dann
+4. *(Ersetzt durch `tool/deploy/web_hostinger.sh`.)* **Deploy:**
+   `rm -rf .dart_tool/flutter_build build/web`, dann
    `flutter build web --no-web-resources-cdn --dart-define-from-file=dart-defines.json`
    und dann `firebase deploy --only hosting`. Ohne `--no-web-resources-cdn` lädt der Browser
    die Grafik-Engine von www.gstatic.com.
@@ -191,9 +248,10 @@ flutter run -d chrome --dart-define-from-file=dart-defines.json --dart-define=US
 Im Browser geht die Anmeldung mit dem Emulator beim Neuladen verloren: Firebase prüft das
 gespeicherte Konto dann gegen den echten Server. Mit echten Konten passiert das nicht.
 
-### Offen
+### Offen (Stand 10.11.2026)
 
-- **Abo serverseitig:** Den Abo-Status schreibt weiterhin die App (`_syncToFirestore`), ein
+- ✅ *Erledigt 10.11.2026 (syncSubscription, revenuecatWebhook).* **Abo serverseitig:** Den
+  Abo-Status schrieb die App (`_syncToFirestore`), ein
   manipulierter Client könnte sich Premium eintragen. Lösung: RevenueCat-Webhook → Cloud
   Function schreibt `subscription`, Rules verbieten Clients das Feld. Braucht die Webhook-
   Einrichtung im RevenueCat-Dashboard.
@@ -201,10 +259,10 @@ gespeicherte Konto dann gegen den echten Server. Mit echten Konten passiert das 
   angemeldet, der PIN schützt dort nur die Oberfläche. Echte Trennung gibt es nur mit einem
   gekoppelten Gerät.
 - **App Check für die Functions** (`enforceAppCheck`), sobald App Check überall aktiv ist.
-- **Android-App-Link:** Auf Android öffnet der QR-Code die Web-App im Browser, nicht die
+- ✅ *Erledigt in 1.2.0 (App Links, QR-Scanner).* **Android-App-Link:** Auf Android öffnete der QR-Code die Web-App im Browser, nicht die
   installierte App. In der App geht der Code über „Ich bin ein Kind“.
 
-## Phase 4: Schule ✅ (Branch `schule`, noch nicht deployt)
+## Phase 4: Schule ✅ (live seit 03.11.2026)
 
 Datenmodell:
 
@@ -263,7 +321,8 @@ Offen:
   Zustimmung des Datenschutzbeauftragten.
 - **Import aus der Schulverwaltung:** Bisher Namen per Kopieren und Einfügen. Ein CSV-Import
   lohnt sich, wenn klar ist, welches Format die Schule exportiert.
-- **Eltern ↔ Schule:** Sehen Eltern den Lernstand aus der Schule? Noch nicht verknüpft.
+- ✅ *Erledigt in Phase 4b (Elternbrief).* **Eltern ↔ Schule:** Sehen Eltern den Lernstand
+  aus der Schule?
 - **Lehrer-Ansicht am PC:** Die App ist im Browser auf Handybreite zentriert. Für den Lehrer-
   bereich wäre eine breitere Ansicht schöner.
 - **Kartenwechsel ohne Abmelden:** Scannt ein Kind seine Karte, während noch ein anderes Kind
@@ -303,7 +362,7 @@ Gewinn:
 Aufwand: Die ganze Datenschicht inklusive Echtzeit-Streams wird ersetzt. Deshalb in Phase 3
 den Datenzugriff zentral bündeln, dann ist es ein Austausch an einer Stelle statt an 113.
 
-## Phase 4b: Lehrkräfte per Karte, Aufgaben, Statistik, Eltern (03.11.2026, Branch `schule`)
+## Phase 4b: Lehrkräfte per Karte, Aufgaben, Statistik, Eltern ✅ (live seit 03.11.2026)
 
 Entscheidungen mit Kevin (02.11.2026): Lehrer-Anmeldung per QR-Karte + PIN; die Schulleitung
 verwaltet nur Lehrkräfte und sieht keine Schülerdaten; Elternanbindung kostet nichts (Schul-
@@ -331,8 +390,8 @@ Schulzeit; Fortschritt aus einem Familienkonto wird nicht übernommen.
   `firebase deploy --only firestore:rules,storage`), Web-App. Vorherige Regeln:
   `docs/rules-backup/*.live-2026-11-03.*` (Rulesets b8a5382f / 2b757466, zurück über den
   Verlauf in der Console).
-- **Offen:** Elternbrief fürs Kinderhandy in der Android-App (dort öffnet der QR-Code den
-  Browser), Kartenlehrkräfte können ihre PIN nicht selbst ändern (nur Reset über die Leitung).
+- **Offen:** ~~Elternbrief fürs Kinderhandy in der Android-App~~ (erledigt in 1.2.1: Dialog
+  mit Eltern-Code und Heim-Link je Kind), Kartenlehrkräfte können ihre PIN nicht selbst ändern (nur Reset über die Leitung).
 
 ## Review 05.11.2026: Sicherheit, DSGVO, Abo
 
