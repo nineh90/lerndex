@@ -44,10 +44,11 @@ Technik:
   legt das Konto an. Danach Import-Map in `web/index.html` anpassen und das Bezahlskript nur
   auf der Abo-Seite laden; Datenschutzerklärung ergänzen. Kein Android-Release nötig, die App
   erkennt das Abo über den Server-Abgleich.
-- **Google-Login in Safari:** `authDomain` steht noch auf `lerndex-3775f.firebaseapp.com`.
-  Safari kann den Login wegen fremder Cookies blockieren. Lösung: Login-Handler unter
-  app.lerndex.de bereitstellen (`/__/auth/*` an Firebase durchreichen) und `authDomain`
-  umstellen. Auf dem iPhone testen.
+- ✅ *Erledigt 10.11.2026:* **Google-Login über app.lerndex.de.** nginx reicht `/__/auth/` und
+  `/__/firebase/` an firebaseapp.com durch, die Web-App setzt auf app.lerndex.de die eigene
+  `authDomain` (`webAuthDomainFor` in `lib/main.dart`), Weiterleitungs-URI im OAuth-Client
+  eingetragen. Getestet am Mac in Safari und Chrome. Noch ungetestet: iPhone mit der App auf
+  dem Home-Bildschirm.
 - **Fremde Server im Browser:** Firebase-JS-SDK (www.gstatic.com) und Google-Login-Skript
   (accounts.google.com/gsi/client), siehe Phase 1.
 - **Altes Firebase Hosting** (`lerndex-3775f.web.app`) abschalten. Es liefert noch den Stand
